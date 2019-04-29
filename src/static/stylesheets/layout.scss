@@ -1,0 +1,13 @@
+.video-level {
+  display: flex;
+  height: 500px;
+  max-height: 500px;
+  width: 100%;
+}
+
+.pusher {
+  background-color: $elv-color-darkgray;
+  overflow: auto;
+  resize: horizontal;
+  width: 500px;
+}

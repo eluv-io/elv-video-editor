@@ -1,0 +1,11 @@
+header {
+  align-items: center;
+  display: flex;
+  height: 35px;
+  padding: 0 $elv-spacing-xs;
+
+  h1 {
+    font-size: 20px;
+    font-weight: 500;
+  }
+}

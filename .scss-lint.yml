@@ -1,0 +1,17 @@
+files:
+  include: "src/static/stylesheets/*.scss"
+  ignore:
+    - "src/static/stylesheets/fonts.scss"
+rules:
+  class-name-format:
+  - 2
+  - convention: hyphenatedlowercase
+  leading-zero:
+  - 0
+  nesting-depth:
+    - 1
+    -
+      max-depth: 3
+  quotes:
+  - 1
+  - style: double

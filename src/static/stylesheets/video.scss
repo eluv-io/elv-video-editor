@@ -1,0 +1,55 @@
+.video {
+  border-bottom: 1px solid $elv-color-darkgray;
+  display: grid;
+  grid-template-rows: 1fr 50px 50px;
+  height: 100%;
+  max-height: 100%;
+  width: 100%;
+}
+
+.video-container {
+  background-color: $elv-color-bg-black;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  max-height: 100%;
+}
+
+video {
+  border-bottom: 1px solid $elv-color-darkgray;
+  display: block;
+  max-width: 100%;
+}
+
+.video-time,
+.video-controls {
+  align-items: center;
+  display: flex;
+  font-size: 20px;
+  justify-content: center;
+}
+
+.video-controls {
+  display: flex;
+  flex-grow: 1;
+  justify-content: center;
+
+  button {
+    padding: 0 $elv-spacing-xxs;
+
+    svg {
+      color: $elv-color-lightestgray;
+    }
+
+    &:hover {
+      svg {
+        color: $elv-color-lightblue;
+      }
+    }
+  }
+}
+
+.video-time {
+  text-align: center;
+  width: 100%;
+}
