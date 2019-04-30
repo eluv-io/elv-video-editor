@@ -1,7 +1,7 @@
 .video {
   border-bottom: 1px solid $elv-color-darkgray;
   display: grid;
-  grid-template-rows: 1fr 50px 50px;
+  grid-template-rows: 1fr 35px 30px 50px;
   height: 100%;
   max-height: 100%;
   width: 100%;
@@ -30,12 +30,12 @@ video {
 }
 
 .video-controls {
-  display: flex;
-  flex-grow: 1;
-  justify-content: center;
+  position: relative;
 
   button {
-    padding: 0 $elv-spacing-xxs;
+    height: 25px;
+    width: 50px;
+    //padding: 0 $elv-spacing-xs;
 
     svg {
       color: $elv-color-lightestgray;
@@ -47,9 +47,52 @@ video {
       }
     }
   }
+
+  .controls {
+    height: 100%;
+  }
+
+  .left-controls,
+  .right-controls {
+    align-items: center;
+    display: flex;
+    height: 100%;
+    position: absolute;
+  }
+
+  .left-controls {
+    left: $elv-spacing-xs;
+  }
+
+  .right-controls {
+    right: $elv-spacing-xs;
+  }
+
+  .center-controls {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+  }
+}
+
+.video-playback-rate {
+  background: none;
+  border: 0;
+  color: $elv-color-lightestgray;
+  left: $elv-spacing-xs;
+  position: absolute;
+  width: 50px;
+
+  option {
+    background-color: $elv-color-bg-dark;
+  }
 }
 
 .video-time {
   text-align: center;
   width: 100%;
+}
+
+.video-seek {
+  margin: 0 $elv-spacing-s;
 }

@@ -9,7 +9,7 @@ render(
   <div className="app">
     <Header />
     <div className="video-level">
-      <div className="pusher"></div>
+      <div className="side-panel" />
       <Video />
     </div>
   </div>,

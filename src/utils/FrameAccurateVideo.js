@@ -46,9 +46,12 @@ class FrameAccurateVideo {
       return fraction < 10 ? `0${fraction}` : fraction;
     };
 
-    return `${pad(hours)}::${pad(minutes)}::${pad(seconds)}::${pad(frames)}`;
+    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}:${pad(frames)}`;
   }
 
+  Progress() {
+    return Fraction(this.video.currentTime).div(this.video.duration);
+  }
 
   /* Controls */
 
@@ -62,6 +65,10 @@ class FrameAccurateVideo {
     this.Seek(frame.sub(frames));
   }
 
+  SeekPercentage(percent) {
+    this.video.currentTime = Fraction(percent).mul(this.video.duration).valueOf();
+  }
+
   Seek(frame) {
     if(!this.video.paused) { this.video.pause(); }
 
@@ -72,7 +79,11 @@ class FrameAccurateVideo {
 
   Update() {
     if(this.callback) {
-      this.callback({frame: this.Frame(), smpte: this.SMPTE()});
+      this.callback({
+        frame: this.Frame(),
+        smpte: this.SMPTE(),
+        progress: this.Progress()
+      });
     }
   }
 
