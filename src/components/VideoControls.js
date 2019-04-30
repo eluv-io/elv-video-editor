@@ -1,7 +1,6 @@
 import React from "react";
-import PropTypes from "prop-types";
+import {inject, observer} from "mobx-react";
 import Fraction from "fraction.js";
-import FrameAccurateVideo, {FrameRates} from "../utils/FrameAccurateVideo";
 import {IconButton} from "elv-components-js";
 
 import PlayButton from "../static/icons/Play.svg";
@@ -13,59 +12,20 @@ import SecondForward from "../static/icons/DoubleForward.svg";
 import FrameBackward from "../static/icons/Backward.svg";
 import SecondBackward from "../static/icons/DoubleBackward.svg";
 
-class VideoControls extends React.PureComponent {
+@inject("video")
+@observer
+class VideoControls extends React.Component {
   constructor(props) {
     super(props);
 
-    this.state = {
-      frame: 0,
-      progress: 0,
-      playing: !this.props.video.paused,
-      playbackRate: 1
-    };
-
-    this.UpdateFrame = this.UpdateFrame.bind(this);
     this.Seek = this.Seek.bind(this);
-    this.Rate = this.Rate.bind(this);
+    this.PlaybackRate = this.PlaybackRate.bind(this);
     this.PlayPause = this.PlayPause.bind(this);
     this.Maximize = this.Maximize.bind(this);
     this.FrameControl = this.FrameControl.bind(this);
   }
 
-  componentWillMount() {
-    this.setState({
-      videoHandler: new FrameAccurateVideo({
-        video: this.props.video,
-        frameRate: FrameRates.NTSC,
-        callback: this.UpdateFrame
-      })
-    });
-
-    const AppendVideoCallback = (event, callback) => {
-      const existingCallback = this.props.video[event];
-      this.props.video[event] = (e) => {
-        if(existingCallback) {
-          existingCallback(e);
-        }
-
-        callback(e);
-      };
-    };
-
-    AppendVideoCallback("onpause", () => this.setState({playing: false}));
-    AppendVideoCallback("onplay", () => this.setState({playing: true}));
-    AppendVideoCallback("onratechange", () => this.setState({playbackRate: this.props.video.playbackRate}));
-  }
-
-  UpdateFrame({frame, smpte, progress}) {
-    this.setState({
-      frame,
-      smpte,
-      progress
-    });
-  }
-
-  Rate() {
+  PlaybackRate() {
     // TODO: Negative rates
     const rates = [
       0.1,
@@ -86,8 +46,8 @@ class VideoControls extends React.PureComponent {
         aria-label="Playback Rate"
         title="Playback Rate"
         className="video-playback-rate"
-        value={this.state.playbackRate}
-        onChange={event => this.props.video.playbackRate = event.target.value}
+        value={this.props.video.playbackRate}
+        onChange={event => this.props.video.SetPlaybackRate(event.target.value)}
       >
         {rates.map(rate =>
           <option key={`video-rate-${rate}`} value={rate}>{`${rate}X`}</option>
@@ -105,10 +65,8 @@ class VideoControls extends React.PureComponent {
         className="video-seek"
         min={0}
         max={scale}
-        value={(this.state.progress * scale) || 0}
-        onChange={(event) => {
-          this.state.videoHandler.SeekPercentage(Fraction(event.target.value).div(scale));
-        }}
+        value={(this.props.video.progress * scale) || 0}
+        onChange={(event) => this.props.video.Seek(Fraction(event.target.value).div(scale))}
       />
     );
   }
@@ -116,11 +74,9 @@ class VideoControls extends React.PureComponent {
   PlayPause() {
     return (
       <IconButton
-        label={this.state.playing ? "Pause" : "Play"}
-        icon={this.state.playing ? PauseButton : PlayButton}
-        onClick={() => {
-          this.props.video.paused ? this.props.video.play() : this.props.video.pause();
-        }}
+        label={this.props.video.playing ? "Pause" : "Play"}
+        icon={this.props.video.playing ? PauseButton : PlayButton}
+        onClick={this.props.video.PlayPause}
       />
     );
   }
@@ -130,17 +86,7 @@ class VideoControls extends React.PureComponent {
       <IconButton
         label="Full Screen"
         icon={Maximize}
-        onClick={() => {
-          if (this.props.video.requestFullscreen) {
-            this.props.video.requestFullscreen();
-          } else if (this.props.video.mozRequestFullScreen) {
-            this.props.video.mozRequestFullScreen();
-          } else if (this.props.video.webkitRequestFullscreen) {
-            this.props.video.webkitRequestFullscreen();
-          } else if (this.props.video.msRequestFullscreen) {
-            this.props.video.msRequestFullscreen();
-          }
-        }}
+        onClick={this.props.video.ToggleFullscreen}
       />
     );
   }
@@ -172,13 +118,13 @@ class VideoControls extends React.PureComponent {
         onClick={() => {
           let frames = 1;
           if(!frame) {
-            frames = this.state.videoHandler.frameRate.ceil();
+            frames = this.props.video.frameRate.ceil();
           }
 
           if(forward) {
-            this.state.videoHandler.SeekForward(frames);
+            this.props.video.SeekForward(frames);
           } else {
-            this.state.videoHandler.SeekBackward(frames);
+            this.props.video.SeekBackward(frames);
           }
         }}
       />
@@ -187,11 +133,11 @@ class VideoControls extends React.PureComponent {
 
   render() {
     return [
-      <div key="video-time" className="mono video-time">{this.state.smpte}</div>,
+      <div key="video-time" className="mono video-time">{this.props.video.smpte}</div>,
       this.Seek(),
       <div key="video-controls" className="video-controls">
         <div className="controls left-controls">
-          { this.Rate() }
+          { this.PlaybackRate() }
         </div>
         <div className="controls center-controls">
           { this.FrameControl(false, false) }
@@ -207,9 +153,5 @@ class VideoControls extends React.PureComponent {
     ];
   }
 }
-
-VideoControls.propTypes = {
-  video: PropTypes.instanceOf(Element).isRequired
-};
 
 export default VideoControls;

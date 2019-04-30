@@ -1,8 +1,11 @@
 import React from "react";
+import {inject, observer} from "mobx-react";
 import Dash from "dashjs";
 import VideoControls from "./VideoControls";
 
-class Video extends React.PureComponent {
+@inject("video")
+@observer
+class Video extends React.Component {
   constructor(props) {
     super(props);
 
@@ -12,8 +15,7 @@ class Video extends React.PureComponent {
     dashPlayer.preload();
 
     this.state = {
-      dashPlayer,
-      videoRef: React.createRef()
+      dashPlayer
     };
 
     this.InitializeVideo = this.InitializeVideo.bind(this);
@@ -21,14 +23,11 @@ class Video extends React.PureComponent {
 
   InitializeVideo(video) {
     this.state.dashPlayer.attachView(video);
-
-    this.setState({
-      video
-    });
+    this.props.video.Initialize({video});
   }
 
   render() {
-    const controls = this.state.video ? <VideoControls video={this.state.video} /> : null;
+    const controls = this.props.video.initialized ? <VideoControls /> : null;
 
     return (
       <div className="video">

@@ -15,10 +15,13 @@
   },
   "dependencies": {
     "@babel/polyfill": "^7.4.3",
+    "babel-preset-mobx": "^2.0.0",
     "dashjs": "^2.9.3",
     "elv-client-js": "git+https://github.com/eluv-io/elv-client-js.git#70a67712921c0ab2598da7b3dc64b7ce0939149c",
     "elv-components-js": "git+https://github.com/eluv-io/elv-components-js.git#8d5cf86e7d05b2ebaa4b9f661da7fba06fda9696",
     "fraction.js": "^4.0.12",
+    "mobx": "^5.9.4",
+    "mobx-react": "^5.4.3",
     "prop-types": "^15.7.2",
     "react": "^16.8.6",
     "react-dom": "^16.8.6",
