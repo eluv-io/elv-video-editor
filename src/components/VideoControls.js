@@ -2,6 +2,7 @@ import React from "react";
 import {inject, observer} from "mobx-react";
 import Fraction from "fraction.js";
 import {IconButton} from "elv-components-js";
+import {FrameRates} from "../utils/FrameAccurateVideo";
 
 import PlayButton from "../static/icons/Play.svg";
 import PauseButton from "../static/icons/Pause.svg";
@@ -52,6 +53,39 @@ class VideoControls extends React.Component {
         {rates.map(rate =>
           <option key={`video-rate-${rate}`} value={rate}>{`${rate}X`}</option>
         )}
+      </select>
+    );
+  }
+
+  FrameRate() {
+    return (
+      <select
+        aria-label="Frame Rate"
+        title="Frame Rate"
+        value={this.props.video.frameRateKey}
+        onChange={event => this.props.video.SetFrameRate(event.target.value)}
+      >
+        {Object.keys(FrameRates).map(frameRateKey =>
+          <option key={`frame-rate-${frameRateKey}`} value={frameRateKey}>{frameRateKey}</option>
+        )}
+      </select>
+    );
+  }
+
+  DropFrame() {
+    if(this.props.video.frameRateKey !== "NTSC" && this.props.video.frameRateKey !== "NTSCHD") {
+      return null;
+    }
+
+    return (
+      <select
+        aria-label="Drop Frame Notation"
+        title="Drop Frame Notation"
+        value={this.props.video.dropFrame}
+        onChange={event => this.props.video.SetDropFrame(event.target.value === "true")}
+      >
+        <option value={false}>NDF</option>
+        <option value={true}>DF</option>
       </select>
     );
   }
@@ -133,11 +167,13 @@ class VideoControls extends React.Component {
 
   render() {
     return [
-      <div key="video-time" className="mono video-time">{this.props.video.smpte}</div>,
+      <div key="video-time" className="mono video-time">{this.props.video.frame.floor() + " :: " + this.props.video.smpte}</div>,
       this.Seek(),
       <div key="video-controls" className="video-controls">
         <div className="controls left-controls">
           { this.PlaybackRate() }
+          { this.FrameRate() }
+          { this.DropFrame() }
         </div>
         <div className="controls center-controls">
           { this.FrameControl(false, false) }

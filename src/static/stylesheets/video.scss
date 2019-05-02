@@ -78,16 +78,19 @@ video {
   }
 }
 
-.video-playback-rate {
+select {
   background: none;
   border: 0;
   color: $elv-color-lightestgray;
   left: $elv-spacing-xs;
-  position: absolute;
-  width: 50px;
+  width: 100px;
 
   option {
     background-color: $elv-color-bg-dark;
+  }
+
+  &.video-playback-rate {
+    width: 50px;
   }
 }
 

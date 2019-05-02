@@ -3,7 +3,10 @@ import FrameAccurateVideo, {FrameRates} from "../utils/FrameAccurateVideo";
 
 class VideoStore {
   @observable initialized = false;
+  @observable dropFrame = false;
+  @observable frameRateKey = "NTSC";
   @observable frameRate = FrameRates.NTSC;
+  @observable currentTime = 0;
   @observable frame = 0;
   @observable smpte = "00:00:00:00";
   @observable progress = 0;
@@ -18,6 +21,7 @@ class VideoStore {
     const videoHandler = new FrameAccurateVideo({
       video: video,
       frameRate: this.frameRate,
+      dropFrame: this.dropFrame,
       callback: this.Update
     });
 
@@ -64,6 +68,7 @@ class VideoStore {
     this.frame = frame;
     this.smpte = smpte;
     this.progress = progress;
+    this.currentTime = this.video.currentTime;
   }
 
   @action.bound
@@ -78,6 +83,23 @@ class VideoStore {
   @action.bound
   SetPlaybackRate(rate) {
     this.video.playbackRate = rate;
+  }
+
+  @action.bound
+  SetFrameRate(frameRateKey) {
+    this.frameRateKey = frameRateKey;
+    this.frameRate = FrameRates[frameRateKey];
+    this.videoHandler.frameRate = this.frameRate;
+
+    this.videoHandler.Update();
+  }
+
+  @action.bound
+  SetDropFrame(dropFrame) {
+    this.dropFrame = dropFrame;
+    this.videoHandler.dropFrame = this.dropFrame;
+
+    this.videoHandler.Update();
   }
 
   @action.bound

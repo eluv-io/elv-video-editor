@@ -1,20 +1,21 @@
 import Fraction from "fraction.js";
 
 export const FrameRates = {
-  film: Fraction(24),
-  NTSC : Fraction(30000).div(1001),
-  NTSC_Film: Fraction(24000).div(1001),
-  NTSC_HD : Fraction(60000).div(1001),
+  NTSC: Fraction(30000).div(1001),
+  NTSCFilm: Fraction(24000).div(1001),
+  NTSCHD: Fraction(60000).div(1001),
   PAL: Fraction(25),
-  PAL_HD: Fraction(50),
-  web: Fraction(30),
-  high: Fraction(60)
+  PALHD: Fraction(50),
+  Film: Fraction(24),
+  Web: Fraction(30),
+  High: Fraction(60)
 };
 
 class FrameAccurateVideo {
-  constructor({video, frameRate, callback}) {
+  constructor({video, frameRate, dropFrame=false, callback}) {
     this.video = video;
     this.frameRate = frameRate || FrameRates.NTSC;
+    this.dropFrame = dropFrame && (frameRate.equals(FrameRates.NTSC) || frameRate.equals(FrameRates.NTSC_HD));
     this.callback = callback;
 
     if(callback) {
@@ -27,26 +28,45 @@ class FrameAccurateVideo {
   /* Time representations */
 
   Frame() {
-    return Fraction(this.video.currentTime).mul(this.frameRate).round().toString(0);
+    return Fraction(this.video.currentTime).mul(this.frameRate);
+  }
+
+  Pad(fraction) {
+    fraction = fraction.valueOf();
+    return fraction < 10 ? `0${fraction}` : fraction;
   }
 
   SMPTE() {
-    const frame = Fraction(this.Frame());
-    const second = Fraction(this.frameRate);
-    const minute = second.mul(60);
-    const hour = minute.mul(60);
+    let frame = this.Frame().floor();
+    const frameRate = this.frameRate.round();
 
-    const hours = frame.div(hour).floor();
-    const minutes = frame.div(minute).mod(60).floor();
-    const seconds = frame.div(second).mod(60).floor();
-    const frames = frame.mod(this.frameRate).round();
+    if(this.dropFrame) {
+      const framesPerMinute = this.frameRate.equals(FrameRates.NTSCHD) ? Fraction(4) : Fraction(2);
+      const tenMinutes = Fraction("17982").mul(framesPerMinute).div(2);
+      const oneMinute = Fraction("1798").mul(framesPerMinute).div(2);
 
-    const pad = (fraction) => {
-      fraction = fraction.valueOf();
-      return fraction < 10 ? `0${fraction}` : fraction;
-    };
+      const tenMinuteIntervals = frame.div(tenMinutes).floor();
+      let framesSinceLastInterval = frame.mod(tenMinutes);
 
-    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}:${pad(frames)}`;
+      // If framesSinceLastInterval < framesPerMinute
+      if(framesSinceLastInterval.compare(framesPerMinute) < 0) {
+        // This is where the jump from :59:29 -> :00:02 or :59:59 -> :00:04 happens
+        framesSinceLastInterval = framesSinceLastInterval.add(framesPerMinute);
+      }
+
+      frame = frame.add(
+        framesPerMinute.mul(tenMinuteIntervals).mul("9").add(
+          framesPerMinute.mul((framesSinceLastInterval.sub(framesPerMinute)).div(oneMinute).floor())
+        )
+      );
+    }
+
+    const hours = frame.div(frameRate.mul(3600)).mod(24).floor();
+    const minutes = frame.div(frameRate.mul(60)).mod(60).floor();
+    const seconds = frame.div(frameRate).mod(60).floor();
+    const frames = frame.mod(frameRate).floor();
+
+    return `${this.Pad(hours)}:${this.Pad(minutes)}:${this.Pad(seconds)}:${this.Pad(frames)}`;
   }
 
   Progress() {
@@ -56,7 +76,7 @@ class FrameAccurateVideo {
   /* Controls */
 
   SeekForward(frames=1) {
-    const frame = Fraction(this.Frame());
+    const frame = this.Frame();
     this.Seek(frame.add(frames));
   }
 
@@ -66,13 +86,17 @@ class FrameAccurateVideo {
   }
 
   SeekPercentage(percent) {
-    this.video.currentTime = Fraction(percent).mul(this.video.duration).valueOf();
+    const totalFrames = Fraction(this.video.duration).mul(this.frameRate);
+    this.Seek(totalFrames.mul(percent));
   }
 
   Seek(frame) {
     if(!this.video.paused) { this.video.pause(); }
 
-    this.video.currentTime = Fraction(frame).div(this.frameRate).valueOf();
+    // Whenever seeking, stop comfortably in the middle of a frame
+    frame = Fraction(frame).floor().add(0.5);
+
+    this.video.currentTime = frame.div(this.frameRate).valueOf();
   }
 
   /* Callbacks */
@@ -93,7 +117,11 @@ class FrameAccurateVideo {
     this.video.onseeked = (event) => this.Update(event);
     this.video.onseeking = (event) => this.Update(event);
     this.video.onplay = () => this.AddListener();
-    this.video.onpause = () => this.RemoveListener();
+    this.video.onpause = () => {
+      this.Seek(this.Frame().add(this.frameRate.valueOf() > 30 ? 2 : 1));
+      this.RemoveListener();
+    };
+
     this.video.onended = () => this.RemoveListener();
     this.video.onratechange = () => {
       // Update listener rate
@@ -114,9 +142,9 @@ class FrameAccurateVideo {
   }
 
   AddListener() {
-    // Call twice per frame
-    const fps = Fraction(this.video.playbackRate || 1.0).mul(this.frameRate);
-    const interval = Fraction(1000).div(fps).div(2);
+    // Call twice per frame - possible range 10hz - 100hz
+    const fps = Fraction(1.0).mul(this.frameRate);
+    const interval = Math.min(Math.max(Fraction(1000).div(fps).div(2).valueOf(), 10), 100);
 
     this.listener = setInterval(() => {
       if(this.video.paused || this.video.ended) {
