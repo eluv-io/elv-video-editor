@@ -2,6 +2,8 @@ import {observable, action} from "mobx";
 import FrameAccurateVideo, {FrameRates} from "../utils/FrameAccurateVideo";
 
 class VideoStore {
+  // TODO: Make @calculated values + cleanup
+
   @observable initialized = false;
   @observable dropFrame = false;
   @observable frameRateKey = "NTSC";
@@ -10,9 +12,17 @@ class VideoStore {
   @observable frame = 0;
   @observable smpte = "00:00:00:00";
   @observable progress = 0;
+  @observable seek = 0;
   @observable playing = false;
   @observable playbackRate = 1.0;
   @observable fullScreen = false;
+
+  @observable scale = 10000;
+  @observable scaleMin = 0;
+  @observable scaleMax = this.scale;
+
+  @observable volume = 100;
+  @observable muted = false;
 
   @action.bound
   Initialize({video}) {
@@ -42,6 +52,10 @@ class VideoStore {
     AppendVideoCallback("onplay", action(() => this.playing = true));
     AppendVideoCallback("onratechange", action(() => this.playbackRate = this.video.playbackRate));
     AppendVideoCallback("onfullscreenchange", action(() => this.fullScreen = !this.fullScreen));
+    AppendVideoCallback("onvolumechange", action(() => {
+      this.volume = video.volume * this.scale;
+      this.muted = video.muted;
+    }));
     AppendVideoCallback("onclick", action(() => {
       // Handle click (play/pause) and double click (enter/exit full screen)
       if(this.click) {
@@ -61,6 +75,13 @@ class VideoStore {
 
     this.initialized = true;
     this.videoHandler = videoHandler;
+    this.volume = video.volume;
+    this.muted = video.muted;
+  }
+
+  @action.bound
+  ProgressToSMPTE(seek) {
+    return this.videoHandler.ProgressToSMPTE(seek / this.scale);
   }
 
   @action.bound
@@ -69,6 +90,14 @@ class VideoStore {
     this.smpte = smpte;
     this.progress = progress;
     this.currentTime = this.video.currentTime;
+    this.seek = progress * this.scale;
+
+    if(this.playing && this.seek > this.scaleMax) {
+      // If playing has gone beyond the max scale, push the whole scale slider forward by 50%
+      const currentRange = this.scaleMax - this.scaleMin;
+      this.scaleMax = Math.min(this.scale, this.scaleMax + currentRange/2);
+      this.scaleMin = this.scaleMax - currentRange;
+    }
   }
 
   @action.bound
@@ -108,6 +137,56 @@ class VideoStore {
   }
 
   @action.bound
+  ScrollScale(deltaY) {
+    if(!this.video || !this.video.duration) { return; }
+
+    deltaY *= this.scale * 0.005;
+
+    // Adjust scale according to current position relative to min/max positions
+    // In other words, scale changes, seek position stays the same
+    const range = this.scaleMax - this.scaleMin;
+    const deltaMin = deltaY * (this.seek - this.scaleMin) / range;
+    const deltaMax = deltaY * (this.scaleMax - this.seek) / range;
+
+    this.SetScale(
+      Math.max(0, this.scaleMin + deltaMin),
+      this.seek,
+      Math.min(this.scale, this.scaleMax - deltaMax)
+    );
+  }
+
+  @action.bound
+  SetScale(min, seek, max) {
+    const bump = this.scale * 0.05;
+    const range = max - min;
+
+    if(range < bump) { return; }
+
+    if(min >= seek) {
+      if(min === this.scaleMin) {
+        // Seek moved past min range
+        min = Math.max(0, min - bump);
+      } else {
+        // Min range moved ahead of seek
+        seek += bump;
+      }
+    } else if(seek >= max) {
+      if(max === this.scaleMax) {
+        // Seek moved ahead of max range
+        max = Math.min(this.scale, max + bump);
+      } else {
+        // Max range moved behind seek
+        seek -= bump;
+      }
+    }
+
+    this.scaleMin = min;
+    this.scaleMax = max;
+
+    this.Seek(seek / this.scale);
+  }
+
+  @action.bound
   SeekForward(frames) {
     this.videoHandler.SeekForward(frames);
   }
@@ -115,6 +194,35 @@ class VideoStore {
   @action.bound
   SeekBackward(frames) {
     this.videoHandler.SeekBackward(frames);
+  }
+
+  @action.bound
+  ScrollVolume(deltaY) {
+    const volume = this.muted ? 0 : this.volume;
+
+    this.SetVolume(
+      Math.max(0, Math.min(this.scale, volume - (deltaY * this.scale * 0.01)))
+    );
+  }
+
+  @action.bound
+  SetVolume(volume) {
+    this.video.volume = volume / this.scale;
+
+    if(volume === 0) {
+      this.video.muted = true;
+    } else if(this.video.muted && volume !== 0) {
+      this.video.muted = false;
+    }
+  }
+
+  @action.bound
+  SetMuted(muted) {
+    this.video.muted = muted;
+
+    if(this.video.volume === 0) {
+      this.video.volume = 0.5;
+    }
   }
 
   @action.bound
@@ -130,14 +238,16 @@ class VideoStore {
         document.msExitFullscreen();
       }
     } else {
-      if (this.video.requestFullscreen) {
-        this.video.requestFullscreen();
-      } else if (this.state.video.mozRequestFullScreen) {
-        this.video.mozRequestFullScreen();
-      } else if (this.state.video.webkitRequestFullscreen) {
-        this.video.webkitRequestFullscreen();
-      } else if (this.state.video.msRequestFullscreen) {
-        this.video.msRequestFullscreen();
+      const videoContainer = this.video.parentElement.parentElement;
+      
+      if (videoContainer.requestFullscreen) {
+        videoContainer.requestFullscreen();
+      } else if (videoContainer.mozRequestFullScreen) {
+        videoContainer.mozRequestFullScreen();
+      } else if (videoContainer.webkitRequestFullscreen) {
+        videoContainer.webkitRequestFullscreen();
+      } else if (videoContainer.msRequestFullscreen) {
+        videoContainer.msRequestFullscreen();
       }
     }
   }

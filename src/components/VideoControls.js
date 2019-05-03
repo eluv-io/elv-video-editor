@@ -3,6 +3,7 @@ import {inject, observer} from "mobx-react";
 import Fraction from "fraction.js";
 import {IconButton} from "elv-components-js";
 import {FrameRates} from "../utils/FrameAccurateVideo";
+import {Range, Slider} from "./Slider";
 
 import PlayButton from "../static/icons/Play.svg";
 import PauseButton from "../static/icons/Pause.svg";
@@ -12,6 +13,10 @@ import FrameForward from "../static/icons/Forward.svg";
 import SecondForward from "../static/icons/DoubleForward.svg";
 import FrameBackward from "../static/icons/Backward.svg";
 import SecondBackward from "../static/icons/DoubleBackward.svg";
+
+import VolumeLow from "../static/icons/VolumeLow.svg";
+import VolumeHigh from "../static/icons/VolumeHigh.svg";
+import VolumeOff from "../static/icons/VolumeOff.svg";
 
 @inject("video")
 @observer
@@ -51,7 +56,7 @@ class VideoControls extends React.Component {
         onChange={event => this.props.video.SetPlaybackRate(event.target.value)}
       >
         {rates.map(rate =>
-          <option key={`video-rate-${rate}`} value={rate}>{`${rate}X`}</option>
+          <option key={`video-rate-${rate}`} value={rate}>{`${rate}x`}</option>
         )}
       </select>
     );
@@ -91,17 +96,38 @@ class VideoControls extends React.Component {
   }
 
   Seek() {
-    const scale = 10000;
+    const scale = this.props.video.scale;
+
     return (
-      <input
+      <Slider
         key="video-progress"
-        type="range"
+        min={this.props.video.scaleMin}
+        max={this.props.video.scaleMax}
+        value={this.props.video.seek}
+        tipFormatter={value => this.props.video.ProgressToSMPTE(value)}
+        onChange={(value) => this.props.video.Seek(Fraction(value).div(scale))}
         className="video-seek"
-        min={0}
-        max={scale}
-        value={(this.props.video.progress * scale) || 0}
-        onChange={(event) => this.props.video.Seek(Fraction(event.target.value).div(scale))}
       />
+    );
+  }
+
+  Scale() {
+    return (
+      <div
+        key="video-scale"
+        onWheel={({deltaY}) => this.props.video.ScrollScale(deltaY)}
+      >
+        <Range
+          key="video-scale"
+          min={0}
+          max={this.props.video.scale}
+          value={[this.props.video.scaleMin, this.props.video.seek, this.props.video.scaleMax]}
+          allowCross={false}
+          tipFormatter={value => this.props.video.ProgressToSMPTE(value)}
+          onChange={([scaleMin, seek, scaleMax]) => this.props.video.SetScale(scaleMin, seek, scaleMax)}
+          className="video-scale"
+        />
+      </div>
     );
   }
 
@@ -122,6 +148,31 @@ class VideoControls extends React.Component {
         icon={Maximize}
         onClick={this.props.video.ToggleFullscreen}
       />
+    );
+  }
+
+  Volume() {
+    const icon = (this.props.video.muted || this.props.video.volume === 0) ? VolumeOff :
+      this.props.video.volume < (this.props.video.scale / 2) ? VolumeLow : VolumeHigh;
+
+    return (
+      <div
+        onWheel={({deltaY}) => this.props.video.ScrollVolume(deltaY)}
+        className="video-volume-controls"
+      >
+        <IconButton
+          icon={icon}
+          onClick={() => this.props.video.SetMuted(!this.props.video.muted)}
+          className="video-volume-icon"
+        />
+        <Slider
+          min={0}
+          max={this.props.video.scale}
+          value={this.props.video.muted ? 0 : this.props.video.volume}
+          tipFormatter={value => `${Math.floor((value / this.props.video.scale) * 100)}%`}
+          onChange={(volume) => this.props.video.SetVolume(volume)}
+        />
+      </div>
     );
   }
 
@@ -165,10 +216,8 @@ class VideoControls extends React.Component {
     );
   }
 
-  render() {
-    return [
-      <div key="video-time" className="mono video-time">{this.props.video.frame.floor() + " :: " + this.props.video.smpte}</div>,
-      this.Seek(),
+  Controls() {
+    return (
       <div key="video-controls" className="video-controls">
         <div className="controls left-controls">
           { this.PlaybackRate() }
@@ -183,9 +232,19 @@ class VideoControls extends React.Component {
           { this.FrameControl(true, false) }
         </div>
         <div className="controls right-controls">
+          { this.Volume() }
           { this.Maximize() }
         </div>
       </div>
+    );
+  }
+
+  render() {
+    return [
+      <div key="video-time" className="mono video-time">{Math.floor(this.props.video.frame) + " :: " + this.props.video.smpte}</div>,
+      this.Seek(),
+      this.Scale(),
+      this.Controls(),
     ];
   }
 }

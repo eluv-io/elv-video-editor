@@ -25,10 +25,24 @@ class FrameAccurateVideo {
     this.Update = this.Update.bind(this);
   }
 
-  /* Time representations */
+  /* Conversion utility methods */
+
+  ProgressToSMPTE(progress) {
+    return this.TimeToSMPTE(Fraction(progress).mul(this.video.duration));
+  }
+
+  TimeToFrame(time) {
+    return Fraction(time).mul(this.frameRate);
+  }
+
+  TimeToSMPTE(time) {
+    return this.SMPTE(this.TimeToFrame(time));
+  }
+
+  /* Time Calculations */
 
   Frame() {
-    return Fraction(this.video.currentTime).mul(this.frameRate);
+    return this.TimeToFrame(this.video.currentTime);
   }
 
   Pad(fraction) {
@@ -36,8 +50,8 @@ class FrameAccurateVideo {
     return fraction < 10 ? `0${fraction}` : fraction;
   }
 
-  SMPTE() {
-    let frame = this.Frame().floor();
+  SMPTE(f) {
+    let frame = (f ? Fraction(f) : this.Frame()).floor();
     const frameRate = this.frameRate.round();
 
     if(this.dropFrame) {
@@ -70,6 +84,8 @@ class FrameAccurateVideo {
   }
 
   Progress() {
+    if(!this.video.duration) { return Fraction(0); }
+
     return Fraction(this.video.currentTime).div(this.video.duration);
   }
 
@@ -91,8 +107,6 @@ class FrameAccurateVideo {
   }
 
   Seek(frame) {
-    if(!this.video.paused) { this.video.pause(); }
-
     // Whenever seeking, stop comfortably in the middle of a frame
     frame = Fraction(frame).floor().add(0.5);
 
@@ -104,9 +118,9 @@ class FrameAccurateVideo {
   Update() {
     if(this.callback) {
       this.callback({
-        frame: this.Frame(),
+        frame: this.Frame().valueOf(),
         smpte: this.SMPTE(),
-        progress: this.Progress()
+        progress: this.Progress().valueOf()
       });
     }
   }
@@ -118,6 +132,7 @@ class FrameAccurateVideo {
     this.video.onseeking = (event) => this.Update(event);
     this.video.onplay = () => this.AddListener();
     this.video.onpause = () => {
+      // On pause, seek to the nearest frame
       this.Seek(this.Frame().add(this.frameRate.valueOf() > 30 ? 2 : 1));
       this.RemoveListener();
     };
@@ -142,9 +157,9 @@ class FrameAccurateVideo {
   }
 
   AddListener() {
-    // Call twice per frame - possible range 10hz - 100hz
-    const fps = Fraction(1.0).mul(this.frameRate);
-    const interval = Math.min(Math.max(Fraction(1000).div(fps).div(2).valueOf(), 10), 100);
+    // Call once per frame - possible range 10hz - 50hz
+    const fps = Fraction(this.video.playbackRate).mul(this.frameRate);
+    const interval = Math.min(Math.max(Fraction(1000).div(fps).valueOf(), 20), 100);
 
     this.listener = setInterval(() => {
       if(this.video.paused || this.video.ended) {

@@ -1,7 +1,8 @@
 .video {
+  background-color: $elv-color-bg-dark;
   border-bottom: 1px solid $elv-color-darkgray;
   display: grid;
-  grid-template-rows: 1fr 35px 30px 50px;
+  grid-template-rows: 1fr 35px 30px 30px 50px;
   height: 100%;
   max-height: 100%;
   width: 100%;
@@ -14,6 +15,7 @@
   height: 100%;
   justify-content: center;
   max-height: 100%;
+  position: relative;
 }
 
 video {
@@ -28,7 +30,7 @@ video {
 .video-controls {
   align-items: center;
   display: flex;
-  font-size: 20px;
+  font-size: 16px;
   justify-content: center;
 }
 
@@ -38,7 +40,6 @@ video {
   button {
     height: 25px;
     width: 50px;
-    //padding: 0 $elv-spacing-xs;
 
     svg {
       color: $elv-color-lightestgray;
@@ -64,17 +65,29 @@ video {
   }
 
   .left-controls {
-    left: $elv-spacing-xs;
+    left: $elv-spacing-s;
   }
 
   .right-controls {
-    right: $elv-spacing-xs;
+    right: $elv-spacing-s;
   }
 
   .center-controls {
     align-items: center;
     display: flex;
     justify-content: center;
+  }
+
+  .video-volume-icon {
+    margin-right: $elv-spacing-s;
+  }
+
+  .video-volume-controls {
+    align-items: center;
+    display: flex;
+
+    margin-right: $elv-spacing-s;
+    width: 125px;
   }
 }
 
@@ -83,7 +96,7 @@ select {
   border: 0;
   color: $elv-color-lightestgray;
   left: $elv-spacing-xs;
-  width: 100px;
+  width: 80px;
 
   option {
     background-color: $elv-color-bg-dark;
@@ -99,6 +112,75 @@ select {
   width: 100%;
 }
 
+.video-seek,
+.video-scale {
+  &.rc-slider {
+    cursor: pointer;
+    height: $elv-spacing-s;
+    margin: 0 $elv-spacing-m;
+    width: auto;
+  }
+
+  .rc-slider-rail {
+    background-color: $elv-color-black;
+  }
+
+  .rc-slider-track {
+    background-color: $elv-color-darkgray;
+  }
+}
+
+//* Slider styling *//
+
+// Hide main video progress handle
 .video-seek {
-  margin: 0 $elv-spacing-s;
+  &.video-seek {
+    .rc-slider-handle {
+      background-color: transparent;
+    }
+  }
+}
+
+// Make current time indicator on scale a blue line
+.video-scale {
+  &.rc-slider {
+    .rc-slider-handle-2 {
+      background-color: $elv-color-lightblue;
+      border-radius: 0;
+      height: 20px;
+      margin-left: -2px;
+      margin-top: -14px;
+      width: 3px;
+    }
+  }
+}
+
+.rc-slider {
+  .rc-slider-rail {
+    background-color: $elv-color-black;
+  }
+
+  .rc-slider-rail,
+  .rc-slider-track {
+    height: 6px;
+  }
+
+  .rc-slider-track {
+    background-color: $elv-color-darkgray;
+  }
+
+  .rc-slider-handle {
+    background-color: $elv-color-lightestgray;
+    border: 0;
+    border-radius: 100%;
+    cursor: pointer;
+    height: 10px;
+    margin-left: -5px;
+    margin-top: -2px;
+    width: 10px;
+
+    &:focus {
+      box-shadow: 0 0 3px $elv-color-lightestgray;
+    }
+  }
 }
