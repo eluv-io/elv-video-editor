@@ -9,20 +9,22 @@ class Video extends React.Component {
   constructor(props) {
     super(props);
 
-    const url = "http://38.142.50.107/qlibs/ilib25dkW5Gp96LMxBcWnLks77tNtbT9/q/iq__3DW6PNhUTrabuBgZwzS3baDyUgrC/rep/dash/en/dash.mpd";
-    const dashPlayer = Dash.MediaPlayer().create();
-    dashPlayer.initialize(null, url, false);
-    dashPlayer.preload();
+    //const url = "http://38.142.50.107/qlibs/ilib25dkW5Gp96LMxBcWnLks77tNtbT9/q/iq__3DW6PNhUTrabuBgZwzS3baDyUgrC/rep/dash/en/dash.mpd";
+    //const url = "https://bitmovin-a.akamaihd.net/content/MI201109210084_1/mpds/f08e80da-bf1d-4e3d-8899-f0f6155f6efa.mpd";
+    //const url = "http://livesim.dashif.org/livesim/testpic_2s/Manifest_stpp.mpd";
+    //const dashPlayer = Dash.MediaPlayer().create();
+    //dashPlayer.initialize(null, url, false);
+    //dashPlayer.preload();
 
     this.state = {
-      dashPlayer
+      //dashPlayer
     };
 
     this.InitializeVideo = this.InitializeVideo.bind(this);
   }
 
   InitializeVideo(video) {
-    this.state.dashPlayer.attachView(video);
+    //this.state.dashPlayer.attachView(video);
     //this.props.video.volume = 0;
     this.props.video.Initialize({video});
   }
@@ -34,12 +36,15 @@ class Video extends React.Component {
       <div className="video">
         <div className="video-container">
           <video
+            id="video"
+            //src="http://brenopolanski.com/html5-video-webvtt-example/MIB2.webm"
+            crossOrigin="anonymous"
             // 30 fps
             //src="http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__GUow8e5MBR2Z1Kuu6fDSw2bYBZo/data/hqp_QmXHvrBRRJ3kbEvKgfqYytHX3Zg49sCXvcHAV7xvhta7mA"
             // 60 fps
             //src="http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__3nvTFKUg32AfyG6MSc1LMtt4YGj5/data/hqp_Qmb1NZ5CMU6DXErMrHqt5RRvKKP5F5CfYT2oTfZoH1FwU8"
             // Non drop-frame 24000/1001
-            src="http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__3LNTS4eA7LAygQee7MQ78k2ivvnC/data/hqp_QmS5PeFJFycWLMiADhb2Sv7SwHQWXCjEqmHEgYCRxZLWMw?authorization=eyJxc3BhY2VfaWQiOiJpc3BjNE1Iak5ibUZ5ODF0U1dSTDVSQkRUc01QUDRwWiIsInFsaWJfaWQiOiJpbGliMmY0eHF0ejVSbm92ZkY1Y2NEclB4am1QM29udCIsImFkZHIiOiIweDI2MTg5YzIxZTgzODdiOWM1MEI3ODBiOTFDZTAxMmZmNjc2ZWIwNTAiLCJ0eGlkIjoiMHg1YjZjZmNlY2YxMWQxY2YwZmYzOTMwMWE1MzU0ZWE3ODBjZTIzNThlNDA0Mzk2NDc1ZDRjYjYzZGJmODE5NGNlIn0%3D.U0lHTkFUVVJF"
+            //src="http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__3LNTS4eA7LAygQee7MQ78k2ivvnC/data/hqp_QmS5PeFJFycWLMiADhb2Sv7SwHQWXCjEqmHEgYCRxZLWMw"
             // Non drop-frame 30000/1001
             //src="http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__2wf1V2eo5QE5hsip7JHoByBnWahU/data/hqp_QmT4q6NaMBnATtWmSVjcHmc66m34wSEWbogzr2HW8A9UwT"
             // Drop frame 30000/1001
@@ -48,8 +53,15 @@ class Video extends React.Component {
             muted={true}
             autoPlay={false}
             controls={false}
+            preload="auto"
             onWheel={({deltaY}) => this.props.video.ScrollVolume(deltaY)}
-          />
+          >
+            <source src="http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./ttml-example.mp4" type="video/mp4" />
+            <track default={true} kind="subtitles" label="English" src="http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./webvtt-example.vtt" srcLang="English" />
+
+            <source src="http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./with-subtitles.webm" type="video/webm" />
+            <track default={true} kind="subtitles" label="pt" src="http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./MIB2-subtitles-pt-BR.vtt" srcLang="pt" />
+          </video>
         </div>
         { controls }
       </div>

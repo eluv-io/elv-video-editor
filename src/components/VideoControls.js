@@ -1,9 +1,8 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
-import Fraction from "fraction.js";
 import {IconButton} from "elv-components-js";
 import {FrameRates} from "../utils/FrameAccurateVideo";
-import {Range, Slider} from "./Slider";
+import {Slider} from "./Slider";
 
 import PlayButton from "../static/icons/Play.svg";
 import PauseButton from "../static/icons/Pause.svg";
@@ -24,7 +23,6 @@ class VideoControls extends React.Component {
   constructor(props) {
     super(props);
 
-    this.Seek = this.Seek.bind(this);
     this.PlaybackRate = this.PlaybackRate.bind(this);
     this.PlayPause = this.PlayPause.bind(this);
     this.Maximize = this.Maximize.bind(this);
@@ -92,42 +90,6 @@ class VideoControls extends React.Component {
         <option value={false}>NDF</option>
         <option value={true}>DF</option>
       </select>
-    );
-  }
-
-  Seek() {
-    const scale = this.props.video.scale;
-
-    return (
-      <Slider
-        key="video-progress"
-        min={this.props.video.scaleMin}
-        max={this.props.video.scaleMax}
-        value={this.props.video.seek}
-        tipFormatter={value => this.props.video.ProgressToSMPTE(value)}
-        onChange={(value) => this.props.video.Seek(Fraction(value).div(scale))}
-        className="video-seek"
-      />
-    );
-  }
-
-  Scale() {
-    return (
-      <div
-        key="video-scale"
-        onWheel={({deltaY}) => this.props.video.ScrollScale(deltaY)}
-      >
-        <Range
-          key="video-scale"
-          min={0}
-          max={this.props.video.scale}
-          value={[this.props.video.scaleMin, this.props.video.seek, this.props.video.scaleMax]}
-          allowCross={false}
-          tipFormatter={value => this.props.video.ProgressToSMPTE(value)}
-          onChange={([scaleMin, seek, scaleMax]) => this.props.video.SetScale(scaleMin, seek, scaleMax)}
-          className="video-scale"
-        />
-      </div>
     );
   }
 
@@ -242,8 +204,6 @@ class VideoControls extends React.Component {
   render() {
     return [
       <div key="video-time" className="mono video-time">{Math.floor(this.props.video.frame) + " :: " + this.props.video.smpte}</div>,
-      this.Seek(),
-      this.Scale(),
       this.Controls(),
     ];
   }

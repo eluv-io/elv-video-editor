@@ -24,6 +24,9 @@ class VideoStore {
   @observable volume = 100;
   @observable muted = false;
 
+  @observable textTracks = [];
+  @observable duration;
+
   @action.bound
   Initialize({video}) {
     this.video = video;
@@ -77,6 +80,14 @@ class VideoStore {
     this.videoHandler = videoHandler;
     this.volume = video.volume;
     this.muted = video.muted;
+
+    // Play the video to force preload
+    video.play();
+    video.pause();
+    video.currentTime = -0.001;
+    videoHandler.Update();
+
+    this.textTracks = video.textTracks;
   }
 
   @action.bound
@@ -91,6 +102,7 @@ class VideoStore {
     this.progress = progress;
     this.currentTime = this.video.currentTime;
     this.seek = progress * this.scale;
+    this.duration = this.video.duration;
 
     if(this.playing && this.seek > this.scaleMax) {
       // If playing has gone beyond the max scale, push the whole scale slider forward by 50%
@@ -140,7 +152,7 @@ class VideoStore {
   ScrollScale(deltaY) {
     if(!this.video || !this.video.duration) { return; }
 
-    deltaY *= this.scale * 0.005;
+    deltaY *= this.scale * -0.005;
 
     // Adjust scale according to current position relative to min/max positions
     // In other words, scale changes, seek position stays the same

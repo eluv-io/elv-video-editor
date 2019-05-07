@@ -6,6 +6,7 @@ import { Provider } from "mobx-react";
 import * as Stores from "./stores";
 import Header from "./components/Header";
 import Video from "./components/Video";
+import Tracks from "./components/Tracks";
 
 render(
   <Provider {...Stores}>
@@ -15,6 +16,7 @@ render(
         <div className="side-panel" />
         <Video />
       </div>
+      <Tracks />
     </div>
   </Provider>,
   document.getElementById("app")
