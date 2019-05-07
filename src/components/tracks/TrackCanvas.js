@@ -9,6 +9,7 @@ class TrackCanvas extends React.Component {
   render() {
     return (
       <canvas
+        onMouseMove={this.props.onMouseMove}
         width="50"
         height="30"
         className={this.props.className}
@@ -19,6 +20,7 @@ class TrackCanvas extends React.Component {
 }
 
 TrackCanvas.propTypes = {
+  onMouseMove: PropTypes.func,
   SetRef: PropTypes.func.isRequired
 };
 

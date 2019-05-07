@@ -21,12 +21,17 @@ class Video extends React.Component {
     };
 
     this.InitializeVideo = this.InitializeVideo.bind(this);
+    this.InitializeTracks = this.InitializeTracks.bind(this);
   }
 
   InitializeVideo(video) {
     //this.state.dashPlayer.attachView(video);
     //this.props.video.volume = 0;
-    this.props.video.Initialize({video});
+    this.props.video.Initialize(video);
+  }
+
+  InitializeTracks(trackContainer) {
+    this.props.video.InitializeTracks(trackContainer);
   }
 
   render() {
@@ -36,19 +41,7 @@ class Video extends React.Component {
       <div className="video">
         <div className="video-container">
           <video
-            id="video"
-            //src="http://brenopolanski.com/html5-video-webvtt-example/MIB2.webm"
             crossOrigin="anonymous"
-            // 30 fps
-            //src="http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__GUow8e5MBR2Z1Kuu6fDSw2bYBZo/data/hqp_QmXHvrBRRJ3kbEvKgfqYytHX3Zg49sCXvcHAV7xvhta7mA"
-            // 60 fps
-            //src="http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__3nvTFKUg32AfyG6MSc1LMtt4YGj5/data/hqp_Qmb1NZ5CMU6DXErMrHqt5RRvKKP5F5CfYT2oTfZoH1FwU8"
-            // Non drop-frame 24000/1001
-            //src="http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__3LNTS4eA7LAygQee7MQ78k2ivvnC/data/hqp_QmS5PeFJFycWLMiADhb2Sv7SwHQWXCjEqmHEgYCRxZLWMw"
-            // Non drop-frame 30000/1001
-            //src="http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__2wf1V2eo5QE5hsip7JHoByBnWahU/data/hqp_QmT4q6NaMBnATtWmSVjcHmc66m34wSEWbogzr2HW8A9UwT"
-            // Drop frame 30000/1001
-            //src="http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__2aF5AN7fStTc8XEwq9c1LRwbe4qw/data/hqp_Qmcdww5ssDf9yyvL81S7Tym4DUv8mJsPLxS4poXxp89Do7"
             ref={this.InitializeVideo}
             muted={true}
             autoPlay={false}
@@ -56,11 +49,18 @@ class Video extends React.Component {
             preload="auto"
             onWheel={({deltaY}) => this.props.video.ScrollVolume(deltaY)}
           >
-            <source src="http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./ttml-example.mp4" type="video/mp4" />
-            <track default={true} kind="subtitles" label="English" src="http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./webvtt-example.vtt" srcLang="English" />
+            <source src={this.props.video.source} />
 
-            <source src="http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./with-subtitles.webm" type="video/webm" />
-            <track default={true} kind="subtitles" label="pt" src="http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./MIB2-subtitles-pt-BR.vtt" srcLang="pt" />
+            {this.props.video.trackInfo.map(track =>
+              <track
+                key={`track-${track.label}`}
+                default={track.default}
+                kind={track.kind}
+                label={track.label}
+                src={track.source}
+                srcLang={track.label}
+              />
+            )}
           </video>
         </div>
         { controls }

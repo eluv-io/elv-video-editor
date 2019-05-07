@@ -16,5 +16,6 @@
 }
 
 .timeline {
-  padding: 0 $elv-spacing-m;
+  border-right: 1px solid $elv-color-darkgray;
+  margin-right: $elv-spacing-m;
 }

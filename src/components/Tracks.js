@@ -9,7 +9,15 @@ import Fraction from "fraction.js/fraction";
 class Tracks extends React.Component {
   constructor(props) {
     super(props);
+  }
 
+  TrackLane(label, content) {
+    return (
+      <div className="track-lane">
+        <div className="track-label">{label}</div>
+        { content }
+      </div>
+    );
   }
 
   Seek() {
@@ -49,36 +57,33 @@ class Tracks extends React.Component {
   }
 
   Tracks() {
-    // Subtitle tracks
-    let tracks = [];
-
-    for(let i = 0; i < this.props.video.textTracks.length; i++) {
-      tracks.push(
-        <Track
-          key={`track-${i}`}
-          track={this.props.video.textTracks[i]}
-          video={this.props.video}
-        />
-      );
-    }
-
     return (
       <div
         onWheel={({deltaY}) => this.props.video.ScrollScale(deltaY)}
         className="tracks-container"
       >
-        { tracks }
+        {this.props.video.tracks.map(track =>
+          this.TrackLane(
+            track.label,
+            <Track
+              key={`track-${track.label}`}
+              track={track}
+              video={this.props.video}
+            />
+          )
+        )}
       </div>
     );
   }
 
   render() {
     if(!this.props.video.initialized) { return null; }
+
     return (
       <div className="timeline">
-        {this.Seek()}
+        {this.TrackLane("", this.Seek())}
         {this.Tracks()}
-        {this.Scale()}
+        {this.TrackLane("", this.Scale())}
       </div>
     );
   }

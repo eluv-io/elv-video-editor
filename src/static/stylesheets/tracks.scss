@@ -3,16 +3,29 @@
 }
 
 .track-container {
-  background-color: $elv-color-black;
+  background-color: $elv-color-bg-dark;
+  display: flex;
+}
 
-  border-collapse: collapse;
+.track-lane {
+  border-bottom: 1px solid $elv-color-darkgray;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+}
+
+.track-label {
+  align-items: center;
+  border-right: 1px solid $elv-color-darkgray;
+  display: flex;
+  font-size: 14px;
+  padding-left: $elv-spacing-xs;
 }
 
 .video-seek,
 .video-scale {
   &.rc-slider {
     cursor: pointer;
-    height: $elv-spacing-s;
+    height: 12px;
     width: auto;
   }
 
@@ -33,9 +46,9 @@
       background-color: $elv-color-lightblue;
       border-radius: 0;
       cursor: pointer;
-      height: 100px;
+      height: 75px;
       margin-left: -2px;
-      margin-top: 0;
+      margin-top: -6px;
       width: 3px;
     }
   }
@@ -50,9 +63,9 @@
     .rc-slider-handle-2 {
       background-color: $elv-color-lightblue;
       border-radius: 0;
-      height: 10px;
+      height: 14px;
       margin-left: -2px;
-      margin-top: 0;
+      margin-top: -6px;
       width: 3px;
       z-index: 1;
     }
@@ -67,7 +80,8 @@
   .rc-slider-rail,
   .rc-slider-track {
     border-radius: 0;
-    height: 10px;
+    height: 100%;
+    margin-top: -5px;
   }
 
   .rc-slider-track {
@@ -81,11 +95,40 @@
     cursor: pointer;
     height: 15px;
     margin-left: -5px;
-    margin-top: -2px;
+    margin-top: -6px;
     width: 15px;
 
     &:focus {
       box-shadow: 0 0 3px $elv-color-lightestgray;
     }
   }
+}
+
+.track-entry {
+  @include elv-no-select;
+  background-color: $elv-color-bg-dark;
+  border: 1px solid $elv-color-darkgray;
+  border-radius: 10px;
+  font-size: 14px;
+  max-width: 250px;
+  min-width: 100px;
+  opacity: 0.95;
+}
+
+.track-entry-timestamps,
+.track-entry-content {
+  padding: $elv-spacing-xs $elv-spacing-s;
+  white-space: normal;
+  word-wrap: break-spaces;
+}
+
+.track-entry-timestamps {
+  border-bottom: 1px solid $elv-color-darkgray;
+  display: flex;
+  justify-content: center;
+}
+
+.track-entry-content {
+  white-space: normal;
+  word-wrap: break-word;
 }

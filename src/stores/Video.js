@@ -1,8 +1,45 @@
-import {observable, action} from "mobx";
+import {observable, action, runInAction} from "mobx";
 import FrameAccurateVideo, {FrameRates} from "../utils/FrameAccurateVideo";
+import {WebVTT} from "vtt.js";
+
+// 30 fps
+//const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__GUow8e5MBR2Z1Kuu6fDSw2bYBZo/data/hqp_QmXHvrBRRJ3kbEvKgfqYytHX3Zg49sCXvcHAV7xvhta7mA"
+// 60 fps
+//const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__3nvTFKUg32AfyG6MSc1LMtt4YGj5/data/hqp_Qmb1NZ5CMU6DXErMrHqt5RRvKKP5F5CfYT2oTfZoH1FwU8"
+// Non drop-frame 24000/1001
+//const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__3LNTS4eA7LAygQee7MQ78k2ivvnC/data/hqp_QmS5PeFJFycWLMiADhb2Sv7SwHQWXCjEqmHEgYCRxZLWMw"
+// Non drop-frame 30000/1001
+//const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__2wf1V2eo5QE5hsip7JHoByBnWahU/data/hqp_QmT4q6NaMBnATtWmSVjcHmc66m34wSEWbogzr2HW8A9UwT"
+// Drop frame 30000/1001
+//const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__2aF5AN7fStTc8XEwq9c1LRwbe4qw/data/hqp_Qmcdww5ssDf9yyvL81S7Tym4DUv8mJsPLxS4poXxp89Do7"
+
+
+// Subtitles test 1
+const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./ttml-example.mp4";
+// Subtitles test 2
+//const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./with-subtitles.webm";
+
+const trackInfo = [
+  {
+    label: "MIB 2",
+    default: false,
+    kind: "subtitles",
+    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./MIB2-subtitles-pt-BR.vtt",
+  },
+  {
+    label: "Boring lady",
+    default: true,
+    kind: "subtitles",
+    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./webvtt-example.vtt"
+  }
+];
 
 class VideoStore {
   // TODO: Make @calculated values + cleanup
+
+  @observable source = source;
+  @observable trackInfo = trackInfo;
+  @observable tracks = [];
 
   @observable initialized = false;
   @observable dropFrame = false;
@@ -28,7 +65,9 @@ class VideoStore {
   @observable duration;
 
   @action.bound
-  Initialize({video}) {
+  Initialize(video) {
+    this.InitializeTracks();
+
     this.video = video;
 
     const videoHandler = new FrameAccurateVideo({
@@ -76,7 +115,6 @@ class VideoStore {
       }
     }));
 
-    this.initialized = true;
     this.videoHandler = videoHandler;
     this.volume = video.volume;
     this.muted = video.muted;
@@ -87,7 +125,41 @@ class VideoStore {
     video.currentTime = -0.001;
     videoHandler.Update();
 
-    this.textTracks = video.textTracks;
+    this.initialized = true;
+
+    videoHandler.Update();
+  }
+
+  FormatVTTCue(cue) {
+    return {
+      label: cue.label,
+      startTime: cue.startTime,
+      endTime: cue.endTime,
+      text: cue.text
+    };
+  }
+
+  @action.bound
+  async InitializeTracks() {
+    // Initialize video WebVTT tracks by fetching and parsing the VTT file
+    let tracks = [];
+    await Promise.all(
+      this.trackInfo.map(async track => {
+        const vttParser = new WebVTT.Parser(window, WebVTT.StringDecoder());
+
+        let cues = [];
+        vttParser.oncue = cue => cues.push(this.FormatVTTCue(cue));
+
+        vttParser.parse(await(await fetch(track.source)).text());
+        vttParser.flush();
+        tracks.push({
+          ...track,
+          entries: cues
+        });
+      })
+    );
+
+    runInAction(() => this.tracks = tracks);
   }
 
   @action.bound
@@ -96,7 +168,14 @@ class VideoStore {
   }
 
   @action.bound
+  TimeToSMPTE(time) {
+    return this.videoHandler.TimeToSMPTE(time);
+  }
+
+  @action.bound
   Update({frame, smpte, progress}) {
+    if(!this.initialized) { return; }
+
     this.frame = frame;
     this.smpte = smpte;
     this.progress = progress;
@@ -251,7 +330,7 @@ class VideoStore {
       }
     } else {
       const videoContainer = this.video.parentElement.parentElement;
-      
+
       if (videoContainer.requestFullscreen) {
         videoContainer.requestFullscreen();
       } else if (videoContainer.mozRequestFullScreen) {

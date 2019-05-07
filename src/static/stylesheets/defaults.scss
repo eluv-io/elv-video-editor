@@ -6,3 +6,7 @@ body {
 .mono {
   font-family: monospace;
 }
+
+.tooltip {
+  z-index: 10000;
+}
