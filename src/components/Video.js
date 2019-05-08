@@ -49,7 +49,7 @@ class Video extends React.Component {
             preload="auto"
             onWheel={({deltaY}) => this.props.video.ScrollVolume(deltaY)}
           >
-            <source src={this.props.video.source} />
+            <source src={this.props.video.source}/>
 
             {this.props.video.trackInfo.map(track =>
               <track
@@ -63,7 +63,7 @@ class Video extends React.Component {
             )}
           </video>
         </div>
-        { controls }
+        {controls}
       </div>
     );
   }

@@ -8,14 +8,16 @@
 }
 
 .side-panel {
-  border-bottom: 1px solid $elv-color-darkgray;
-  border-right: 1px solid $elv-color-darkgray;
+  border-bottom: 1px solid $color-border;
+  border-right: 1px solid $color-border;
   overflow: auto;
+  overflow-x: hidden;
   resize: horizontal;
   width: 500px;
+  word-wrap: break-word;
 }
 
 .timeline {
-  border-right: 1px solid $elv-color-darkgray;
-  margin-right: $elv-spacing-m;
+  border-right: 1px solid $color-border;
+  margin-right: $elv-spacing-s;
 }

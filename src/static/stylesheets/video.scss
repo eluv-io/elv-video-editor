@@ -1,6 +1,6 @@
 .video {
-  background-color: $elv-color-bg-dark;
-  border-bottom: 1px solid $elv-color-darkgray;
+  background-color: $color-background;
+  border-bottom: 1px solid $color-border;
   display: grid;
   grid-template-rows: 1fr 35px 50px;
   height: 100%;
@@ -9,8 +9,7 @@
 }
 
 .video-container {
-  background-color: $elv-color-bg-black;
-  border-bottom: 1px solid $elv-color-darkgray;
+  background-color: $color-video-background;
   display: flex;
   height: 100%;
   justify-content: center;
@@ -42,12 +41,12 @@ video {
     width: 50px;
 
     svg {
-      color: $elv-color-lightestgray;
+      color: $color-foreground;
     }
 
     &:hover {
       svg {
-        color: $elv-color-lightblue;
+        color: $color-accent;
       }
     }
   }
@@ -94,12 +93,12 @@ video {
 select {
   background: none;
   border: 0;
-  color: $elv-color-lightestgray;
+  color: $color-foreground;
   left: $elv-spacing-xs;
   width: 80px;
 
   option {
-    background-color: $elv-color-bg-dark;
+    background-color: $color-background;
   }
 
   &.video-playback-rate {

@@ -57,10 +57,7 @@ class Tracks extends React.Component {
         {this.props.video.tracks.map(track =>
           this.TrackLane(
             track.label,
-            <Track
-              track={track}
-              video={this.props.video}
-            />
+            <Track track={track} />
           )
         )}
       </div>

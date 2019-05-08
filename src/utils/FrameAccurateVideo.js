@@ -110,7 +110,7 @@ class FrameAccurateVideo {
     // Whenever seeking, stop comfortably in the middle of a frame
     frame = Fraction(frame).floor().add(0.5);
 
-    this.video.currentTime = frame.div(this.frameRate).valueOf();
+    this.video.currentTime = frame.div(this.frameRate).valueOf().toString();
   }
 
   /* Callbacks */

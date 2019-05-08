@@ -1,13 +1,14 @@
 import {observable, action, runInAction} from "mobx";
 import FrameAccurateVideo, {FrameRates} from "../utils/FrameAccurateVideo";
 import {WebVTT} from "vtt.js";
+import Id from "../utils/Id";
 
 // 30 fps
 //const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__GUow8e5MBR2Z1Kuu6fDSw2bYBZo/data/hqp_QmXHvrBRRJ3kbEvKgfqYytHX3Zg49sCXvcHAV7xvhta7mA"
 // 60 fps
 //const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__3nvTFKUg32AfyG6MSc1LMtt4YGj5/data/hqp_Qmb1NZ5CMU6DXErMrHqt5RRvKKP5F5CfYT2oTfZoH1FwU8"
 // Non drop-frame 24000/1001
-//const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__3LNTS4eA7LAygQee7MQ78k2ivvnC/data/hqp_QmS5PeFJFycWLMiADhb2Sv7SwHQWXCjEqmHEgYCRxZLWMw"
+const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__3LNTS4eA7LAygQee7MQ78k2ivvnC/data/hqp_QmS5PeFJFycWLMiADhb2Sv7SwHQWXCjEqmHEgYCRxZLWMw";
 // Non drop-frame 30000/1001
 //const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__2wf1V2eo5QE5hsip7JHoByBnWahU/data/hqp_QmT4q6NaMBnATtWmSVjcHmc66m34wSEWbogzr2HW8A9UwT"
 // Drop frame 30000/1001
@@ -15,9 +16,11 @@ import {WebVTT} from "vtt.js";
 
 
 // Subtitles test 1
-const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./ttml-example.mp4";
+//const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./ttml-example.mp4";
 // Subtitles test 2
 //const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./with-subtitles.webm";
+// Subtitles test 3
+//const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./soybean-talk-clip.mp4";
 
 const trackInfo = [
   {
@@ -28,9 +31,15 @@ const trackInfo = [
   },
   {
     label: "Boring lady",
-    default: true,
+    default: false,
     kind: "subtitles",
     source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./webvtt-example.vtt"
+  },
+  {
+    label: "Coffee guys",
+    default: true,
+    kind: "subtitles",
+    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./soybean-talk-clip-region.vtt"
   }
 ];
 
@@ -89,7 +98,6 @@ class VideoStore {
     AppendVideoCallback("onpause", action(() => this.playing = false));
     AppendVideoCallback("onplay", action(() => this.playing = true));
     AppendVideoCallback("onratechange", action(() => this.playbackRate = this.video.playbackRate));
-    AppendVideoCallback("onfullscreenchange", action(() => this.fullScreen = !this.fullScreen));
     AppendVideoCallback("onvolumechange", action(() => {
       this.volume = video.volume * this.scale;
       this.muted = video.muted;
@@ -111,6 +119,9 @@ class VideoStore {
       }
     }));
 
+    // Attach fullscreen state handling to video container
+    video.parentElement.parentElement.onfullscreenchange = action(() => this.fullScreen = !this.fullScreen);
+
     this.videoHandler = videoHandler;
     this.volume = video.volume;
     this.muted = video.muted;
@@ -118,7 +129,7 @@ class VideoStore {
     // Play the video to force preload
     video.play();
     video.pause();
-    video.currentTime = -0.001;
+    video.currentTime = "-0.001";
     videoHandler.Update();
 
     this.initialized = true;
@@ -126,28 +137,59 @@ class VideoStore {
     videoHandler.Update();
   }
 
-  FormatVTTCue(cue) {
+  FormatVTTCue(label, cue) {
+    // VTT Cues are weird about being inspected and copied
+    // Manually copy all relevant values
+    const cueAttributes = [
+      "align",
+      "endTime",
+      "id",
+      "line",
+      "lineAlign",
+      "position",
+      "positionAlign",
+      "region",
+      "size",
+      "snapToLines",
+      "startTime",
+      "text",
+      "vertical"
+    ];
+
+    const cueCopy = {};
+    cueAttributes.forEach(attr => cueCopy[attr] = cue[attr]);
+
     return {
-      label: cue.label,
+      entryId: Id.next(),
+      label: label,
       startTime: cue.startTime,
       endTime: cue.endTime,
-      text: cue.text
+      startTimeSMPTE: this.videoHandler.TimeToSMPTE(cue.startTime),
+      endTimeSMPTE: this.videoHandler.TimeToSMPTE(cue.endTime),
+      text: cue.text,
+      type: "VTTCue",
+      entry: cueCopy
     };
   }
 
   @action.bound
   async InitializeTracks() {
-    // Initialize video WebVTT tracks by fetching and parsing the VTT file
     let tracks = [];
+
+
+    // Initialize video WebVTT tracks by fetching and parsing the VTT file
     await Promise.all(
       this.trackInfo.map(async track => {
         const vttParser = new WebVTT.Parser(window, WebVTT.StringDecoder());
 
         let cues = [];
-        vttParser.oncue = cue => cues.push(this.FormatVTTCue(cue));
+        vttParser.oncue = cue => cues.push(this.FormatVTTCue(track.label, cue));
 
-        vttParser.parse(await(await fetch(track.source)).text());
+        const response = await fetch(track.source);
+        const vtt = await response.text();
+        vttParser.parse(vtt);
         vttParser.flush();
+
         tracks.push({
           ...track,
           entries: cues
@@ -252,9 +294,10 @@ class VideoStore {
 
   @action.bound
   SetScale(min, seek, max) {
-    const bump = this.scale * 0.05;
+    const bump = this.scale * 0.025;
     const range = max - min;
 
+    // Prevent range from going too small
     if(range < bump) { return; }
 
     if(min >= seek) {

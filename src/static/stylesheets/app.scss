@@ -1,8 +1,10 @@
 @import "~elv-components-js/src/stylesheets/defaults";
 @import "~elv-components-js/src/stylesheets/styles";
+@import "./colors";
 
 @import "./defaults";
 @import "./layout";
 @import "./header";
 @import "./video";
 @import "./tracks";
+@import "./entry";

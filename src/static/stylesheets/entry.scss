@@ -1,0 +1,19 @@
+.entry-container {
+  padding: $elv-spacing-s;
+
+  h4 {
+    color: $color-foreground;
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0 0 $elv-spacing-s;
+    padding: 0;
+  }
+}
+
+.entry {
+  display: grid;
+  font-size: 14px;
+  grid-row-gap: $elv-spacing-xs;
+  grid-template-columns: minmax(100px, 2fr) 3fr;
+  word-break: break-all;
+}

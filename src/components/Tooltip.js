@@ -67,7 +67,7 @@ class ToolTip extends React.Component {
     if(!this.state.toolTip) { return; }
 
     this.state.toolTip.style.left = Math.max(0, x - this.state.toolTip.offsetWidth / 2) + "px";
-    this.state.toolTip.style.top = y + 20 + "px";
+    this.state.toolTip.style.top = y + 30 + "px";
   }
 
   render() {

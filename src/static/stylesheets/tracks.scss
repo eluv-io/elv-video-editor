@@ -3,19 +3,19 @@
 }
 
 .track-container {
-  background-color: $elv-color-bg-dark;
+  background-color: $color-background;
   display: flex;
 }
 
 .track-lane {
-  border-bottom: 1px solid $elv-color-darkgray;
+  border-bottom: 1px solid $color-border;
   display: grid;
   grid-template-columns: 200px 1fr;
 }
 
 .track-label {
   align-items: center;
-  border-right: 1px solid $elv-color-darkgray;
+  border-right: 1px solid $color-border;
   display: flex;
   font-size: 14px;
   padding-left: $elv-spacing-xs;
@@ -30,11 +30,11 @@
   }
 
   .rc-slider-rail {
-    background-color: $elv-color-black;
+    background-color: $color-rail-background;
   }
 
   .rc-slider-track {
-    background-color: $elv-color-darkgray;
+    background-color: $color-rail;
   }
 }
 
@@ -43,10 +43,9 @@
 .video-seek {
   &.video-seek {
     .rc-slider-handle {
-      background-color: $elv-color-lightblue;
+      background-color: $color-accent;
       border-radius: 0;
-      cursor: pointer;
-      height: 75px;
+      height: 110px;
       margin-left: -2px;
       margin-top: -6px;
       width: 3px;
@@ -61,7 +60,7 @@
     }
 
     .rc-slider-handle-2 {
-      background-color: $elv-color-lightblue;
+      background-color: $color-accent;
       border-radius: 0;
       height: 14px;
       margin-left: -2px;
@@ -74,7 +73,7 @@
 
 .rc-slider {
   .rc-slider-rail {
-    background-color: $elv-color-black;
+    background-color: $color-rail-background;
   }
 
   .rc-slider-rail,
@@ -85,11 +84,11 @@
   }
 
   .rc-slider-track {
-    background-color: $elv-color-darkgray;
+    background-color: $color-rail;
   }
 
   .rc-slider-handle {
-    background-color: $elv-color-lightestgray;
+    background-color: $color-foreground;
     border: 0;
     border-radius: 100%;
     cursor: pointer;
@@ -99,15 +98,15 @@
     width: 15px;
 
     &:focus {
-      box-shadow: 0 0 3px $elv-color-lightestgray;
+      box-shadow: 0 0 3px $color-foreground;
     }
   }
 }
 
 .track-entry {
   @include elv-no-select;
-  background-color: $elv-color-bg-dark;
-  border: 1px solid $elv-color-darkgray;
+  background-color: $color-background;
+  border: 1px solid $color-border;
   border-radius: 10px;
   font-size: 14px;
   max-width: 250px;
@@ -123,7 +122,7 @@
 }
 
 .track-entry-timestamps {
-  border-bottom: 1px solid $elv-color-darkgray;
+  border-bottom: 1px solid $color-border;
   display: flex;
   justify-content: center;
 }

@@ -7,10 +7,12 @@ class TrackCanvas extends React.Component {
   }
 
   render() {
+    const otherProps = {...this.props};
+    delete otherProps.SetRef;
+
     return (
       <canvas
-        onMouseLeave={this.props.onMouseLeave}
-        onMouseMove={this.props.onMouseMove}
+        {...otherProps}
         width="50"
         height="30"
         className={this.props.className}
@@ -21,8 +23,6 @@ class TrackCanvas extends React.Component {
 }
 
 TrackCanvas.propTypes = {
-  onMouseMove: PropTypes.func,
-  onMouseLeave: PropTypes.func,
   SetRef: PropTypes.func.isRequired
 };
 
