@@ -35,34 +35,30 @@ const trackInfo = [
 ];
 
 class VideoStore {
-  // TODO: Make @calculated values + cleanup
+  @observable initialized = false;
 
   @observable source = source;
   @observable trackInfo = trackInfo;
   @observable tracks = [];
 
-  @observable initialized = false;
   @observable dropFrame = false;
   @observable frameRateKey = "NTSC";
   @observable frameRate = FrameRates.NTSC;
-  @observable currentTime = 0;
+
   @observable frame = 0;
   @observable smpte = "00:00:00:00";
-  @observable progress = 0;
-  @observable seek = 0;
+
+  @observable duration;
   @observable playing = false;
   @observable playbackRate = 1.0;
   @observable fullScreen = false;
-
-  @observable scale = 10000;
-  @observable scaleMin = 0;
-  @observable scaleMax = this.scale;
-
   @observable volume = 100;
   @observable muted = false;
 
-  @observable textTracks = [];
-  @observable duration;
+  @observable seek = 0;
+  @observable scale = 10000;
+  @observable scaleMin = 0;
+  @observable scaleMax = this.scale;
 
   @action.bound
   Initialize(video) {
@@ -178,8 +174,6 @@ class VideoStore {
 
     this.frame = frame;
     this.smpte = smpte;
-    this.progress = progress;
-    this.currentTime = this.video.currentTime;
     this.seek = progress * this.scale;
     this.duration = this.video.duration;
 
@@ -228,16 +222,26 @@ class VideoStore {
   }
 
   @action.bound
-  ScrollScale(deltaY) {
+  ScrollScale(position, deltaY) {
     if(!this.video || !this.video.duration) { return; }
 
+    let deltaMin, deltaMax;
     deltaY *= this.scale * -0.005;
 
-    // Adjust scale according to current position relative to min/max positions
-    // In other words, scale changes, seek position stays the same
-    const range = this.scaleMax - this.scaleMin;
-    const deltaMin = deltaY * (this.seek - this.scaleMin) / range;
-    const deltaMax = deltaY * (this.scaleMax - this.seek) / range;
+    // deltaY: Positive => zoom in, negative => zoom out
+    if(deltaY > 0) {
+      // When zooming in, zoom to mouse position
+      let scalePosition = this.scale * position;
+
+      // Adjust scale according to mouse position relative to min/max positions
+      const range = this.scaleMax - this.scaleMin;
+      deltaMin = deltaY * (scalePosition - this.scaleMin) / range;
+      deltaMax = deltaY * (this.scaleMax - scalePosition) / range;
+    } else {
+      // When zooming out, expand equally
+      deltaMin = deltaY;
+      deltaMax = deltaY;
+    }
 
     this.SetScale(
       Math.max(0, this.scaleMin + deltaMin),

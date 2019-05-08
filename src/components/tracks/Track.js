@@ -19,14 +19,23 @@ class Track extends React.Component {
       hoverEntry: undefined
     };
 
+    this.Draw = this.Draw.bind(this);
     this.Hover = this.Hover.bind(this);
   }
 
   componentDidUpdate(prevProps, prevState) {
     // Don't redraw on hover updates
     if(this.state.hoverEntry === prevState.hoverEntry) {
-      this.Draw();
+      // Debounce draw calls
+      if(this.draw) { clearTimeout(this.draw); }
+
+      this.draw = setTimeout(this.Draw, 100);
     }
+  }
+
+  // X position of mouse over canvas (as percent)
+  ClientXToCanvasPosition(clientX) {
+    return Fraction(clientX - this.state.context.canvas.offsetLeft).div(this.state.context.canvas.offsetWidth).valueOf();
   }
 
   // Binary search to find an entry at the given time
@@ -51,9 +60,6 @@ class Track extends React.Component {
   }
 
   Hover(event) {
-    // X position of mouse (as percent)
-    const position = Fraction(event.clientX - this.state.context.canvas.offsetLeft).div(this.state.context.canvas.offsetWidth);
-
     // How much of the duration of the video is currently visible
     const duration = Fraction(this.props.video.scaleMax - this.props.video.scaleMin).div(this.props.video.scale).mul(this.props.video.duration);
 
@@ -61,7 +67,7 @@ class Track extends React.Component {
     const startOffset = Fraction(this.props.video.scaleMin).div(this.props.video.scale).mul(this.props.video.duration);
 
     // Time corresponding to mouse position
-    const timeAt = duration.mul(position).add(startOffset);
+    const timeAt = duration.mul(this.ClientXToCanvasPosition(event.clientX)).add(startOffset);
 
     // Search through track to find which element (if any) applies
     const entry = this.Search(timeAt.valueOf());
@@ -132,6 +138,7 @@ class Track extends React.Component {
       <TrackCanvas
         className="track"
         onMouseMove={this.Hover}
+        onMouseLeave={() => this.setState({hoverEntry: undefined})}
         SetRef={context => {
           context.canvas.width = this.state.ref.current.offsetWidth;
           this.setState({context});
@@ -143,7 +150,11 @@ class Track extends React.Component {
   render() {
     return (
       <ToolTip content={this.ToolTipContent()}>
-        <div className="track-container" ref={this.state.ref}>
+        <div
+          ref={this.state.ref}
+          onWheel={({deltaY, clientX}) => this.props.video.ScrollScale(this.ClientXToCanvasPosition(clientX), deltaY)}
+          className="track-container"
+        >
           <div hidden={true}>{this.props.track.mode + this.props.video.scaleMin + this.props.video.scaleMax + this.props.video.scale + this.props.video.duration || 0}</div>
           { this.Canvas() }
         </div>

@@ -11,9 +11,9 @@ class Tracks extends React.Component {
     super(props);
   }
 
-  TrackLane(label, content) {
+  TrackLane(label, content, key) {
     return (
-      <div className="track-lane">
+      <div key={`track-lane-${key || label}`} className="track-lane">
         <div className="track-label">{label}</div>
         { content }
       </div>
@@ -38,35 +38,26 @@ class Tracks extends React.Component {
 
   Scale() {
     return (
-      <div
+      <Range
         key="video-scale"
-        onWheel={({deltaY}) => this.props.video.ScrollScale(deltaY)}
-      >
-        <Range
-          key="video-scale"
-          min={0}
-          max={this.props.video.scale}
-          value={[this.props.video.scaleMin, this.props.video.seek, this.props.video.scaleMax]}
-          allowCross={false}
-          tipFormatter={value => this.props.video.ProgressToSMPTE(value)}
-          onChange={([scaleMin, seek, scaleMax]) => this.props.video.SetScale(scaleMin, seek, scaleMax)}
-          className="video-scale"
-        />
-      </div>
+        min={0}
+        max={this.props.video.scale}
+        value={[this.props.video.scaleMin, this.props.video.seek, this.props.video.scaleMax]}
+        allowCross={false}
+        tipFormatter={value => this.props.video.ProgressToSMPTE(value)}
+        onChange={([scaleMin, seek, scaleMax]) => this.props.video.SetScale(scaleMin, seek, scaleMax)}
+        className="video-scale"
+      />
     );
   }
 
   Tracks() {
     return (
-      <div
-        onWheel={({deltaY}) => this.props.video.ScrollScale(deltaY)}
-        className="tracks-container"
-      >
+      <div className="tracks-container">
         {this.props.video.tracks.map(track =>
           this.TrackLane(
             track.label,
             <Track
-              key={`track-${track.label}`}
               track={track}
               video={this.props.video}
             />
@@ -81,9 +72,9 @@ class Tracks extends React.Component {
 
     return (
       <div className="timeline">
-        {this.TrackLane("", this.Seek())}
+        {this.TrackLane("", this.Seek(), "seek")}
         {this.Tracks()}
-        {this.TrackLane("", this.Scale())}
+        {this.TrackLane("", this.Scale(), "scale")}
       </div>
     );
   }
