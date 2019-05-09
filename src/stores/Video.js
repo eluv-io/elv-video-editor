@@ -8,7 +8,7 @@ import Id from "../utils/Id";
 // 60 fps
 //const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__3nvTFKUg32AfyG6MSc1LMtt4YGj5/data/hqp_Qmb1NZ5CMU6DXErMrHqt5RRvKKP5F5CfYT2oTfZoH1FwU8"
 // Non drop-frame 24000/1001
-const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__3LNTS4eA7LAygQee7MQ78k2ivvnC/data/hqp_QmS5PeFJFycWLMiADhb2Sv7SwHQWXCjEqmHEgYCRxZLWMw";
+//const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__3LNTS4eA7LAygQee7MQ78k2ivvnC/data/hqp_QmS5PeFJFycWLMiADhb2Sv7SwHQWXCjEqmHEgYCRxZLWMw";
 // Non drop-frame 30000/1001
 //const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__2wf1V2eo5QE5hsip7JHoByBnWahU/data/hqp_QmT4q6NaMBnATtWmSVjcHmc66m34wSEWbogzr2HW8A9UwT"
 // Drop frame 30000/1001
@@ -22,7 +22,12 @@ const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/i
 // Subtitles test 3
 //const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./soybean-talk-clip.mp4";
 
+// SHREK
+const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__zxDmS6jVfJ4venSukH8CPYPT1hz/data/hqp_QmcHiCpTAQtbJCk2kkvnUd3KU1W6phX6p4TCVoxCwiBJ1d";
+const poster = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/hq__QmTAvEbCPu9X5KnhfPCyh45BFvpDpeneQwNAt7wg3uC2wx/rep/image";
+
 const trackInfo = [
+  /*
   {
     label: "MIB 2",
     default: false,
@@ -37,9 +42,38 @@ const trackInfo = [
   },
   {
     label: "Coffee guys",
-    default: true,
+    default: false,
     kind: "subtitles",
     source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./soybean-talk-clip-region.vtt"
+  },
+  */
+  {
+    label: "Shrek Retold (English)",
+    default: true,
+    active: true,
+    kind: "subtitles",
+    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__zxDmS6jVfJ4venSukH8CPYPT1hz/files/./SHREK-RETOLD.vtt"
+  },
+  {
+    label: "Shrek Retold (Spanish)",
+    default: false,
+    active: false,
+    kind: "subtitles",
+    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__zxDmS6jVfJ4venSukH8CPYPT1hz/files/./SHREK-RETOLD-SPANISH.vtt"
+  },
+  {
+    label: "Shrek Retold (French)",
+    default: false,
+    active: false,
+    kind: "subtitles",
+    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__zxDmS6jVfJ4venSukH8CPYPT1hz/files/./SHREK-RETOLD-FRENCH.vtt"
+  },
+  {
+    label: "Shrek Retold (Russian)",
+    default: false,
+    active: false,
+    kind: "subtitles",
+    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__zxDmS6jVfJ4venSukH8CPYPT1hz/files/./SHREK-RETOLD-RUSSIAN.vtt"
   }
 ];
 
@@ -47,6 +81,7 @@ class VideoStore {
   @observable initialized = false;
 
   @observable source = source;
+  @observable poster = poster;
   @observable trackInfo = trackInfo;
   @observable tracks = [];
 
@@ -176,7 +211,6 @@ class VideoStore {
   async InitializeTracks() {
     let tracks = [];
 
-
     // Initialize video WebVTT tracks by fetching and parsing the VTT file
     await Promise.all(
       this.trackInfo.map(async track => {
@@ -198,6 +232,22 @@ class VideoStore {
     );
 
     runInAction(() => this.tracks = tracks);
+  }
+
+  @action.bound
+  ToggleTrack(label) {
+    const track = Array.from(this.video.textTracks).find(track => track.label === label);
+    const trackInfo = this.tracks.find(track => track.label === label);
+
+    if(!track || !trackInfo) { return; }
+
+    if(track.mode === "showing") {
+      track.mode = "disabled";
+      trackInfo.active = false;
+    } else {
+      track.mode = "showing";
+      trackInfo.active = true;
+    }
   }
 
   @action.bound

@@ -14,7 +14,7 @@ module.exports = {
   devServer: {
     disableHostCheck: true,
     inline: true,
-    port: 8085,
+    port: 8083,
     headers: {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Headers": "Content-Type, Accept",

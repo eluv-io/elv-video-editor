@@ -18,6 +18,9 @@ class Entry extends React.Component {
         <h4>{entry.label} - WebVTT Cue</h4>
 
         <div className="entry">
+          <label>Text</label>
+          <div className="entry-text">{cue.text}</div>
+
           <label>ID</label>
           <span>{cue.id}</span>
 

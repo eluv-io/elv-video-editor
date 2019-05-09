@@ -14,6 +14,10 @@
   display: grid;
   font-size: 14px;
   grid-row-gap: $elv-spacing-xs;
-  grid-template-columns: minmax(100px, 2fr) 3fr;
+  grid-template-columns: minmax(100px, 2fr) minmax(100px, 3fr);
   word-break: break-all;
+}
+
+.entry-text {
+  word-break: normal;
 }

@@ -6,7 +6,7 @@ import { Provider } from "mobx-react";
 import * as Stores from "./stores";
 import Header from "./components/Header";
 import Video from "./components/Video";
-import Tracks from "./components/Tracks";
+import Timeline from "./components/Timeline";
 import Entry from "./components/Entry";
 
 render(
@@ -17,7 +17,7 @@ render(
         <Entry />
         <Video />
       </div>
-      <Tracks />
+      <Timeline />
     </div>
   </Provider>,
   document.getElementById("app")

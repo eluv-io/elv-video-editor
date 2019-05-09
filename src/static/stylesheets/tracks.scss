@@ -14,6 +14,7 @@
 }
 
 .track-label {
+  @include elv-no-select;
   align-items: center;
   border-right: 1px solid $color-border;
   display: flex;
@@ -21,11 +22,21 @@
   padding-left: $elv-spacing-xs;
 }
 
+.track-label-active {
+  background-color: $color-background-active;
+}
+
+.track-label-clickable {
+  cursor: pointer;
+}
+
+$slider-height: 12px;
+
 .video-seek,
 .video-scale {
   &.rc-slider {
     cursor: pointer;
-    height: 12px;
+    height: $slider-height;
     width: auto;
   }
 
@@ -45,12 +56,16 @@
     .rc-slider-handle {
       background-color: $color-accent;
       border-radius: 0;
-      height: 110px;
+      height: 130px;
       margin-left: -2px;
       margin-top: -6px;
       width: 3px;
     }
   }
+}
+
+.video-seek-steps {
+  height: 22px;
 }
 
 .video-scale {
@@ -100,6 +115,23 @@
     &:focus {
       box-shadow: 0 0 3px $color-foreground;
     }
+  }
+
+  .rc-slider-step {
+    .rc-slider-dot {
+      background-color: $color-border;
+      border: 0;
+      border-radius: 0;
+      height: $slider-height;
+      margin-left: -2px;
+      top: -5px;
+      width: 3px;
+    }
+  }
+
+  .rc-slider-mark-text {
+    @include elv-no-select;
+    font-size: 10px;
   }
 }
 

@@ -84,7 +84,7 @@ class FrameAccurateVideo {
   }
 
   Progress() {
-    if(!this.video.duration) { return Fraction(0); }
+    if(isNaN(this.video.duration)) { return Fraction(0); }
 
     return Fraction(this.video.currentTime).div(this.video.duration);
   }
@@ -157,8 +157,8 @@ class FrameAccurateVideo {
   }
 
   AddListener() {
-    // Call once per frame - possible range 10hz - 50hz
-    const fps = Fraction(this.video.playbackRate).mul(this.frameRate);
+    // Call once per frame - possible range 10hz - 50hz               Prevent division by zero
+    const fps = Fraction(this.video.playbackRate).mul(this.frameRate).add(Fraction("0.00001"));
     const interval = Math.min(Math.max(Fraction(1000).div(fps).valueOf(), 20), 100);
 
     this.listener = setInterval(() => {

@@ -15,30 +15,53 @@ class Track extends React.Component {
   constructor(props) {
     super(props);
 
+    this.draw = undefined;
+    this.hovering = false;
+
     this.state = {
-      context: undefined,
-      ref: React.createRef(),
-      hoverEntry: undefined
+      context: undefined
     };
 
+    this.HandleResize = this.HandleResize.bind(this);
     this.Draw = this.Draw.bind(this);
     this.Click = this.Click.bind(this);
     this.Hover = this.Hover.bind(this);
     this.ClearHover = this.ClearHover.bind(this);
   }
 
-  componentDidUpdate(prevProps, prevState) {
-    // Don't redraw on hover updates
-    if(this.state.hoverEntry === prevState.hoverEntry) {
-      // Debounce draw calls
-      if(this.draw) { clearTimeout(this.draw); }
-
-      this.draw = setTimeout(this.Draw, 100);
-    }
+  componentDidMount() {
+    // Handle resize events - ensure canvas is properly resized
+    window.addEventListener("resize", this.HandleResize);
   }
 
   componentWillUnmount() {
     clearTimeout(this.draw);
+
+    window.removeEventListener("resize", this.HandleResize);
+  }
+
+  HandleResize() {
+    if(!this.state.container) { return; }
+
+    this.state.context.canvas.width = this.CanvasWidth();
+
+    this.DebouncedDraw();
+  }
+
+  // Determine the desired width of the canvas element by determining the width of the track container
+  // less the width of all sibling elements
+  CanvasWidth() {
+    if(!this.state.container) { return 0; }
+
+    const siblingWidths = Array.from(this.state.container.parentElement.childNodes)
+      .map(element => element === this.state.container ? 0 : element.offsetWidth)
+      .reduce((total, width) => total + width);
+
+    return this.state.container.parentElement.offsetWidth - siblingWidths;
+  }
+
+  componentDidUpdate() {
+    this.DebouncedDraw();
   }
 
   // X position of mouse over canvas (as percent)
@@ -93,23 +116,24 @@ class Track extends React.Component {
   Hover({clientX}) {
     const entry = this.ElementAt(clientX);
 
-    if(entry !== this.state.hoverEntry) {
-      this.setState({
-        hoverEntry: entry
-      });
-
+    if(entry !== this.props.entry.hoverEntry) {
       this.props.entry.HoverEntry(entry);
       this.Draw();
     }
+
+    this.hovering = true;
   }
 
   ClearHover() {
-    this.setState({
-      hoverEntry: undefined
-    });
-
+    this.hovering = false;
     this.props.entry.HoverEntry(undefined);
     this.Draw();
+  }
+
+  DebouncedDraw() {
+    if(this.draw) { clearTimeout(this.draw); }
+
+    this.draw = setTimeout(this.Draw, 100);
   }
 
   Draw() {
@@ -164,22 +188,22 @@ class Track extends React.Component {
   }
 
   ToolTipContent() {
-    if(!this.state.hoverEntry) { return null; }
+    if(!this.hovering || !this.props.entry.hoverEntry) { return null; }
 
     return (
       <div className="track-entry">
         <div className="track-entry-timestamps">
-          {`${this.state.hoverEntry.startTimeSMPTE} - ${this.state.hoverEntry.endTimeSMPTE}`}
+          {`${this.props.entry.hoverEntry.startTimeSMPTE} - ${this.props.entry.hoverEntry.endTimeSMPTE}`}
         </div>
         <div className="track-entry-content">
-          { this.state.hoverEntry.text }
+          { this.props.entry.hoverEntry.text }
         </div>
       </div>
     );
   }
 
   Canvas() {
-    if(!this.state.width) { return null; }
+    if(!this.state.container) { return null; }
 
     return (
       <TrackCanvas
@@ -188,7 +212,8 @@ class Track extends React.Component {
         onMouseMove={this.Hover}
         onMouseLeave={this.ClearHover}
         SetRef={context => {
-          context.canvas.width = this.state.width;
+          context.canvas.width = this.CanvasWidth();
+
           this.setState({
             context
           }, () => this.draw = setTimeout(this.Draw, 2000));
@@ -203,11 +228,7 @@ class Track extends React.Component {
     return (
       <ToolTip content={this.ToolTipContent()}>
         <div
-          ref={element => {
-            if(element && !this.state.width) {
-              this.setState({width: element.offsetWidth});
-            }
-          }}
+          ref={container => {if(!this.state.container) { this.setState({container}); }}}
           onWheel={({deltaY, clientX}) => this.props.video.ScrollScale(this.ClientXToCanvasPosition(clientX), deltaY)}
           className="track-container"
         >

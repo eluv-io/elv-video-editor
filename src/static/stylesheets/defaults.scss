@@ -10,3 +10,9 @@ body {
 .tooltip {
   z-index: 10000;
 }
+
+button {
+  &:focus {
+    outline: 1px dotted $color-foreground;
+  }
+}
