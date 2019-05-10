@@ -9,7 +9,7 @@ class Header extends React.Component {
     return (
       <header>
         <h1 className="header-text">
-          My Favorite Movie - Director's Cut
+          Shrek Retold
         </h1>
       </header>
     );

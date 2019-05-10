@@ -3,6 +3,7 @@ import {inject, observer} from "mobx-react";
 import Track from "./tracks/Track";
 import {Range, Slider} from "./Slider";
 import Fraction from "fraction.js/fraction";
+import {ToolTip} from "elv-components-js";
 
 @inject("video")
 @observer
@@ -11,15 +12,17 @@ class Timeline extends React.Component {
     super(props);
   }
 
-  static TrackLane({label, content, key, active=false, onLabelClick}) {
+  static TrackLane({label, content, key, active=false, toolTip, onLabelClick, className=""}) {
     return (
-      <div key={`track-lane-${key || label}`} className="track-lane">
-        <div
-          onClick={onLabelClick}
-          className={`track-label ${active ? "track-label-active" : ""} ${onLabelClick ? "track-label-clickable" : ""}`}
-        >
-          {label}
-        </div>
+      <div key={`track-lane-${key || label}`} className={`track-lane ${className}`}>
+        <ToolTip content={toolTip}>
+          <div
+            onClick={onLabelClick}
+            className={`track-label ${active ? "track-label-active" : ""} ${onLabelClick ? "track-label-clickable" : ""}`}
+          >
+            {label}
+          </div>
+        </ToolTip>
         { content }
       </div>
     );
@@ -83,6 +86,7 @@ class Timeline extends React.Component {
                 label: track.label,
                 content: <Track track={track}/>,
                 active: track.active,
+                toolTip: <span>{`${track.active ? "Disable" : "Enable"} ${track.label}`}</span>,
                 onLabelClick: toggle
               })
             );
@@ -97,10 +101,13 @@ class Timeline extends React.Component {
 
     return (
       <div className="timeline">
-        {Timeline.TrackLane({content: this.Seek(), key: "seek"})}
-        {Timeline.TrackLane({content: <div className="video-seek-steps" /> , key: "seek-steps"})}
+        {Timeline.TrackLane({
+          label: <span className="mono">{`${this.props.video.frame} :: ${this.props.video.smpte}`}</span>,
+          content: this.Seek(),
+          key: "seek"
+        })}
         {this.Tracks()}
-        {Timeline.TrackLane({content: this.Scale(), key: "scale"})}
+        {Timeline.TrackLane({content: this.Scale(), key: "scale", className: "video-scale-lane"})}
       </div>
     );
   }

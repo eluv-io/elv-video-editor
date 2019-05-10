@@ -11,6 +11,7 @@
   border-bottom: 1px solid $color-border;
   display: grid;
   grid-template-columns: 200px 1fr;
+  height: 40px;
 }
 
 .track-label {
@@ -64,8 +65,9 @@ $slider-height: 12px;
   }
 }
 
-.video-seek-steps {
-  height: 22px;
+.video-scale-lane {
+  border: 0;
+  height: $slider-height;
 }
 
 .video-scale {
@@ -135,17 +137,6 @@ $slider-height: 12px;
   }
 }
 
-.track-entry {
-  @include elv-no-select;
-  background-color: $color-background;
-  border: 1px solid $color-border;
-  border-radius: 10px;
-  font-size: 14px;
-  max-width: 250px;
-  min-width: 100px;
-  opacity: 0.95;
-}
-
 .track-entry-timestamps,
 .track-entry-content {
   padding: $elv-spacing-xs $elv-spacing-s;
@@ -154,7 +145,7 @@ $slider-height: 12px;
 }
 
 .track-entry-timestamps {
-  border-bottom: 1px solid $color-border;
+  border-bottom: 1px solid $color-border-active;
   display: flex;
   justify-content: center;
 }
@@ -162,4 +153,24 @@ $slider-height: 12px;
 .track-entry-content {
   white-space: normal;
   word-wrap: break-word;
+}
+
+.rc-slider-tooltip {
+  &.rc-slider-tooltip {
+    padding: 0;
+
+    .rc-slider-tooltip-inner {
+      align-items: center;
+      background-color: transparent;
+      box-shadow: none;
+      display: flex;
+      height: 100%;
+      justify-content: center;
+      width: 100%;
+    }
+  }
+}
+
+.rc-slider-tooltip-arrow {
+  display: none;
 }

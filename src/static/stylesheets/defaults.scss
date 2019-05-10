@@ -7,8 +7,18 @@ body {
   font-family: monospace;
 }
 
-.tooltip {
-  z-index: 10000;
+.-elv-tooltip {
+  &.-elv-tooltip {
+    background-color: $color-background-active;
+    border: 1px solid $color-border-active;
+    color: $color-text;
+  }
+}
+
+.rc-slider-tooltip {
+  background-color: $color-background-active;
+  border: 1px solid $color-border-active;
+  color: $color-text;
 }
 
 button {

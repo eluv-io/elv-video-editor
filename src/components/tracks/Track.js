@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import TrackCanvas from "./TrackCanvas";
 import {inject, observer} from "mobx-react";
 import Fraction from "fraction.js";
-import ToolTip from "../Tooltip";
+import {ToolTip} from "elv-components-js";
 
 const color = "#f0f0f0";
 const selectedColor = "#0fafff";
@@ -40,10 +40,12 @@ class Track extends React.Component {
     window.removeEventListener("resize", this.HandleResize);
   }
 
+  // Resize the canvas to the height and width of the container
   HandleResize() {
     if(!this.state.container) { return; }
 
     this.state.context.canvas.width = this.CanvasWidth();
+    this.state.context.canvas.height = this.state.container.offsetHeight;
 
     this.DebouncedDraw();
   }
@@ -212,11 +214,13 @@ class Track extends React.Component {
         onMouseMove={this.Hover}
         onMouseLeave={this.ClearHover}
         SetRef={context => {
-          context.canvas.width = this.CanvasWidth();
 
           this.setState({
             context
-          }, () => this.draw = setTimeout(this.Draw, 2000));
+          }, () => {
+            this.HandleResize();
+            this.draw = setTimeout(this.Draw, 2000);
+          });
         }}
       />
     );

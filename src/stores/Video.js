@@ -264,7 +264,7 @@ class VideoStore {
   Update({frame, smpte, progress}) {
     if(!this.initialized) { return; }
 
-    this.frame = frame;
+    this.frame = Math.floor(frame);
     this.smpte = smpte;
     this.seek = progress * this.scale;
     this.duration = this.video.duration;
