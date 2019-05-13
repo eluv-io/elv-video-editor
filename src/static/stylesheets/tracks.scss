@@ -1,5 +1,13 @@
 .tracks-container {
+  position: relative;
   width: 100%;
+}
+
+.track-time-indicator {
+  background-color: $color-accent;
+  opacity: 0.4;
+  position: absolute;
+  width: 2px;
 }
 
 .track-container {
@@ -12,6 +20,15 @@
   display: grid;
   grid-template-columns: 200px 1fr;
   height: 40px;
+
+  &:first-child,
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  .video-seek-handle {
+    background-color: $color-accent;
+  }
 }
 
 .track-label {
@@ -33,108 +50,13 @@
 
 $slider-height: 12px;
 
-.video-seek,
-.video-scale {
-  &.rc-slider {
-    cursor: pointer;
-    height: $slider-height;
-    width: auto;
-  }
-
-  .rc-slider-rail {
-    background-color: $color-rail-background;
-  }
-
-  .rc-slider-track {
-    background-color: $color-rail;
-  }
-}
-
-//* Slider styling *//
-
 .video-seek {
-  &.video-seek {
-    .rc-slider-handle {
-      background-color: $color-accent;
-      border-radius: 0;
-      height: 130px;
-      margin-left: -2px;
-      margin-top: -6px;
-      width: 3px;
-    }
-  }
+  height: $slider-height;
 }
 
 .video-scale-lane {
   border: 0;
   height: $slider-height;
-}
-
-.video-scale {
-  &.rc-slider {
-    .rc-slider-handle {
-      z-index: 2;
-    }
-
-    .rc-slider-handle-2 {
-      background-color: $color-accent;
-      border-radius: 0;
-      height: 14px;
-      margin-left: -2px;
-      margin-top: -6px;
-      width: 3px;
-      z-index: 1;
-    }
-  }
-}
-
-.rc-slider {
-  .rc-slider-rail {
-    background-color: $color-rail-background;
-  }
-
-  .rc-slider-rail,
-  .rc-slider-track {
-    border-radius: 0;
-    height: 100%;
-    margin-top: -5px;
-  }
-
-  .rc-slider-track {
-    background-color: $color-rail;
-  }
-
-  .rc-slider-handle {
-    background-color: $color-foreground;
-    border: 0;
-    border-radius: 100%;
-    cursor: pointer;
-    height: 15px;
-    margin-left: -5px;
-    margin-top: -6px;
-    width: 15px;
-
-    &:focus {
-      box-shadow: 0 0 3px $color-foreground;
-    }
-  }
-
-  .rc-slider-step {
-    .rc-slider-dot {
-      background-color: $color-border;
-      border: 0;
-      border-radius: 0;
-      height: $slider-height;
-      margin-left: -2px;
-      top: -5px;
-      width: 3px;
-    }
-  }
-
-  .rc-slider-mark-text {
-    @include elv-no-select;
-    font-size: 10px;
-  }
 }
 
 .track-entry-timestamps,
@@ -153,24 +75,4 @@ $slider-height: 12px;
 .track-entry-content {
   white-space: normal;
   word-wrap: break-word;
-}
-
-.rc-slider-tooltip {
-  &.rc-slider-tooltip {
-    padding: 0;
-
-    .rc-slider-tooltip-inner {
-      align-items: center;
-      background-color: transparent;
-      box-shadow: none;
-      display: flex;
-      height: 100%;
-      justify-content: center;
-      width: 100%;
-    }
-  }
-}
-
-.rc-slider-tooltip-arrow {
-  display: none;
 }

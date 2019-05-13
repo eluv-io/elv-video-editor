@@ -1,18 +1,49 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
 import Track from "./tracks/Track";
-import {Range, Slider} from "./Slider";
+import {Slider, Range} from "elv-components-js";
 import Fraction from "fraction.js/fraction";
 import {ToolTip} from "elv-components-js";
+import ResizeObserver from "resize-observer-polyfill";
 
 @inject("video")
 @observer
 class Timeline extends React.Component {
   constructor(props) {
     super(props);
+
+    this.state = {
+      trackDimensions: new DOMRect(),
+      trackContainerDimensions: new DOMRect()
+    };
+
+    this.WatchResize = this.WatchResize.bind(this);
   }
 
-  static TrackLane({label, content, key, active=false, toolTip, onLabelClick, className=""}) {
+  componentWillUnmount() {
+    if(this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
+  }
+
+  // Keep track of track container height and track content width to properly render the time indicator
+  WatchResize(element) {
+    if(element && !this.resizeObserver) {
+      this.resizeObserver = new ResizeObserver((entries) => {
+        const container = entries[0];
+        const track = document.getElementsByClassName("track-lane-content")[0];
+
+        this.setState({
+          trackDimensions: track ? track.getBoundingClientRect() : new DOMRect(),
+          trackContainerDimensions: container.contentRect
+        });
+      });
+
+      this.resizeObserver.observe(element);
+    }
+  }
+
+  TrackLane({label, content, key, active=false, toolTip, onLabelClick, className=""}) {
     return (
       <div key={`track-lane-${key || label}`} className={`track-lane ${className}`}>
         <ToolTip content={toolTip}>
@@ -23,36 +54,23 @@ class Timeline extends React.Component {
             {label}
           </div>
         </ToolTip>
-        { content }
+        <div className="track-lane-content">
+          { content }
+        </div>
       </div>
     );
   }
 
   Seek() {
-    const scale = this.props.video.scale;
-
-    // Make marks with SMPTE timestamps along the seek bar
-    const nMarks = 10;
-    const marks = {};
-    if(this.props.video.duration) {
-      const visibleScale = this.props.video.scaleMax - this.props.video.scaleMin;
-      const step = visibleScale / nMarks;
-      const startMark = this.props.video.scaleMin + visibleScale / (nMarks * 2);
-
-      for (let i = startMark; i < this.props.video.scaleMax; i += step) {
-        marks[i] = this.props.video.ProgressToSMPTE(i);
-      }
-    }
-
     return (
       <Slider
         key="video-progress"
         min={this.props.video.scaleMin}
         max={this.props.video.scaleMax}
-        marks={marks}
         value={this.props.video.seek}
-        tipFormatter={value => this.props.video.ProgressToSMPTE(value)}
-        onChange={(value) => this.props.video.Seek(Fraction(value).div(scale))}
+        showMarks={true}
+        renderToolTip={value => <span>{this.props.video.ProgressToSMPTE(value)}</span>}
+        onChange={(value) => this.props.video.Seek(Fraction(value).div(this.props.video.scale))}
         className="video-seek"
       />
     );
@@ -64,33 +82,61 @@ class Timeline extends React.Component {
         key="video-scale"
         min={0}
         max={this.props.video.scale}
-        value={[this.props.video.scaleMin, this.props.video.seek, this.props.video.scaleMax]}
-        allowCross={false}
-        tipFormatter={value => this.props.video.ProgressToSMPTE(value)}
+        handles={[
+          {
+            position: this.props.video.scaleMin,
+          },
+          {
+            position: this.props.video.seek,
+            disabled: true,
+            className: "video-seek-handle"
+          },
+          {
+            position: this.props.video.scaleMax
+          }
+        ]}
+        showMarks={true}
+        renderToolTip={value => <span>{this.props.video.ProgressToSMPTE(value)}</span>}
         onChange={([scaleMin, seek, scaleMax]) => this.props.video.SetScale(scaleMin, seek, scaleMax)}
         className="video-scale"
       />
     );
   }
 
+  CurrentTimeIndicator() {
+    const scale = this.props.video.scaleMax - this.props.video.scaleMin;
+    const indicatorPosition = (this.props.video.seek / scale) * this.state.trackDimensions.width + this.state.trackDimensions.left;
+
+    return (
+      <div
+        style={{height: (this.state.trackContainerDimensions.height - 1) + "px", left: (indicatorPosition - 1) + "px"}}
+        className="track-time-indicator"
+      />
+    );
+  }
+
   Tracks() {
     return (
-      <div className="tracks-container">
-        {this.props.video.tracks.slice()
-          .sort((a, b) => a.label > b.label ? 1 : -1)
-          .map(track => {
-            const toggle = () => this.props.video.ToggleTrack(track.label);
+      <div ref={this.WatchResize} className="tracks-container">
+        { this.CurrentTimeIndicator() }
+        {
+          this.props.video.tracks.slice()
+            .sort((a, b) => a.label > b.label ? 1 : -1)
+            .map(track => {
+              const toggle = () => this.props.video.ToggleTrack(track.label);
 
-            return (
-              Timeline.TrackLane({
-                label: track.label,
-                content: <Track track={track}/>,
-                active: track.active,
-                toolTip: <span>{`${track.active ? "Disable" : "Enable"} ${track.label}`}</span>,
-                onLabelClick: toggle
-              })
-            );
-          })
+              return (
+                this.TrackLane({
+                  label: track.label,
+                  content: (
+                    <Track track={track} width={this.state.trackDimensions.width} height={this.state.trackDimensions.height} />
+                  ),
+                  active: track.active,
+                  toolTip: <span>{`${track.active ? "Disable" : "Enable"} ${track.label}`}</span>,
+                  onLabelClick: toggle
+                })
+              );
+            })
         }
       </div>
     );
@@ -101,13 +147,14 @@ class Timeline extends React.Component {
 
     return (
       <div className="timeline">
-        {Timeline.TrackLane({
+        {this.TrackLane({
           label: <span className="mono">{`${this.props.video.frame} :: ${this.props.video.smpte}`}</span>,
           content: this.Seek(),
+          widthDetection: true,
           key: "seek"
         })}
         {this.Tracks()}
-        {Timeline.TrackLane({content: this.Scale(), key: "scale", className: "video-scale-lane"})}
+        {this.TrackLane({content: this.Scale(), key: "scale", className: "video-scale-lane"})}
       </div>
     );
   }

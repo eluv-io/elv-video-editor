@@ -28,7 +28,9 @@ class FrameAccurateVideo {
   /* Conversion utility methods */
 
   ProgressToSMPTE(progress) {
-    return this.TimeToSMPTE(Fraction(progress).mul(this.video.duration));
+    const duration = this.video.duration || 0;
+
+    return this.TimeToSMPTE(Fraction(progress).mul(duration));
   }
 
   TimeToFrame(time) {

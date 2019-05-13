@@ -20,7 +20,7 @@
     "babel-preset-mobx": "^2.0.0",
     "dashjs": "^2.9.3",
     "elv-client-js": "git+https://github.com/eluv-io/elv-client-js.git#70a67712921c0ab2598da7b3dc64b7ce0939149c",
-    "elv-components-js": "git+https://github.com/eluv-io/elv-components-js.git#9f1d38961a11b9c0acad80c1bc278a97200a016b",
+    "elv-components-js": "git+https://github.com/eluv-io/elv-components-js.git#0526c2631ed646b5a48178fbf94cb304801feede",
     "fraction.js": "^4.0.12",
     "mobx": "^5.9.4",
     "mobx-react": "^5.4.3",
@@ -30,6 +30,7 @@
     "react-dom": "^16.8.6",
     "react-router": "^4.3.1",
     "react-router-dom": "^4.3.1",
+    "resize-observer-polyfill": "^1.5.1",
     "url-join": "^4.0.0",
     "vtt.js": "^0.13.0"
   },

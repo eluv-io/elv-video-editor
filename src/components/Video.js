@@ -8,6 +8,7 @@ import VideoControls from "./VideoControls";
 class Video extends React.Component {
   constructor(props) {
     super(props);
+
     /*
     const url = "http://38.142.50.107/qlibs/ilib25dkW5Gp96LMxBcWnLks77tNtbT9/q/iq__3DW6PNhUTrabuBgZwzS3baDyUgrC/rep/dash/en/dash.mpd";
     const dashPlayer = Dash.MediaPlayer().create();
@@ -17,7 +18,8 @@ class Video extends React.Component {
     this.state = {
       dashPlayer
     };
-*/
+    */
+
     this.InitializeVideo = this.InitializeVideo.bind(this);
     this.InitializeTracks = this.InitializeTracks.bind(this);
   }

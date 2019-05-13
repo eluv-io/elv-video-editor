@@ -2,8 +2,8 @@ import React from "react";
 import PropTypes from "prop-types";
 
 class TrackCanvas extends React.Component {
-  shouldComponentUpdate(nextProps) {
-    return this.props.width !== nextProps.width;
+  shouldComponentUpdate() {
+    return false;
   }
 
   render() {
@@ -14,7 +14,7 @@ class TrackCanvas extends React.Component {
       <canvas
         {...otherProps}
         width="50"
-        height="30"
+        height="50"
         className={this.props.className}
         ref={canvas => this.props.SetRef(canvas && canvas.getContext("2d"))}
       />
@@ -23,7 +23,7 @@ class TrackCanvas extends React.Component {
 }
 
 TrackCanvas.propTypes = {
-  SetRef: PropTypes.func.isRequired
+  SetRef: PropTypes.func.isRequired,
 };
 
 export default TrackCanvas;

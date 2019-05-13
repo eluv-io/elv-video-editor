@@ -2,7 +2,7 @@ import React from "react";
 import {inject, observer} from "mobx-react";
 import {IconButton} from "elv-components-js";
 import {FrameRates} from "../utils/FrameAccurateVideo";
-import {Slider} from "./Slider";
+import {Slider} from "elv-components-js";
 
 import PlayButton from "../static/icons/Play.svg";
 import PauseButton from "../static/icons/Pause.svg";
@@ -142,8 +142,9 @@ class VideoControls extends React.Component {
           min={0}
           max={this.props.video.scale}
           value={this.props.video.muted ? 0 : this.props.video.volume}
-          tipFormatter={value => `${Math.floor((value / this.props.video.scale) * 100)}%`}
-          onChange={(volume) => this.props.video.SetVolume(volume)}
+          renderToolTip={value => `${Math.floor((value / this.props.video.scale) * 100)}%`}
+          className="video-volume-slider"
+          onChange={volume => this.props.video.SetVolume(volume)}
         />
       </div>
     );
