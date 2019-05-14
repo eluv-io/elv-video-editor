@@ -4,10 +4,11 @@
 }
 
 .track-time-indicator {
-  background-color: $color-accent;
-  opacity: 0.4;
+  background-color: $elv-color-lightblue;
+  margin-left: -1px;
+  opacity: 0.6;
   position: absolute;
-  width: 2px;
+  width: 4px;
 }
 
 .track-container {

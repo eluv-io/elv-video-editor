@@ -23,12 +23,13 @@ class Timeline extends React.Component {
   componentWillUnmount() {
     if(this.resizeObserver) {
       this.resizeObserver.disconnect();
+      this.resizeObserver = undefined;
     }
   }
 
   // Keep track of track container height and track content width to properly render the time indicator
   WatchResize(element) {
-    if(element && !this.resizeObserver) {
+    if(element) {
       this.resizeObserver = new ResizeObserver((entries) => {
         const container = entries[0];
         const track = document.getElementsByClassName("track-lane-content")[0];
@@ -105,7 +106,7 @@ class Timeline extends React.Component {
 
   CurrentTimeIndicator() {
     const scale = this.props.video.scaleMax - this.props.video.scaleMin;
-    const indicatorPosition = (this.props.video.seek / scale) * this.state.trackDimensions.width + this.state.trackDimensions.left;
+    const indicatorPosition = (this.props.video.seek - this.props.video.scaleMin) * (this.state.trackDimensions.width / scale) + this.state.trackDimensions.left;
 
     return (
       <div

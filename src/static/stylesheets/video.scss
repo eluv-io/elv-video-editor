@@ -1,6 +1,5 @@
 .video {
   background-color: $color-background;
-  //border-bottom: 1px solid $color-border;
   display: grid;
   grid-template-rows: 1fr 35px 50px;
   height: 100%;
@@ -15,6 +14,14 @@
   justify-content: center;
   max-height: 100%;
   position: relative;
+}
+
+.video-poster {
+  cursor: pointer;
+  max-height: 100%;
+  object-fit: cover;
+  position: absolute;
+  width: 100%;
 }
 
 video {

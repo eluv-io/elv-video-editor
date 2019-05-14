@@ -1,0 +1,22 @@
+.menu-container {
+  background-color: $color-background-active;
+  border-bottom: 1px solid $color-border;
+  border-right: 1px solid $color-border;
+  min-height: 200px;
+  padding: $elv-spacing-s 0 0;
+
+  ul {
+    flex-direction: column;
+  }
+
+  li {
+    @include elv-ellipsis;
+    cursor: pointer;
+    max-width: 100%;
+    padding: $elv-spacing-ss $elv-spacing-s;
+
+    &:hover {
+      background-color: $color-accent;
+    }
+  }
+}

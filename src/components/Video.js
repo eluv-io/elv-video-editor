@@ -25,6 +25,8 @@ class Video extends React.Component {
   }
 
   InitializeVideo(video) {
+    if(!video) { return; }
+
     //this.state.dashPlayer.attachView(video);
     this.props.video.Initialize(video);
   }
@@ -33,36 +35,52 @@ class Video extends React.Component {
     this.props.video.InitializeTracks(trackContainer);
   }
 
-  render() {
-    const controls = this.props.video.initialized ? <VideoControls /> : null;
+  Poster() {
+    if(this.props.video.frame > 0 || !this.props.video.poster) { return null; }
 
     return (
+      <img onClick={this.props.video.PlayPause} src={this.props.video.poster} className="video-poster" />
+    );
+  }
+
+  Video() {
+    if(!this.props.video.source) { return null; }
+
+    return (
+      <div className="video-container">
+        <video
+          key={`video-${this.props.video.source}`}
+          crossOrigin="anonymous"
+          ref={this.InitializeVideo}
+          muted={true}
+          autoPlay={false}
+          controls={false}
+          preload="auto"
+          onWheel={({deltaY}) => this.props.video.ScrollVolume(deltaY)}
+        >
+          <source src={this.props.video.source} type="video/mp4" />
+          {this.props.video.trackInfo.map(track =>
+            <track
+              key={`track-${track.label}-${this.props.video.source}`}
+              default={track.default}
+              kind={track.kind}
+              label={track.label}
+              src={track.source}
+              srcLang={track.label}
+            />
+          )}
+        </video>
+        {this.Poster()}
+      </div>
+    );
+  }
+
+  render() {
+    const controls = this.props.video.initialized ? <VideoControls /> : null;
+    return (
       <div className="video">
-        <div className="video-container">
-          <video
-            poster={this.props.video.poster}
-            crossOrigin="anonymous"
-            ref={this.InitializeVideo}
-            muted={true}
-            autoPlay={false}
-            controls={false}
-            preload="auto"
-            onWheel={({deltaY}) => this.props.video.ScrollVolume(deltaY)}
-          >
-            <source src={this.props.video.source} type="video/mp4" />
-            {this.props.video.trackInfo.map(track =>
-              <track
-                key={`track-${track.label}`}
-                default={track.default}
-                kind={track.kind}
-                label={track.label}
-                src={track.source}
-                srcLang={track.label}
-              />
-            )}
-          </video>
-        </div>
-        {controls}
+        { this.Video() }
+        { controls }
       </div>
     );
   }

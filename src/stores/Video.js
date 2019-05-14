@@ -1,7 +1,8 @@
-import {observable, action, runInAction} from "mobx";
+import {observable, action, runInAction, flow} from "mobx";
 import FrameAccurateVideo, {FrameRates} from "../utils/FrameAccurateVideo";
 import {WebVTT} from "vtt.js";
 import Id from "../utils/Id";
+import {FrameClient} from "elv-client-js/src/FrameClient";
 
 // 30 fps
 //const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__GUow8e5MBR2Z1Kuu6fDSw2bYBZo/data/hqp_QmXHvrBRRJ3kbEvKgfqYytHX3Zg49sCXvcHAV7xvhta7mA"
@@ -23,8 +24,10 @@ import Id from "../utils/Id";
 //const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./soybean-talk-clip.mp4";
 
 // SHREK
+/*
 const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__zxDmS6jVfJ4venSukH8CPYPT1hz/data/hqp_QmcHiCpTAQtbJCk2kkvnUd3KU1W6phX6p4TCVoxCwiBJ1d";
 const poster = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/hq__QmTAvEbCPu9X5KnhfPCyh45BFvpDpeneQwNAt7wg3uC2wx/rep/image";
+*/
 
 const trackInfo = [
   /*
@@ -78,10 +81,15 @@ const trackInfo = [
 ];
 
 class VideoStore {
+  @observable client = new FrameClient();
+
+  @observable contentObject;
+  @observable name;
+
   @observable initialized = false;
 
-  @observable source = source;
-  @observable poster = poster;
+  @observable source;
+  @observable poster;
   @observable trackInfo = trackInfo;
   @observable tracks = [];
 
@@ -103,6 +111,69 @@ class VideoStore {
   @observable scale = 10000;
   @observable scaleMin = 0;
   @observable scaleMax = this.scale;
+
+  @action.bound
+  Reset() {
+    this.initialized = false;
+
+    if(this.videoHandler) {
+      this.videoHandler.RemoveCallback();
+      this.videoHandler = undefined;
+    }
+
+    this.source = undefined;
+    this.poster = undefined;
+
+    this.dropFrame = false;
+    this.frameRateKey = "NTSC";
+    this.frameRate = FrameRates.NTSC;
+
+    this.frame = 0;
+    this.smpte = "00:00:00:00";
+
+    this.playing = false;
+    this.playbackRate = 1.0;
+    this.fullScreen = false;
+    this.volume = 100;
+    this.muted = false;
+
+    this.seek = 0;
+    this.scale = 10000;
+    this.scaleMin = 0;
+    this.scaleMax = this.scale;
+  }
+
+  @action.bound
+  SelectObject = flow(function * (libraryId, objectId) {
+    const metadata = yield this.client.ContentObjectMetadata({libraryId, objectId});
+    metadata.name = metadata.name || objectId;
+
+    this.name = metadata.name;
+
+    this.contentObject = {
+      objectId,
+      ...(yield this.client.ContentObject({libraryId, objectId})),
+      meta: metadata
+    };
+
+    const videoSourceUrl = yield this.client.FabricUrl({
+      libraryId,
+      objectId,
+      partHash: metadata.video
+    });
+
+    let videoPosterUrl;
+    if(metadata.image) {
+      videoPosterUrl = yield this.client.Rep({
+        libraryId,
+        objectId,
+        rep: "image"
+      });
+    }
+
+    this.source = videoSourceUrl;
+    this.poster = videoPosterUrl;
+  });
 
   @action.bound
   Initialize(video) {
@@ -262,12 +333,17 @@ class VideoStore {
 
   @action.bound
   Update({frame, smpte, progress}) {
-    if(!this.initialized) { return; }
+    if(!this.initialized || !this.video) { return; }
 
     this.frame = Math.floor(frame);
     this.smpte = smpte;
     this.seek = progress * this.scale;
     this.duration = this.video.duration;
+
+    // Ensure min isn't less than seek - may happen if the video isn't buffered
+    if(this.seek < this.scaleMin) {
+      this.scaleMin = this.seek;
+    }
 
     if(this.playing && this.seek > this.scaleMax) {
       // If playing has gone beyond the max scale, push the whole scale slider forward by 50%

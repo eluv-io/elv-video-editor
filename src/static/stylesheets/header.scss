@@ -2,8 +2,25 @@ header {
   align-items: center;
   border-bottom: 1px solid $color-border;
   display: flex;
-  height: 35px;
-  padding: 0 $elv-spacing-s;
+  height: 40px;
+
+  .menu-button {
+    height: 100%;
+    margin-right: $elv-spacing-xs;
+    padding: 0 $elv-spacing-xs;
+
+    i {
+      height: 75%;
+    }
+  }
+
+  .menu-button-active {
+    background-color: $color-border-active;
+
+    svg {
+      color: $color-foreground;
+    }
+  }
 
   h1 {
     font-size: 20px;

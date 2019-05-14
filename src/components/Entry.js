@@ -19,7 +19,7 @@ class Entry extends React.Component {
 
         <div className="entry">
           <label>Text</label>
-          <div className="entry-text">{cue.text}</div>
+          <div>{cue.text}</div>
 
           <label>ID</label>
           <span>{cue.id}</span>

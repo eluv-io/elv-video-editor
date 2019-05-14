@@ -6,7 +6,9 @@
     font-size: 16px;
     font-weight: 500;
     margin: 0 0 $elv-spacing-s;
+    min-width: 200px;
     padding: 0;
+    word-wrap: normal;
   }
 }
 
@@ -15,9 +17,4 @@
   font-size: 14px;
   grid-row-gap: $elv-spacing-xs;
   grid-template-columns: minmax(100px, 2fr) minmax(100px, 3fr);
-  word-break: break-all;
-}
-
-.entry-text {
-  word-break: normal;
 }
