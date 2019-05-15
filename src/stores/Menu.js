@@ -1,12 +1,14 @@
 import {observable, action, flow} from "mobx";
-import {FrameClient} from "elv-client-js/src/FrameClient";
 
 class MenuStore {
   @observable showMenu = true;
-  @observable client = new FrameClient();
 
   @observable libraries = [];
   @observable objects = {};
+
+  constructor(client) {
+    this.client = client;
+  }
 
   @action.bound
   ToggleMenu() {

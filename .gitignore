@@ -2,7 +2,10 @@
 
 **.DS_STORE
 
-node_modules/
+# VTT currently has a bug preventing parsing in Safari. Keep version with modifications.
+# See https://github.com/mozilla/vtt.js/issues/364 and https://github.com/jsg2021/vtt.js/tree/patch-1
+node_modules/*
+!node_modules/vtt.js
 
 configuration.json
 

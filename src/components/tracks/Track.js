@@ -4,6 +4,7 @@ import TrackCanvas from "./TrackCanvas";
 import {inject, observer} from "mobx-react";
 import Fraction from "fraction.js";
 import {ToolTip} from "elv-components-js";
+import {reaction} from "mobx";
 
 const color = "#f0f0f0";
 const selectedColor = "#0fafff";
@@ -15,11 +16,39 @@ class Track extends React.Component {
   constructor(props) {
     super(props);
 
-    this.draw = undefined;
     this.hovering = false;
 
     this.state = {
-      context: undefined
+      context: undefined,
+      // Draw reaction - Ensure canvas gets redrawn when state changes
+      DisposeDrawReaction: reaction(
+        () => ({
+          duration: this.props.video.duration,
+          scale: this.props.video.scale,
+          scaleMax: this.props.video.scaleMax,
+          scaleMin: this.props.video.scaleMin,
+          entryId: this.props.entry.entryId,
+          hoverEntryId: this.props.entry.hoverEntryId,
+        }),
+        () => this.Draw(),
+        {delay: 100}
+      ),
+      // Resize reaction: Ensure canvas dimensions are updated on resize
+      DisposeResizeReaction: reaction(
+        () => ({
+          width: this.props.width,
+          height: this.props.height
+        }),
+        ({width, height}) => {
+          if(this.state.context && this.state.context.canvas) {
+            this.state.context.canvas.width = width;
+            this.state.context.canvas.height = height;
+
+            this.Draw();
+          }
+        },
+        {delay: 100}
+      )
     };
 
     this.Draw = this.Draw.bind(this);
@@ -28,15 +57,9 @@ class Track extends React.Component {
     this.ClearHover = this.ClearHover.bind(this);
   }
 
-  componentDidUpdate() {
-    if(this.state.context && this.state.context.canvas) {
-      if (this.props.width !== this.state.context.canvas.width) {
-        this.state.context.canvas.width = this.props.width;
-        this.state.context.canvas.height = this.props.height;
-      }
-    }
-
-    this.DebouncedDraw();
+  componentWillUnmount() {
+    this.state.DisposeDrawReaction();
+    this.state.DisposeResizeReaction();
   }
 
   // X position of mouse over canvas (as percent)
@@ -93,7 +116,6 @@ class Track extends React.Component {
 
     if(entry !== this.props.entry.hoverEntry) {
       this.props.entry.HoverEntry(entry);
-      this.Draw();
     }
 
     this.hovering = true;
@@ -102,13 +124,6 @@ class Track extends React.Component {
   ClearHover() {
     this.hovering = false;
     this.props.entry.HoverEntry(undefined);
-    this.Draw();
-  }
-
-  DebouncedDraw() {
-    if(this.draw) { clearTimeout(this.draw); }
-
-    this.draw = setTimeout(this.Draw, 100);
   }
 
   Draw() {
@@ -141,18 +156,23 @@ class Track extends React.Component {
 
       context.beginPath();
 
-      // Highlight selected
       if(entry.entryId === this.props.entry.entryId) {
+        // Selected item - highlight fill
+
         context.fillStyle = selectedColor;
         context.strokeStyle = selectedColor;
         context.fillRect(startPixel, startY, endPixel - startPixel, halfHeight);
         context.rect(startPixel, startY, endPixel - startPixel, halfHeight);
       } else if(entry.entryId === this.props.entry.hoverEntryId) {
+        // Hover item - fill
+
         context.fillStyle = color;
         context.strokeStyle = color;
         context.fillRect(startPixel, startY, endPixel - startPixel, halfHeight);
         context.rect(startPixel, startY, endPixel - startPixel, halfHeight);
       } else {
+        // Regular item - outline
+
         context.fillStyle = color;
         context.strokeStyle = color;
         context.rect(startPixel, startY, endPixel - startPixel, halfHeight);
@@ -184,27 +204,18 @@ class Track extends React.Component {
         onClick={this.Click}
         onMouseMove={this.Hover}
         onMouseLeave={this.ClearHover}
-        SetRef={context => {
-          this.setState({
-            context
-          }, () => {
-            this.draw = setTimeout(this.Draw, 2000);
-          });
-        }}
+        SetRef={context => this.setState({context})}
       />
     );
   }
 
   render() {
-    /* TODO: Figure out a better way to force re-render on prop changes */
-
     return (
       <ToolTip content={this.ToolTipContent()}>
         <div
           onWheel={({deltaY, clientX}) => this.props.video.ScrollScale(this.ClientXToCanvasPosition(clientX), deltaY)}
           className="track-container"
         >
-          <div hidden={true}>{this.props.entry.entryId + ":: " + this.props.entry.hoverEntryId + this.props.video.scaleMin + this.props.video.scaleMax}</div>
           { this.Canvas() }
         </div>
       </ToolTip>

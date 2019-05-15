@@ -2,7 +2,6 @@ import {observable, action, runInAction, flow} from "mobx";
 import FrameAccurateVideo, {FrameRates} from "../utils/FrameAccurateVideo";
 import {WebVTT} from "vtt.js";
 import Id from "../utils/Id";
-import {FrameClient} from "elv-client-js/src/FrameClient";
 
 // 30 fps
 //const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__GUow8e5MBR2Z1Kuu6fDSw2bYBZo/data/hqp_QmXHvrBRRJ3kbEvKgfqYytHX3Zg49sCXvcHAV7xvhta7mA"
@@ -81,8 +80,6 @@ const trackInfo = [
 ];
 
 class VideoStore {
-  @observable client = new FrameClient();
-
   @observable contentObject;
   @observable name;
 
@@ -111,6 +108,10 @@ class VideoStore {
   @observable scale = 10000;
   @observable scaleMin = 0;
   @observable scaleMax = this.scale;
+
+  constructor(client) {
+    this.client = client;
+  }
 
   @action.bound
   Reset() {
@@ -177,6 +178,8 @@ class VideoStore {
 
   @action.bound
   Initialize(video) {
+    video.load();
+
     this.InitializeTracks();
 
     this.video = video;
@@ -188,27 +191,22 @@ class VideoStore {
       callback: this.Update
     });
 
-    // Ensure no existing callbacks on video element are overridden
-    const AppendVideoCallback = (event, callback) => {
-      const existingCallback = video[event];
-      video[event] = (e) => {
-        if(existingCallback) {
-          existingCallback(e);
-        }
+    // Attach fullscreen state handling to video container
+    video.parentElement.parentElement.onfullscreenchange = action(() => this.fullScreen = !this.fullScreen);
 
-        callback(e);
-      };
-    };
+    this.videoHandler = videoHandler;
+    this.volume = video.volume;
+    this.muted = video.muted;
 
-    // Use video element as source of truth - attach handlers to relevant events to update our state
-    AppendVideoCallback("onpause", action(() => this.playing = false));
-    AppendVideoCallback("onplay", action(() => this.playing = true));
-    AppendVideoCallback("onratechange", action(() => this.playbackRate = this.video.playbackRate));
-    AppendVideoCallback("onvolumechange", action(() => {
+    // Use video element as source of truth - attach handlers to relevant events to update app state
+    this.video.addEventListener("pause", action(() => this.playing = false));
+    this.video.addEventListener("play", action(() => this.playing = true));
+    this.video.addEventListener("ratechange", action(() => this.playbackRate = this.video.playbackRate));
+    this.video.addEventListener("volumechange", action(() => {
       this.volume = video.volume * this.scale;
       this.muted = video.muted;
     }));
-    AppendVideoCallback("onclick", action(() => {
+    this.video.addEventListener("click", action(() => {
       // Handle click (play/pause) and double click (enter/exit full screen)
       if(this.click) {
         // Doubleclick
@@ -225,22 +223,11 @@ class VideoStore {
       }
     }));
 
-    // Attach fullscreen state handling to video container
-    video.parentElement.parentElement.onfullscreenchange = action(() => this.fullScreen = !this.fullScreen);
-
-    this.videoHandler = videoHandler;
-    this.volume = video.volume;
-    this.muted = video.muted;
-
-    // Play the video to force preload
-    video.play();
-    video.pause();
-    video.currentTime = "-0.001";
-    videoHandler.Update();
-
-    this.initialized = true;
-
-    videoHandler.Update();
+    // When sufficiently loaded, update video info and mark video as initialized
+    this.video.addEventListener("canplaythrough", action(() => {
+      videoHandler.Update();
+      this.initialized = true;
+    }));
   }
 
   FormatVTTCue(label, cue) {
@@ -292,8 +279,15 @@ class VideoStore {
 
         const response = await fetch(track.source);
         const vtt = await response.text();
-        vttParser.parse(vtt);
-        vttParser.flush();
+        try {
+          vttParser.parse(vtt);
+          vttParser.flush();
+        } catch(error) {
+          /* eslint-disable no-console */
+          console.error(`VTT cue parse failure on track ${track.label}: `);
+          console.error(error);
+          /* eslint-enable no-console */
+        }
 
         tracks.push({
           ...track,
@@ -333,7 +327,7 @@ class VideoStore {
 
   @action.bound
   Update({frame, smpte, progress}) {
-    if(!this.initialized || !this.video) { return; }
+    if(!this.video) { return; }
 
     this.frame = Math.floor(frame);
     this.smpte = smpte;
