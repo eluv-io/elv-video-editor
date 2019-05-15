@@ -1,215 +1,50 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
-import {IconButton} from "elv-components-js";
-import {FrameRates} from "../utils/FrameAccurateVideo";
-import {Slider} from "elv-components-js";
-
-import PlayButton from "../static/icons/Play.svg";
-import PauseButton from "../static/icons/Pause.svg";
-import Maximize from "../static/icons/Maximize.svg";
-
-import FrameForward from "../static/icons/Forward.svg";
-import SecondForward from "../static/icons/DoubleForward.svg";
-import FrameBackward from "../static/icons/Backward.svg";
-import SecondBackward from "../static/icons/DoubleBackward.svg";
-
-import VolumeLow from "../static/icons/VolumeLow.svg";
-import VolumeHigh from "../static/icons/VolumeHigh.svg";
-import VolumeOff from "../static/icons/VolumeOff.svg";
-import {ToolTip} from "elv-components-js";
+import {
+  DropFrame,
+  FrameControl,
+  FrameRate,
+  Maximize,
+  PlaybackRate,
+  PlayPause,
+  Scale,
+  Seek,
+  Volume
+} from "./controls/Controls";
 
 @inject("video")
 @observer
 class VideoControls extends React.Component {
-  constructor(props) {
-    super(props);
+  Seek() {
+    if(!this.props.video.fullScreen) { return null; }
 
-    this.PlaybackRate = this.PlaybackRate.bind(this);
-    this.PlayPause = this.PlayPause.bind(this);
-    this.Maximize = this.Maximize.bind(this);
-    this.FrameControl = this.FrameControl.bind(this);
+    return <Seek />;
   }
 
-  PlaybackRate() {
-    // TODO: Negative rates
-    const rates = [
-      0.1,
-      0.25,
-      0.5,
-      0.75,
-      1,
-      2,
-      4,
-      8,
-      16,
-      32,
-      64
-    ];
+  Scale() {
+    if(!this.props.video.fullScreen) { return null; }
 
-    return (
-      <ToolTip content={<span>Playback Rate</span>}>
-        <select
-          aria-label="Playback Rate"
-          className="video-playback-rate"
-          value={this.props.video.playbackRate}
-          onChange={event => this.props.video.SetPlaybackRate(event.target.value)}
-        >
-          {rates.map(rate =>
-            <option key={`video-rate-${rate}`} value={rate}>{`${rate}x`}</option>
-          )}
-        </select>
-      </ToolTip>
-    );
-  }
-
-  FrameRate() {
-    return (
-      <ToolTip content={<span>Frame Rate</span>}>
-        <select
-          aria-label="Frame Rate"
-          value={this.props.video.frameRateKey}
-          onChange={event => this.props.video.SetFrameRate(event.target.value)}
-        >
-          {Object.keys(FrameRates).map(frameRateKey =>
-            <option key={`frame-rate-${frameRateKey}`} value={frameRateKey}>{frameRateKey}</option>
-          )}
-        </select>
-      </ToolTip>
-    );
-  }
-
-  DropFrame() {
-    if(this.props.video.frameRateKey !== "NTSC" && this.props.video.frameRateKey !== "NTSCHD") {
-      return null;
-    }
-
-    return (
-      <ToolTip content={<span>Drop Frame Notation</span>}>
-        <select
-          aria-label="Drop Frame Notation"
-          value={this.props.video.dropFrame}
-          onChange={event => this.props.video.SetDropFrame(event.target.value === "true")}
-        >
-          <option value={false}>NDF</option>
-          <option value={true}>DF</option>
-        </select>
-      </ToolTip>
-    );
-  }
-
-  PlayPause() {
-    const label = this.props.video.playing ? "Pause" : "Play";
-    return (
-      <ToolTip content={<span>{label}</span>}>
-        <IconButton
-          label={label}
-          icon={this.props.video.playing ? PauseButton : PlayButton}
-          onClick={this.props.video.PlayPause}
-        />
-      </ToolTip>
-    );
-  }
-
-  Maximize() {
-    return (
-      <ToolTip content={<span>Full Screen</span>}>
-        <IconButton
-          label="Full Screen"
-          icon={Maximize}
-          onClick={this.props.video.ToggleFullscreen}
-        />
-      </ToolTip>
-    );
-  }
-
-  Volume() {
-    const icon = (this.props.video.muted || this.props.video.volume === 0) ? VolumeOff :
-      this.props.video.volume < (this.props.video.scale / 2) ? VolumeLow : VolumeHigh;
-
-    return (
-      <div
-        onWheel={({deltaY}) => this.props.video.ScrollVolume(deltaY)}
-        className="video-volume-controls"
-      >
-        <ToolTip content={<span>Volume</span>}>
-          <IconButton
-            icon={icon}
-            onClick={() => this.props.video.SetMuted(!this.props.video.muted)}
-            className="video-volume-icon"
-          />
-        </ToolTip>
-        <Slider
-          min={0}
-          max={this.props.video.scale}
-          value={this.props.video.muted ? 0 : this.props.video.volume}
-          renderToolTip={value => `${Math.floor((value / this.props.video.scale) * 100)}%`}
-          className="video-volume-slider"
-          onChange={volume => this.props.video.SetVolume(volume)}
-        />
-      </div>
-    );
-  }
-
-  FrameControl(forward=true, frame=true) {
-    let icon, label;
-    if(forward) {
-      if(frame) {
-        icon = FrameForward;
-        label = "Forward 1 Frame";
-      } else {
-        icon = SecondForward;
-        label = "Forward 1 Second";
-      }
-    } else {
-      if(frame) {
-        icon = FrameBackward;
-        label = "Backward 1 Frame";
-      } else {
-        icon = SecondBackward;
-        label = "Backward 1 Second";
-      }
-    }
-
-    return (
-      <ToolTip content={<span>{label}</span>}>
-        <IconButton
-          label={label}
-          icon={icon}
-          onClick={() => {
-            let frames = 1;
-            if(!frame) {
-              frames = this.props.video.frameRate.ceil();
-            }
-
-            if(forward) {
-              this.props.video.SeekForward(frames);
-            } else {
-              this.props.video.SeekBackward(frames);
-            }
-          }}
-        />
-      </ToolTip>
-    );
+    return <Scale />;
   }
 
   Controls() {
     return (
-      <div key="video-controls" className="video-controls">
+      <div key="video-controls" className={`video-controls ${this.props.video.fullScreen ? "video-controls-fullscreen" : ""}`}>
         <div className="controls left-controls">
-          { this.PlaybackRate() }
-          { this.FrameRate() }
-          { this.DropFrame() }
+          <PlaybackRate />
+          <FrameRate />
+          <DropFrame />
         </div>
         <div className="controls center-controls">
-          { this.FrameControl(false, false) }
-          { this.FrameControl(false, true) }
-          { this.PlayPause() }
-          { this.FrameControl(true, true) }
-          { this.FrameControl(true, false) }
+          <FrameControl forward={false} frame={false} />
+          <FrameControl forward={false} frame={true} />
+          <PlayPause />
+          <FrameControl forward={true} frame={true} />
+          <FrameControl forward={true} frame={false} />
         </div>
         <div className="controls right-controls">
-          { this.Volume() }
-          { this.Maximize() }
+          <Volume />
+          <Maximize />
         </div>
       </div>
     );
@@ -219,6 +54,8 @@ class VideoControls extends React.Component {
     return [
       <div key="video-time" className="mono video-time">{Math.floor(this.props.video.frame) + " :: " + this.props.video.smpte}</div>,
       this.Controls(),
+      this.Seek(),
+      this.Scale()
     ];
   }
 }

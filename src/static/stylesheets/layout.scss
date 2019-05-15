@@ -1,4 +1,12 @@
+$header-height: 45px;
+
+header {
+  height: $header-height;
+}
+
 .menu-container {
+  height: calc(100% - #{$header-height});
+  max-height: calc(100% - #{$header-height});
   position: absolute;
   width: 400px;
   z-index: 10000;

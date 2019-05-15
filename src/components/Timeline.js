@@ -1,10 +1,9 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
 import Track from "./tracks/Track";
-import {Slider, Range} from "elv-components-js";
-import Fraction from "fraction.js/fraction";
 import {ToolTip} from "elv-components-js";
 import ResizeObserver from "resize-observer-polyfill";
+import {Seek, Scale} from "./controls/Controls";
 
 @inject("video")
 @observer
@@ -62,48 +61,6 @@ class Timeline extends React.Component {
     );
   }
 
-  Seek() {
-    return (
-      <Slider
-        key="video-progress"
-        min={this.props.video.scaleMin}
-        max={this.props.video.scaleMax}
-        value={this.props.video.seek}
-        showMarks={true}
-        renderToolTip={value => <span>{this.props.video.ProgressToSMPTE(value)}</span>}
-        onChange={(value) => this.props.video.Seek(Fraction(value).div(this.props.video.scale))}
-        className="video-seek"
-      />
-    );
-  }
-
-  Scale() {
-    return (
-      <Range
-        key="video-scale"
-        min={0}
-        max={this.props.video.scale}
-        handles={[
-          {
-            position: this.props.video.scaleMin,
-          },
-          {
-            position: this.props.video.seek,
-            disabled: true,
-            className: "video-seek-handle"
-          },
-          {
-            position: this.props.video.scaleMax
-          }
-        ]}
-        showMarks={true}
-        renderToolTip={value => <span>{this.props.video.ProgressToSMPTE(value)}</span>}
-        onChange={([scaleMin, seek, scaleMax]) => this.props.video.SetScale(scaleMin, seek, scaleMax)}
-        className="video-scale"
-      />
-    );
-  }
-
   CurrentTimeIndicator() {
     const scale = this.props.video.scaleMax - this.props.video.scaleMin;
     const indicatorPosition = (this.props.video.seek - this.props.video.scaleMin) * (this.state.trackDimensions.width / scale) + this.state.trackDimensions.left;
@@ -150,12 +107,15 @@ class Timeline extends React.Component {
       <div className="timeline">
         {this.TrackLane({
           label: <span className="mono">{`${this.props.video.frame} :: ${this.props.video.smpte}`}</span>,
-          content: this.Seek(),
-          widthDetection: true,
+          content: <Seek />,
           key: "seek"
         })}
         {this.Tracks()}
-        {this.TrackLane({content: this.Scale(), key: "scale", className: "video-scale-lane"})}
+        {this.TrackLane({
+          content: <Scale />,
+          key: "scale",
+          className: "video-scale-lane"
+        })}
       </div>
     );
   }

@@ -1,7 +1,7 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
 import AsyncComponent from "./AsyncComponent";
-import {IconButton} from "elv-components-js";
+import {IconButton, onEnterPressed} from "elv-components-js";
 
 import BackIcon from "../static/icons/DoubleBackward.svg";
 
@@ -42,8 +42,14 @@ class Menu extends React.Component {
           <ul>
             {
               (this.props.menu.objects[libraryId] || []).map(object => {
+                const onClick = () => this.setState({object});
                 return (
-                  <li onClick={() => this.setState({object})} key={`content-object-${object.objectId}`}>
+                  <li
+                    tabIndex={1}
+                    onClick={onClick}
+                    onKeyPress={onEnterPressed(onClick)}
+                    key={`content-object-${object.objectId}`}
+                  >
                     {object.meta.name}
                   </li>
                 );
@@ -62,8 +68,15 @@ class Menu extends React.Component {
           <ul>
             {
               this.props.menu.libraries.map(library => {
+                const onClick = () => this.SelectLibrary(library);
+
                 return (
-                  <li onClick={() => this.SelectLibrary(library)} key={`library-${library.libraryId}`}>
+                  <li
+                    tabIndex={1}
+                    onKeyPress={onEnterPressed(onClick)}
+                    onClick={onClick}
+                    key={`library-${library.libraryId}`}
+                  >
                     {library.meta.name}
                   </li>
                 );

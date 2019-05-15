@@ -70,7 +70,7 @@ class Video extends React.Component {
             />
           )}
         </video>
-        {this.Poster()}
+        { this.Poster() }
       </div>
     );
   }
