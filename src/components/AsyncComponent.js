@@ -13,9 +13,23 @@ class AsyncComponent extends React.Component {
   }
 
   componentDidMount() {
+    this.mounted = true;
+
     this.props.Load()
-      .then(() => this.setState({loading: false}))
-      .catch(error => this.setState({error}));
+      .then(() => {
+        if(this.mounted) {
+          this.setState({loading: false});
+        }
+      })
+      .catch(error => {
+        if(this.mounted) {
+          this.setState({error});
+        }
+      });
+  }
+
+  componentWillUnmount() {
+    this.mounted = false;
   }
 
   render() {

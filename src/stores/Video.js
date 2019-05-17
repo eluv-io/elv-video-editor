@@ -1,83 +1,5 @@
-import {observable, action, runInAction, flow} from "mobx";
+import {observable, action, flow} from "mobx";
 import FrameAccurateVideo, {FrameRates} from "../utils/FrameAccurateVideo";
-import {WebVTT} from "vtt.js";
-import Id from "../utils/Id";
-
-// 30 fps
-//const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__GUow8e5MBR2Z1Kuu6fDSw2bYBZo/data/hqp_QmXHvrBRRJ3kbEvKgfqYytHX3Zg49sCXvcHAV7xvhta7mA"
-// 60 fps
-//const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__3nvTFKUg32AfyG6MSc1LMtt4YGj5/data/hqp_Qmb1NZ5CMU6DXErMrHqt5RRvKKP5F5CfYT2oTfZoH1FwU8"
-// Non drop-frame 24000/1001
-//const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__3LNTS4eA7LAygQee7MQ78k2ivvnC/data/hqp_QmS5PeFJFycWLMiADhb2Sv7SwHQWXCjEqmHEgYCRxZLWMw";
-// Non drop-frame 30000/1001
-//const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__2wf1V2eo5QE5hsip7JHoByBnWahU/data/hqp_QmT4q6NaMBnATtWmSVjcHmc66m34wSEWbogzr2HW8A9UwT"
-// Drop frame 30000/1001
-//const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__2aF5AN7fStTc8XEwq9c1LRwbe4qw/data/hqp_Qmcdww5ssDf9yyvL81S7Tym4DUv8mJsPLxS4poXxp89Do7"
-
-
-// Subtitles test 1
-//const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./ttml-example.mp4";
-// Subtitles test 2
-//const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./with-subtitles.webm";
-// Subtitles test 3
-//const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./soybean-talk-clip.mp4";
-
-// SHREK
-/*
-const source = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__zxDmS6jVfJ4venSukH8CPYPT1hz/data/hqp_QmcHiCpTAQtbJCk2kkvnUd3KU1W6phX6p4TCVoxCwiBJ1d";
-const poster = "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/hq__QmTAvEbCPu9X5KnhfPCyh45BFvpDpeneQwNAt7wg3uC2wx/rep/image";
-*/
-
-const trackInfo = [
-  /*
-  {
-    label: "MIB 2",
-    default: false,
-    kind: "subtitles",
-    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./MIB2-subtitles-pt-BR.vtt",
-  },
-  {
-    label: "Boring lady",
-    default: false,
-    kind: "subtitles",
-    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./webvtt-example.vtt"
-  },
-  {
-    label: "Coffee guys",
-    default: false,
-    kind: "subtitles",
-    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./soybean-talk-clip-region.vtt"
-  },
-  */
-  {
-    label: "Shrek Retold (English)",
-    default: true,
-    active: true,
-    kind: "subtitles",
-    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__zxDmS6jVfJ4venSukH8CPYPT1hz/files/./SHREK-RETOLD.vtt"
-  },
-  {
-    label: "Shrek Retold (Spanish)",
-    default: false,
-    active: false,
-    kind: "subtitles",
-    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__zxDmS6jVfJ4venSukH8CPYPT1hz/files/./SHREK-RETOLD-SPANISH.vtt"
-  },
-  {
-    label: "Shrek Retold (French)",
-    default: false,
-    active: false,
-    kind: "subtitles",
-    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__zxDmS6jVfJ4venSukH8CPYPT1hz/files/./SHREK-RETOLD-FRENCH.vtt"
-  },
-  {
-    label: "Shrek Retold (Russian)",
-    default: false,
-    active: false,
-    kind: "subtitles",
-    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__zxDmS6jVfJ4venSukH8CPYPT1hz/files/./SHREK-RETOLD-RUSSIAN.vtt"
-  }
-];
 
 class VideoStore {
   @observable contentObject;
@@ -87,8 +9,6 @@ class VideoStore {
 
   @observable source;
   @observable poster;
-  @observable trackInfo = trackInfo;
-  @observable tracks = [];
 
   @observable dropFrame = false;
   @observable frameRateKey = "NTSC";
@@ -109,8 +29,8 @@ class VideoStore {
   @observable scaleMin = 0;
   @observable scaleMax = this.scale;
 
-  constructor(client) {
-    this.client = client;
+  constructor(rootStore) {
+    this.rootStore = rootStore;
   }
 
   @action.bound
@@ -146,18 +66,18 @@ class VideoStore {
 
   @action.bound
   SelectObject = flow(function * (libraryId, objectId) {
-    const metadata = yield this.client.ContentObjectMetadata({libraryId, objectId});
+    const metadata = yield this.rootStore.client.ContentObjectMetadata({libraryId, objectId});
     metadata.name = metadata.name || objectId;
 
     this.name = metadata.name;
 
     this.contentObject = {
       objectId,
-      ...(yield this.client.ContentObject({libraryId, objectId})),
+      ...(yield this.rootStore.client.ContentObject({libraryId, objectId})),
       meta: metadata
     };
 
-    const videoSourceUrl = yield this.client.FabricUrl({
+    const videoSourceUrl = yield this.rootStore.client.FabricUrl({
       libraryId,
       objectId,
       partHash: metadata.video
@@ -165,7 +85,7 @@ class VideoStore {
 
     let videoPosterUrl;
     if(metadata.image) {
-      videoPosterUrl = yield this.client.Rep({
+      videoPosterUrl = yield this.rootStore.client.Rep({
         libraryId,
         objectId,
         rep: "image"
@@ -177,11 +97,7 @@ class VideoStore {
   });
 
   @action.bound
-  Initialize(video) {
-    video.load();
-
-    this.InitializeTracks();
-
+  Initialize = flow(function * (video) {
     this.video = video;
 
     const videoHandler = new FrameAccurateVideo({
@@ -191,10 +107,15 @@ class VideoStore {
       callback: this.Update
     });
 
+    this.videoHandler = videoHandler;
+
+    yield this.rootStore.trackStore.InitializeTracks();
+
+    video.load();
+
     // Attach fullscreen state handling to video container
     video.parentElement.parentElement.onfullscreenchange = action(() => this.fullScreen = !this.fullScreen);
 
-    this.videoHandler = videoHandler;
     this.volume = video.volume;
     this.muted = video.muted;
 
@@ -228,90 +149,19 @@ class VideoStore {
       videoHandler.Update();
       this.initialized = true;
     }));
-  }
+  });
 
-  FormatVTTCue(label, cue) {
-    // VTT Cues are weird about being inspected and copied
-    // Manually copy all relevant values
-    const cueAttributes = [
-      "align",
-      "endTime",
-      "id",
-      "line",
-      "lineAlign",
-      "position",
-      "positionAlign",
-      "region",
-      "size",
-      "snapToLines",
-      "startTime",
-      "text",
-      "vertical"
-    ];
-
-    const cueCopy = {};
-    cueAttributes.forEach(attr => cueCopy[attr] = cue[attr]);
-
-    return {
-      entryId: Id.next(),
-      label: label,
-      startTime: cue.startTime,
-      endTime: cue.endTime,
-      startTimeSMPTE: this.videoHandler.TimeToSMPTE(cue.startTime),
-      endTimeSMPTE: this.videoHandler.TimeToSMPTE(cue.endTime),
-      text: cue.text,
-      type: "VTTCue",
-      entry: cueCopy
-    };
-  }
-
-  @action.bound
-  async InitializeTracks() {
-    let tracks = [];
-
-    // Initialize video WebVTT tracks by fetching and parsing the VTT file
-    await Promise.all(
-      this.trackInfo.map(async track => {
-        const vttParser = new WebVTT.Parser(window, WebVTT.StringDecoder());
-
-        let cues = [];
-        vttParser.oncue = cue => cues.push(this.FormatVTTCue(track.label, cue));
-
-        const response = await fetch(track.source);
-        const vtt = await response.text();
-        try {
-          vttParser.parse(vtt);
-          vttParser.flush();
-        } catch(error) {
-          /* eslint-disable no-console */
-          console.error(`VTT cue parse failure on track ${track.label}: `);
-          console.error(error);
-          /* eslint-enable no-console */
-        }
-
-        tracks.push({
-          ...track,
-          entries: cues
-        });
-      })
-    );
-
-    runInAction(() => this.tracks = tracks);
-  }
-
-  @action.bound
   ToggleTrack(label) {
     const track = Array.from(this.video.textTracks).find(track => track.label === label);
-    const trackInfo = this.tracks.find(track => track.label === label);
 
-    if(!track || !trackInfo) { return; }
+    if(!track) { return; }
 
     if(track.mode === "showing") {
       track.mode = "disabled";
-      trackInfo.active = false;
+      return false;
     } else {
       track.mode = "showing";
-      trackInfo.active = true;
+      return true;
     }
   }
 

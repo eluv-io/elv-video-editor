@@ -5,6 +5,7 @@ import {ToolTip} from "elv-components-js";
 import ResizeObserver from "resize-observer-polyfill";
 import {Seek, Scale} from "./controls/Controls";
 
+@inject("tracks")
 @inject("video")
 @observer
 class Timeline extends React.Component {
@@ -78,10 +79,10 @@ class Timeline extends React.Component {
       <div ref={this.WatchResize} className="tracks-container">
         { this.CurrentTimeIndicator() }
         {
-          this.props.video.tracks.slice()
+          this.props.tracks.tracks.slice()
             .sort((a, b) => a.label > b.label ? 1 : -1)
             .map(track => {
-              const toggle = () => this.props.video.ToggleTrack(track.label);
+              const toggle = () => this.props.tracks.ToggleTrack(track.label);
 
               return (
                 this.TrackLane({

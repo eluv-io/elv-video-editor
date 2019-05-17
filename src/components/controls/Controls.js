@@ -26,9 +26,7 @@ let PlaybackRate = (props) => {
     2,
     4,
     8,
-    16,
-    32,
-    64
+    16
   ];
 
   return (

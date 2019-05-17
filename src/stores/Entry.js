@@ -7,6 +7,10 @@ class EntryStore {
   @observable hoverEntry;
   @observable hoverEntryId;
 
+  constructor(rootStore) {
+    this.rootStore = rootStore;
+  }
+
   @action.bound
   SetEntry(entry) {
     this.entry = entry;

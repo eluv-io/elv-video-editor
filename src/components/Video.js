@@ -3,6 +3,7 @@ import {inject, observer} from "mobx-react";
 import Dash from "dashjs";
 import VideoControls from "./VideoControls";
 
+@inject("tracks")
 @inject("video")
 @observer
 class Video extends React.Component {
@@ -43,6 +44,23 @@ class Video extends React.Component {
     );
   }
 
+  Tracks() {
+    if(!this.props.video.initialized) { return null; }
+
+    return (
+      this.props.tracks.tracks.map(track =>
+        <track
+          key={`track-${track.label}`}
+          default={track.default}
+          kind={track.kind}
+          label={track.label}
+          src={track.source}
+          srcLang={track.label}
+        />
+      )
+    );
+  }
+
   Video() {
     if(!this.props.video.source) { return null; }
 
@@ -59,16 +77,7 @@ class Video extends React.Component {
           onWheel={({deltaY}) => this.props.video.ScrollVolume(deltaY)}
         >
           <source src={this.props.video.source} type="video/mp4" />
-          {this.props.video.trackInfo.map(track =>
-            <track
-              key={`track-${track.label}-${this.props.video.source}`}
-              default={track.default}
-              kind={track.kind}
-              label={track.label}
-              src={track.source}
-              srcLang={track.label}
-            />
-          )}
+          { this.Tracks() }
         </video>
         { this.Poster() }
       </div>
@@ -77,6 +86,7 @@ class Video extends React.Component {
 
   render() {
     const controls = this.props.video.initialized ? <VideoControls /> : null;
+
     return (
       <div className="video">
         { this.Video() }

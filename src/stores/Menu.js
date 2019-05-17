@@ -6,8 +6,8 @@ class MenuStore {
   @observable libraries = [];
   @observable objects = {};
 
-  constructor(client) {
-    this.client = client;
+  constructor(rootStore) {
+    this.rootStore = rootStore;
   }
 
   @action.bound
@@ -16,19 +16,19 @@ class MenuStore {
   }
 
   async GetLibrary(libraryId) {
-    let metadata = await this.client.PublicLibraryMetadata({libraryId});
+    let metadata = await this.rootStore.client.PublicLibraryMetadata({libraryId});
     metadata.name = metadata.name || libraryId;
 
     return {
       libraryId,
-      ...(await this.client.ContentLibrary({libraryId})),
+      ...(await this.rootStore.client.ContentLibrary({libraryId})),
       meta: metadata
     };
   }
 
   @action.bound
   ListLibraries = flow(function * () {
-    const libraryIds = yield this.client.ContentLibraries();
+    const libraryIds = yield this.rootStore.client.ContentLibraries();
 
     this.libraries = (yield Promise.all(
       libraryIds.map(libraryId => this.GetLibrary(libraryId))
@@ -43,9 +43,9 @@ class MenuStore {
 
   @action.bound
   ListObjects = flow(function * (libraryId) {
-    this.objects[libraryId] = (yield this.client.ContentObjects({libraryId}))
+    this.objects[libraryId] = (yield this.rootStore.client.ContentObjects({libraryId}))
       // Remove library objects
-      .filter(object => !this.client.utils.EqualHash(object.id, libraryId))
+      .filter(object => !this.rootStore.client.utils.EqualHash(object.id, libraryId))
       // Pull out latest version info
       .map(object => {
         object = object.versions[0];
