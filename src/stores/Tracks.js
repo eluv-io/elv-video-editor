@@ -56,9 +56,49 @@ const trackInfo = [
 
 class Tracks {
   @observable tracks = trackInfo;
+  @observable metadataTracks = [];
 
   constructor(rootStore) {
     this.rootStore = rootStore;
+  }
+
+  @action.bound
+  AddTracksFromMetadata(tracks) {
+    this.metadataTracks = Object.keys(tracks).map(label => ({
+      label,
+      kind: "custom",
+      rawData: tracks[label]
+    }));
+  }
+
+  Cue({label, vttEntry=false, startTime, endTime, text, entry}) {
+    const isSMPTE = typeof startTime === "string" && startTime.split(":").length > 1;
+
+    let startTimeSMPTE, endTimeSMPTE;
+    if(isSMPTE) {
+      // Given times are in SMPTE - calculate numerical time
+      startTimeSMPTE = startTime;
+      endTimeSMPTE = endTime;
+
+      startTime = this.rootStore.videoStore.videoHandler.SMPTEToTime(startTime);
+      endTime = this.rootStore.videoStore.videoHandler.SMPTEToTime(endTime);
+    } else {
+      // Given times are in numerical time - calculate SMPTE
+      startTimeSMPTE = this.rootStore.videoStore.videoHandler.TimeToSMPTE(startTime);
+      endTimeSMPTE = this.rootStore.videoStore.videoHandler.TimeToSMPTE(endTime);
+    }
+
+    return {
+      entryId: Id.next(),
+      label,
+      vttEntry,
+      startTime,
+      endTime,
+      startTimeSMPTE,
+      endTimeSMPTE,
+      text,
+      entry
+    };
   }
 
   FormatVTTCue(label, cue) {
@@ -83,16 +123,53 @@ class Tracks {
     const cueCopy = {};
     cueAttributes.forEach(attr => cueCopy[attr] = cue[attr]);
 
-    return {
-      entryId: Id.next(),
-      label: label,
+    return this.Cue({
+      label,
+      vttEntry: true,
       startTime: cue.startTime,
       endTime: cue.endTime,
-      startTimeSMPTE: this.rootStore.videoStore.videoHandler.TimeToSMPTE(cue.startTime),
-      endTimeSMPTE: this.rootStore.videoStore.videoHandler.TimeToSMPTE(cue.endTime),
       text: cue.text,
-      type: "VTTCue",
       entry: cueCopy
+    });
+  }
+
+  async ParseVTTTrack(track) {
+    const vttParser = new WebVTT.Parser(window, WebVTT.StringDecoder());
+
+    let cues = [];
+    vttParser.oncue = cue => cues.push(this.FormatVTTCue(track.label, cue));
+
+    const response = await fetch(track.source);
+    const vtt = await response.text();
+    try {
+      vttParser.parse(vtt);
+      vttParser.flush();
+    } catch(error) {
+      /* eslint-disable no-console */
+      console.error(`VTT cue parse failure on track ${track.label}: `);
+      console.error(error);
+      /* eslint-enable no-console */
+    }
+
+    return cues;
+  }
+
+  ParseSimpleTrack(track) {
+    const entries = track.rawData
+      .map(entry =>
+        this.Cue({
+          label: track.label,
+          startTime: entry.startTime,
+          endTime: entry.endTime,
+          text: entry.text,
+          entry
+        })
+      )
+      .sort((a, b) => a.startTime > b.startTime ? 1 : -1);
+
+    return {
+      ...track,
+      entries
     };
   }
 
@@ -103,29 +180,16 @@ class Tracks {
     // Initialize video WebVTT tracks by fetching and parsing the VTT file
     await Promise.all(
       this.tracks.map(async track => {
-        const vttParser = new WebVTT.Parser(window, WebVTT.StringDecoder());
-
-        let cues = [];
-        vttParser.oncue = cue => cues.push(this.FormatVTTCue(track.label, cue));
-
-        const response = await fetch(track.source);
-        const vtt = await response.text();
-        try {
-          vttParser.parse(vtt);
-          vttParser.flush();
-        } catch(error) {
-          /* eslint-disable no-console */
-          console.error(`VTT cue parse failure on track ${track.label}: `);
-          console.error(error);
-          /* eslint-enable no-console */
-        }
-
         tracks.push({
           ...track,
-          entries: cues
+          vttTrack: true,
+          entries: await this.ParseVTTTrack(track)
         });
       })
     );
+
+    const customTracks = this.metadataTracks.map(track => this.ParseSimpleTrack(track));
+    tracks = tracks.concat(customTracks);
 
     runInAction(() => this.tracks = tracks);
   }

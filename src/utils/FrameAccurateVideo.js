@@ -41,6 +41,37 @@ class FrameAccurateVideo {
     return this.SMPTE(this.TimeToFrame(time));
   }
 
+  SMPTEToFrame(smpte) {
+    const components = smpte.split(":").reverse();
+
+    const frames = Fraction(components[0]);
+    const seconds = Fraction(components[1]);
+    const minutes = Fraction(components[2]);
+    const hours = Fraction(components[3] || 0);
+
+    let skippedFrames = 0;
+    if(this.dropFrame) {
+      const skippedFramesPerMinute = this.frameRate.equals(FrameRates.NTSCHD) ? Fraction(4) : Fraction(2);
+      const totalMinutes = minutes.add(hours.mul(60));
+      const tenMinutes = totalMinutes.div(10).floor();
+      skippedFrames = totalMinutes.mul(skippedFramesPerMinute)
+        .sub(tenMinutes.mul(skippedFramesPerMinute));
+    }
+
+    return frames
+      .add(seconds.mul(this.frameRate.round()))
+      .add(minutes.mul(this.frameRate.round()).mul(60))
+      .add(hours.mul(this.frameRate.round()).mul(60).mul(60))
+      .sub(skippedFrames)
+      .valueOf();
+  }
+
+  SMPTEToTime(smpte) {
+    const frame = this.SMPTEToFrame(smpte);
+
+    return Fraction(frame).div(this.frameRate).valueOf();
+  }
+
   /* Time Calculations */
 
   Frame() {

@@ -14,6 +14,10 @@
 .track-container {
   background-color: $color-background;
   display: flex;
+
+  canvas {
+    cursor: pointer;
+  }
 }
 
 .track-lane {
@@ -68,7 +72,7 @@ $slider-height: 12px;
 }
 
 .track-entry-timestamps {
-  border-bottom: 1px solid $color-border-active;
+  //border-bottom: 1px solid $color-border-active;
   display: flex;
   justify-content: center;
 }
@@ -76,4 +80,9 @@ $slider-height: 12px;
 .track-entry-content {
   white-space: normal;
   word-wrap: break-word;
+
+  &:empty {
+    border: 0;
+    display: none;
+  }
 }

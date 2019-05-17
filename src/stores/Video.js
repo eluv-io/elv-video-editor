@@ -49,6 +49,7 @@ class VideoStore {
     this.frameRateKey = "NTSC";
     this.frameRate = FrameRates.NTSC;
 
+    this.currentTime = 0;
     this.frame = 0;
     this.smpte = "00:00:00:00";
 
@@ -90,6 +91,10 @@ class VideoStore {
         objectId,
         rep: "image"
       });
+    }
+
+    if(metadata.tracks) {
+      this.rootStore.trackStore.AddTracksFromMetadata(metadata.tracks);
     }
 
     this.source = videoSourceUrl;
@@ -183,6 +188,7 @@ class VideoStore {
     this.smpte = smpte;
     this.seek = progress * this.scale;
     this.duration = this.video.duration;
+    this.currentTime = this.video.currentTime;
 
     // Ensure min isn't less than seek - may happen if the video isn't buffered
     if(this.seek < this.scaleMin) {

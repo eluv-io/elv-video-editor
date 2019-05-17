@@ -4,13 +4,12 @@ import {inject, observer} from "mobx-react";
 @inject("entry")
 @observer
 class Entry extends React.Component {
-  constructor(props) {
-    super(props);
-
+  Entry() {
+    return this.props.entry.hoverEntry || this.props.entry.entry;
   }
 
-  CueEntry() {
-    const entry = this.props.entry.hoverEntry || this.props.entry.entry;
+  VttEntry() {
+    const entry = this.Entry();
     const cue = entry.entry;
 
     return (
@@ -61,14 +60,38 @@ class Entry extends React.Component {
     );
   }
 
+  CustomEntry() {
+    const entry = this.Entry();
+
+    return (
+      <div className="entry-container">
+        <h4>{entry.label}</h4>
+
+        <div className="entry">
+          { entry.text ? <label>Text</label> : null }
+          { entry.text ? <div>{entry.text}</div> : null }
+
+          <label>Start Time</label>
+          <span>{`${entry.startTime.toFixed(3)} (${entry.startTimeSMPTE})`}</span>
+
+          <label>End Time</label>
+          <span>{`${entry.endTime.toFixed(3)} (${entry.endTimeSMPTE})`}</span>
+        </div>
+      </div>
+    );
+  }
+
   render() {
+    // Hide panel if no entry is selected
     if(!this.props.entry.entry) {
       return null;
     }
 
+    const entry = this.Entry();
+
     return (
       <div className="side-panel">
-        { this.CueEntry() }
+        { entry.vttEntry ? this.VttEntry() : this.CustomEntry() }
       </div>
     );
   }

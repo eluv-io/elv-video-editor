@@ -6,8 +6,9 @@ import Fraction from "fraction.js";
 import {ToolTip} from "elv-components-js";
 import {reaction} from "mobx";
 
-const color = "#f0f0f0";
+const color = "#ffffff";
 const selectedColor = "#0fafff";
+const activeColor = "#36ff00";
 
 @inject("video")
 @inject("entry")
@@ -16,10 +17,24 @@ class Track extends React.Component {
   constructor(props) {
     super(props);
 
-    this.hovering = false;
-
     this.state = {
       context: undefined,
+      hovering: false
+    };
+
+    this.activeEntryId = undefined;
+
+    this.Draw = this.Draw.bind(this);
+    this.DrawIfActiveChanged = this.DrawIfActiveChanged.bind(this);
+    this.Click = this.Click.bind(this);
+    this.Hover = this.Hover.bind(this);
+    this.ClearHover = this.ClearHover.bind(this);
+  }
+
+  componentDidMount() {
+    // Initialize reactionary re-draw handlers
+
+    this.setState({
       // Draw reaction - Ensure canvas gets redrawn when state changes
       DisposeDrawReaction: reaction(
         () => ({
@@ -31,6 +46,14 @@ class Track extends React.Component {
           hoverEntryId: this.props.entry.hoverEntryId,
         }),
         () => this.Draw(),
+        {delay: 25}
+      ),
+      // Update if active entry changed
+      DisposeActiveReaction: reaction(
+        () => ({
+          frame: this.props.video.frame
+        }),
+        () => this.DrawIfActiveChanged(),
         {delay: 100}
       ),
       // Resize reaction: Ensure canvas dimensions are updated on resize
@@ -40,7 +63,7 @@ class Track extends React.Component {
           height: this.props.height
         }),
         ({width, height}) => {
-          if(this.state.context && this.state.context.canvas) {
+          if (this.state.context && this.state.context.canvas) {
             this.state.context.canvas.width = width;
             this.state.context.canvas.height = height;
 
@@ -49,16 +72,12 @@ class Track extends React.Component {
         },
         {delay: 100}
       )
-    };
-
-    this.Draw = this.Draw.bind(this);
-    this.Click = this.Click.bind(this);
-    this.Hover = this.Hover.bind(this);
-    this.ClearHover = this.ClearHover.bind(this);
+    });
   }
 
   componentWillUnmount() {
     this.state.DisposeDrawReaction();
+    this.state.DisposeActiveReaction();
     this.state.DisposeResizeReaction();
   }
 
@@ -118,12 +137,22 @@ class Track extends React.Component {
       this.props.entry.HoverEntry(entry);
     }
 
-    this.hovering = true;
+    this.setState({hovering: true});
   }
 
   ClearHover() {
-    this.hovering = false;
+    this.setState({hovering: false});
     this.props.entry.HoverEntry(undefined);
+  }
+
+  DrawIfActiveChanged() {
+    const activeEntry = this.Search(this.props.video.currentTime);
+    const activeEntryId = activeEntry ? activeEntry.entryId : undefined;
+
+    if(activeEntryId !== this.activeEntryId) {
+      this.activeEntryId = activeEntryId;
+      this.Draw();
+    }
   }
 
   Draw() {
@@ -145,6 +174,8 @@ class Track extends React.Component {
     const halfHeight = Fraction(context.canvas.offsetHeight).div(2);
     const quarterHeight = halfHeight.div(2);
     const startY = quarterHeight.valueOf();
+
+    const activeEntry = this.Search(this.props.video.currentTime);
 
     this.props.track.entries.forEach(entry => {
       const startPixel = (Fraction(entry.startTime).sub(startOffset)).mul(widthRatio).floor().valueOf();
@@ -170,6 +201,13 @@ class Track extends React.Component {
         context.strokeStyle = color;
         context.fillRect(startPixel, startY, endPixel - startPixel, halfHeight);
         context.rect(startPixel, startY, endPixel - startPixel, halfHeight);
+      } else if(activeEntry && entry.entryId === activeEntry.entryId) {
+        // Active item - highlight fill
+
+        context.fillStyle = activeColor;
+        context.strokeStyle = activeColor;
+        context.fillRect(startPixel, startY, endPixel - startPixel, halfHeight);
+        context.rect(startPixel, startY, endPixel - startPixel, halfHeight);
       } else {
         // Regular item - outline
 
@@ -183,7 +221,7 @@ class Track extends React.Component {
   }
 
   ToolTipContent() {
-    if(!this.hovering || !this.props.entry.hoverEntry) { return null; }
+    if(!this.state.hovering || !this.props.entry.hoverEntryId) { return null; }
 
     return (
       <div className="track-entry">

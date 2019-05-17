@@ -44,13 +44,17 @@ class Timeline extends React.Component {
     }
   }
 
-  TrackLane({label, content, key, active=false, toolTip, onLabelClick, className=""}) {
+  TrackLane({label, content, key, active=false, labelToolTip, onLabelClick, className=""}) {
     return (
       <div key={`track-lane-${key || label}`} className={`track-lane ${className}`}>
-        <ToolTip content={toolTip}>
+        <ToolTip content={labelToolTip}>
           <div
             onClick={onLabelClick}
-            className={`track-label ${active ? "track-label-active" : ""} ${onLabelClick ? "track-label-clickable" : ""}`}
+            className={`
+              track-label
+              ${active ? "track-label-active" : ""}
+              ${onLabelClick ? "track-label-clickable" : ""}
+            `}
           >
             {label}
           </div>
@@ -74,28 +78,39 @@ class Timeline extends React.Component {
     );
   }
 
+  Track(track) {
+    const toggleable = track.vttTrack;
+    const toggle = toggleable ? () => this.props.tracks.ToggleTrack(track.label) : undefined;
+    const tooltip = toggleable ? `${track.active ? "Disable" : "Enable"} ${track.label}` : track.label;
+
+    return (
+      this.TrackLane({
+        label: track.label,
+        content: (
+          <Track track={track} width={this.state.trackDimensions.width} height={this.state.trackDimensions.height} />
+        ),
+        active: track.active,
+        labelToolTip: <span>{tooltip}</span>,
+        onLabelClick: toggle
+      })
+    );
+  }
+
   Tracks() {
     return (
       <div ref={this.WatchResize} className="tracks-container">
         { this.CurrentTimeIndicator() }
         {
-          this.props.tracks.tracks.slice()
-            .sort((a, b) => a.label > b.label ? 1 : -1)
-            .map(track => {
-              const toggle = () => this.props.tracks.ToggleTrack(track.label);
-
-              return (
-                this.TrackLane({
-                  label: track.label,
-                  content: (
-                    <Track track={track} width={this.state.trackDimensions.width} height={this.state.trackDimensions.height} />
-                  ),
-                  active: track.active,
-                  toolTip: <span>{`${track.active ? "Disable" : "Enable"} ${track.label}`}</span>,
-                  onLabelClick: toggle
-                })
-              );
-            })
+          this.props.tracks.tracks
+            .filter(track => track.vttTrack).slice()
+            .sort((a, b) => (a.label > b.label ? 1 : -1))
+            .map(track => this.Track(track))
+        }
+        {
+          this.props.tracks.tracks
+            .filter(track => !track.vttTrack).slice()
+            .sort((a, b) => (a.label > b.label ? 1 : -1))
+            .map(track => this.Track(track))
         }
       </div>
     );
