@@ -39,23 +39,25 @@ class Menu extends React.Component {
     return (
       <AsyncComponent key="objects-container" Load={async () => await this.props.menu.ListObjects(libraryId)}>
         {
-          <ul>
-            {
-              (this.props.menu.objects[libraryId] || []).map(object => {
-                const onClick = () => this.setState({object});
-                return (
-                  <li
-                    tabIndex={1}
-                    onClick={onClick}
-                    onKeyPress={onEnterPressed(onClick)}
-                    key={`content-object-${object.objectId}`}
-                  >
-                    {object.meta.name}
-                  </li>
-                );
-              })
-            }
-          </ul>
+          (this.props.menu.objects[libraryId] || []).length === 0 ?
+            <div className="menu-empty">No Content Available</div> :
+            <ul>
+              {
+                (this.props.menu.objects[libraryId] || []).map(object => {
+                  const onClick = () => this.setState({object});
+                  return (
+                    <li
+                      tabIndex={1}
+                      onClick={onClick}
+                      onKeyPress={onEnterPressed(onClick)}
+                      key={`content-object-${object.objectId}`}
+                    >
+                      {object.meta.name}
+                    </li>
+                  );
+                })
+              }
+            </ul>
         }
       </AsyncComponent>
     );
@@ -65,24 +67,26 @@ class Menu extends React.Component {
     return (
       <AsyncComponent key="libraries-container" Load={this.props.menu.ListLibraries}>
         {
-          <ul>
-            {
-              this.props.menu.libraries.map(library => {
-                const onClick = () => this.SelectLibrary(library);
+          Object.keys(this.props.menu.libraries).length === 0 ?
+            <div className="menu-empty">No Libraries Available</div> :
+            <ul>
+              {
+                this.props.menu.libraries.map(library => {
+                  const onClick = () => this.SelectLibrary(library);
 
-                return (
-                  <li
-                    tabIndex={1}
-                    onKeyPress={onEnterPressed(onClick)}
-                    onClick={onClick}
-                    key={`library-${library.libraryId}`}
-                  >
-                    {library.meta.name}
-                  </li>
-                );
-              })
-            }
-          </ul>
+                  return (
+                    <li
+                      tabIndex={1}
+                      onKeyPress={onEnterPressed(onClick)}
+                      onClick={onClick}
+                      key={`library-${library.libraryId}`}
+                    >
+                      {library.meta.name}
+                    </li>
+                  );
+                })
+              }
+            </ul>
         }
       </AsyncComponent>
     );
@@ -94,7 +98,16 @@ class Menu extends React.Component {
         <AsyncComponent Load={() => this.SelectObject(this.state.library.libraryId, this.state.object.objectId)} />
       );
     } if(this.state.library) {
-      return this.Objects(this.state.library.libraryId);
+      return (
+        <div>
+          <div className="menu-header">
+            <IconButton icon={BackIcon} onClick={() => this.setState({library: undefined})}>Menu</IconButton>
+            <h4>{this.state.library.meta.name}</h4>
+          </div>
+
+          {this.Objects(this.state.library.libraryId)}
+        </div>
+      );
     } else {
       return this.Libraries();
     }
@@ -103,12 +116,8 @@ class Menu extends React.Component {
   render() {
     if(!this.props.menu.showMenu) { return null; }
 
-    const backButton = this.state.library ?
-      <IconButton icon={BackIcon} onClick={() => this.setState({library: undefined})}>Menu</IconButton> : null;
-
     return (
       <div className="menu-container">
-        { backButton }
         { this.Navigation() }
       </div>
     );

@@ -1,61 +1,10 @@
-import {observable, action, runInAction} from "mobx";
+import {observable, action, runInAction, flow} from "mobx";
 import {WebVTT} from "vtt.js";
 import Id from "../utils/Id";
 
-const trackInfo = [
-  /*
-  {
-    label: "MIB 2",
-    default: false,
-    kind: "subtitles",
-    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./MIB2-subtitles-pt-BR.vtt",
-  },
-  {
-    label: "Boring lady",
-    default: false,
-    kind: "subtitles",
-    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./webvtt-example.vtt"
-  },
-  {
-    label: "Coffee guys",
-    default: false,
-    kind: "subtitles",
-    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__4KrQ5km8o7GnD4kGQ6K4gSp5KSZY/files/./soybean-talk-clip-region.vtt"
-  },
-  */
-  {
-    label: "Shrek Retold (English)",
-    default: true,
-    active: true,
-    kind: "subtitles",
-    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__zxDmS6jVfJ4venSukH8CPYPT1hz/files/./SHREK-RETOLD.vtt"
-  },
-  {
-    label: "Shrek Retold (Spanish)",
-    default: false,
-    active: false,
-    kind: "subtitles",
-    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__zxDmS6jVfJ4venSukH8CPYPT1hz/files/./SHREK-RETOLD-SPANISH.vtt"
-  },
-  {
-    label: "Shrek Retold (French)",
-    default: false,
-    active: false,
-    kind: "subtitles",
-    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__zxDmS6jVfJ4venSukH8CPYPT1hz/files/./SHREK-RETOLD-FRENCH.vtt"
-  },
-  {
-    label: "Shrek Retold (Russian)",
-    default: false,
-    active: false,
-    kind: "subtitles",
-    source: "http://localhost:8008/qlibs/ilib2f4xqtz5RnovfF5ccDrPxjmP3ont/q/iq__zxDmS6jVfJ4venSukH8CPYPT1hz/files/./SHREK-RETOLD-RUSSIAN.vtt"
-  }
-];
-
-
 class Tracks {
-  @observable tracks = trackInfo;
+  @observable tracks = [];
+  @observable subtitleTracks = [];
   @observable metadataTracks = [];
 
   constructor(rootStore) {
@@ -63,13 +12,46 @@ class Tracks {
   }
 
   @action.bound
-  AddTracksFromMetadata(tracks) {
-    this.metadataTracks = Object.keys(tracks).map(label => ({
-      label,
-      kind: "custom",
-      rawData: tracks[label]
-    }));
-  }
+  AddTracksFromMetadata = flow(function * (metadata) {
+    if(metadata.subtitles) {
+      let subtitles = [];
+
+      // Download subtitles data from parts
+      yield Promise.all(
+        Object.keys(metadata.subtitles).map(async label => {
+          const partHash = metadata.subtitles[label];
+          const contentObject = this.rootStore.videoStore.contentObject;
+          const vttData = await this.rootStore.client.DownloadPart({
+            libraryId: contentObject.libraryId,
+            objectId: contentObject.objectId,
+            partHash,
+            format: "text"
+          });
+
+          subtitles.push({
+            label,
+            kind: "subtitles",
+            vttData,
+            source: await this.rootStore.client.FabricUrl({
+              objectId: contentObject.objectId,
+              versionHash: contentObject.hash,
+              partHash
+            })
+          });
+        })
+      );
+
+      this.subtitleTracks = subtitles;
+    }
+
+    if(metadata.tracks) {
+      this.metadataTracks = Object.keys(metadata.tracks).map(label => ({
+        label,
+        kind: "custom",
+        rawData: metadata.tracks[label]
+      }));
+    }
+  });
 
   Cue({label, vttEntry=false, startTime, endTime, text, entry}) {
     const isSMPTE = typeof startTime === "string" && startTime.split(":").length > 1;
@@ -139,10 +121,8 @@ class Tracks {
     let cues = [];
     vttParser.oncue = cue => cues.push(this.FormatVTTCue(track.label, cue));
 
-    const response = await fetch(track.source);
-    const vtt = await response.text();
     try {
-      vttParser.parse(vtt);
+      vttParser.parse(track.vttData);
       vttParser.flush();
     } catch(error) {
       /* eslint-disable no-console */
@@ -179,7 +159,7 @@ class Tracks {
 
     // Initialize video WebVTT tracks by fetching and parsing the VTT file
     await Promise.all(
-      this.tracks.map(async track => {
+      this.subtitleTracks.map(async track => {
         tracks.push({
           ...track,
           vttTrack: true,

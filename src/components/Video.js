@@ -48,7 +48,7 @@ class Video extends React.Component {
     if(!this.props.video.initialized) { return null; }
 
     return (
-      this.props.tracks.tracks.map(track =>
+      this.props.tracks.subtitleTracks.map(track =>
         <track
           key={`track-${track.label}`}
           default={track.default}

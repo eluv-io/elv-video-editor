@@ -1,6 +1,9 @@
 body {
   background-color: $color-background;
-  color: $color-text;
+
+  * {
+    color: $color-text;
+  }
 }
 
 .mono {
@@ -33,6 +36,8 @@ button {
   display: flex;
   height: 50%;
   justify-content: center;
+  overflow-wrap: anywhere;
+  padding: 0 $elv-spacing-xs;
   width: 100%;
 }
 

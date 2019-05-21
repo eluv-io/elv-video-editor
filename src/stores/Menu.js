@@ -33,7 +33,11 @@ class MenuStore {
     this.libraries = (yield Promise.all(
       libraryIds.map(libraryId => this.GetLibrary(libraryId))
     ))
-      .filter(library => library.meta.class !== "elv-user-library" && library.meta.class !== "elv-media-platform")
+      .filter(library =>
+        library.meta.class !== "elv-user-library" &&
+        library.meta.class !== "elv-media-platform" &&
+        !this.rootStore.client.utils.EqualHash(library.libraryId, this.rootStore.client.contentSpaceId)
+      )
       .sort((a, b) => a.meta.name.toLowerCase() > b.meta.name.toLowerCase() ? 1 : -1);
   });
 

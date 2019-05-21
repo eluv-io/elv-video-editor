@@ -73,6 +73,7 @@ class VideoStore {
     this.name = metadata.name;
 
     this.contentObject = {
+      libraryId,
       objectId,
       ...(yield this.rootStore.client.ContentObject({libraryId, objectId})),
       meta: metadata
@@ -93,9 +94,7 @@ class VideoStore {
       });
     }
 
-    if(metadata.tracks) {
-      this.rootStore.trackStore.AddTracksFromMetadata(metadata.tracks);
-    }
+    yield this.rootStore.trackStore.AddTracksFromMetadata(metadata);
 
     this.source = videoSourceUrl;
     this.poster = videoPosterUrl;

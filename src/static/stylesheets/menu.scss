@@ -19,4 +19,26 @@
       background-color: $color-accent;
     }
   }
+
+  .menu-header {
+    align-self: center;
+    display: flex;
+    margin-bottom: $elv-spacing-s;
+  }
+
+  h4 {
+    align-items: center;
+    display: flex;
+    flex-grow: 1;
+    font-size: 20px;
+    margin: 0;
+    padding: 0 0 0 $elv-spacing-s;
+    text-align: center;
+  }
+
+  .menu-empty {
+    margin-top: $elv-spacing-xl;
+    text-align: center;
+    width: 100%;
+  }
 }
