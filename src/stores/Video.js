@@ -66,8 +66,8 @@ class VideoStore {
   }
 
   @action.bound
-  SelectObject = flow(function * (libraryId, objectId) {
-    const metadata = yield this.rootStore.client.ContentObjectMetadata({libraryId, objectId});
+  SelectObject = flow(function * (libraryId, objectId, versionHash) {
+    const metadata = yield this.rootStore.client.ContentObjectMetadata({libraryId, objectId, versionHash});
     metadata.name = metadata.name || objectId;
 
     this.name = metadata.name;
@@ -75,21 +75,26 @@ class VideoStore {
     this.contentObject = {
       libraryId,
       objectId,
-      ...(yield this.rootStore.client.ContentObject({libraryId, objectId})),
+      versionHash,
+      ...(yield this.rootStore.client.ContentObject({libraryId, objectId, versionHash})),
       meta: metadata
     };
 
-    const videoSourceUrl = yield this.rootStore.client.FabricUrl({
-      libraryId,
-      objectId,
-      partHash: metadata.video
-    });
+    const playoutOptions = yield this.rootStore.client.PlayoutOptions({versionHash});
+
+    let videoSourceUrl;
+    if(playoutOptions["dash"]) {
+      videoSourceUrl = playoutOptions["dash"].playoutUrl;
+    } else {
+      videoSourceUrl = playoutOptions["hls"].playoutUrl;
+    }
 
     let videoPosterUrl;
     if(metadata.image) {
       videoPosterUrl = yield this.rootStore.client.Rep({
         libraryId,
         objectId,
+        versionHash,
         rep: "image"
       });
     }
@@ -269,7 +274,7 @@ class VideoStore {
 
   @action.bound
   SetScale(min, seek, max) {
-    const bump = this.scale * 0.025;
+    const bump = this.scale * 0.015;
     const range = max - min;
 
     // Prevent range from going too small

@@ -19,10 +19,11 @@ class Track extends React.Component {
 
     this.state = {
       context: undefined,
-      hovering: false
+      hovering: false,
+      hoverTime: 0
     };
 
-    this.activeEntryId = undefined;
+    this.activeEntryIds = [];
 
     this.Draw = this.Draw.bind(this);
     this.DrawIfActiveChanged = this.DrawIfActiveChanged.bind(this);
@@ -42,8 +43,8 @@ class Track extends React.Component {
           scale: this.props.video.scale,
           scaleMax: this.props.video.scaleMax,
           scaleMin: this.props.video.scaleMin,
-          entryId: this.props.entry.entryId,
-          hoverEntryId: this.props.entry.hoverEntryId,
+          entries: this.props.entry.entries,
+          hoverEntries: this.props.entry.hoverEntries
         }),
         () => this.Draw(),
         {delay: 25}
@@ -88,31 +89,10 @@ class Track extends React.Component {
 
   // Binary search to find an entry at the given time
   Search(time) {
-    const entries = this.props.track.entries;
-
-    let left = 0;
-    let right = entries.length - 1;
-
-    while(left <= right) {
-      let i = Math.floor((left + right) / 2);
-      const entry = entries[i];
-
-      if(entry.startTime > time) {
-        right = i - 1;
-      } else if(entry.endTime < time) {
-        left = i + 1;
-      } else {
-        // Found a suitable option - There may be multiple, so take the one that started latest
-        while(entries.length > i+1 && entries[i+1].startTime < time) {
-          i += 1;
-        }
-
-        return entries[i];
-      }
-    }
+    return this.props.track.intervalTree.search(time, time);
   }
 
-  ElementAt(clientX) {
+  TimeAt(clientX) {
     // How much of the duration of the video is currently visible
     const duration = Fraction(this.props.video.scaleMax - this.props.video.scaleMin).div(this.props.video.scale).mul(this.props.video.duration);
 
@@ -120,39 +100,42 @@ class Track extends React.Component {
     const startOffset = Fraction(this.props.video.scaleMin).div(this.props.video.scale).mul(this.props.video.duration);
 
     // Time corresponding to mouse position
-    const timeAt = duration.mul(this.ClientXToCanvasPosition(clientX)).add(startOffset);
-
-    // Search through track to find which element (if any) is at this position
-    return this.Search(timeAt.valueOf());
+    return duration.mul(this.ClientXToCanvasPosition(clientX)).add(startOffset).valueOf();
   }
 
   Click({clientX}) {
-    this.props.entry.SetEntry(this.ElementAt(clientX));
+    const time = this.TimeAt(clientX);
+    const entries = this.Search(time);
+
+    this.props.entry.SetEntries(entries, this.props.video.TimeToSMPTE(time));
   }
 
   Hover({clientX}) {
-    const entry = this.ElementAt(clientX);
+    const time = this.TimeAt(clientX);
+    const entries = this.Search(time);
 
-    if(entry !== this.props.entry.hoverEntry) {
-      this.props.entry.HoverEntry(entry);
-    }
+    this.props.entry.SetHoverEntries(entries, this.props.video.TimeToSMPTE(time));
 
-    this.setState({hovering: true});
+    this.setState({
+      hovering: true,
+      hoverTime: this.TimeAt(clientX)
+    });
   }
 
   ClearHover() {
+    this.props.entry.SetHoverEntries([]);
+
     this.setState({hovering: false});
-    this.props.entry.HoverEntry(undefined);
   }
 
   DrawIfActiveChanged() {
-    const activeEntry = this.Search(this.props.video.currentTime);
-    const activeEntryId = activeEntry ? activeEntry.entryId : undefined;
+    const activeEntryIds = (this.Search(this.props.video.currentTime)).map(e => e.entryId).sort();
 
-    if(activeEntryId !== this.activeEntryId) {
-      this.activeEntryId = activeEntryId;
-      this.Draw();
-    }
+    if(activeEntryIds.toString() === this.activeEntryIds.toString()) { return; }
+
+    this.activeEntryIds = activeEntryIds;
+
+    this.Draw();
   }
 
   Draw() {
@@ -163,6 +146,7 @@ class Track extends React.Component {
     const context = this.state.context;
 
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+    context.globalAlpha = 0.2;
 
     // How much of the duration of the video is currently visible
     const duration = Fraction(this.props.video.scaleMax - this.props.video.scaleMin).div(this.props.video.scale).mul(this.props.video.duration);
@@ -175,7 +159,10 @@ class Track extends React.Component {
     const quarterHeight = halfHeight.div(2);
     const startY = quarterHeight.valueOf();
 
-    const activeEntry = this.Search(this.props.video.currentTime);
+    const activeEntries = this.Search(this.props.video.currentTime);
+    const activeEntryIds = activeEntries.map(entry => entry.entryId);
+    const selectedEntryIds = this.props.entry.entries.map(entry => entry.entryId);
+    const hoverEntryIds = this.props.entry.hoverEntries.map(entry => entry.entryId);
 
     this.props.track.entries.forEach(entry => {
       const startPixel = (Fraction(entry.startTime).sub(startOffset)).mul(widthRatio).floor().valueOf();
@@ -187,21 +174,21 @@ class Track extends React.Component {
 
       context.beginPath();
 
-      if(entry.entryId === this.props.entry.entryId) {
+      if(selectedEntryIds.includes(entry.entryId)) {
         // Selected item - highlight fill
 
         context.fillStyle = selectedColor;
         context.strokeStyle = selectedColor;
         context.fillRect(startPixel, startY, endPixel - startPixel, halfHeight);
         context.rect(startPixel, startY, endPixel - startPixel, halfHeight);
-      } else if(entry.entryId === this.props.entry.hoverEntryId) {
+      } else if(hoverEntryIds.includes(entry.entryId)) {
         // Hover item - fill
 
         context.fillStyle = color;
         context.strokeStyle = color;
         context.fillRect(startPixel, startY, endPixel - startPixel, halfHeight);
         context.rect(startPixel, startY, endPixel - startPixel, halfHeight);
-      } else if(activeEntry && entry.entryId === activeEntry.entryId) {
+      } else if(activeEntryIds.includes(entry.entryId)) {
         // Active item - highlight fill
 
         context.fillStyle = activeColor;
@@ -221,16 +208,20 @@ class Track extends React.Component {
   }
 
   ToolTipContent() {
-    if(!this.state.hovering || !this.props.entry.hoverEntryId) { return null; }
+    if(!this.state.hovering || !this.props.entry.hoverEntries) { return null; }
 
     return (
-      <div className="track-entry">
-        <div className="track-entry-timestamps">
-          {`${this.props.entry.hoverEntry.startTimeSMPTE} - ${this.props.entry.hoverEntry.endTimeSMPTE}`}
-        </div>
-        <div className="track-entry-content">
-          { this.props.entry.hoverEntry.text }
-        </div>
+      <div className="track-entry-container">
+        {this.props.entry.hoverEntries.map(entry =>
+          <div className="track-entry" key={`entry-${entry.entryId}`}>
+            <div className="track-entry-timestamps">
+              {`${entry.startTimeSMPTE} - ${entry.endTimeSMPTE}`}
+            </div>
+            <div className="track-entry-content">
+              { entry.text }
+            </div>
+          </div>
+        )}
       </div>
     );
   }

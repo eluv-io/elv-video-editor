@@ -114,6 +114,7 @@ class Menu extends React.Component {
   }
 
   render() {
+    return null;
     if(!this.props.menu.showMenu) { return null; }
 
     return (

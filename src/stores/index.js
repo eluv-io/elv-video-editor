@@ -1,4 +1,4 @@
-import { configure } from "mobx";
+import {configure, observable, action, runInAction} from "mobx";
 import EntryStore from "./Entry";
 import MenuStore from "./Menu";
 import TrackStore from "./Tracks";
@@ -14,29 +14,49 @@ configure({
 });
 
 class RootStore {
+  @observable client;
+
   constructor() {
+    this.entryStore = new EntryStore(this);
+    this.menuStore = new MenuStore(this);
+    this.trackStore = new TrackStore(this);
+    this.videoStore = new VideoStore(this);
+
+    this.InitializeClient();
+  }
+
+  @action
+  async InitializeClient() {
+    let client;
     // Initialize ElvClient or FrameClient
     if(window.self === window.top) {
+      client = await ElvClient.FromConfigurationUrl(Configuration);
+
       const privateKey = "0x0000000000000000000000000000000000000000000000000000000000000000";
-      this.client = ElvClient.FromConfiguration({configuration: Configuration});
-      this.client.SetSigner({signer: this.client.GenerateWallet().AddAccount({privateKey})});
+      const wallet = client.GenerateWallet();
+      const signer = wallet.AddAccount({privateKey});
+
+      await client.SetSigner({signer});
     } else {
       // Contained in IFrame
-      this.client = new FrameClient({
+      client = new FrameClient({
         target: window.parent,
         timeout: 30
       });
     }
 
-    this.entryStore = new EntryStore(this);
-    this.menuStore = new MenuStore(this);
-    this.trackStore = new TrackStore(this);
-    this.videoStore = new VideoStore(this);
+    const versionHash = "hq__KhZm1WqJvLNjrKVKSuyZXrpLx5pwtyQ3MocExGoygsrik3Kc8RRVyAd9D9TLsgPRvBP4DVEord";
+    const { objectId } = client.utils.DecodeVersionHash(versionHash);
+
+    runInAction(() => this.client = client);
+
+    await this.videoStore.SelectObject(undefined, objectId, versionHash);
   }
 }
 
 const rootStore = new RootStore();
 
+export const root = rootStore;
 export const entry = rootStore.entryStore;
 export const menu = rootStore.menuStore;
 export const tracks = rootStore.trackStore;

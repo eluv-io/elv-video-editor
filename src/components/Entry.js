@@ -1,15 +1,29 @@
 import React from "react";
-import {inject, observer} from "mobx-react";
+import { inject, observer } from "mobx-react";
+import { Action } from "elv-components-js";
 
 @inject("entry")
 @observer
 class Entry extends React.Component {
-  Entry() {
-    return this.props.entry.hoverEntry || this.props.entry.entry;
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      currentEntry: 0
+    };
   }
 
-  VttEntry() {
-    const entry = this.Entry();
+  Entries() {
+    return this.props.entry.hoverEntries.length > 0 ?
+      this.props.entry.hoverEntries : this.props.entry.entries;
+  }
+
+  EntryTime() {
+    return this.props.entry.hoverEntries.length > 0 ?
+      this.props.entry.hoverTime : this.props.entry.entryTime;
+  }
+
+  VttEntry(entry) {
     const cue = entry.entry;
 
     return (
@@ -60,9 +74,7 @@ class Entry extends React.Component {
     );
   }
 
-  CustomEntry() {
-    const entry = this.Entry();
-
+  CustomEntry(entry) {
     return (
       <div className="entry-container">
         <h4>{entry.label}</h4>
@@ -81,20 +93,88 @@ class Entry extends React.Component {
     );
   }
 
+  EntrySelection() {
+    const previousButton = (
+      <Action
+        className="entry-page-button"
+        disabled={this.state.currentEntry <= 0}
+        onClick={() => this.setState({currentEntry: this.state.currentEntry - 1})}
+      >
+        Previous
+      </Action>
+    );
+
+    const nextButton = (
+      <Action
+        className="entry-page-button"
+        disabled={this.state.currentEntry >= this.Entries().length - 1}
+        onClick={() => this.setState({currentEntry: this.state.currentEntry + 1})}
+      >
+        Next
+      </Action>
+    );
+
+    return (
+      <div className="entry-actions">
+        { previousButton }
+        <div className="entry-page">
+          { `${this.state.currentEntry + 1} of ${this.Entries().length}` }
+        </div>
+        { nextButton }
+      </div>
+    );
+  }
+
+  RenderEntries() {
+    return (
+      <div>
+        { this.EntrySelection() }
+        <div className="entry-time">
+          { this.EntryTime() }
+        </div>
+        {
+          this.Entries().map((entry, i) => (
+            <div
+              key={`entry-info-${i}`}
+              className="entry-info-container"
+              hidden={this.state.currentEntry !== i}
+            >
+              { entry.vttEntry ? this.VttEntry(entry) : this.CustomEntry(entry) }
+            </div>
+          ))
+        }
+      </div>
+    );
+  }
+
   render() {
     // Hide panel if no entry is selected
-    if(!this.props.entry.entry) {
+    if(this.props.entry.entries.length === 0) {
       return null;
     }
 
-    const entry = this.Entry();
-
     return (
       <div className="side-panel">
-        { entry.vttEntry ? this.VttEntry() : this.CustomEntry() }
+        { this.RenderEntries() }
       </div>
     );
   }
 }
 
-export default Entry;
+
+@inject("entry")
+@observer
+class EntryContainer extends React.Component {
+  render() {
+    if (!this.props.entry) {
+      return null;
+    }
+
+    const entries = this.props.entry.entries.map(e => e.entryId).sort().toString();
+
+    return <Entry key={`entry-${entries}`} {...this.props} />;
+  }
+}
+
+
+export default EntryContainer;

@@ -1,28 +1,26 @@
 import {observable, action} from "mobx";
 
 class EntryStore {
-  @observable entry;
-  @observable entryId;
+  @observable entries = [];
+  @observable entryTime;
 
-  @observable hoverEntry;
-  @observable hoverEntryId;
+  @observable hoverEntries = [];
+  @observable hoverTime;
 
   constructor(rootStore) {
     this.rootStore = rootStore;
   }
 
   @action.bound
-  SetEntry(entry) {
-    this.entry = entry;
-
-    this.entryId = entry ? entry.entryId : undefined;
+  SetEntries(entries, time) {
+    this.entries = entries || [];
+    this.entryTime = time;
   }
 
   @action.bound
-  HoverEntry(entry) {
-    this.hoverEntry = entry;
-
-    this.hoverEntryId = entry ? entry.entryId : undefined;
+  SetHoverEntries(entries, time) {
+    this.hoverEntries = entries || [];
+    this.hoverTime = time;
   }
 }
 

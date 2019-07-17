@@ -1,6 +1,6 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
-import Dash from "dashjs";
+import DashPlayer from "dashjs";
 import VideoControls from "./VideoControls";
 
 @inject("tracks")
@@ -10,17 +10,6 @@ class Video extends React.Component {
   constructor(props) {
     super(props);
 
-    /*
-    const url = "http://38.142.50.107/qlibs/ilib25dkW5Gp96LMxBcWnLks77tNtbT9/q/iq__3DW6PNhUTrabuBgZwzS3baDyUgrC/rep/dash/en/dash.mpd";
-    const dashPlayer = Dash.MediaPlayer().create();
-    dashPlayer.initialize(null, url, false);
-    dashPlayer.preload();
-
-    this.state = {
-      dashPlayer
-    };
-    */
-
     this.InitializeVideo = this.InitializeVideo.bind(this);
     this.InitializeTracks = this.InitializeTracks.bind(this);
   }
@@ -28,7 +17,13 @@ class Video extends React.Component {
   InitializeVideo(video) {
     if(!video) { return; }
 
-    //this.state.dashPlayer.attachView(video);
+    const dashPlayer = DashPlayer.MediaPlayer().create();
+
+    dashPlayer.initialize(video, this.props.video.source, false);
+    dashPlayer.preload();
+
+    this.setState({dashPlayer});
+
     this.props.video.Initialize(video);
   }
 
@@ -75,8 +70,8 @@ class Video extends React.Component {
           controls={false}
           preload="auto"
           onWheel={({deltaY}) => this.props.video.ScrollVolume(deltaY)}
+          data-dashjs-player
         >
-          <source src={this.props.video.source} type="video/mp4" />
           { this.Tracks() }
         </video>
         { this.Poster() }

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- Shaka Player compiled library: -->
+  <script src="dist/shaka-player.compiled.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/2.5.3/shaka-player.compiled.js"></script>
+  <!-- Your application source: -->
+  <script>
+    // myapp.js
+
+    var manifestUri =
+      "https://host-66-220-3-82.contentfabric.io/q/hq__33sFgSJafAj6CzLFCcPEWe9mv9rj2QXUx9Bp11UmP3s7bERAr3r7JwMpzdr4krYfft1C1zvXB3/rep/playout/default/dash-clear/dash.mpd?authorization=eyJxc3BhY2VfaWQiOiJpc3BjQXBvV1BRUnJUa1JRVjFLcFlqdnFQeVNBbXhhIiwicWxpYl9pZCI6ImlsaWI0TjF5V0hvMzlVSzZRdUZad3JCaFVkbU5BNWEzIiwiYWRkciI6IjB4ZDlEQzk3QjU4QzVmMjU4NDA2MkNmNjk3NzVkMTYwZWQ5QTNCRmJDNCIsInFpZCI6ImlxX19lcGs1YnVhdmh3S1RnUmF2UzhZUEFaUDJDTjEiLCJncmFudCI6InJlYWQiLCJ0eF9yZXF1aXJlZCI6ZmFsc2UsImlhdCI6MTU2MzM5MDE1NSwiZXhwIjoxNTYzNDc2NTU1LCJhdXRoX3NpZyI6IkVTMjU2S19EdGVaOG51VXdMcEVOelVNc0x6V1RUTUVQQVFQcWRHajN1NkxwSkpSQ0hONktpNkpRbVhNbnVXVWFxU3VBdGFDN0diNXRxU3VnYXo3cXRiSlo4OXlXdFlkdSIsImFmZ2hfcGsiOiIifQ%3D%3D.RVMyNTZLX0RldFExd0JVNkgxbmc5WEx0YmN0TlRLVnBBSFdWVzlxQjlLcTRFV1h6RFoydHhoUmZRajZGazhBU3M5bjlWQXZMcU5ieTlNd1JTY0c3VnJuWkZDWXRRWDVM";
+    function initApp() {
+      // Install built-in polyfills to patch browser incompatibilities.
+      shaka.polyfill.installAll();
+
+      // Check to see if the browser supports the basic APIs Shaka needs.
+      if (shaka.Player.isBrowserSupported()) {
+        // Everything looks good!
+        initPlayer();
+      } else {
+        // This browser does not have the minimum set of APIs we need.
+        console.error('Browser not supported!');
+      }
+    }
+
+    function initPlayer() {
+      // Create a Player instance.
+      var video = document.getElementById('video');
+      var player = new shaka.Player(video);
+
+      // Attach player to the window to make it easy to access in the JS console.
+      window.player = player;
+
+      // Listen for error events.
+      player.addEventListener('error', onErrorEvent);
+
+      // Try to load a manifest.
+      // This is an asynchronous process.
+      player.load(manifestUri).then(function() {
+        // This runs if the asynchronous load is successful.
+        console.log('The video has now been loaded!');
+      }).catch(onError);  // onError is executed if the asynchronous load fails.
+    }
+
+    function onErrorEvent(event) {
+      // Extract the shaka.util.Error object from the event.
+      onError(event.detail);
+    }
+
+    function onError(error) {
+      // Log the error.
+      console.error('Error code', error.code, 'object', error);
+    }
+
+    document.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</head>
+<body>
+<video id="video"
+       width="640"
+       poster="//shaka-player-demo.appspot.com/assets/poster.jpg"
+       controls autoplay></video>
+</body>
+</html>

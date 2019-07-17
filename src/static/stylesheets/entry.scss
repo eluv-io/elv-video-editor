@@ -18,3 +18,35 @@
   grid-row-gap: $elv-spacing-xs;
   grid-template-columns: minmax(100px, 2fr) minmax(100px, 3fr);
 }
+
+.entry-actions {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+
+  .entry-page {
+    color: $elv-color-text-lighter;
+    flex: 1 1 0;
+    min-width: 4em;
+    text-align: center;
+  }
+
+  .entry-page-button {
+    &.entry-page-button {
+      background-color: $elv-color-darkgray;
+      border-color: $elv-color-darkgray;
+      border-radius: 0;
+      flex: 1 1 0;
+      min-width: 90px;
+    }
+
+    &:disabled {
+      visibility: hidden;
+    }
+  }
+}
+
+.entry-time {
+  margin-top: $elv-spacing-s;
+  text-align: center;
+}
