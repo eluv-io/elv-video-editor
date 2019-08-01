@@ -88,5 +88,21 @@
     "webpack-bundle-analyzer": "^3.3.2",
     "webpack-cli": "^3.3.0",
     "webpack-dev-server": "^3.2.1"
+  },
+  "babel": {
+    "comments": true,
+    "presets": [
+      "@babel/preset-env",
+      "@babel/preset-react"
+    ],
+    "plugins": [
+      "syntax-async-functions",
+      "@babel/plugin-syntax-dynamic-import",
+      "@babel/plugin-syntax-jsx",
+      "@babel/plugin-syntax-object-rest-spread",
+      "@babel/plugin-proposal-object-rest-spread",
+      "@babel/plugin-transform-react-jsx",
+      "@babel/plugin-transform-regenerator"
+    ]
   }
 }

@@ -5,8 +5,6 @@ import TrackStore from "./Tracks";
 import VideoStore from "./Video";
 
 import {FrameClient} from "elv-client-js/src/FrameClient";
-import {ElvClient} from "elv-client-js/src/ElvClient";
-import Configuration from "../../configuration";
 
 // Force strict mode so mutations are only allowed within actions.
 configure({
@@ -30,7 +28,13 @@ class RootStore {
     let client;
     // Initialize ElvClient or FrameClient
     if(window.self === window.top) {
-      client = await ElvClient.FromConfigurationUrl(Configuration);
+      const ElvClient = (await import(
+        /* webpackChunkName: "elv-client-js" */
+        /* webpackMode: "lazy" */
+        "elv-client-js"
+      )).ElvClient;
+
+      client = await ElvClient.FromConfigurationUrl({configUrl: EluvioConfiguration["config-url"]});
 
       const privateKey = "0x0000000000000000000000000000000000000000000000000000000000000000";
       const wallet = client.GenerateWallet();
