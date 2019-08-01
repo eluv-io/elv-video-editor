@@ -32,6 +32,8 @@ class Tracks {
       const playlist = yield this.ParseHLSPlaylist(playlistUrl);
       const subtitles = playlist.mediaGroups.SUBTITLES.subs;
 
+      if(!subtitles) { return; }
+
       yield Promise.all(
         Object.keys(subtitles).map(async subtitleName => {
           // Get playlist for subtitles

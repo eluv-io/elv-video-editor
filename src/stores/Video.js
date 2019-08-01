@@ -66,20 +66,19 @@ class VideoStore {
   }
 
   @action.bound
-  SelectObject = flow(function * (libraryId, objectId, versionHash) {
-    const metadata = yield this.rootStore.client.ContentObjectMetadata({libraryId, objectId, versionHash});
-    metadata.name = metadata.name || objectId;
+  SetVideo = flow(function * (videoObject) {
+    this.name = videoObject.name;
 
-    this.name = metadata.name;
-
-    const playoutOptions = yield this.rootStore.client.PlayoutOptions({versionHash, protocols: ["hls"]});
+    const playoutOptions = yield this.rootStore.client.PlayoutOptions({
+      versionHash: videoObject.versionHash, protocols: ["hls"]
+    });
 
     const source = playoutOptions["hls"].playoutUrl;
 
     let poster;
-    if(metadata.image || metadata.public.image) {
+    if(videoObject.metadata.image || videoObject.metadata.public.image) {
       poster = yield this.rootStore.client.Rep({
-        versionHash,
+        versionHash: videoObject.versionHash,
         rep: "player_background",
         channelAuth: true
       });

@@ -4,6 +4,7 @@ import AsyncComponent from "./AsyncComponent";
 import {IconButton, onEnterPressed} from "elv-components-js";
 
 import BackIcon from "../static/icons/DoubleBackward.svg";
+import LoadingElement from "elv-components-js/src/components/LoadingElement";
 
 @inject("menu")
 @inject("video")
@@ -14,7 +15,7 @@ class Menu extends React.Component {
 
     this.state = {
       library: undefined,
-      object: undefined
+      objectId: undefined
     };
 
     this.SelectLibrary = this.SelectLibrary.bind(this);
@@ -26,19 +27,51 @@ class Menu extends React.Component {
   }
 
   async SelectObject(libraryId, objectId, versionHash) {
-    this.props.video.Reset();
-    await this.props.video.SelectObject(libraryId, objectId, versionHash);
-
     this.props.menu.ToggleMenu();
+    this.setState({objectId});
 
-    this.setState({
-      library: undefined,
-      object: undefined
-    });
+    this.props.video.Reset();
+
+    await this.props.menu.SelectVideo({libraryId, objectId, versionHash});
   }
 
-  Objects(libraryId) {
+  SelectedObject() {
+    const object = this.props.menu.selectedObject;
+
     return (
+      <LoadingElement
+        loading={!object}
+        render={() => (
+          <div className="menu-entries">
+            <div className="menu-header">
+              <IconButton icon={BackIcon} onClick={() => this.setState({objectId: undefined})}>
+                Menu
+              </IconButton>
+              <h4>{object.name}</h4>
+            </div>
+
+            <h5>{object.metadata.description}</h5>
+
+            <div className="video-info">
+              <label>Library ID</label>
+              <div>{object.libraryId}</div>
+
+              <label>Object ID</label>
+              <span>{object.objectId}</span>
+
+              <label>Version Hash</label>
+              <span className="wrap">{object.versionHash}</span>
+            </div>
+          </div>
+        )}
+      />
+    );
+  }
+
+  Objects() {
+    const libraryId = this.state.library.libraryId;
+
+    const objects = (
       <AsyncComponent
         key="objects-container"
         Load={async () => await this.props.menu.ListObjects(libraryId)}
@@ -49,7 +82,8 @@ class Menu extends React.Component {
             <ul>
               {
                 (this.props.menu.objects[libraryId] || []).map(object => {
-                  const onClick = () => this.setState({object});
+                  const onClick = () => this.SelectObject(libraryId, object.objectId, object.versionHash);
+
                   return (
                     <li
                       tabIndex={1}
@@ -65,6 +99,19 @@ class Menu extends React.Component {
             </ul>
         }
       </AsyncComponent>
+    );
+
+    return (
+      <div className="menu-entries">
+        <div className="menu-header">
+          <IconButton icon={BackIcon} onClick={() => this.setState({library: undefined})}>
+            Menu
+          </IconButton>
+          <h4>{this.state.library.metadata.name}</h4>
+        </div>
+
+        { objects }
+      </div>
     );
   }
 
@@ -103,21 +150,10 @@ class Menu extends React.Component {
   }
 
   Navigation() {
-    if(this.state.object) {
-      return (
-        <AsyncComponent Load={() => this.SelectObject(this.state.library.libraryId, this.state.object.objectId, this.state.object.versionHash)} />
-      );
+    if(this.state.objectId) {
+      return this.SelectedObject();
     } if(this.state.library) {
-      return (
-        <div className="menu-entries">
-          <div className="menu-header">
-            <IconButton icon={BackIcon} onClick={() => this.setState({library: undefined})}>Menu</IconButton>
-            <h4>{this.state.library.metadata.name}</h4>
-          </div>
-
-          {this.Objects(this.state.library.libraryId)}
-        </div>
-      );
+      return this.Objects();
     } else {
       return this.Libraries();
     }
