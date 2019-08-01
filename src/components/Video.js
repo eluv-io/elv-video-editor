@@ -17,11 +17,15 @@ class Video extends React.Component {
   InitializeVideo(video) {
     if(!video) { return; }
 
-    const player = new HLSPlayer();
-    player.loadSource(this.props.video.source);
-    player.attachMedia(video);
-
-    this.setState({player});
+    if(video.canPlayType("application/vnd.apple.mpegURL")) {
+      // Safari can play HLS natively
+      video.src = this.props.video.source;
+    } else {
+      const player = new HLSPlayer();
+      player.loadSource(this.props.video.source);
+      player.attachMedia(video);
+      this.setState({player});
+    }
 
     this.props.video.Initialize(video);
   }
