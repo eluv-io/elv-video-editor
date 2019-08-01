@@ -57,7 +57,8 @@ class MenuStore {
         };
       })
     ))
-      .filter(object => !!object.metadata.offerings);
+      .filter(object => !!object.metadata.offerings)
+      .sort((a, b) => a.metadata.name.toLowerCase() > b.metadata.name.toLowerCase() ? 1 : -1);
   });
 }
 

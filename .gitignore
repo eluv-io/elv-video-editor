@@ -9,5 +9,7 @@ node_modules/*
 
 configuration.json
 
+deploy.sh
+
 scratch/
 !.keep
