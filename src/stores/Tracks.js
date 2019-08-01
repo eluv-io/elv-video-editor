@@ -2,6 +2,8 @@ import {observable, action, runInAction, flow} from "mobx";
 import {WebVTT} from "vtt.js";
 import Id from "../utils/Id";
 import IntervalTree from "node-interval-tree";
+import {Parser as HLSParser} from "m3u8-parser";
+import UrlJoin from "url-join";
 
 class Tracks {
   @observable tracks = [];
@@ -12,55 +14,52 @@ class Tracks {
     this.rootStore = rootStore;
   }
 
+  async ParseHLSPlaylist(playlistUrl) {
+    const playlist = await (await fetch(playlistUrl)).text();
+    const parser = new HLSParser();
+    parser.push(playlist);
+    parser.end();
+
+    return parser.manifest;
+  }
+
   @action.bound
-  AddTracksFromMetadata = flow(function * (metadata) {
-    let tracks;
-    if(metadata.pkg) {
-      tracks = Object.keys(metadata.pkg).filter(entry => entry.endsWith(".vtt"));
+  AddTracksFromHLSPlaylist = flow(function * (playlistUrl) {
+    let vttFiles = [];
+
+    try {
+      const playoutUrl = (playlistUrl.split("?")[0]).replace("playlist.m3u8", "");
+      const playlist = yield this.ParseHLSPlaylist(playlistUrl);
+      const subtitles = playlist.mediaGroups.SUBTITLES.subs;
+
+      yield Promise.all(
+        Object.keys(subtitles).map(async subtitleName => {
+          // Get playlist for subtitles
+          const subPlaylistPath = subtitles[subtitleName].uri;
+          const subPlaylistUrl = UrlJoin(playoutUrl, subPlaylistPath);
+          const subPlaylist = await this.ParseHLSPlaylist(subPlaylistUrl);
+
+          // Get VTT data
+          const vttPath = subPlaylist.segments[0].uri;
+          const subBaseUrl = (subPlaylistUrl.split("?")[0]).replace("playlist.m3u8", "");
+          const vttUrl = UrlJoin(subBaseUrl, vttPath);
+          const vttData = await (await fetch(vttUrl)).text();
+
+          vttFiles.push({
+            label: subtitleName,
+            kind: "subtitles",
+            vttData
+          });
+        })
+      );
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error("Error parsing subtitle tracks from playlist:");
+      // eslint-disable-next-line no-console
+      console.error(error);
     }
 
-    if(!tracks) { return; }
-
-    let subtitles = [];
-
-    // Download subtitle data from parts
-    yield Promise.all(
-      tracks.map(async label => {
-        const partHash = metadata.pkg[label];
-        const contentObject = this.rootStore.videoStore.contentObject;
-
-        /*
-        const vttData = await this.rootStore.client.DownloadPart({
-          versionHash: contentObject.versionHash,
-          partHash,
-          format: "text"
-        });
-        */
-
-        const vttData = await (await fetch("https://host-66-220-3-82.contentfabric.io/q/hq__KhZm1WqJvLNjrKVKSuyZXrpLx5pwtyQ3MocExGoygsrik3Kc8RRVyAd9D9TLsgPRvBP4DVEord/rep/playout/default/dash-clear/captions_eng/vtt/captions.vtt?authorization=eyJxc3BhY2VfaWQiOiJpc3BjQXBvV1BRUnJUa1JRVjFLcFlqdnFQeVNBbXhhIiwicWxpYl9pZCI6ImlsaWI0TjF5V0hvMzlVSzZRdUZad3JCaFVkbU5BNWEzIiwiYWRkciI6IjB4ZDlEQzk3QjU4QzVmMjU4NDA2MkNmNjk3NzVkMTYwZWQ5QTNCRmJDNCIsInFpZCI6ImlxX18yUXRpaUV0c3M5YzhSNnVQdXpmQ002NWFqVUdtIiwiZ3JhbnQiOiJyZWFkIiwidHhfcmVxdWlyZWQiOmZhbHNlLCJpYXQiOjE1NjMzOTQyNzYsImV4cCI6MTU2MzQ4MDY3NiwiYXV0aF9zaWciOiJFUzI1NktfS1FFNjVwaUg4MnVOampjMmp4aEtwVXQ5elY4azZUemNaemM5ZDZ6TEtYQzFRZ0FHVzhRRzZlZ3JKYmd3WTROdDlkck5ia043S2JwZ2l0UHZhV1ZySzZHTlQiLCJhZmdoX3BrIjoiIn0%3D.RVMyNTZLXzNpRzlReGFhMW1TMVM1Y0J4emJnWWV5RDZSak42U3UydjdNamo4S2tNeHZuTWJrR1ZjQ2lTTGR0SDZaODdKRTZjMWZZeEhNemVGVGRhTEt0VG9LenhoZjVE")).text();
-
-
-        subtitles.push({
-          label,
-          kind: "subtitles",
-          vttData,
-          source: await this.rootStore.client.FabricUrl({
-            versionHash: contentObject.hash,
-            partHash
-          })
-        });
-      })
-    );
-
-    this.subtitleTracks = subtitles;
-
-    if(metadata.tracks) {
-      this.metadataTracks = Object.keys(metadata.tracks).map(label => ({
-        label,
-        kind: "custom",
-        rawData: metadata.tracks[label]
-      }));
-    }
+    this.subtitleTracks = vttFiles;
   });
 
   Cue({label, vttEntry=false, startTime, endTime, text, entry}) {

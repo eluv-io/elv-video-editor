@@ -45,12 +45,7 @@ class RootStore {
       });
     }
 
-    const versionHash = "hq__KhZm1WqJvLNjrKVKSuyZXrpLx5pwtyQ3MocExGoygsrik3Kc8RRVyAd9D9TLsgPRvBP4DVEord";
-    const { objectId } = client.utils.DecodeVersionHash(versionHash);
-
     runInAction(() => this.client = client);
-
-    await this.videoStore.SelectObject(undefined, objectId, versionHash);
   }
 }
 

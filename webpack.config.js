@@ -68,7 +68,7 @@ module.exports = {
         exclude: /node_modules\/(?!elv-components-js)/,
         loader: "babel-loader",
         options: {
-          presets: ['@babel/preset-env', "@babel/preset-react", "babel-preset-mobx"],
+          presets: ["@babel/preset-env", "@babel/preset-react", "babel-preset-mobx"],
           plugins: [
             require("@babel/plugin-proposal-object-rest-spread"),
             require("@babel/plugin-transform-regenerator"),
@@ -78,20 +78,20 @@ module.exports = {
       },
       {
         test: /\.svg$/,
-        loader: 'svg-inline-loader'
+        loader: "svg-inline-loader"
       },
       {
         test: /\.(gif|png|jpe?g)$/i,
         use: [
-          'file-loader',
+          "file-loader",
           {
-            loader: 'image-webpack-loader'
+            loader: "image-webpack-loader"
           },
         ],
       },
       {
         test: /\.(txt|bin|abi)$/i,
-        loader: 'raw-loader'
+        loader: "raw-loader"
       }
     ]
   }

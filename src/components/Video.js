@@ -1,6 +1,6 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
-import DashPlayer from "dashjs";
+import HLSPlayer from "hls.js";
 import VideoControls from "./VideoControls";
 
 @inject("tracks")
@@ -17,12 +17,11 @@ class Video extends React.Component {
   InitializeVideo(video) {
     if(!video) { return; }
 
-    const dashPlayer = DashPlayer.MediaPlayer().create();
+    const player = new HLSPlayer();
+    player.loadSource(this.props.video.source);
+    player.attachMedia(video);
 
-    dashPlayer.initialize(video, this.props.video.source, false);
-    dashPlayer.preload();
-
-    this.setState({dashPlayer});
+    this.setState({player});
 
     this.props.video.Initialize(video);
   }
@@ -36,23 +35,6 @@ class Video extends React.Component {
 
     return (
       <img onClick={this.props.video.PlayPause} src={this.props.video.poster} className="video-poster" />
-    );
-  }
-
-  Tracks() {
-    if(!this.props.video.initialized) { return null; }
-
-    return (
-      this.props.tracks.subtitleTracks.map(track =>
-        <track
-          key={`track-${track.label}`}
-          default={track.default}
-          kind={track.kind}
-          label={track.label}
-          src={track.source}
-          srcLang={track.label}
-        />
-      )
     );
   }
 
@@ -71,9 +53,7 @@ class Video extends React.Component {
           preload="auto"
           onWheel={({deltaY}) => this.props.video.ScrollVolume(deltaY)}
           data-dashjs-player
-        >
-          { this.Tracks() }
-        </video>
+        />
         { this.Poster() }
       </div>
     );

@@ -15,51 +15,49 @@ class MenuStore {
     this.showMenu = !this.showMenu;
   }
 
-  async GetLibrary(libraryId) {
-    let metadata = await this.rootStore.client.PublicLibraryMetadata({libraryId});
-    metadata.name = metadata.name || libraryId;
-
-    return {
-      libraryId,
-      ...(await this.rootStore.client.ContentLibrary({libraryId})),
-      meta: metadata
-    };
-  }
-
   @action.bound
   ListLibraries = flow(function * () {
     const libraryIds = yield this.rootStore.client.ContentLibraries();
 
     this.libraries = (yield Promise.all(
-      libraryIds.map(libraryId => this.GetLibrary(libraryId))
-    ))
-      .filter(library =>
-        library.meta.class !== "elv-user-library" &&
-        library.meta.class !== "elv-media-platform" &&
-        !this.rootStore.client.utils.EqualHash(library.libraryId, this.rootStore.client.contentSpaceId)
-      )
-      .sort((a, b) => a.meta.name.toLowerCase() > b.meta.name.toLowerCase() ? 1 : -1);
-  });
+      libraryIds.map(async libraryId => {
+        try {
+          const metadata = await this.rootStore.client.ContentObjectMetadata({
+            libraryId,
+            objectId: libraryId.replace("ilib", "iq__")
+          });
 
-  IsVideo(object) {
-    return !!object.meta.video;
-  }
+          metadata.name = metadata.name || libraryId;
+
+          return {
+            libraryId,
+            metadata,
+          };
+        } catch(error) {
+          return undefined;
+        }
+      })
+    ))
+      .filter(library => library)
+      .sort((a, b) => a.metadata.name.toLowerCase() > b.metadata.name.toLowerCase() ? 1 : -1);
+  });
 
   @action.bound
   ListObjects = flow(function * (libraryId) {
-    this.objects[libraryId] = (yield this.rootStore.client.ContentObjects({libraryId}))
-      // Remove library objects
-      .filter(object => !this.rootStore.client.utils.EqualHash(object.id, libraryId))
-      // Pull out latest version info
-      .map(object => {
-        object = object.versions[0];
-        object.objectId = object.id;
-        object.meta.name = object.meta.name || object.id;
-        return object;
+    const { contents } = yield this.rootStore.client.ContentObjects({libraryId});
+
+    this.objects[libraryId] = (yield Promise.all(
+      contents.map(async object => {
+        const latestVersion = object.versions[0];
+
+        return {
+          objectId: latestVersion.id,
+          versionHash: latestVersion.hash,
+          metadata: latestVersion.meta
+        };
       })
-      // Only show video types
-      .filter(object => this.IsVideo(object))
-      .sort((a, b) => a.meta.name.toLowerCase() > b.meta.name.toLowerCase() ? 1 : -1);
+    ))
+      .filter(object => !!object.metadata.offerings);
   });
 }
 

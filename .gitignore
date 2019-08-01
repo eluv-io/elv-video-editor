@@ -9,6 +9,5 @@ node_modules/*
 
 configuration.json
 
-dist/*
 scratch/
 !.keep

@@ -162,6 +162,7 @@ class Entry extends React.Component {
 }
 
 
+// Container for Entry component to recreate component to reset page when entry changes
 @inject("entry")
 @observer
 class EntryContainer extends React.Component {
@@ -171,8 +172,9 @@ class EntryContainer extends React.Component {
     }
 
     const entries = this.props.entry.entries.map(e => e.entryId).sort().toString();
+    const hoverEntries = this.props.entry.hoverEntries.map(e => e.entryId).sort().toString();
 
-    return <Entry key={`entry-${entries}`} {...this.props} />;
+    return <Entry key={`entry-${entries}-${hoverEntries}`} {...this.props} />;
   }
 }
 

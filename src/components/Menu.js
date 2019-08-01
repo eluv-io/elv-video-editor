@@ -21,23 +21,36 @@ class Menu extends React.Component {
     this.SelectObject = this.SelectObject.bind(this);
   }
 
+  componentDidMount() {
+    const libraryId = "ilib2VQRkCr86WBheJfcmCMEBL52CiwL";
+    const objectId = "iq__2CT2niE3axTuwhURqU73UU5fzswM";
+    const versionHash = "hq__J6wUk78Um22PnKGSYBHAWFw7DBywXobUcoevEuxHoR4PwLwn4sLA4orju1hTDzQfU7wSa1rWST";
+
+    this.SelectObject(libraryId, objectId, versionHash);
+  }
+
   async SelectLibrary(library) {
     this.setState({library});
   }
 
-  async SelectObject(libraryId, objectId) {
+  async SelectObject(libraryId, objectId, versionHash) {
     this.props.video.Reset();
-    await this.props.video.SelectObject(libraryId, objectId);
+    await this.props.video.SelectObject(libraryId, objectId, versionHash);
+
+    this.props.menu.ToggleMenu();
 
     this.setState({
       library: undefined,
       object: undefined
-    }, () => this.props.menu.ToggleMenu());
+    });
   }
 
   Objects(libraryId) {
     return (
-      <AsyncComponent key="objects-container" Load={async () => await this.props.menu.ListObjects(libraryId)}>
+      <AsyncComponent
+        key="objects-container"
+        Load={async () => await this.props.menu.ListObjects(libraryId)}
+      >
         {
           (this.props.menu.objects[libraryId] || []).length === 0 ?
             <div className="menu-empty">No Content Available</div> :
@@ -52,7 +65,7 @@ class Menu extends React.Component {
                       onKeyPress={onEnterPressed(onClick)}
                       key={`content-object-${object.objectId}`}
                     >
-                      {object.meta.name}
+                      {object.metadata.name}
                     </li>
                   );
                 })
@@ -65,28 +78,33 @@ class Menu extends React.Component {
 
   Libraries() {
     return (
-      <AsyncComponent key="libraries-container" Load={this.props.menu.ListLibraries}>
+      <AsyncComponent
+        key="libraries-container"
+        Load={this.props.menu.ListLibraries}
+      >
         {
           Object.keys(this.props.menu.libraries).length === 0 ?
             <div className="menu-empty">No Libraries Available</div> :
-            <ul>
-              {
-                this.props.menu.libraries.map(library => {
-                  const onClick = () => this.SelectLibrary(library);
+            <div className="menu-entries">
+              <ul>
+                {
+                  this.props.menu.libraries.map(library => {
+                    const onClick = () => this.SelectLibrary(library);
 
-                  return (
-                    <li
-                      tabIndex={1}
-                      onKeyPress={onEnterPressed(onClick)}
-                      onClick={onClick}
-                      key={`library-${library.libraryId}`}
-                    >
-                      {library.meta.name}
-                    </li>
-                  );
-                })
-              }
-            </ul>
+                    return (
+                      <li
+                        tabIndex={1}
+                        onKeyPress={onEnterPressed(onClick)}
+                        onClick={onClick}
+                        key={`library-${library.libraryId}`}
+                      >
+                        {library.metadata.name}
+                      </li>
+                    );
+                  })
+                }
+              </ul>
+            </div>
         }
       </AsyncComponent>
     );
@@ -95,14 +113,14 @@ class Menu extends React.Component {
   Navigation() {
     if(this.state.object) {
       return (
-        <AsyncComponent Load={() => this.SelectObject(this.state.library.libraryId, this.state.object.objectId)} />
+        <AsyncComponent Load={() => this.SelectObject(this.state.library.libraryId, this.state.object.objectId, this.state.object.versionHash)} />
       );
     } if(this.state.library) {
       return (
-        <div>
+        <div className="menu-entries">
           <div className="menu-header">
             <IconButton icon={BackIcon} onClick={() => this.setState({library: undefined})}>Menu</IconButton>
-            <h4>{this.state.library.meta.name}</h4>
+            <h4>{this.state.library.metadata.name}</h4>
           </div>
 
           {this.Objects(this.state.library.libraryId)}
@@ -114,7 +132,6 @@ class Menu extends React.Component {
   }
 
   render() {
-    return null;
     if(!this.props.menu.showMenu) { return null; }
 
     return (

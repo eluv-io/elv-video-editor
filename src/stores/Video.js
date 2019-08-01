@@ -72,37 +72,23 @@ class VideoStore {
 
     this.name = metadata.name;
 
-    this.contentObject = {
-      libraryId,
-      objectId,
-      versionHash,
-      ...(yield this.rootStore.client.ContentObject({libraryId, objectId, versionHash})),
-      meta: metadata
-    };
+    const playoutOptions = yield this.rootStore.client.PlayoutOptions({versionHash, protocols: ["hls"]});
 
-    const playoutOptions = yield this.rootStore.client.PlayoutOptions({versionHash});
+    const source = playoutOptions["hls"].playoutUrl;
 
-    let videoSourceUrl;
-    if(playoutOptions["dash"]) {
-      videoSourceUrl = playoutOptions["dash"].playoutUrl;
-    } else {
-      videoSourceUrl = playoutOptions["hls"].playoutUrl;
-    }
-
-    let videoPosterUrl;
-    if(metadata.image) {
-      videoPosterUrl = yield this.rootStore.client.Rep({
-        libraryId,
-        objectId,
+    let poster;
+    if(metadata.image || metadata.public.image) {
+      poster = yield this.rootStore.client.Rep({
         versionHash,
-        rep: "image"
+        rep: "player_background",
+        channelAuth: true
       });
     }
 
-    yield this.rootStore.trackStore.AddTracksFromMetadata(metadata);
+    yield this.rootStore.trackStore.AddTracksFromHLSPlaylist(source);
 
-    this.source = videoSourceUrl;
-    this.poster = videoPosterUrl;
+    this.source = source;
+    this.poster = poster;
   });
 
   @action.bound
