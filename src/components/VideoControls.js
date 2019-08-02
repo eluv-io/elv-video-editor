@@ -55,6 +55,8 @@ class VideoControls extends React.Component {
   }
 
   render() {
+    if(!this.props.video.initialized) { return null; }
+
     return [
       <div key="video-time" className="mono video-time">{Math.floor(this.props.video.frame) + " :: " + this.props.video.smpte}</div>,
       this.Controls(),

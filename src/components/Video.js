@@ -2,6 +2,7 @@ import React from "react";
 import {inject, observer} from "mobx-react";
 import HLSPlayer from "hls.js";
 import VideoControls from "./VideoControls";
+import LoadingElement from "elv-components-js/src/components/LoadingElement";
 
 @inject("tracks")
 @inject("video")
@@ -64,12 +65,17 @@ class Video extends React.Component {
   }
 
   render() {
-    const controls = this.props.video.initialized ? <VideoControls /> : null;
+    const videoLoading = this.props.video.loading;
+    const controlsLoading = this.props.video.source && !this.props.video.initialized;
 
     return (
       <div className="video">
-        { this.Video() }
-        { controls }
+        <LoadingElement loading={videoLoading}>
+          { this.Video() }
+        </LoadingElement>
+        <LoadingElement loading={controlsLoading} loadingClassname="video-controls-loading">
+          <VideoControls />
+        </LoadingElement>
       </div>
     );
   }

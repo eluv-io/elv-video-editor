@@ -6,6 +6,7 @@ class VideoStore {
   @observable name;
 
   @observable initialized = false;
+  @observable loading = false;
 
   @observable source;
   @observable poster;
@@ -68,6 +69,11 @@ class VideoStore {
   }
 
   @action.bound
+  IndicateLoading() {
+    this.loading = true;
+  }
+
+  @action.bound
   SetVideo = flow(function * (videoObject) {
     this.name = videoObject.name;
 
@@ -91,6 +97,7 @@ class VideoStore {
 
     this.source = source;
     this.poster = poster;
+    this.loading = false;
   });
 
   @action.bound
