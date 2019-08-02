@@ -1,3 +1,5 @@
+// A collection of reusable control elements tied to state store
+
 import React from "react";
 import {inject, observer} from "mobx-react";
 import {IconButton, Range, Slider, ToolTip} from "elv-components-js";
@@ -10,31 +12,19 @@ import MaximizeIcon from "../../static/icons/Maximize.svg";
 import VolumeOff from "../../static/icons/VolumeOff.svg";
 import VolumeLow from "../../static/icons/VolumeLow.svg";
 import VolumeHigh from "../../static/icons/VolumeHigh.svg";
-import FrameForward from "../../static/icons/Forward.svg";
-import SecondForward from "../../static/icons/DoubleForward.svg";
-import FrameBackward from "../../static/icons/Backward.svg";
-import SecondBackward from "../../static/icons/DoubleBackward.svg";
 
 let PlaybackRate = (props) => {
   // TODO: Negative rates
-  const rates = [
-    0.1,
-    0.25,
-    0.5,
-    0.75,
-    1,
-    1.25,
-    1.5,
-    2,
-    4
-  ];
+
+  // 0.1 intervals from 0.1x to 4x
+  const rates = [...Array(40)].map((_, i) => Fraction(i + 1).div(10));
 
   return (
     <ToolTip content={<span>Playback Rate</span>}>
       <select
         aria-label="Playback Rate"
         className="video-playback-rate"
-        value={props.video.playbackRate}
+        value={Fraction(props.video.playbackRate)}
         onChange={event => props.video.SetPlaybackRate(event.target.value)}
       >
         {rates.map(rate =>
@@ -93,7 +83,7 @@ let PlayPause = (props) => {
   );
 };
 
-let Maximize = (props) => {
+let FullscreenToggle = (props) => {
   return (
     <ToolTip content={<span>Full Screen</span>}>
       <IconButton
@@ -133,42 +123,14 @@ let Volume = (props) => {
   );
 };
 
-let FrameControl = ({video, forward=true, frame=true}) => {
-  let icon, label;
-  if(forward) {
-    if(frame) {
-      icon = FrameForward;
-      label = "Forward 1 Frame";
-    } else {
-      icon = SecondForward;
-      label = "Forward 1 Second";
-    }
-  } else {
-    if(frame) {
-      icon = FrameBackward;
-      label = "Backward 1 Frame";
-    } else {
-      icon = SecondBackward;
-      label = "Backward 1 Second";
-    }
-  }
-
+let FrameControl = ({video, frames=0, seconds=0, label, icon}) => {
   return (
     <ToolTip content={<span>{label}</span>}>
       <IconButton
         label={label}
         icon={icon}
         onClick={() => {
-          let frames = 1;
-          if(!frame) {
-            frames = video.frameRate.ceil();
-          }
-
-          if(forward) {
-            video.SeekForward(frames);
-          } else {
-            video.SeekBackward(frames);
-          }
+          video.SeekFrames({frames, seconds});
         }}
       />
     </ToolTip>
@@ -220,7 +182,7 @@ let Scale = (props) => {
 DropFrame = inject("video")(observer(DropFrame));
 FrameControl = inject("video")(observer(FrameControl));
 FrameRate = inject("video")(observer(FrameRate));
-Maximize = inject("video")(observer(Maximize));
+FullscreenToggle = inject("video")(observer(FullscreenToggle));
 PlaybackRate = inject("video")(observer(PlaybackRate));
 PlayPause = inject("video")(observer(PlayPause));
 Scale = inject("video")(observer(Scale));
@@ -231,7 +193,7 @@ export {
   DropFrame,
   FrameControl,
   FrameRate,
-  Maximize,
+  FullscreenToggle,
   PlaybackRate,
   PlayPause,
   Scale,

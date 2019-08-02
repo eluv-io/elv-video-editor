@@ -29,7 +29,7 @@
     "dash-js": "^1.3.5",
     "dashjs": "^2.9.3",
     "elv-client-js": "git+https://github.com/eluv-io/elv-client-js.git#develop",
-    "elv-components-js": "git+https://github.com/eluv-io/elv-components-js.git#0526c2631ed646b5a48178fbf94cb304801feede",
+    "elv-components-js": "git+https://github.com/eluv-io/elv-components-js.git#develop",
     "fraction.js": "^4.0.12",
     "hls.js": "^0.12.4",
     "m3u8-parser": "^4.4.0",

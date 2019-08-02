@@ -1,0 +1,35 @@
+.keyboard-control-info {
+  min-width: 500px;
+  width: 500px;
+
+  h3 {
+    padding: $elv-spacing-m 0 $elv-spacing-s;
+  }
+
+  .control-group {
+    align-items: center;
+    display: flex;
+    padding: $elv-spacing-xs 0;
+
+    &:not(:last-child) {
+      border-bottom: 1px solid $elv-color-darkergray;
+    }
+
+    .control-labels {
+      display: flex;
+      flex-direction: column;
+      width: 150px;
+    }
+
+    label {
+      color: $elv-color-text-lightest;
+    }
+  }
+}
+
+.keyboard-controls-tooltip {
+  &.keyboard-controls-tooltip {
+    min-width: 500px;
+    padding-bottom: $elv-spacing-s;
+  }
+}

@@ -86,7 +86,7 @@ class Menu extends React.Component {
 
                   return (
                     <li
-                      tabIndex={1}
+                      tabIndex={0}
                       onClick={onClick}
                       onKeyPress={onEnterPressed(onClick)}
                       key={`content-object-${object.objectId}`}
@@ -132,7 +132,7 @@ class Menu extends React.Component {
 
                     return (
                       <li
-                        tabIndex={1}
+                        tabIndex={0}
                         onKeyPress={onEnterPressed(onClick)}
                         onClick={onClick}
                         key={`library-${library.libraryId}`}

@@ -2,6 +2,15 @@ header {
   align-items: center;
   border-bottom: 1px solid $color-border;
   display: flex;
+  justify-content: space-between;
+
+  .header-left,
+  .header-right {
+    align-items: center;
+    display: flex;
+    height: 100%;
+    width: auto;
+  }
 
   .menu-button {
     height: 100%;
@@ -24,5 +33,10 @@ header {
   h1 {
     font-size: 20px;
     font-weight: 500;
+  }
+
+  .keyboard-controls-icon {
+    cursor: pointer;
+    margin-right: $elv-spacing-s;
   }
 }

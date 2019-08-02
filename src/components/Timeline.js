@@ -1,7 +1,7 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
 import Track from "./tracks/Track";
-import {ToolTip} from "elv-components-js";
+import {onEnterPressed, ToolTip} from "elv-components-js";
 import ResizeObserver from "resize-observer-polyfill";
 import {Seek, Scale} from "./controls/Controls";
 
@@ -50,6 +50,8 @@ class Timeline extends React.Component {
         <ToolTip content={labelToolTip}>
           <div
             onClick={onLabelClick}
+            onKeyPress={onEnterPressed(onLabelClick)}
+            tabIndex={onLabelClick ? 0 : undefined}
             className={`
               track-label
               ${active ? "track-label-active" : ""}

@@ -63,6 +63,8 @@ class VideoStore {
     this.scale = 10000;
     this.scaleMin = 0;
     this.scaleMax = this.scale;
+
+    this.rootStore.keyboardControlStore.UnregisterControlListener();
   }
 
   @action.bound
@@ -70,7 +72,8 @@ class VideoStore {
     this.name = videoObject.name;
 
     const playoutOptions = yield this.rootStore.client.PlayoutOptions({
-      versionHash: videoObject.versionHash, protocols: ["hls"]
+      versionHash: videoObject.versionHash,
+      protocols: ["hls"]
     });
 
     const source = playoutOptions["hls"].playoutUrl;
@@ -143,6 +146,8 @@ class VideoStore {
       videoHandler.Update();
       this.initialized = true;
     }));
+
+    this.rootStore.keyboardControlStore.RegisterControlListener();
   });
 
   ToggleTrack(label) {
@@ -204,6 +209,11 @@ class VideoStore {
   @action.bound
   SetPlaybackRate(rate) {
     this.video.playbackRate = rate;
+  }
+
+  @action.bound
+  ChangePlaybackRate(delta) {
+    this.video.playbackRate = Math.min(4, Math.max(0.1, this.video.playbackRate + delta));
   }
 
   @action.bound
@@ -290,13 +300,12 @@ class VideoStore {
   }
 
   @action.bound
-  SeekForward(frames) {
-    this.videoHandler.SeekForward(frames);
-  }
+  SeekFrames({frames=0, seconds=0}) {
+    if(seconds) {
+      frames += this.frameRate.ceil().mul(seconds);
+    }
 
-  @action.bound
-  SeekBackward(frames) {
-    this.videoHandler.SeekBackward(frames);
+    this.videoHandler.Seek(this.frame + frames);
   }
 
   @action.bound
@@ -320,8 +329,28 @@ class VideoStore {
   }
 
   @action.bound
+  ChangeVolume(delta) {
+    this.video.volume = Math.max(0, Math.min(1, this.video.volume + (delta / this.scale)));
+
+    if(this.video.volume === 0) {
+      this.video.muted = true;
+    } else if(this.video.muted && this.video.volume !== 0) {
+      this.video.muted = false;
+    }
+  }
+
+  @action.bound
   SetMuted(muted) {
     this.video.muted = muted;
+
+    if(this.video.volume === 0) {
+      this.video.volume = 0.5;
+    }
+  }
+
+  @action.bound
+  ToggleMuted() {
+    this.video.muted = !this.video.muted;
 
     if(this.video.volume === 0) {
       this.video.volume = 0.5;

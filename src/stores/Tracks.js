@@ -199,6 +199,16 @@ class Tracks {
     // Toggle track on video, using video's status as source of truth
     trackInfo.active = this.rootStore.videoStore.ToggleTrack(label);
   }
+
+  @action.bound
+  ToggleTrackByIndex(index) {
+    const trackInfo = this.tracks[index];
+
+    if(!trackInfo) { return; }
+
+    // Toggle track on video, using video's status as source of truth
+    trackInfo.active = this.rootStore.videoStore.ToggleTrack(trackInfo.label);
+  }
 }
 
 export default Tracks;

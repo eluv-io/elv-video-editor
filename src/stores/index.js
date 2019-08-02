@@ -1,4 +1,5 @@
 import {configure, observable, action, runInAction} from "mobx";
+import KeyboardControlStore from "./KeyboardControls";
 import EntryStore from "./Entry";
 import MenuStore from "./Menu";
 import TrackStore from "./Tracks";
@@ -15,6 +16,7 @@ class RootStore {
   @observable client;
 
   constructor() {
+    this.keyboardControlStore = new KeyboardControlStore(this);
     this.entryStore = new EntryStore(this);
     this.menuStore = new MenuStore(this);
     this.trackStore = new TrackStore(this);
@@ -57,6 +59,7 @@ const rootStore = new RootStore();
 
 export const root = rootStore;
 export const entry = rootStore.entryStore;
+export const keyboardControls = rootStore.keyboardControlStore;
 export const menu = rootStore.menuStore;
 export const tracks = rootStore.trackStore;
 export const video = rootStore.videoStore;

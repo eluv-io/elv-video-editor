@@ -4,13 +4,17 @@ import {
   DropFrame,
   FrameControl,
   FrameRate,
-  Maximize,
+  FullscreenToggle,
   PlaybackRate,
   PlayPause,
   Scale,
   Seek,
   Volume
 } from "./controls/Controls";
+import FrameForward from "../static/icons/Forward.svg";
+import SecondForward from "../static/icons/DoubleForward.svg";
+import FrameBackward from "../static/icons/Backward.svg";
+import SecondBackward from "../static/icons/DoubleBackward.svg";
 
 @inject("video")
 @observer
@@ -36,15 +40,15 @@ class VideoControls extends React.Component {
           <DropFrame />
         </div>
         <div className="controls center-controls">
-          <FrameControl forward={false} frame={false} />
-          <FrameControl forward={false} frame={true} />
+          <FrameControl label="Backward 1 Second" seconds={-1} icon={SecondBackward} />
+          <FrameControl label="Backward 1 Frame" frames={-1} icon={FrameBackward} />
           <PlayPause />
-          <FrameControl forward={true} frame={true} />
-          <FrameControl forward={true} frame={false} />
+          <FrameControl label="Forward 1 Frame" frames={1} icon={FrameForward} />
+          <FrameControl label="Forward 1 Second" seconds={1} icon={SecondForward} />
         </div>
         <div className="controls right-controls">
           <Volume />
-          <Maximize />
+          <FullscreenToggle />
         </div>
       </div>
     );
