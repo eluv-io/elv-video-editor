@@ -97,6 +97,7 @@ class VideoStore {
     }
 
     yield this.rootStore.trackStore.AddTracksFromHLSPlaylist(source);
+    yield this.rootStore.trackStore.AddTracksFromTags();
 
     this.source = source;
     this.poster = poster;

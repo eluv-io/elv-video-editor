@@ -64,6 +64,15 @@ class Tracks {
     this.subtitleTracks = vttFiles;
   });
 
+  @action.bound
+  AddTracksFromTags = flow(function * () {
+    const tagsUrl = "src/static/tags-segment.json";
+
+    const tags = (yield (yield fetch(tagsUrl)).json())["AustinCityLimits-HE2R7raDpDw"];
+
+    this.metadataTracks = [tags];
+  });
+
   Cue({label, vttEntry=false, startTime, endTime, text, entry}) {
     const isSMPTE = typeof startTime === "string" && startTime.split(":").length > 1;
 
@@ -126,7 +135,7 @@ class Tracks {
     });
   }
 
-  async ParseVTTTrack(track) {
+  ParseVTTTrack(track) {
     const vttParser = new WebVTT.Parser(window, WebVTT.StringDecoder());
 
     let cues = [];
@@ -145,23 +154,21 @@ class Tracks {
     return cues;
   }
 
-  ParseSimpleTrack(track) {
-    const entries = track.rawData
-      .map(entry =>
-        this.Cue({
-          label: track.label,
-          startTime: entry.startTime,
-          endTime: entry.endTime,
-          text: entry.text,
-          entry
-        })
-      )
-      .sort((a, b) => a.startTime > b.startTime ? 1 : -1);
+  ParseSegmentTags(tags) {
+    return Object.keys(tags).map(tag => {
+      const entries = tags[tag];
 
-    return {
-      ...track,
-      entries
-    };
+      return entries.map(({start, end}) =>
+        this.Cue({
+          label: tag,
+          startTime: start,
+          endTime: end,
+          text: tag
+        })
+      );
+    })
+      .flat()
+      .sort((a, b) => a.startTime > b.startTime ? 1 : -1);
   }
 
   @action.bound
@@ -169,23 +176,32 @@ class Tracks {
     let tracks = [];
 
     // Initialize video WebVTT tracks by fetching and parsing the VTT file
-    await Promise.all(
-      this.subtitleTracks.map(async track => {
-        const entries = await this.ParseVTTTrack(track);
-        const intervalTree = new IntervalTree();
-        entries.forEach(entry => intervalTree.insert(entry.startTime, entry.endTime, entry));
 
-        tracks.push({
-          ...track,
-          vttTrack: true,
-          entries,
-          intervalTree
-        });
-      })
-    );
+    this.subtitleTracks.map(track => {
+      const entries = this.ParseVTTTrack(track);
+      const intervalTree = new IntervalTree();
+      entries.forEach(entry => intervalTree.insert(entry.startTime, entry.endTime, entry));
 
-    const customTracks = this.metadataTracks.map(track => this.ParseSimpleTrack(track));
-    tracks = tracks.concat(customTracks);
+      tracks.push({
+        ...track,
+        vttTrack: true,
+        entries,
+        intervalTree
+      });
+    });
+
+    this.metadataTracks.map(track => {
+      const parsedTags = this.ParseSegmentTags(track);
+      const intervalTree = new IntervalTree();
+      parsedTags.forEach(entry => intervalTree.insert(entry.startTime, entry.endTime, entry));
+
+      tracks.push({
+        label: "Tags",
+        vttTrack: false,
+        entries: parsedTags,
+        intervalTree
+      });
+    });
 
     runInAction(() => this.tracks = tracks);
   }
