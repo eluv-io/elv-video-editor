@@ -66,11 +66,13 @@ class VideoStore {
     this.scaleMax = this.scale;
 
     this.rootStore.keyboardControlStore.UnregisterControlListener();
+    this.rootStore.entryStore.ClearEntries();
   }
 
   @action.bound
   IndicateLoading() {
     this.loading = true;
+    this.Reset();
   }
 
   @action.bound
@@ -79,7 +81,8 @@ class VideoStore {
 
     const playoutOptions = yield this.rootStore.client.PlayoutOptions({
       versionHash: videoObject.versionHash,
-      protocols: ["hls"]
+      protocols: ["hls"],
+      drms: ["aes-128"]
     });
 
     const source = playoutOptions["hls"].playoutUrl;

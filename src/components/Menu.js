@@ -7,7 +7,6 @@ import BackIcon from "../static/icons/DoubleBackward.svg";
 import LoadingElement from "elv-components-js/src/components/LoadingElement";
 
 @inject("menu")
-@inject("video")
 @observer
 class Menu extends React.Component {
   constructor(props) {
@@ -29,8 +28,6 @@ class Menu extends React.Component {
   async SelectObject(libraryId, objectId, versionHash) {
     this.props.menu.ToggleMenu();
     this.setState({objectId});
-
-    this.props.video.Reset();
 
     await this.props.menu.SelectVideo({libraryId, objectId, versionHash});
   }

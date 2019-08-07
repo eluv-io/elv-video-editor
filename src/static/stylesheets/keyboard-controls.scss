@@ -1,9 +1,11 @@
 .keyboard-control-info {
+  font-size: 12px;
   min-width: 500px;
   width: 500px;
 
   h3 {
-    padding: $elv-spacing-m 0 $elv-spacing-s;
+    font-size: 14px;
+    padding: $elv-spacing-s 0 $elv-spacing-xs;
   }
 
   .control-group {

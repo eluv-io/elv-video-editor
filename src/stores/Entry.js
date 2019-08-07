@@ -22,6 +22,12 @@ class EntryStore {
     this.hoverEntries = entries || [];
     this.hoverTime = time;
   }
+
+  @action.bound
+  ClearEntries() {
+    this.entries = [];
+    this.hoverEntries = [];
+  }
 }
 
 export default EntryStore;

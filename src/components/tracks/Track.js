@@ -208,7 +208,9 @@ class Track extends React.Component {
   }
 
   ToolTipContent() {
-    if(!this.state.hovering || !this.props.entry.hoverEntries) { return null; }
+    if(!this.state.hovering || !this.props.entry.hoverEntries || this.props.entry.hoverEntries.length === 0) {
+      return null;
+    }
 
     return (
       <div className="track-entry-container">

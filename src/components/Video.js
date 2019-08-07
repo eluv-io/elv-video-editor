@@ -1,6 +1,7 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
 import HLSPlayer from "hls.js";
+import URI from "urijs";
 import VideoControls from "./VideoControls";
 import LoadingElement from "elv-components-js/src/components/LoadingElement";
 
@@ -18,15 +19,12 @@ class Video extends React.Component {
   InitializeVideo(video) {
     if(!video) { return; }
 
-    if(video.canPlayType("application/vnd.apple.mpegURL")) {
-      // Safari can play HLS natively
-      video.src = this.props.video.source;
-    } else {
-      const player = new HLSPlayer();
-      player.loadSource(this.props.video.source);
-      player.attachMedia(video);
-      this.setState({player});
-    }
+    const player = new HLSPlayer();
+    const source = URI(this.props.video.source).addSearch("player_profile", "hls-js").toString();
+    player.loadSource(source);
+    player.attachMedia(video);
+
+    this.setState({player});
 
     this.props.video.Initialize(video);
   }
