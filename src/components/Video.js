@@ -4,6 +4,8 @@ import HLSPlayer from "hls.js";
 import URI from "urijs";
 import VideoControls from "./VideoControls";
 import LoadingElement from "elv-components-js/src/components/LoadingElement";
+import Overlay from "./Overlay";
+import ResizeObserver from "resize-observer-polyfill";
 
 @inject("tracks")
 @inject("video")
@@ -12,8 +14,20 @@ class Video extends React.Component {
   constructor(props) {
     super(props);
 
+    this.state = {
+      videoWidth: 0,
+      player: undefined
+    };
+
     this.InitializeVideo = this.InitializeVideo.bind(this);
     this.InitializeTracks = this.InitializeTracks.bind(this);
+  }
+
+  componentWillUnmount() {
+    if(this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = undefined;
+    }
   }
 
   InitializeVideo(video) {
@@ -23,10 +37,18 @@ class Video extends React.Component {
     const source = URI(this.props.video.source).addSearch("player_profile", "hls-js").toString();
     player.loadSource(source);
     player.attachMedia(video);
-
     this.setState({player});
 
     this.props.video.Initialize(video);
+
+    // Add resize observer for overlay component
+    this.resizeObserver = new ResizeObserver((elements) => {
+      this.setState({
+        videoWidth: elements[0].contentRect.width
+      });
+    });
+
+    this.resizeObserver.observe(video);
   }
 
   InitializeTracks(trackContainer) {
@@ -46,6 +68,7 @@ class Video extends React.Component {
 
     return (
       <div className="video-container">
+        <Overlay videoWidth={this.state.videoWidth} />
         <video
           key={`video-${this.props.video.source}`}
           crossOrigin="anonymous"
@@ -67,7 +90,7 @@ class Video extends React.Component {
     const controlsLoading = this.props.video.source && !this.props.video.initialized;
 
     return (
-      <div className="video">
+      <div className="video-component">
         <LoadingElement loading={videoLoading}>
           { this.Video() }
         </LoadingElement>

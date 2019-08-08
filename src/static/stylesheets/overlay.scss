@@ -1,0 +1,11 @@
+.overlay-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  z-index: 9999;
+}
+
+.overlay-canvas {
+  flex-grow: 1;
+  width: 100%;
+}

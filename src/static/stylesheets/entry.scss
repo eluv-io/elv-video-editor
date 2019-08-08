@@ -15,8 +15,17 @@
 .entry {
   display: grid;
   font-size: 14px;
+  grid-auto-columns: minmax(100px, 2fr) minmax(100px, 3fr);
+
   grid-row-gap: $elv-spacing-xs;
-  grid-template-columns: minmax(100px, 2fr) minmax(100px, 3fr);
+
+  label {
+    grid-column: 1;
+  }
+
+  div {
+    grid-column: 2;
+  }
 }
 
 .entry-actions {

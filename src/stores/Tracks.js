@@ -5,6 +5,8 @@ import IntervalTree from "node-interval-tree";
 import {Parser as HLSParser} from "m3u8-parser";
 import UrlJoin from "url-join";
 
+import SegmentTags from "../static/tags-segment";
+
 class Tracks {
   @observable tracks = [];
   @observable subtitleTracks = [];
@@ -66,14 +68,14 @@ class Tracks {
 
   @action.bound
   AddTracksFromTags = flow(function * () {
-    const tagsUrl = "src/static/tags-segment.json";
+    const tags = SegmentTags["AustinCityLimits-HE2R7raDpDw"];
 
-    const tags = (yield (yield fetch(tagsUrl)).json())["AustinCityLimits-HE2R7raDpDw"];
+    yield;
 
     this.metadataTracks = [tags];
   });
 
-  Cue({label, vttEntry=false, startTime, endTime, text, entry}) {
+  Cue({entryType, label, startTime, endTime, text, entry}) {
     const isSMPTE = typeof startTime === "string" && startTime.split(":").length > 1;
 
     let startTimeSMPTE, endTimeSMPTE;
@@ -92,8 +94,8 @@ class Tracks {
 
     return {
       entryId: Id.next(),
+      entryType,
       label,
-      vttEntry,
       startTime,
       endTime,
       startTimeSMPTE,
@@ -126,8 +128,8 @@ class Tracks {
     cueAttributes.forEach(attr => cueCopy[attr] = cue[attr]);
 
     return this.Cue({
+      entryType: "vtt",
       label,
-      vttEntry: true,
       startTime: cue.startTime,
       endTime: cue.endTime,
       text: cue.text,

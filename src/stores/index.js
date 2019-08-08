@@ -2,6 +2,7 @@ import {configure, observable, action, runInAction} from "mobx";
 import KeyboardControlStore from "./KeyboardControls";
 import EntryStore from "./Entry";
 import MenuStore from "./Menu";
+import OverlayStore from "./Overlay";
 import TrackStore from "./Tracks";
 import VideoStore from "./Video";
 
@@ -19,6 +20,7 @@ class RootStore {
     this.keyboardControlStore = new KeyboardControlStore(this);
     this.entryStore = new EntryStore(this);
     this.menuStore = new MenuStore(this);
+    this.overlayStore = new OverlayStore(this);
     this.trackStore = new TrackStore(this);
     this.videoStore = new VideoStore(this);
 
@@ -61,5 +63,6 @@ export const root = rootStore;
 export const entry = rootStore.entryStore;
 export const keyboardControls = rootStore.keyboardControlStore;
 export const menu = rootStore.menuStore;
+export const overlay = rootStore.overlayStore;
 export const tracks = rootStore.trackStore;
 export const video = rootStore.videoStore;

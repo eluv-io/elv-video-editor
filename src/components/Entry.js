@@ -93,6 +93,39 @@ class Entry extends React.Component {
     );
   }
 
+  OverlayEntry(entry) {
+    return (
+      <div className="entry-container">
+        <h4>{entry.overlayTrack} - Overlay</h4>
+
+        <div className="entry">
+          <label>Label</label>
+          <div>{entry.label}</div>
+
+          <label>Confidence</label>
+          <div>{entry.confidence.toFixed(3)}</div>
+
+          <label>Bounding Box</label>
+          <div></div>
+
+          <div className="entry indented">
+            <label>X1</label>
+            <div>{entry.box.x1.toFixed(4)}</div>
+
+            <label>Y1</label>
+            <div>{entry.box.y1.toFixed(4)}</div>
+
+            <label>X2</label>
+            <div>{entry.box.x2.toFixed(4)}</div>
+
+            <label>Y2</label>
+            <div>{entry.box.y2.toFixed(4)}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   EntrySelection() {
     const previousButton = (
       <Action
@@ -125,6 +158,16 @@ class Entry extends React.Component {
     );
   }
 
+  RenderEntry(entry) {
+    if(entry.entryType === "vtt") {
+      return this.VttEntry(entry);
+    } else if(entry.entryType === "overlay") {
+      return this.OverlayEntry(entry);
+    } else {
+      return this.CustomEntry(entry);
+    }
+  }
+
   RenderEntries() {
     return (
       <div>
@@ -139,7 +182,7 @@ class Entry extends React.Component {
               className="entry-info-container"
               hidden={this.state.currentEntry !== i}
             >
-              { entry.vttEntry ? this.VttEntry(entry) : this.CustomEntry(entry) }
+              { this.RenderEntry(entry) }
             </div>
           ))
         }
