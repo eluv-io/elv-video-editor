@@ -9,8 +9,28 @@ class Entry extends React.Component {
     super(props);
 
     this.state = {
-      currentEntry: 0
+      page: 0
     };
+
+    this.ChangePage = this.ChangePage.bind(this);
+  }
+
+  componentDidMount() {
+    this.ChangePage(0);
+  }
+
+  componentWillUnmount() {
+    this.props.entry.ClearSelectedEntry();
+  }
+
+  ChangePage(page) {
+    this.setState({page});
+
+    const entries = this.Entries();
+
+    if(entries.length <= page) { return; }
+
+    this.props.entry.SetSelectedEntry(entries[page].entryId);
   }
 
   Entries() {
@@ -74,14 +94,14 @@ class Entry extends React.Component {
     );
   }
 
-  CustomEntry(entry) {
+  TagEntry(entry) {
     return (
       <div className="entry-container">
         <h4>{entry.label}</h4>
 
         <div className="entry">
-          { entry.text ? <label>Text</label> : null }
-          { entry.text ? <div>{entry.text}</div> : null }
+          <label>Tag</label>
+          <div>{entry.text}</div>
 
           <label>Start Time</label>
           <span>{`${entry.startTime.toFixed(3)} (${entry.startTimeSMPTE})`}</span>
@@ -96,11 +116,11 @@ class Entry extends React.Component {
   OverlayEntry(entry) {
     return (
       <div className="entry-container">
-        <h4>{entry.overlayTrack} - Overlay</h4>
+        <h4>{entry.label} - Overlay</h4>
 
         <div className="entry">
-          <label>Label</label>
-          <div>{entry.label}</div>
+          <label>Tag</label>
+          <div>{entry.text}</div>
 
           <label>Confidence</label>
           <div>{entry.confidence.toFixed(3)}</div>
@@ -130,8 +150,8 @@ class Entry extends React.Component {
     const previousButton = (
       <Action
         className="entry-page-button"
-        disabled={this.state.currentEntry <= 0}
-        onClick={() => this.setState({currentEntry: this.state.currentEntry - 1})}
+        disabled={this.state.page <= 0}
+        onClick={() => this.ChangePage(this.state.page - 1)}
       >
         Previous
       </Action>
@@ -140,8 +160,8 @@ class Entry extends React.Component {
     const nextButton = (
       <Action
         className="entry-page-button"
-        disabled={this.state.currentEntry >= this.Entries().length - 1}
-        onClick={() => this.setState({currentEntry: this.state.currentEntry + 1})}
+        disabled={this.state.page >= this.Entries().length - 1}
+        onClick={() => this.ChangePage(this.state.page + 1)}
       >
         Next
       </Action>
@@ -151,7 +171,7 @@ class Entry extends React.Component {
       <div className="entry-actions">
         { previousButton }
         <div className="entry-page">
-          { `${this.state.currentEntry + 1} of ${this.Entries().length}` }
+          { `${this.state.page + 1} of ${this.Entries().length}` }
         </div>
         { nextButton }
       </div>
@@ -164,7 +184,7 @@ class Entry extends React.Component {
     } else if(entry.entryType === "overlay") {
       return this.OverlayEntry(entry);
     } else {
-      return this.CustomEntry(entry);
+      return this.TagEntry(entry);
     }
   }
 
@@ -180,7 +200,7 @@ class Entry extends React.Component {
             <div
               key={`entry-info-${i}`}
               className="entry-info-container"
-              hidden={this.state.currentEntry !== i}
+              hidden={this.state.page !== i}
             >
               { this.RenderEntry(entry) }
             </div>

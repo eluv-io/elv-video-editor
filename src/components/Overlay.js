@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import {inject, observer} from "mobx-react";
 import {reaction} from "mobx";
-
+import ToolTip from "elv-components-js/src/components/Tooltip";
 
 const defaultColor = "#00ff00";
 const hoverColor = "#ffffff";
@@ -17,7 +17,8 @@ class Overlay extends React.Component {
     super(props);
 
     this.state = {
-      context: undefined
+      context: undefined,
+      hovering: false,
     };
 
     this.InitializeCanvas = this.InitializeCanvas.bind(this);
@@ -25,6 +26,7 @@ class Overlay extends React.Component {
     this.Hover = this.Hover.bind(this);
     this.ClearHover = this.ClearHover.bind(this);
     this.Draw = this.Draw.bind(this);
+    this.ToolTipContent = this.ToolTipContent.bind(this);
   }
 
   componentDidMount() {
@@ -37,11 +39,12 @@ class Overlay extends React.Component {
             videoWidth: this.props.videoWidth,
             hoverEntries: this.props.entry.hoverEntries.map(entry => entry.entryId).sort(),
             selectedEntries: this.props.entry.entries.map(entry => entry.entryId).sort(),
+            selectedEntry: this.props.entry.selectedEntry
           });
         },
         () => this.Draw(),
         {
-          delay: 10,
+          delay: 5,
           equals: (from, to) => JSON.stringify(from) === JSON.stringify(to)
         },
       )
@@ -61,14 +64,11 @@ class Overlay extends React.Component {
   }
 
   Entries() {
+    if(this.props.video.frame === 0) { return []; }
+
     // Get the entries for the current frame, injecting the overlay track label into each entry
     return this.props.overlay.overlayTracks.map(track =>
-      track.entries[this.props.video.frame].map(entry =>
-        ({
-          overlayTrack: track.label,
-          ...entry,
-        })
-      )
+      track.entries[this.props.video.frame]
     )
       .flat();
   }
@@ -100,10 +100,32 @@ class Overlay extends React.Component {
     const hoverEntries = this.EntriesAt({clientX, clientY});
 
     this.props.entry.SetHoverEntries(hoverEntries, this.props.video.smpte);
+
+    this.setState({hovering: true});
   }
 
   ClearHover() {
+    this.setState({hovering: false});
+
     this.props.entry.SetHoverEntries([]);
+  }
+
+  ToolTipContent() {
+    if(!this.state.hovering || this.props.entry.hoverEntries.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="track-entry-container">
+        {this.props.entry.hoverEntries.map(entry =>
+          <div className="track-entry" key={`entry-${entry.entryId}`}>
+            <div className="track-entry-content">
+              { entry.text }
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   Draw() {
@@ -119,8 +141,6 @@ class Overlay extends React.Component {
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
 
     if(entries.length === 0) { return; }
-
-    context.globalAlpha = 0.5;
 
     entries.forEach(entry => {
       const {x1, x2, y1, y2} = entry.box;
@@ -139,6 +159,11 @@ class Overlay extends React.Component {
         color = hoverColor;
       }
 
+      context.globalAlpha = 0.5;
+      if(entry.entryId === this.props.entry.selectedEntry) {
+        context.globalAlpha = 1.0;
+      }
+
       context.strokeStyle = color;
 
       context.beginPath();
@@ -150,13 +175,17 @@ class Overlay extends React.Component {
   render() {
     return (
       <div className="overlay-container" style={{width: `${this.props.videoWidth}px`}}>
-        <canvas
-          onClick={this.Click}
+        <ToolTip
           onMouseMove={this.Hover}
           onMouseLeave={this.ClearHover}
-          ref={this.InitializeCanvas}
-          className="overlay-canvas"
-        />
+          content={this.ToolTipContent()}
+        >
+          <canvas
+            onClick={this.Click}
+            ref={this.InitializeCanvas}
+            className="overlay-canvas"
+          />
+        </ToolTip>
       </div>
     );
   }

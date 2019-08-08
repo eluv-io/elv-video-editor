@@ -3,6 +3,7 @@ import {observable, action} from "mobx";
 class EntryStore {
   @observable entries = [];
   @observable entryTime;
+  @observable selectedEntry;
 
   @observable hoverEntries = [];
   @observable hoverTime;
@@ -18,6 +19,11 @@ class EntryStore {
   }
 
   @action.bound
+  SetSelectedEntry(entryId) {
+    this.selectedEntry = entryId;
+  }
+
+  @action.bound
   SetHoverEntries(entries, time) {
     this.hoverEntries = entries || [];
     this.hoverTime = time;
@@ -27,6 +33,11 @@ class EntryStore {
   ClearEntries() {
     this.entries = [];
     this.hoverEntries = [];
+  }
+
+  @action.bound
+  ClearSelectedEntry() {
+    this.selectedEntry = undefined;
   }
 }
 

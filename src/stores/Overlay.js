@@ -21,7 +21,8 @@ class OverlayStore {
       return Object.keys(frameInfo.object_detection).map(label => ({
         entryId: Id.next(),
         entryType: "overlay",
-        label,
+        label: "Overlay Test",
+        text: label,
         ...frameInfo.object_detection[label][0]
       }));
     })

@@ -51,7 +51,6 @@ class Tracks {
 
           vttFiles.push({
             label: subtitleName,
-            kind: "subtitles",
             vttData
           });
         })
@@ -68,11 +67,18 @@ class Tracks {
 
   @action.bound
   AddTracksFromTags = flow(function * () {
+    let tagTracks = [];
+
     const tags = SegmentTags["AustinCityLimits-HE2R7raDpDw"];
+
+    tagTracks.push({
+      label: "Tags",
+      tags
+    });
 
     yield;
 
-    this.metadataTracks = [tags];
+    this.metadataTracks = tagTracks;
   });
 
   Cue({entryType, label, startTime, endTime, text, entry}) {
@@ -156,13 +162,13 @@ class Tracks {
     return cues;
   }
 
-  ParseSegmentTags(tags) {
-    return Object.keys(tags).map(tag => {
-      const entries = tags[tag];
+  ParseTagTrack(track) {
+    return Object.keys(track.tags).map(tag => {
+      const entries = track.tags[tag];
 
       return entries.map(({start, end}) =>
         this.Cue({
-          label: tag,
+          label: track.label,
           startTime: start,
           endTime: end,
           text: tag
@@ -193,12 +199,12 @@ class Tracks {
     });
 
     this.metadataTracks.map(track => {
-      const parsedTags = this.ParseSegmentTags(track);
+      const parsedTags = this.ParseTagTrack(track);
       const intervalTree = new IntervalTree();
       parsedTags.forEach(entry => intervalTree.insert(entry.startTime, entry.endTime, entry));
 
       tracks.push({
-        label: "Tags",
+        label: track.label,
         vttTrack: false,
         entries: parsedTags,
         intervalTree
