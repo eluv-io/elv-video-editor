@@ -14,16 +14,11 @@ header {
 
 .video-level {
   display: flex;
-  height: 500px;
-  max-height: 100%;
-  overflow: hidden;
-  resize: vertical;
-  width: 100%;
 }
 
 .side-panel {
   border-right: 1px solid $color-border;
-  min-width: 220px;
+  min-width: 350px;
   overflow: auto;
   overflow-x: hidden;
   resize: horizontal;

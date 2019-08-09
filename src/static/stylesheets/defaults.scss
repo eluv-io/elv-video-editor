@@ -1,3 +1,9 @@
+body,
+.app,
+.video-editor {
+  height: 100%;
+}
+
 body {
   background-color: $color-background;
 
@@ -49,4 +55,31 @@ button {
   max-width: 100%;
   word-break: break-all;
   word-wrap: break-word;
+}
+
+.react-resizable-handle {
+  background-image: url("../icons/Resize.svg");
+  filter: invert(100%);
+  margin: $elv-spacing-xxs;
+}
+
+.resize-handle {
+  bottom: 0;
+  cursor: ns-resize;
+  padding: $elv-spacing-xxs;
+  position: absolute;
+  right: 0;
+  z-index: 1000;
+
+  &:hover {
+    background-color: $elv-color-bg-dark;
+  }
+
+  svg {
+    stroke: $elv-color-text-lightest;
+
+    &:hover {
+      stroke: $elv-color-text-white;
+    }
+  }
 }

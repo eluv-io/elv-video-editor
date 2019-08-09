@@ -5,8 +5,9 @@ import {reaction} from "mobx";
 import ToolTip from "elv-components-js/src/components/Tooltip";
 
 const defaultColor = "#00ff00";
-const hoverColor = "#ffffff";
+const hoverColor = "#45fdff";
 const selectedColor = "#0fafff";
+const currentSelectionColor = "#ffffff";
 
 @inject("video")
 @inject("overlay")
@@ -36,7 +37,6 @@ class Overlay extends React.Component {
         () => {
           return ({
             frame: this.props.video.frame,
-            videoWidth: this.props.videoWidth,
             hoverEntries: this.props.entry.hoverEntries.map(entry => entry.entryId).sort(),
             selectedEntries: this.props.entry.entries.map(entry => entry.entryId).sort(),
             selectedEntry: this.props.entry.selectedEntry
@@ -47,6 +47,16 @@ class Overlay extends React.Component {
           delay: 5,
           equals: (from, to) => JSON.stringify(from) === JSON.stringify(to)
         },
+      ),
+      DisposeResizeReaction: reaction(
+        () => {
+          return ({
+            videoWidth: this.props.videoWidth,
+            videoHeight: this.props.videoHeight,
+          });
+        },
+        () => this.Resize(),
+        { delay: 25 },
       )
     });
   }
@@ -54,6 +64,10 @@ class Overlay extends React.Component {
   componentWillUnmount() {
     if(this.state.DisposeDrawReaction) {
       this.state.DisposeDrawReaction();
+    }
+
+    if(this.state.DisposeResizeReaction) {
+      this.state.DisposeResizeReaction();
     }
   }
 
@@ -128,6 +142,15 @@ class Overlay extends React.Component {
     );
   }
 
+  Resize() {
+    if(!this.state.context) { return; }
+
+    this.state.context.canvas.width = this.props.videoWidth;
+    this.state.context.canvas.height = this.props.videoHeight;
+
+    this.Draw();
+  }
+
   Draw() {
     if(!this.state.context) { return; }
 
@@ -152,16 +175,23 @@ class Overlay extends React.Component {
       const selectedEntryIds = this.props.entry.entries.map(entry => entry.entryId);
       const hoverEntryIds = this.props.entry.hoverEntries.map(entry => entry.entryId);
 
+      context.globalAlpha = 0.4;
+      context.lineWidth = 2;
+
       let color = defaultColor;
       if(selectedEntryIds.includes(entry.entryId)) {
+        context.globalAlpha = 0.8;
         color = selectedColor;
       } else if(hoverEntryIds.includes(entry.entryId)) {
+        context.globalAlpha = 0.8;
         color = hoverColor;
       }
 
-      context.globalAlpha = 0.5;
-      if(entry.entryId === this.props.entry.selectedEntry) {
-        context.globalAlpha = 1.0;
+      // Highlight current entry in entry panel, if the panel is visible
+      if(this.props.entry.entries.length > 0 && entry.entryId === this.props.entry.selectedEntry) {
+        //context.globalAlpha = 1.0;
+        //context.lineWidth = 3;
+        color = currentSelectionColor;
       }
 
       context.strokeStyle = color;
@@ -192,7 +222,8 @@ class Overlay extends React.Component {
 }
 
 Overlay.propTypes = {
-  videoWidth: PropTypes.number.isRequired
+  videoWidth: PropTypes.number.isRequired,
+  videoHeight: PropTypes.number.isRequired,
 };
 
 export default Overlay;

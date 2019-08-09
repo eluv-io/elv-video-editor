@@ -6,6 +6,9 @@ import VideoControls from "./VideoControls";
 import LoadingElement from "elv-components-js/src/components/LoadingElement";
 import Overlay from "./Overlay";
 import ResizeObserver from "resize-observer-polyfill";
+import {ResizableBox} from "react-resizable";
+import ResizeHandle from "../static/icons/Resize.svg";
+import {ImageIcon} from "elv-components-js";
 
 @inject("tracks")
 @inject("video")
@@ -16,6 +19,7 @@ class Video extends React.Component {
 
     this.state = {
       videoWidth: 0,
+      videoHeight: 0,
       player: undefined
     };
 
@@ -43,8 +47,11 @@ class Video extends React.Component {
 
     // Add resize observer for overlay component
     this.resizeObserver = new ResizeObserver((elements) => {
+      const {height, width} = elements[0].contentRect;
+
       this.setState({
-        videoWidth: elements[0].contentRect.width
+        videoHeight: height,
+        videoWidth: width
       });
     });
 
@@ -67,8 +74,19 @@ class Video extends React.Component {
     if(!this.props.video.source) { return null; }
 
     return (
-      <div className="video-container">
-        <Overlay videoWidth={this.state.videoWidth} />
+      <ResizableBox
+        className="video-container"
+        height={500}
+        width={Infinity}
+        handle={
+          <ImageIcon label="Resize" icon={ResizeHandle} className="resize-handle"/>
+        }
+      >
+        <Overlay
+          aspectRatio={this.state.aspectRatio}
+          videoWidth={this.state.videoWidth}
+          videoHeight={this.state.videoHeight}
+        />
         <video
           key={`video-${this.props.video.source}`}
           crossOrigin="anonymous"
@@ -78,10 +96,9 @@ class Video extends React.Component {
           controls={false}
           preload="auto"
           onWheel={({deltaY}) => this.props.video.ScrollVolume(deltaY)}
-          data-dashjs-player
         />
         { this.Poster() }
-      </div>
+      </ResizableBox>
     );
   }
 
@@ -91,7 +108,7 @@ class Video extends React.Component {
 
     return (
       <div className="video-component">
-        <LoadingElement loading={videoLoading}>
+        <LoadingElement loading={videoLoading} loadingClassname="video-controls-loading">
           { this.Video() }
         </LoadingElement>
         <LoadingElement loading={controlsLoading} loadingClassname="video-controls-loading">
