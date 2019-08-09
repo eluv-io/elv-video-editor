@@ -122,6 +122,10 @@ class FrameAccurateVideo {
     return Fraction(this.video.currentTime).div(this.video.duration);
   }
 
+  TotalFrames() {
+    return Fraction(this.video.duration).mul(this.frameRate).valueOf();
+  }
+
   /* Controls */
 
   SeekForward(frames=1) {
@@ -135,8 +139,7 @@ class FrameAccurateVideo {
   }
 
   SeekPercentage(percent) {
-    const totalFrames = Fraction(this.video.duration).mul(this.frameRate);
-    this.Seek(totalFrames.mul(percent));
+    this.Seek(Fraction(this.TotalFrames()).mul(percent));
   }
 
   Seek(frame) {

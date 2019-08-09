@@ -51,8 +51,10 @@
 .video-time,
 .video-controls {
   align-items: center;
+  color: $elv-color-text-lightest;
   display: flex;
-  font-size: 16px;
+  font-size: 20px;
+  font-weight: lighter;
   justify-content: center;
 }
 
@@ -63,7 +65,8 @@
 }
 
 .video-controls {
-  height: 50px;
+  height: 60px;
+  padding-bottom: $elv-spacing-xs;
   position: relative;
 
   button {

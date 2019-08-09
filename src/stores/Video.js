@@ -318,7 +318,21 @@ class VideoStore {
       frames += this.frameRate.ceil().mul(seconds);
     }
 
-    this.videoHandler.Seek(this.frame + frames);
+    // Adjust scale, if necessary
+    const targetFrame = this.frame + frames;
+    const targetScale = (targetFrame / this.videoHandler.TotalFrames()) * this.scale;
+    const bump = this.scale * 0.015;
+    const scaleWidth = this.scaleMax - this.scaleMin;
+
+    if(targetScale <= this.scaleMin) {
+      this.scaleMin = Math.max(0, targetScale - bump);
+      this.scaleMax = this.scaleMin + scaleWidth;
+    } else if(targetScale >= this.scaleMax) {
+      this.scaleMax = Math.min(this.scale, targetScale + bump);
+      this.scaleMin = this.scaleMax - scaleWidth;
+    }
+
+    this.videoHandler.Seek(targetFrame);
   }
 
   @action.bound

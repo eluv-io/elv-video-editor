@@ -1,10 +1,12 @@
-$header-height: 45px;
+$header-height: 55px;
 
 header {
   height: $header-height;
 }
 
 .menu-container {
+  background-color: $color-background;
+  box-shadow: 3px 10px 10px $elv-color-black;
   height: calc(100% - #{$header-height});
   max-height: calc(100% - #{$header-height});
   position: absolute;
@@ -17,6 +19,7 @@ header {
 }
 
 .side-panel {
+  border-bottom: 1px solid $color-border;
   border-right: 1px solid $color-border;
   min-width: 350px;
   overflow: auto;

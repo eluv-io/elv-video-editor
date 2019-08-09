@@ -23,7 +23,7 @@ header {
   }
 
   .menu-button-active {
-    background-color: $color-border-active;
+    background-color: $color-background-active;
 
     svg {
       color: $color-foreground;
@@ -32,7 +32,7 @@ header {
 
   h1 {
     font-size: 20px;
-    font-weight: 500;
+    font-weight: normal;
   }
 
   .keyboard-controls-icon {
