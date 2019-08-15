@@ -20,14 +20,6 @@ class Menu extends React.Component {
     this.SelectObject = this.SelectObject.bind(this);
   }
 
-  componentDidMount() {
-    this.SelectObject(
-      "",
-      "",
-      "hq__KPspqctp8ovEmGKangsBGq54ff8PcHTzkYrEyqPJZWXqqCkHz8DXXDvQ7jxZYP1tu3ZH5NkLDc"
-    );
-  }
-
   async SelectLibrary(library) {
     this.setState({library});
   }
@@ -41,6 +33,13 @@ class Menu extends React.Component {
 
   SelectedObject() {
     const object = this.props.menu.selectedObject;
+
+    const videoTags = !object.metadata.video_tags ? null : (
+      <React.Fragment>
+        <label>Video Tags</label>
+        <span className="wrap">{Object.keys(object.metadata.video_tags).join(", ")}</span>
+      </React.Fragment>
+    );
 
     return (
       <LoadingElement
@@ -65,6 +64,8 @@ class Menu extends React.Component {
 
               <label>Version Hash</label>
               <span className="wrap">{object.versionHash}</span>
+
+              { videoTags }
             </div>
           </div>
         )}

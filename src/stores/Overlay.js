@@ -1,5 +1,4 @@
 import {observable, action} from "mobx";
-import FrameTags from "../static/tags-frame";
 import Id from "../utils/Id";
 
 class OverlayStore {
@@ -10,11 +9,11 @@ class OverlayStore {
   }
 
   @action.bound
-  AddOverlayTracks() {
-    const overlayData = FrameTags["elv_media_platform_video_tags"].frame_level_tags;
-
-    const entries = Object.keys(overlayData).map(frame => {
-      const frameInfo = overlayData[frame];
+  AddOverlayTracks(frameTags) {
+    if(!frameTags) { return; }
+    
+    const entries = Object.keys(frameTags).map(frame => {
+      const frameInfo = frameTags[frame];
 
       if(!frameInfo) { return; }
 

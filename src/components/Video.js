@@ -76,7 +76,7 @@ class Video extends React.Component {
     return (
       <ResizableBox
         className="video-container"
-        height={500}
+        height={300}
         width={Infinity}
         handle={
           <ImageIcon label="Resize" icon={ResizeHandle} className="resize-handle"/>

@@ -34,6 +34,7 @@
   justify-content: space-between;
 
   .entry-page {
+    @include elv-no-select;
     color: $elv-color-text-lighter;
     flex: 1 1 0;
     min-width: 4em;

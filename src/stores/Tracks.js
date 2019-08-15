@@ -5,8 +5,6 @@ import IntervalTree from "node-interval-tree";
 import {Parser as HLSParser} from "m3u8-parser";
 import UrlJoin from "url-join";
 
-import SegmentTags from "../static/tags-segment";
-
 class Tracks {
   @observable tracks = [];
   @observable subtitleTracks = [];
@@ -66,20 +64,14 @@ class Tracks {
   });
 
   @action.bound
-  AddTracksFromTags = flow(function * () {
-    let tagTracks = [];
+  AddTracksFromTags = (segmentTags) => {
+    if(!segmentTags) { return null; }
 
-    const tags = SegmentTags["AustinCityLimits-HE2R7raDpDw"];
-
-    tagTracks.push({
+    this.metadataTracks = [{
       label: "Tags",
-      tags
-    });
-
-    yield;
-
-    this.metadataTracks = tagTracks;
-  });
+      tags: segmentTags
+    }];
+  };
 
   Cue({entryType, label, startTime, endTime, text, entry}) {
     const isSMPTE = typeof startTime === "string" && startTime.split(":").length > 1;

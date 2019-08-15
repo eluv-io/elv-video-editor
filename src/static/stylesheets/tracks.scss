@@ -29,10 +29,6 @@
   &:last-child {
     border-bottom: 0;
   }
-
-  .video-seek-handle {
-    background-color: $color-accent;
-  }
 }
 
 .track-label {
@@ -60,6 +56,7 @@ $slider-height: 12px;
 .video-scale-lane {
   border: 0;
   height: $slider-height;
+  margin-top: $elv-spacing-xxs;
 }
 
 .track-entry-timestamps,

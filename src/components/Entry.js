@@ -190,7 +190,7 @@ class Entry extends React.Component {
 
   RenderEntries() {
     return (
-      <div>
+      <React.Fragment>
         { this.EntrySelection() }
         <div className="entry-time">
           { this.EntryTime() }
@@ -206,7 +206,7 @@ class Entry extends React.Component {
             </div>
           ))
         }
-      </div>
+      </React.Fragment>
     );
   }
 

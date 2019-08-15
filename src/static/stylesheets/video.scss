@@ -48,6 +48,13 @@
   height: 500px;
 }
 
+.video-seek,
+.video-scale {
+  .video-seek-handle {
+    background-color: $color-accent;
+  }
+}
+
 .video-time,
 .video-controls {
   align-items: center;

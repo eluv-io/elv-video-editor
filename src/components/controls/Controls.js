@@ -144,6 +144,7 @@ let Seek = (props) => {
       min={props.video.scaleMin}
       max={props.video.scaleMax}
       value={props.video.seek}
+      handleClassName="video-seek-handle"
       showMarks={true}
       renderToolTip={value => <span>{props.video.ProgressToSMPTE(value)}</span>}
       onChange={(value) => props.video.Seek(Fraction(value).div(props.video.scale))}
