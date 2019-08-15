@@ -21,10 +21,9 @@ header {
 .side-panel {
   border-bottom: 1px solid $color-border;
   border-right: 1px solid $color-border;
-  min-width: 350px;
+  min-width: 400px;
   overflow: auto;
   overflow-x: hidden;
-  resize: horizontal;
   width: 500px;
   word-wrap: break-word;
 }

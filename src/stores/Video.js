@@ -30,6 +30,8 @@ class VideoStore {
   @observable scaleMin = 0;
   @observable scaleMax = this.scale;
 
+  @observable segmentEnd = undefined;
+
   constructor(rootStore) {
     this.rootStore = rootStore;
   }
@@ -64,6 +66,8 @@ class VideoStore {
     this.scale = 10000;
     this.scaleMin = 0;
     this.scaleMax = this.scale;
+
+    this.segmentEnd = undefined;
 
     this.rootStore.keyboardControlStore.UnregisterControlListener();
     this.rootStore.entryStore.ClearEntries();
@@ -187,6 +191,11 @@ class VideoStore {
   }
 
   @action.bound
+  TimeToFrame(time) {
+    return this.videoHandler.TimeToFrame(time);
+  }
+
+  @action.bound
   Update({frame, smpte, progress}) {
     if(!this.video) { return; }
 
@@ -206,6 +215,13 @@ class VideoStore {
       const currentRange = this.scaleMax - this.scaleMin;
       this.scaleMax = Math.min(this.scale, this.scaleMax + currentRange/2);
       this.scaleMin = this.scaleMax - currentRange;
+    }
+
+    // Segment play specified - stop when segment ends
+    if(this.segmentEnd && this.frame >= this.segmentEnd - 1) {
+      this.video.pause();
+      this.Seek(this.segmentEnd - 1);
+      this.segmentEnd = undefined;
     }
   }
 
@@ -243,11 +259,6 @@ class VideoStore {
     this.videoHandler.dropFrame = this.dropFrame;
 
     this.videoHandler.Update();
-  }
-
-  @action.bound
-  Seek(percent) {
-    this.videoHandler.SeekPercentage(percent);
   }
 
   @action.bound
@@ -308,7 +319,26 @@ class VideoStore {
     this.scaleMin = min;
     this.scaleMax = max;
 
-    this.Seek(seek / this.scale);
+    this.SeekPercentage(seek / this.scale);
+  }
+
+  @action.bound
+  PlaySegment(startFrame, endFrame) {
+    this.Seek(startFrame);
+    this.segmentEnd = endFrame;
+    this.video.play();
+  }
+
+  @action.bound
+  Seek(frame) {
+    this.segmentEnd = undefined;
+    this.videoHandler.Seek(frame);
+  }
+
+  @action.bound
+  SeekPercentage(percent) {
+    this.segmentEnd = undefined;
+    this.videoHandler.SeekPercentage(percent);
   }
 
   @action.bound

@@ -27,6 +27,16 @@ class RootStore {
     this.InitializeClient();
   }
 
+  Reset() {
+    [
+      this.videoStore,
+      this.entryStore,
+      this.overlayStore,
+      this.trackStore
+    ]
+      .forEach(store => store.Reset());
+  }
+
   @action
   async InitializeClient() {
     let client;

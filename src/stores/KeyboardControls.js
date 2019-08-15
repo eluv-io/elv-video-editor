@@ -85,6 +85,11 @@ class ControlStore {
   }
 
   @action.bound
+  PlayCurrentEntry() {
+    this.rootStore.entryStore.PlayCurrentEntry();
+  }
+
+  @action.bound
   SetPlaybackRate(rate) {
     this.rootStore.videoStore.SetPlaybackRate(rate);
   }
@@ -129,6 +134,15 @@ class ControlStore {
           action: {
             description: "Play/Pause",
             action: this.PlayPause
+          }
+        }
+      ],
+      [
+        ["l"],
+        {
+          action: {
+            description: "Play current entry",
+            action: this.PlayCurrentEntry
           }
         }
       ],

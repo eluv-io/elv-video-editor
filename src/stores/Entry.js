@@ -12,6 +12,27 @@ class EntryStore {
     this.rootStore = rootStore;
   }
 
+  Reset() {
+    this.entries = [];
+    this.entryTime = undefined;
+    this.selectedEntry = undefined;
+
+    this.hoverEntries = [];
+    this.hoverTime = undefined;
+  }
+
+  @action.bound
+  PlayCurrentEntry() {
+    const entry = this.entries.find(({entryId}) => entryId === this.selectedEntry);
+
+    if(!entry) { return; }
+
+    this.rootStore.videoStore.PlaySegment(
+      this.rootStore.videoStore.TimeToFrame(entry.startTime),
+      this.rootStore.videoStore.TimeToFrame(entry.endTime)
+    );
+  }
+
   @action.bound
   SetEntries(entries, time) {
     this.entries = entries || [];

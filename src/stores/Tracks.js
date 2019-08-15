@@ -14,6 +14,12 @@ class Tracks {
     this.rootStore = rootStore;
   }
 
+  Reset() {
+    this.tracks = [];
+    this.subtitleTracks = [];
+    this.metadataTracks = [];
+  }
+
   async ParseHLSPlaylist(playlistUrl) {
     const playlist = await (await fetch(playlistUrl)).text();
     const parser = new HLSParser();

@@ -147,7 +147,7 @@ let Seek = (props) => {
       handleClassName="video-seek-handle"
       showMarks={true}
       renderToolTip={value => <span>{props.video.ProgressToSMPTE(value)}</span>}
-      onChange={(value) => props.video.Seek(Fraction(value).div(props.video.scale))}
+      onChange={(value) => props.video.SeekPercentage(Fraction(value).div(props.video.scale))}
       className="video-seek"
     />
   );

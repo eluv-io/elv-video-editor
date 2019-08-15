@@ -43,19 +43,30 @@ class Entry extends React.Component {
       this.props.entry.hoverTime : this.props.entry.entryTime;
   }
 
+  PlayCurrentEntry() {
+    return (
+      <Action
+        className="entry-page-button"
+        onClick={this.props.entry.PlayCurrentEntry}
+      >
+        Play Segment
+      </Action>
+    );
+  }
+
   VttEntry(entry) {
     const cue = entry.entry;
 
     return (
       <div className="entry-container">
-        <h4>{entry.label} - WebVTT Cue</h4>
+        <div className="entry-header entry-actions">
+          <h4>{entry.label} - WebVTT Cue</h4>
+          { this.PlayCurrentEntry(entry.entryId) }
+        </div>
 
         <div className="entry">
           <label>Text</label>
           <div>{cue.text}</div>
-
-          <label>ID</label>
-          <span>{cue.id}</span>
 
           <label>Start Time</label>
           <span>{`${cue.startTime} (${entry.startTimeSMPTE})`}</span>
@@ -97,7 +108,10 @@ class Entry extends React.Component {
   TagEntry(entry) {
     return (
       <div className="entry-container">
-        <h4>{entry.label}</h4>
+        <div className="entry-header entry-actions">
+          <h4>{entry.label} - WebVTT Cue</h4>
+          { this.PlayCurrentEntry(entry.entryId) }
+        </div>
 
         <div className="entry">
           <label>Tag</label>

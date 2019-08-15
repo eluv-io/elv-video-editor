@@ -44,7 +44,8 @@ class Track extends React.Component {
           scaleMax: this.props.video.scaleMax,
           scaleMin: this.props.video.scaleMin,
           entries: this.props.entry.entries,
-          hoverEntries: this.props.entry.hoverEntries
+          hoverEntries: this.props.entry.hoverEntries,
+          selectedEntry: this.props.entry.selectedEntry
         }),
         () => this.Draw(),
         {delay: 25}
@@ -146,7 +147,6 @@ class Track extends React.Component {
     const context = this.state.context;
 
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-    context.globalAlpha = 0.2;
 
     // How much of the duration of the video is currently visible
     const duration = Fraction(this.props.video.scaleMax - this.props.video.scaleMin).div(this.props.video.scale).mul(this.props.video.duration);
@@ -173,8 +173,17 @@ class Track extends React.Component {
       }
 
       context.beginPath();
+      context.globalAlpha = 0.1;
 
-      if(selectedEntryIds.includes(entry.entryId)) {
+      if(this.props.entry.selectedEntry === entry.entryId) {
+        // Currently shown entry
+
+        context.globalAlpha = 0.5;
+        context.fillStyle = color;
+        context.strokeStyle = color;
+        context.fillRect(startPixel, startY, endPixel - startPixel, halfHeight);
+        context.rect(startPixel, startY, endPixel - startPixel, halfHeight);
+      } else if(selectedEntryIds.includes(entry.entryId)) {
         // Selected item - highlight fill
 
         context.fillStyle = selectedColor;

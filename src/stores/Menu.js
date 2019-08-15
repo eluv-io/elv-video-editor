@@ -44,6 +44,8 @@ class MenuStore {
 
   @action.bound
   SelectVideo = flow(function * ({libraryId, objectId, versionHash}) {
+    this.rootStore.Reset();
+
     this.rootStore.videoStore.IndicateLoading();
 
     if(versionHash) {

@@ -8,10 +8,14 @@ class OverlayStore {
     this.client = client;
   }
 
+  Reset() {
+    this.overlayTracks = [];
+  }
+
   @action.bound
   AddOverlayTracks(frameTags) {
     if(!frameTags) { return; }
-    
+
     const entries = Object.keys(frameTags).map(frame => {
       const frameInfo = frameTags[frame];
 

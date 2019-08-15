@@ -17,7 +17,7 @@
   font-size: 14px;
   grid-auto-columns: minmax(100px, 2fr) minmax(100px, 3fr);
 
-  grid-row-gap: $elv-spacing-xs;
+  grid-row-gap: $elv-spacing-xxs;
 
   label {
     grid-column: 1;
@@ -32,6 +32,7 @@
   align-items: center;
   display: flex;
   justify-content: space-between;
+  width: 100%;
 
   .entry-page {
     @include elv-no-select;
@@ -42,21 +43,37 @@
   }
 
   .entry-page-button {
+    flex: 1 1 0;
+    min-width: 90px;
+
     &.entry-page-button {
       background-color: $elv-color-darkgray;
       border-color: $elv-color-darkgray;
       border-radius: 0;
-      flex: 1 1 0;
-      min-width: 90px;
     }
 
     &:disabled {
       visibility: hidden;
     }
   }
+
+  &.bottom-actions {
+    justify-content: center;
+  }
 }
 
 .entry-time {
-  margin-top: $elv-spacing-s;
+  margin-top: $elv-spacing-xs;
   text-align: center;
+}
+
+.entry-header {
+  align-items: center;
+  display: flex;
+  margin-bottom: $elv-spacing-s;
+
+  h4 {
+    margin: 0;
+    padding: 0;
+  }
 }
