@@ -5,7 +5,6 @@ import URI from "urijs";
 import VideoControls from "./VideoControls";
 import LoadingElement from "elv-components-js/src/components/LoadingElement";
 import Overlay from "./Overlay";
-import ResizeObserver from "resize-observer-polyfill";
 import {ResizableBox} from "react-resizable";
 import {ImageIcon} from "elv-components-js";
 
@@ -43,23 +42,16 @@ class Video extends React.Component {
 
     const player = new HLSPlayer();
     const source = URI(this.props.video.source).addSearch("player_profile", "hls-js").toString();
+
     player.loadSource(source);
     player.attachMedia(video);
-    this.setState({player});
 
-    this.props.video.Initialize(video);
-
-    // Add resize observer for overlay component
-    this.resizeObserver = new ResizeObserver((elements) => {
-      const {height, width} = elements[0].contentRect;
-
-      this.setState({
-        videoHeight: height,
-        videoWidth: width
-      });
+    this.setState({
+      player,
+      video
     });
 
-    this.resizeObserver.observe(video);
+    this.props.video.Initialize(video);
   }
 
   InitializeTracks(trackContainer) {
@@ -70,10 +62,19 @@ class Video extends React.Component {
     if(this.props.video.frame > 0 || !this.props.video.poster) { return null; }
 
     return (
-      <div className="poster-holder">
-        <ImageIcon onClick={this.props.video.PlayPause} src={this.props.video.poster} className="video-poster" />
-      </div>
+      <ImageIcon
+        onClick={this.props.video.PlayPause}
+        icon={this.props.video.poster}
+        useLoadingIndicator={false}
+        className="video-poster"
+      />
     );
+  }
+
+  Overlay() {
+    if(!this.state.video) { return; }
+
+    return <Overlay element={this.state.video} />;
   }
 
   Video() {
@@ -86,10 +87,7 @@ class Video extends React.Component {
         width={Infinity}
         handle={<div className={`resize-handle ${this.props.video.fullScreen ? "hidden" : ""}`}/>}
       >
-        <Overlay
-          videoWidth={this.state.videoWidth}
-          videoHeight={this.state.videoHeight}
-        />
+        { this.Overlay() }
         <video
           crossOrigin="anonymous"
           ref={this.InitializeVideo}

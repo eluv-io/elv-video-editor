@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import {inject, observer} from "mobx-react";
 import {reaction} from "mobx";
 import ToolTip from "elv-components-js/src/components/Tooltip";
+import ResizeObserver from "resize-observer-polyfill";
 
 const defaultColor = "#00ff00";
 const hoverColor = "#45fdff";
@@ -30,33 +31,61 @@ class Overlay extends React.Component {
     this.ToolTipContent = this.ToolTipContent.bind(this);
   }
 
+  // Observe resizing of the video element to adjust the overlay size accordingly
+  componentWillMount() {
+    const debounceInterval = 100;
+
+    // Add resize observer for overlay component
+    this.resizeObserver = new ResizeObserver((elements) => {
+      // Debounce resize updates
+      if(this.lastUpdate && (performance.now() - this.lastUpdate) < debounceInterval ) {
+        clearTimeout(this.resizeUpdate);
+      }
+
+      this.resizeUpdate = setTimeout(() => {
+        const video = elements[0].target;
+        let {height, width} = elements[0].contentRect;
+
+        const videoAspectRatio = video.videoWidth / video.videoHeight;
+        const elementAspectRatio = width / height;
+
+        // Since the video element is pegged to 100% height, when the AR of the
+        // video element becomes taller than the video content, they no longer match.
+        // Calculate the actual video height using the reported aspect ratio of the content.
+        if(elementAspectRatio < videoAspectRatio) {
+          height = width / videoAspectRatio;
+        }
+
+        this.setState({
+          videoHeight: height,
+          videoWidth: width
+        });
+      }, debounceInterval);
+
+      this.lastUpdate = performance.now();
+    });
+
+    this.resizeObserver.observe(this.props.element);
+  }
+
   componentDidMount() {
     this.setState({
-      // Draw reaction - Ensure canvas gets redrawn when state changes
       DisposeDrawReaction: reaction(
         () => {
           return ({
             frame: this.props.video.frame,
             hoverEntries: this.props.entry.hoverEntries.map(entry => entry.entryId).sort(),
             selectedEntries: this.props.entry.entries.map(entry => entry.entryId).sort(),
-            selectedEntry: this.props.entry.selectedEntry
+            selectedEntry: this.props.entry.selectedEntry,
+            videoWidth: this.state.videoWidth,
+            videoHeight: this.state.videoHeight
           });
         },
         () => this.Draw(),
         {
-          delay: 5,
+          delay: 25,
           equals: (from, to) => JSON.stringify(from) === JSON.stringify(to)
         },
-      ),
-      DisposeResizeReaction: reaction(
-        () => {
-          return ({
-            videoWidth: this.props.videoWidth,
-            videoHeight: this.props.videoHeight,
-          });
-        },
-        () => this.Resize(),
-        { delay: 25 },
       )
     });
   }
@@ -64,10 +93,6 @@ class Overlay extends React.Component {
   componentWillUnmount() {
     if(this.state.DisposeDrawReaction) {
       this.state.DisposeDrawReaction();
-    }
-
-    if(this.state.DisposeResizeReaction) {
-      this.state.DisposeResizeReaction();
     }
   }
 
@@ -142,19 +167,13 @@ class Overlay extends React.Component {
     );
   }
 
-  Resize() {
-    if(!this.state.context) { return; }
-
-    this.state.context.canvas.width = this.props.videoWidth;
-    this.state.context.canvas.height = this.props.videoHeight;
-
-    this.Draw();
-  }
-
   Draw() {
     if(!this.state.context) { return; }
 
     const entries = this.Entries();
+
+    this.state.context.canvas.width = this.state.videoWidth;
+    this.state.context.canvas.height = this.state.videoHeight;
 
     // Draw
     const context = this.state.context;
@@ -189,8 +208,6 @@ class Overlay extends React.Component {
 
       // Highlight current entry in entry panel, if the panel is visible
       if(this.props.entry.entries.length > 0 && entry.entryId === this.props.entry.selectedEntry) {
-        //context.globalAlpha = 1.0;
-        //context.lineWidth = 3;
         color = currentSelectionColor;
       }
 
@@ -204,7 +221,7 @@ class Overlay extends React.Component {
 
   render() {
     return (
-      <div className="overlay-container" style={{width: `${this.props.videoWidth}px`}}>
+      <div className="overlay-container" style={{width: `${this.state.videoWidth}px`}}>
         <ToolTip
           onMouseMove={this.Hover}
           onMouseLeave={this.ClearHover}
@@ -222,8 +239,7 @@ class Overlay extends React.Component {
 }
 
 Overlay.propTypes = {
-  videoWidth: PropTypes.number.isRequired,
-  videoHeight: PropTypes.number.isRequired,
+  element: PropTypes.element.isRequired,
 };
 
 export default Overlay;

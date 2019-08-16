@@ -6,12 +6,12 @@ header {
 
 .menu-container {
   background-color: $color-background;
-  box-shadow: 3px 10px 10px $elv-color-black;
+  box-shadow: 3px -3px 8px $elv-color-black;
   height: calc(100% - #{$header-height});
   max-height: calc(100% - #{$header-height});
   position: absolute;
   width: 600px;
-  z-index: 10000;
+  z-index: 1000;
 }
 
 .video-level {
