@@ -266,7 +266,7 @@ class VideoStore {
     if(!this.video || !this.video.duration) { return; }
 
     let deltaMin, deltaMax;
-    deltaY *= this.scale * -0.005;
+    deltaY *= this.scale * -0.003;
 
     // deltaY: Positive => zoom in, negative => zoom out
     if(deltaY > 0) {
@@ -319,7 +319,7 @@ class VideoStore {
     this.scaleMin = min;
     this.scaleMax = max;
 
-    this.SeekPercentage(seek / this.scale);
+    this.SeekPercentage(seek / this.scale, false);
   }
 
   @action.bound
@@ -330,14 +330,14 @@ class VideoStore {
   }
 
   @action.bound
-  Seek(frame) {
-    this.segmentEnd = undefined;
+  Seek(frame, clearSegment=true) {
+    if(clearSegment) { this.segmentEnd = undefined; }
     this.videoHandler.Seek(frame);
   }
 
   @action.bound
-  SeekPercentage(percent) {
-    this.segmentEnd = undefined;
+  SeekPercentage(percent, clearSegment=true) {
+    if(clearSegment) { this.segmentEnd = undefined; }
     this.videoHandler.SeekPercentage(percent);
   }
 

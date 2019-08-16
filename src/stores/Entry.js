@@ -25,7 +25,7 @@ class EntryStore {
   PlayCurrentEntry() {
     const entry = this.entries.find(({entryId}) => entryId === this.selectedEntry);
 
-    if(!entry) { return; }
+    if(!entry || entry.entryType === "overlay") { return; }
 
     this.rootStore.videoStore.PlaySegment(
       this.rootStore.videoStore.TimeToFrame(entry.startTime),

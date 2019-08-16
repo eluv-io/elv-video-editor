@@ -173,12 +173,12 @@ class Track extends React.Component {
       }
 
       context.beginPath();
-      context.globalAlpha = 0.1;
+      context.globalAlpha = 0.5;
 
       if(this.props.entry.selectedEntry === entry.entryId) {
         // Currently shown entry
 
-        context.globalAlpha = 0.5;
+        context.globalAlpha = 0.8;
         context.fillStyle = color;
         context.strokeStyle = color;
         context.fillRect(startPixel, startY, endPixel - startPixel, halfHeight);

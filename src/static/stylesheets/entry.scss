@@ -15,9 +15,9 @@
 .entry {
   display: grid;
   font-size: 14px;
-  grid-auto-columns: minmax(100px, 2fr) minmax(100px, 3fr);
-
   grid-row-gap: $elv-spacing-xxs;
+
+  grid-template-columns: 120px 1fr;
 
   label {
     grid-column: 1;
