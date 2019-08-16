@@ -1,9 +1,7 @@
 .video-component {
-  background-color: $color-background;
   display: flex;
   flex-direction: column;
   flex-shrink: 1;
-  height: 100%;
   max-height: 100%;
   width: 100%;
 
@@ -16,7 +14,7 @@
 
 .video-container {
   align-items: center;
-  background-color: $color-video-background;
+  background-color: $color-background-video;
   display: flex;
   flex-grow: 1;
   height: 100%;
@@ -29,7 +27,7 @@
     margin: auto;
     max-height: 100%;
     object-fit: contain;
-    position: absolute;
+    position: relative;
     width: 100%;
   }
 
@@ -53,6 +51,15 @@
   .video-seek-handle {
     background-color: $color-accent;
   }
+
+  .-elv-slider {
+    background-color: $color-rail-background;
+    border: 1px solid $color-border;
+  }
+
+  .-elv-slider-active {
+    background-color: $color-rail;
+  }
 }
 
 .video-time,
@@ -60,7 +67,7 @@
   align-items: center;
   color: $elv-color-text-lightest;
   display: flex;
-  font-size: 20px;
+  font-size: $font-m;
   font-weight: lighter;
   justify-content: center;
 }
@@ -71,23 +78,53 @@
   width: 100%;
 }
 
+.video-controls-container {
+  background-color: $color-background-video;
+
+  &:not(.fullscreen) {
+    flex-grow: 1;
+  }
+}
+
 .video-controls {
-  height: 60px;
+  height: 45px;
   padding-bottom: $elv-spacing-xs;
   position: relative;
 
   button {
-    height: 25px;
+    height: $font-l;
     width: 50px;
 
     svg {
       color: $color-foreground;
+      fill: $color-foreground;
+      stroke: $color-foreground;
     }
 
+    &:active,
     &:hover {
       svg {
         color: $color-accent;
+        fill: $color-accent;
+        stroke: $color-accent;
       }
+    }
+
+    &.video-control-play-pause {
+      height: $font-xxl;
+
+      svg {
+        stroke: none;
+      }
+    }
+  }
+
+  select {
+    font-size: $font-m;
+
+    &:active,
+    &:hover {
+      color: $color-accent;
     }
   }
 
@@ -130,10 +167,6 @@
   }
 }
 
-.video-controls-fullscreen {
-  padding-bottom: $elv-spacing-s;
-}
-
 select {
   background: none;
   border: 0;
@@ -142,7 +175,7 @@ select {
   width: 80px;
 
   option {
-    background-color: $color-background;
+    background-color: $color-background-active;
   }
 
   &.video-playback-rate {

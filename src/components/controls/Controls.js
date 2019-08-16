@@ -75,6 +75,7 @@ let PlayPause = (props) => {
   return (
     <ToolTip content={<span>{label}</span>}>
       <IconButton
+        className="video-control-play-pause"
         label={label}
         icon={props.video.playing ? PauseButton : PlayButton}
         onClick={props.video.PlayPause}

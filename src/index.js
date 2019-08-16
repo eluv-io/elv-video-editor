@@ -22,7 +22,7 @@ class App extends React.Component {
       <div className="video-editor">
         <Header/>
         <Menu/>
-        <div className="video-level">
+        <div className="video-level" key={`video-${this.props.root.videoStore.source}`}>
           <Entry/>
           <Video/>
         </div>

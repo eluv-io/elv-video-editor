@@ -33,7 +33,7 @@ class VideoControls extends React.Component {
 
   Controls() {
     return (
-      <div key="video-controls" className={`video-controls ${this.props.video.fullScreen ? "video-controls-fullscreen" : ""}`}>
+      <div className="video-controls">
         <div className="controls left-controls">
           <PlaybackRate />
           <FrameRate />
@@ -57,12 +57,14 @@ class VideoControls extends React.Component {
   render() {
     if(!this.props.video.initialized) { return null; }
 
-    return [
-      <div key="video-time" className="mono video-time">{Math.floor(this.props.video.frame) + " :: " + this.props.video.smpte}</div>,
-      this.Controls(),
-      this.Seek(),
-      this.Scale()
-    ];
+    return (
+      <div className={`video-controls-container ${this.props.video.fullScreen ? "fullscreen" : ""}`}>
+        <div className="mono video-time">{Math.floor(this.props.video.frame) + " :: " + this.props.video.smpte}</div>
+        { this.Controls() }
+        { this.Seek() }
+        { this.Scale() }
+      </div>
+    );
   }
 }
 

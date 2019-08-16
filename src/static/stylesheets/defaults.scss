@@ -1,19 +1,40 @@
+html {
+  font-size: 18px;
+}
+
+@media screen and (min-width: 1600px) {
+  html {
+    font-size: 20px;
+  }
+}
+
+html,
 body,
 .app,
 .video-editor {
-  height: 100%;
+  background-color: $color-background;
+  min-height: 100%;
 }
 
 body {
-  background-color: $color-background;
+  font-size: $font-m;
+  height: auto;
 
   * {
     color: $color-text;
   }
 }
 
+.app {
+  padding-bottom: $elv-spacing-xxl;
+}
+
 .mono {
   font-family: monospace;
+}
+
+.hidden {
+  display: none !important; // sass-lint:disable-line no-important
 }
 
 .-elv-tooltip {
@@ -57,29 +78,17 @@ button {
   word-wrap: break-word;
 }
 
-.react-resizable-handle {
-  background-image: url("../icons/Resize.svg");
-  filter: invert(100%);
-  margin: $elv-spacing-xxs;
-}
-
 .resize-handle {
+  background-color: $color-background;
   bottom: 0;
-  cursor: ns-resize;
-  padding: $elv-spacing-xxs;
+  cursor: s-resize;
+  height: 0;
+  padding: 3px;
   position: absolute;
-  right: 0;
-  z-index: 1000;
+  width: 100%;
+  z-index: 9999999;
 
   &:hover {
-    background-color: $elv-color-bg-dark;
-  }
-
-  svg {
-    stroke: $elv-color-text-lightest;
-
-    &:hover {
-      stroke: $elv-color-text-white;
-    }
+    background-color: $color-accent;
   }
 }

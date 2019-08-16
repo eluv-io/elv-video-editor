@@ -7,7 +7,6 @@ import LoadingElement from "elv-components-js/src/components/LoadingElement";
 import Overlay from "./Overlay";
 import ResizeObserver from "resize-observer-polyfill";
 import {ResizableBox} from "react-resizable";
-import ResizeHandle from "../static/icons/Resize.svg";
 import {ImageIcon} from "elv-components-js";
 
 @inject("tracks")
@@ -25,6 +24,11 @@ class Video extends React.Component {
 
     this.InitializeVideo = this.InitializeVideo.bind(this);
     this.InitializeTracks = this.InitializeTracks.bind(this);
+  }
+
+  componentWillMount() {
+    // ResizableBox requires pixels for initial dimensions, but we want percentage of viewport
+    this.initialHeight = 0.4 * document.body.getBoundingClientRect().height;
   }
 
   componentWillUnmount() {
@@ -66,7 +70,9 @@ class Video extends React.Component {
     if(this.props.video.frame > 0 || !this.props.video.poster) { return null; }
 
     return (
-      <img onClick={this.props.video.PlayPause} src={this.props.video.poster} className="video-poster" />
+      <div className="poster-holder">
+        <ImageIcon onClick={this.props.video.PlayPause} src={this.props.video.poster} className="video-poster" />
+      </div>
     );
   }
 
@@ -76,19 +82,15 @@ class Video extends React.Component {
     return (
       <ResizableBox
         className="video-container"
-        height={350}
+        height={this.initialHeight}
         width={Infinity}
-        handle={
-          <ImageIcon label="Resize" icon={ResizeHandle} className="resize-handle"/>
-        }
+        handle={<div className={`resize-handle ${this.props.video.fullScreen ? "hidden" : ""}`}/>}
       >
         <Overlay
-          aspectRatio={this.state.aspectRatio}
           videoWidth={this.state.videoWidth}
           videoHeight={this.state.videoHeight}
         />
         <video
-          key={`video-${this.props.video.source}`}
           crossOrigin="anonymous"
           ref={this.InitializeVideo}
           muted={true}

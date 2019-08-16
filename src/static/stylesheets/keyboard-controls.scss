@@ -1,10 +1,10 @@
 .keyboard-control-info {
-  font-size: 12px;
+  font-size: $font-xs;
   min-width: 500px;
   width: 500px;
 
   h3 {
-    font-size: 14px;
+    font-size: $font-s;
     padding: $elv-spacing-s 0 $elv-spacing-xs;
   }
 

@@ -19,8 +19,6 @@ header {
 }
 
 .side-panel {
-  border-bottom: 1px solid $color-border;
-  border-right: 1px solid $color-border;
   min-width: 400px;
   overflow: auto;
   overflow-x: hidden;
@@ -29,6 +27,5 @@ header {
 }
 
 .timeline {
-  border-right: 1px solid $color-border;
   margin-right: $elv-spacing-s;
 }

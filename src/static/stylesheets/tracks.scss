@@ -30,14 +30,20 @@
   &:last-child {
     border-bottom: 0;
   }
+
+  .-elv-slider {
+    .-elv-slider-mark {
+      font-size: $font-xxs;
+    }
+  }
 }
 
 .track-label {
   @include elv-no-select;
   align-items: center;
   display: flex;
-  font-size: 14px;
-  padding-left: $elv-spacing-xs;
+  font-size: $font-s;
+  padding-left: $elv-spacing-s;
 }
 
 .track-label-active {
@@ -68,7 +74,6 @@ $slider-height: 12px;
 }
 
 .track-entry-timestamps {
-  //border-bottom: 1px solid $color-border-active;
   display: flex;
   justify-content: center;
 }
