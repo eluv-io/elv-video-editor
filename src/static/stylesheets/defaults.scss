@@ -86,7 +86,7 @@ button {
   padding: 3px;
   position: absolute;
   width: 100%;
-  z-index: 9999999;
+  z-index: 10000;
 
   &:hover {
     background-color: $color-accent;

@@ -52,17 +52,38 @@
 
 .video-seek,
 .video-scale {
-  .video-seek-handle {
-    background-color: $color-accent;
-  }
-
   .-elv-slider {
     background-color: $color-rail-background;
-    border: 1px solid $color-border;
   }
 
   .-elv-slider-active {
     background-color: $color-rail;
+  }
+
+  .-elv-slider-overlay {
+    outline: 1px solid $color-border;
+  }
+}
+
+.video-seek {
+  .video-seek-handle {
+    background-color: transparent;
+  }
+
+  .-elv-slider-active {
+    background-color: $color-accent;
+  }
+
+  .-elv-slider-marks-container {
+    .-elv-slider-mark-notch {
+      background-color: transparent;
+    }
+  }
+}
+
+.video-scale {
+  .video-seek-handle {
+    background-color: $color-accent;
   }
 }
 
@@ -98,14 +119,14 @@
   button {
     align-items: center;
     display: flex;
-    height: $font-l;
+    height: $font-xxl;
     justify-content: center;
     width: 50px;
 
     svg {
       color: $color-foreground;
       fill: $color-foreground;
-      stroke: $color-foreground;
+      stroke: transparent;
     }
 
     &:active,
@@ -113,12 +134,11 @@
       svg {
         color: $color-accent;
         fill: $color-accent;
-        stroke: $color-accent;
       }
     }
 
     &.video-control-play-pause {
-      height: $font-xxl;
+      height: 1.8rem;
 
       svg {
         stroke: none;
@@ -162,7 +182,12 @@
   }
 
   .video-volume-icon {
+    height: $font-l;
     margin-right: $elv-spacing-s;
+
+    svg {
+      stroke: $color-foreground;
+    }
   }
 
   .video-volume-controls {
@@ -171,6 +196,14 @@
 
     margin-right: $elv-spacing-s;
     width: 125px;
+
+    .-elv-slider-active {
+      background-color: $color-foreground;
+    }
+
+    .-elv-slider-handle {
+      background-color: transparent;
+    }
   }
 }
 

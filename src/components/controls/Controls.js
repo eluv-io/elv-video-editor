@@ -9,6 +9,7 @@ import Fraction from "fraction.js/fraction";
 import PauseButton from "../../static/icons/Pause.svg";
 import PlayButton from "../../static/icons/Play.svg";
 import MaximizeIcon from "../../static/icons/Maximize.svg";
+import MinimizeIcon from "../../static/icons/Minimize.svg";
 import VolumeOff from "../../static/icons/VolumeOff.svg";
 import VolumeLow from "../../static/icons/VolumeLow.svg";
 import VolumeHigh from "../../static/icons/VolumeHigh.svg";
@@ -85,11 +86,13 @@ let PlayPause = (props) => {
 };
 
 let FullscreenToggle = (props) => {
+  const label = props.video.fullScreen ? "Exit Full Screen" : "Full Screen";
+
   return (
-    <ToolTip content={<span>Full Screen</span>}>
+    <ToolTip content={<span>{label}</span>}>
       <IconButton
-        label="Full Screen"
-        icon={MaximizeIcon}
+        label={label}
+        icon={props.video.fullScreen ? MinimizeIcon : MaximizeIcon}
         onClick={props.video.ToggleFullscreen}
       />
     </ToolTip>
@@ -105,7 +108,7 @@ let Volume = (props) => {
       onWheel={({deltaY}) => props.video.ScrollVolume(deltaY)}
       className="video-volume-controls"
     >
-      <ToolTip content={<span>Volume</span>}>
+      <ToolTip content={<span>{props.video.muted ? "Unmute" : "Mute"}</span>}>
         <IconButton
           icon={icon}
           onClick={() => props.video.SetMuted(!props.video.muted)}

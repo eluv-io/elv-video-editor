@@ -33,7 +33,7 @@
 
   .-elv-slider {
     .-elv-slider-mark {
-      font-size: $font-xxs;
+      font-size: $font-xs;
     }
   }
 }
@@ -56,14 +56,9 @@
 
 $slider-height: 12px;
 
-.video-seek {
-  height: $slider-height;
-}
-
 .video-scale-lane {
   border: 0;
-  height: $slider-height;
-  margin-top: $elv-spacing-xxs;
+  margin-top: 1px;
 }
 
 .track-entry-timestamps,

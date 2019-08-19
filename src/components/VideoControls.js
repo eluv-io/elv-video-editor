@@ -20,8 +20,6 @@ import SecondBackward from "../static/icons/DoubleBackward.svg";
 @observer
 class VideoControls extends React.Component {
   Seek() {
-    if(!this.props.video.fullScreen) { return null; }
-
     return <Seek />;
   }
 
@@ -59,7 +57,7 @@ class VideoControls extends React.Component {
 
     return (
       <div className={`video-controls-container ${this.props.video.fullScreen ? "fullscreen" : ""}`}>
-        <div className="mono video-time">{Math.floor(this.props.video.frame) + " :: " + this.props.video.smpte}</div>
+        <div className="mono video-time">{this.props.video.smpte}</div>
         { this.Controls() }
         { this.Seek() }
         { this.Scale() }

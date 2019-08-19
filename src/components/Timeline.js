@@ -3,7 +3,7 @@ import {inject, observer} from "mobx-react";
 import Track from "./tracks/Track";
 import {onEnterPressed, ToolTip} from "elv-components-js";
 import ResizeObserver from "resize-observer-polyfill";
-import {Seek, Scale} from "./controls/Controls";
+import {Scale} from "./controls/Controls";
 
 @inject("tracks")
 @inject("video")
@@ -125,15 +125,11 @@ class Timeline extends React.Component {
       <div className="timeline">
         {this.TrackLane({
           label: <span className="mono">{`${this.props.video.frame} :: ${this.props.video.smpte}`}</span>,
-          content: <Seek />,
-          key: "seek"
-        })}
-        {this.Tracks()}
-        {this.TrackLane({
           content: <Scale />,
           key: "scale",
           className: "video-scale-lane"
         })}
+        {this.Tracks()}
       </div>
     );
   }
