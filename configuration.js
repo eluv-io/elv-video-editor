@@ -1,3 +1,3 @@
 const EluvioConfiguration = {
-  "config-url": "https://main.net955304.contentfabric.io/config"
+  "config-url": "https://main.net955210.contentfabric.io/config"
 };

@@ -19,11 +19,35 @@ header {
 }
 
 .side-panel {
-  min-width: 400px;
-  overflow: auto;
-  overflow-x: hidden;
+  min-width: 20rem;
+  overflow: hidden;
   width: 500px;
   word-wrap: break-word;
+
+  .resize-handle {
+    cursor: e-resize;
+    height: 100%;
+    right: 0;
+    top: 0;
+    width: 0;
+  }
+
+  .side-panel-content {
+    height: 100%;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 100%;
+  }
+}
+
+.video-component {
+  .resize-handle {
+    bottom: -6px;
+    cursor: s-resize;
+    height: 0;
+    width: 100%;
+  }
 }
 
 .timeline {

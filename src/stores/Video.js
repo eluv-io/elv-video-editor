@@ -1,4 +1,4 @@
-import {observable, action, flow} from "mobx";
+import {observable, action, flow, computed} from "mobx";
 import FrameAccurateVideo, {FrameRates} from "../utils/FrameAccurateVideo";
 
 class VideoStore {
@@ -15,6 +15,7 @@ class VideoStore {
   @observable frameRateKey = "NTSC";
   @observable frameRate = FrameRates.NTSC;
 
+  @observable currentTime = 0;
   @observable frame = 0;
   @observable smpte = "00:00:00:00";
 
@@ -31,6 +32,12 @@ class VideoStore {
   @observable scaleMax = this.scale;
 
   @observable segmentEnd = undefined;
+
+  @computed get scaleMinTime() { return this.videoHandler.ProgressToTime(this.scaleMin / this.scale); }
+  @computed get scaleMaxTime() { return this.videoHandler.ProgressToTime(this.scaleMax / this.scale); }
+
+  @computed get scaleMinSMPTE() { return this.videoHandler.ProgressToSMPTE(this.scaleMin / this.scale); }
+  @computed get scaleMaxSMPTE() { return this.videoHandler.ProgressToSMPTE(this.scaleMax / this.scale); }
 
   constructor(rootStore) {
     this.rootStore = rootStore;

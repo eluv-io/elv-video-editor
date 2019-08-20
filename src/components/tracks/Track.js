@@ -12,6 +12,7 @@ const activeColor = "#36ff00";
 
 @inject("video")
 @inject("entry")
+@inject("tracks")
 @observer
 class Track extends React.Component {
   constructor(props) {
@@ -109,6 +110,7 @@ class Track extends React.Component {
     const entries = this.Search(time);
 
     this.props.entry.SetEntries(entries, this.props.video.TimeToSMPTE(time));
+    this.props.tracks.SetSelectedTrack(this.props.track.trackId);
   }
 
   Hover({clientX}) {
@@ -162,6 +164,7 @@ class Track extends React.Component {
     const activeEntries = this.Search(this.props.video.currentTime);
     const activeEntryIds = activeEntries.map(entry => entry.entryId);
     const selectedEntryIds = this.props.entry.entries.map(entry => entry.entryId);
+    const selectedEntryId = this.props.entry.selectedEntry ? this.props.entry.selectedEntry.entryId : undefined;
     const hoverEntryIds = this.props.entry.hoverEntries.map(entry => entry.entryId);
 
     this.props.track.entries.forEach(entry => {
@@ -175,7 +178,7 @@ class Track extends React.Component {
       context.beginPath();
       context.globalAlpha = 0.4;
 
-      if(this.props.entry.selectedEntry === entry.entryId) {
+      if(selectedEntryId === entry.entryId) {
         // Currently shown entry
 
         context.globalAlpha = 0.6;

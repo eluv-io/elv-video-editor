@@ -239,7 +239,7 @@ class Overlay extends React.Component {
 }
 
 Overlay.propTypes = {
-  element: PropTypes.element.isRequired,
+  element: PropTypes.object.isRequired,
 };
 
 export default Overlay;

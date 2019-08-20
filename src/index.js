@@ -8,9 +8,8 @@ import * as Stores from "./stores";
 import Header from "./components/Header";
 import Video from "./components/Video";
 import Timeline from "./components/Timeline";
-import Entry from "./components/Entry";
 import Menu from "./components/Menu";
-
+import SidePanel from "./components/SidePanel";
 
 @inject("root")
 @observer
@@ -23,7 +22,7 @@ class App extends React.Component {
         <Header/>
         <Menu/>
         <div className="video-level" key={`video-${this.props.root.videoStore.source}`}>
-          <Entry/>
+          <SidePanel/>
           <Video/>
         </div>
         <Timeline/>

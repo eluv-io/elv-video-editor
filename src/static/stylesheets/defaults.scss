@@ -1,8 +1,15 @@
 html {
-  font-size: 18px;
+  font-size: 16px;
+  overflow-x: hidden;
 }
 
-@media screen and (min-width: 1600px) {
+@media screen and (min-width: 1000px) {
+  html {
+    font-size: 18px;
+  }
+}
+
+@media screen and (min-width: 2000px) {
   html {
     font-size: 20px;
   }
@@ -52,6 +59,18 @@ body {
 }
 
 button {
+  background-color: $color-background;
+  border: 1px solid $color-border;
+  cursor: pointer;
+  font-size: $font-s;
+  padding: $elv-spacing-xs $elv-spacing-s;
+
+  &:not(.-elv-icon-button) {
+    &:hover {
+      background-color: $color-accent;
+    }
+  }
+
   &:focus {
     outline: 1px dotted $color-foreground;
   }
@@ -80,15 +99,46 @@ button {
 
 .resize-handle {
   background-color: $color-background;
-  bottom: 0;
-  cursor: s-resize;
-  height: 0;
   padding: 3px;
   position: absolute;
-  width: 100%;
-  z-index: 10000;
+  z-index: 100;
 
   &:hover {
     background-color: $color-accent;
+  }
+}
+
+.checkbox-container {
+  cursor: pointer;
+  padding: $elv-spacing-xs;
+}
+
+.checkbox {
+  background-color: $elv-color-black;
+  border-radius: 3px;
+  height: $font-xxs;
+  outline: 1px solid $color-border;
+  position: relative;
+  width: $font-xxs;
+
+  &.checked {
+    &::after {
+      color: $color-accent;
+      content: "✓";
+      font-size: $font-m;
+      font-weight: 600;
+      left: 0;
+      position: absolute;
+      top: -0.3rem;
+    }
+  }
+}
+
+.back-button {
+  border-radius: 3px;
+  width: 50px;
+
+  &:hover {
+    background-color: $color-background-active;
   }
 }

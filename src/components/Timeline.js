@@ -1,9 +1,10 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
 import Track from "./tracks/Track";
-import {onEnterPressed, ToolTip} from "elv-components-js";
+import {onEnterPressed} from "elv-components-js";
 import ResizeObserver from "resize-observer-polyfill";
 import {Scale} from "./controls/Controls";
+import {Checkbox} from "./Components";
 
 @inject("tracks")
 @inject("video")
@@ -44,23 +45,32 @@ class Timeline extends React.Component {
     }
   }
 
-  TrackLane({label, content, key, active=false, labelToolTip, onLabelClick, className=""}) {
+  TrackLane({trackId, label, content, key, className=""}) {
+    const selected = trackId && this.props.tracks.selectedTrack === trackId;
+    const selectTrack = () => {
+      if(!trackId) { return; }
+
+      if(selected) {
+        this.props.tracks.ClearSelectedTrack();
+      } else {
+        this.props.tracks.SetSelectedTrack(trackId);
+      }
+    };
+
     return (
       <div key={`track-lane-${key || label}`} className={`track-lane ${className}`}>
-        <ToolTip content={labelToolTip}>
-          <div
-            onClick={onLabelClick}
-            onKeyPress={onEnterPressed(onLabelClick)}
-            tabIndex={onLabelClick ? 0 : undefined}
-            className={`
+        <div
+          onClick={selectTrack}
+          onKeyPress={onEnterPressed(selectTrack)}
+          tabIndex={trackId ? 0 : undefined}
+          className={`
               track-label
-              ${active ? "track-label-active" : ""}
-              ${onLabelClick ? "track-label-clickable" : ""}
+              ${selected ? "track-label-selected" : ""}
+              ${trackId? "track-label-clickable" : ""}
             `}
-          >
-            {label}
-          </div>
-        </ToolTip>
+        >
+          {label}
+        </div>
         <div className="track-lane-content">
           { content }
         </div>
@@ -80,20 +90,44 @@ class Timeline extends React.Component {
     );
   }
 
+  TrackLabel(track) {
+    const toggleable = track.trackType === "vtt";
+    const Toggle = toggleable ? () => this.props.tracks.ToggleTrack(track.label) : undefined;
+
+    let toggleButton;
+    if(toggleable) {
+      const tooltip = <span>{track.active ? "Disable" : "Enable"} {track.label}</span>;
+
+      toggleButton = (
+        <Checkbox
+          value={track.active}
+          onChange={Toggle}
+          toolTip={tooltip}
+          className="track-toggle"
+        />
+      );
+    }
+
+    return (
+      <div className="track-label">
+        { track.label }
+        { toggleButton }
+      </div>
+    );
+  }
+
   Track(track) {
-    const toggleable = track.vttTrack;
-    const toggle = toggleable ? () => this.props.tracks.ToggleTrack(track.label) : undefined;
+    const toggleable = track.trackType === "vtt";
     const tooltip = toggleable ? `${track.active ? "Disable" : "Enable"} ${track.label}` : track.label;
 
     return (
       this.TrackLane({
-        label: track.label,
+        trackId: track.trackId,
+        label: this.TrackLabel(track),
         content: (
           <Track track={track} width={this.state.trackDimensions.width} height={this.state.trackDimensions.height} />
         ),
-        active: track.active,
-        labelToolTip: <span>{tooltip}</span>,
-        onLabelClick: toggle
+        labelToolTip: <span>{tooltip}</span>
       })
     );
   }
@@ -104,13 +138,13 @@ class Timeline extends React.Component {
         { this.CurrentTimeIndicator() }
         {
           this.props.tracks.tracks
-            .filter(track => track.vttTrack).slice()
+            .filter(track => track.trackType === "vtt").slice()
             .sort((a, b) => (a.label > b.label ? 1 : -1))
             .map(track => this.Track(track))
         }
         {
           this.props.tracks.tracks
-            .filter(track => !track.vttTrack).slice()
+            .filter(track => track.trackType !== "vtt").slice()
             .sort((a, b) => (a.label > b.label ? 1 : -1))
             .map(track => this.Track(track))
         }

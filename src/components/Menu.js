@@ -1,9 +1,9 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
-import {AsyncComponent, IconButton, onEnterPressed} from "elv-components-js";
+import {AsyncComponent, onEnterPressed} from "elv-components-js";
 
-import BackIcon from "../static/icons/DoubleBackward.svg";
 import LoadingElement from "elv-components-js/src/components/LoadingElement";
+import {BackButton} from "./Components";
 
 @inject("menu")
 @observer
@@ -47,9 +47,7 @@ class Menu extends React.Component {
         render={() => (
           <div className="menu-entries">
             <div className="menu-header">
-              <IconButton className="menu-back" icon={BackIcon} onClick={() => this.setState({objectId: undefined})}>
-                Menu
-              </IconButton>
+              <BackButton onClick={() => this.setState({objectId: undefined})} />
               <h4>{object.name}</h4>
             </div>
 
@@ -109,9 +107,7 @@ class Menu extends React.Component {
     return (
       <div className="menu-entries">
         <div className="menu-header">
-          <IconButton className="menu-back" icon={BackIcon} onClick={() => this.setState({library: undefined})}>
-            Menu
-          </IconButton>
+          <BackButton onClick={() => this.setState({library: undefined})} />
           <h4>{this.state.library.metadata.name}</h4>
         </div>
 

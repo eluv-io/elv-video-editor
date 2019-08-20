@@ -9,6 +9,7 @@ class Tracks {
   @observable tracks = [];
   @observable subtitleTracks = [];
   @observable metadataTracks = [];
+  @observable selectedTrack;
 
   constructor(rootStore) {
     this.rootStore = rootStore;
@@ -18,6 +19,7 @@ class Tracks {
     this.tracks = [];
     this.subtitleTracks = [];
     this.metadataTracks = [];
+    this.selectedTrack = undefined;
   }
 
   async ParseHLSPlaylist(playlistUrl) {
@@ -182,15 +184,15 @@ class Tracks {
     let tracks = [];
 
     // Initialize video WebVTT tracks by fetching and parsing the VTT file
-
     this.subtitleTracks.map(track => {
       const entries = this.ParseVTTTrack(track);
       const intervalTree = new IntervalTree();
       entries.forEach(entry => intervalTree.insert(entry.startTime, entry.endTime, entry));
 
       tracks.push({
+        trackId: Id.next(),
         ...track,
-        vttTrack: true,
+        trackType: "vtt",
         entries,
         intervalTree
       });
@@ -202,14 +204,32 @@ class Tracks {
       parsedTags.forEach(entry => intervalTree.insert(entry.startTime, entry.endTime, entry));
 
       tracks.push({
+        trackId: Id.next(),
         label: track.label,
-        vttTrack: false,
+        trackType: "metadata",
         entries: parsedTags,
         intervalTree
       });
     });
 
     runInAction(() => this.tracks = tracks);
+  }
+
+  @action.bound
+  SelectedTrack() {
+    if(!this.selectedTrack) { return; }
+
+    return this.tracks.find(track => track.trackId === this.selectedTrack);
+  }
+
+  @action.bound
+  SetSelectedTrack(trackId) {
+    this.selectedTrack = trackId;
+  }
+
+  @action.bound
+  ClearSelectedTrack() {
+    this.selectedTrack = undefined;
   }
 
   @action.bound

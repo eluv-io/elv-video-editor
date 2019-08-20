@@ -23,9 +23,17 @@ class EntryStore {
 
   @action.bound
   PlayCurrentEntry() {
-    const entry = this.entries.find(({entryId}) => entryId === this.selectedEntry);
+    if(!this.selectedEntry) { return; }
 
-    if(!entry || entry.entryType === "overlay") { return; }
+    this.rootStore.videoStore.PlaySegment(
+      this.rootStore.videoStore.TimeToFrame(this.selectedEntry.startTime),
+      this.rootStore.videoStore.TimeToFrame(this.selectedEntry.endTime)
+    );
+  }
+
+  @action.bound
+  PlayEntry(entry) {
+    if(!entry) { return; }
 
     this.rootStore.videoStore.PlaySegment(
       this.rootStore.videoStore.TimeToFrame(entry.startTime),
@@ -34,14 +42,21 @@ class EntryStore {
   }
 
   @action.bound
-  SetEntries(entries, time) {
-    this.entries = entries || [];
-    this.entryTime = time;
+  SetSelectedEntry(entry) {
+    this.selectedEntry = entry;
   }
 
   @action.bound
-  SetSelectedEntry(entryId) {
-    this.selectedEntry = entryId;
+  ClearSelectedEntry() {
+    this.selectedEntry = undefined;
+  }
+
+  @action.bound
+  SetEntries(entries, time) {
+    this.ClearSelectedEntry();
+
+    this.entries = entries || [];
+    this.entryTime = time;
   }
 
   @action.bound
@@ -51,14 +66,15 @@ class EntryStore {
   }
 
   @action.bound
-  ClearEntries() {
-    this.entries = [];
+  ClearHoverEntries() {
     this.hoverEntries = [];
+    this.hoverTime = undefined;
   }
 
   @action.bound
-  ClearSelectedEntry() {
-    this.selectedEntry = undefined;
+  ClearEntries() {
+    this.entries = [];
+    this.hoverEntries = [];
   }
 }
 

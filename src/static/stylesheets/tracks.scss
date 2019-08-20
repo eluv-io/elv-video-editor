@@ -10,6 +10,14 @@
   pointer-events: none;
   position: absolute;
   width: 4px;
+
+  .track-time-handle {
+    border-radius: 100%;
+    height: 5px;
+    position: absolute;
+    top: 0;
+    width: 5px;
+  }
 }
 
 .track-container {
@@ -23,8 +31,8 @@
 .track-lane {
   border-bottom: 1px solid $color-border;
   display: grid;
-  grid-template-columns: 200px 1fr;
-  height: 45px;
+  grid-template-columns: 13rem 1fr;
+  height: 2.5rem;
 
   &:first-child,
   &:last-child {
@@ -33,7 +41,7 @@
 
   .-elv-slider {
     .-elv-slider-mark {
-      font-size: $font-xs;
+      font-size: $font-xxs;
     }
   }
 }
@@ -42,11 +50,20 @@
   @include elv-no-select;
   align-items: center;
   display: flex;
-  font-size: $font-s;
+  font-size: $font-m;
+  height: 100%;
   padding-left: $elv-spacing-s;
+  position: relative;
+  width: 100%;
+
+  .track-toggle {
+    position: absolute;
+    right: $elv-spacing-xs;
+    top: 0;
+  }
 }
 
-.track-label-active {
+.track-label-selected {
   background-color: $color-background-active;
 }
 
