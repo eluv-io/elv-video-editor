@@ -40,6 +40,7 @@ class RootStore {
   @action
   async InitializeClient() {
     let client;
+
     // Initialize ElvClient or FrameClient
     if(window.self === window.top) {
       const ElvClient = (await import(
@@ -48,9 +49,24 @@ class RootStore {
         "elv-client-js"
       )).ElvClient;
 
+      // Pull private key from URL args
+      let privateKey;
+      let queryParams = window.location.search.split("?")[1];
+      if(queryParams) {
+        queryParams = queryParams.split("&");
+
+        queryParams.forEach(param => {
+          const key = param.split("=")[0];
+          if(key === "privateKey") {
+            privateKey = param.split("=")[1];
+          }
+        });
+      }
+
+      if(!privateKey) { throw Error("No private key specified"); }
+
       client = await ElvClient.FromConfigurationUrl({configUrl: EluvioConfiguration["config-url"]});
 
-      const privateKey = "0x0000000000000000000000000000000000000000000000000000000000000000";
       const wallet = client.GenerateWallet();
       const signer = wallet.AddAccount({privateKey});
 
