@@ -1,6 +1,7 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
 import Track from "./tracks/Track";
+import AudioTrack from "./tracks/AudioTrack";
 import {onEnterPressed} from "elv-components-js";
 import ResizeObserver from "resize-observer-polyfill";
 import {Scale} from "./controls/Controls";
@@ -45,10 +46,11 @@ class Timeline extends React.Component {
     }
   }
 
-  TrackLane({trackId, label, content, key, className=""}) {
+  TrackLane({trackId, trackType, label, content, key, className=""}) {
+    const clickable = trackId && trackType !== "audio";
     const selected = trackId && this.props.tracks.selectedTrack === trackId;
     const selectTrack = () => {
-      if(!trackId) { return; }
+      if(!clickable) { return; }
 
       if(selected) {
         this.props.tracks.ClearSelectedTrack();
@@ -66,7 +68,7 @@ class Timeline extends React.Component {
           className={`
               track-label
               ${selected ? "track-label-selected" : ""}
-              ${trackId? "track-label-clickable" : ""}
+              ${clickable? "track-label-clickable" : ""}
             `}
         >
           {label}
@@ -123,9 +125,12 @@ class Timeline extends React.Component {
     return (
       this.TrackLane({
         trackId: track.trackId,
+        trackType: track.trackType,
         label: this.TrackLabel(track),
         content: (
-          <Track track={track} width={this.state.trackDimensions.width} height={this.state.trackDimensions.height} />
+          track.trackType === "audio" ?
+            <AudioTrack track={track} width={this.state.trackDimensions.width} height={this.state.trackDimensions.height} /> :
+            <Track track={track} width={this.state.trackDimensions.width} height={this.state.trackDimensions.height} />
         ),
         labelToolTip: <span>{tooltip}</span>
       })
@@ -146,6 +151,10 @@ class Timeline extends React.Component {
           this.props.tracks.tracks
             .filter(track => track.trackType !== "vtt").slice()
             .sort((a, b) => (a.label > b.label ? 1 : -1))
+            .map(track => this.Track(track))
+        }
+        {
+          this.props.tracks.audioTracks
             .map(track => this.Track(track))
         }
       </div>

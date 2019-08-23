@@ -7,6 +7,7 @@ import UrlJoin from "url-join";
 
 class Tracks {
   @observable tracks = [];
+  @observable audioTracks = [];
   @observable subtitleTracks = [];
   @observable metadataTracks = [];
   @observable selectedTrack;
@@ -17,6 +18,7 @@ class Tracks {
 
   Reset() {
     this.tracks = [];
+    this.audioTracks = [];
     this.subtitleTracks = [];
     this.metadataTracks = [];
     this.selectedTrack = undefined;
@@ -31,44 +33,122 @@ class Tracks {
     return parser.manifest;
   }
 
+  AddSubtitleTracksFromHLSPlaylist = flow(function * (playoutUrl, subtitles) {
+    if(!subtitles) { return []; }
+
+    let vttTracks = [];
+
+    yield Promise.all(
+      Object.keys(subtitles).map(async subtitleName => {
+        // Get playlist for subtitles
+        const subPlaylistPath = subtitles[subtitleName].uri;
+        const subPlaylistUrl = UrlJoin(playoutUrl, subPlaylistPath);
+        const subPlaylist = await this.ParseHLSPlaylist(subPlaylistUrl);
+
+        if(!subPlaylist) { return; }
+
+        // Get VTT data
+        const vttPath = subPlaylist.segments[0].uri;
+        const subBaseUrl = (subPlaylistUrl.split("?")[0]).replace("playlist.m3u8", "");
+        const vttUrl = UrlJoin(subBaseUrl, vttPath);
+        const vttData = await (await fetch(vttUrl)).text();
+
+        vttTracks.push({
+          label: subtitleName,
+          vttData
+        });
+      })
+    );
+
+    return vttTracks;
+  });
+
   @action.bound
   AddTracksFromHLSPlaylist = flow(function * (playlistUrl) {
-    let vttFiles = [];
-
     try {
       const playoutUrl = (playlistUrl.split("?")[0]).replace("playlist.m3u8", "");
       const playlist = yield this.ParseHLSPlaylist(playlistUrl);
-      const subtitles = playlist.mediaGroups.SUBTITLES.subs;
 
-      if(!subtitles) { return; }
-
-      yield Promise.all(
-        Object.keys(subtitles).map(async subtitleName => {
-          // Get playlist for subtitles
-          const subPlaylistPath = subtitles[subtitleName].uri;
-          const subPlaylistUrl = UrlJoin(playoutUrl, subPlaylistPath);
-          const subPlaylist = await this.ParseHLSPlaylist(subPlaylistUrl);
-
-          // Get VTT data
-          const vttPath = subPlaylist.segments[0].uri;
-          const subBaseUrl = (subPlaylistUrl.split("?")[0]).replace("playlist.m3u8", "");
-          const vttUrl = UrlJoin(subBaseUrl, vttPath);
-          const vttData = await (await fetch(vttUrl)).text();
-
-          vttFiles.push({
-            label: subtitleName,
-            vttData
-          });
-        })
-      );
+      this.subtitleTracks = yield this.AddSubtitleTracksFromHLSPlaylist(playoutUrl, playlist.mediaGroups.SUBTITLES.subs);
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error("Error parsing subtitle tracks from playlist:");
       // eslint-disable-next-line no-console
       console.error(error);
     }
+  });
 
-    this.subtitleTracks = vttFiles;
+  DownloadAudioTrack = async (selectedObject, partHash) => {
+    let audioData = new Uint8Array([]);
+    await new Promise(async resolve => {
+      await this.rootStore.client.DownloadPart({
+        libraryId: selectedObject.libraryId,
+        versionHash: selectedObject.versionHash,
+        partHash,
+        chunked: true,
+        format: "arrayBuffer",
+        callback: ({chunk, bytesFinished, bytesTotal}) => {
+          audioData = new Uint8Array([
+            ...audioData,
+            ...(new Uint8Array(chunk))
+          ]);
+
+          if(bytesFinished === bytesTotal) {
+            resolve();
+          }
+        }
+      });
+    });
+
+    return audioData.buffer;
+  };
+
+  AddAudioTracks = flow(function * (segments) {
+    // Scale sample rate to video duration - short videos should have many samples because the
+    // visible can be set very small
+    const duration = segments.reduce((total, segment) => total + segment.duration.float, 0);
+    const samplesPerSecond = Math.ceil(Math.max(5, 50 * (5000 - duration) / 5000));
+
+    const selectedObject = this.rootStore.menuStore.selectedObject;
+
+    this.audioTracks = [{
+      trackId: Id.next(),
+      label: "Audio",
+      trackType: "audio",
+      entries: []
+    }];
+
+    for(let i = 0; i < segments.length; i++) {
+      const segmentInfo = segments[i];
+      const audioData = yield this.DownloadAudioTrack(selectedObject, segmentInfo.source);
+
+      const audioContext = new AudioContext();
+      const source = audioContext.createBufferSource();
+      yield new Promise(resolve => {
+        audioContext.decodeAudioData(audioData, (buffer) => {
+          source.buffer = buffer;
+          resolve();
+        });
+      });
+
+      const samples = Math.ceil(source.buffer.duration * samplesPerSecond);
+      const channel = source.buffer.getChannelData(0);
+      const sampleSize = Math.round(channel.length / samples);
+      const sampleDuration = 1 / samplesPerSecond;
+      const startTime = segmentInfo.timeline_start.float;
+      let audioSamples = [...Array(samples).keys()]
+        .map(i => channel.slice(i * sampleSize, (i+1) * sampleSize))
+        .map((samples, i) => ({
+          startTime: startTime + i * sampleDuration,
+          endTime: startTime + (i + 1) * sampleDuration,
+          max: Math.max(...samples)
+        }));
+
+      this.audioTracks[0].entries = [
+        ...this.audioTracks[0].entries,
+        ...audioSamples
+      ];
+    }
   });
 
   @action.bound

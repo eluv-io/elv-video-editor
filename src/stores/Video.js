@@ -1,5 +1,6 @@
 import {observable, action, flow, computed} from "mobx";
 import FrameAccurateVideo, {FrameRates} from "../utils/FrameAccurateVideo";
+import {SafeTraverse} from "../utils/Utils";
 
 class VideoStore {
   @observable contentObject;
@@ -171,6 +172,20 @@ class VideoStore {
     }));
 
     this.rootStore.keyboardControlStore.RegisterControlListener();
+
+    const audioSegments =
+      SafeTraverse(
+        this.rootStore.menuStore.selectedObject.metadata,
+        "offerings", "default", "media_struct", "streams", "audio_2ch_und", "sources"
+      ) ||
+      SafeTraverse(
+        this.rootStore.menuStore.selectedObject.metadata,
+        "offerings", "default", "media_struct", "streams", "audio_2ch_eng", "sources"
+      );
+
+    if(audioSegments) {
+      this.rootStore.trackStore.AddAudioTracks(audioSegments);
+    }
   });
 
   ToggleTrack(label) {
