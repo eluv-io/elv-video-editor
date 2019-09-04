@@ -2,11 +2,22 @@ import {observable, action} from "mobx";
 
 class ControlStore {
   @observable controlMap;
+  @observable enabled = true;
 
   constructor(rootStore) {
     this.rootStore = rootStore;
 
     this.InitializeControlMap();
+  }
+
+  @action.bound
+  EnableControls() {
+    this.enabled = true;
+  }
+
+  @action.bound
+  DisableControls() {
+    this.enabled = false;
   }
 
   @action.bound
@@ -49,6 +60,8 @@ class ControlStore {
 
   @action.bound
   HandleInput(event) {
+    if(!this.enabled) { return; }
+
     const actionMap = this.controlMap[event.key] || {};
 
     let action;

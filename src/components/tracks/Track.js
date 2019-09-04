@@ -40,6 +40,7 @@ class Track extends React.Component {
       // Draw reaction - Ensure canvas gets redrawn when state changes
       DisposeDrawReaction: reaction(
         () => ({
+          filter: this.props.entry.filter,
           duration: this.props.video.duration,
           scale: this.props.video.scale,
           scaleMax: this.props.video.scaleMax,
@@ -146,6 +147,12 @@ class Track extends React.Component {
       return;
     }
 
+    let entries = this.props.track.entries;
+    if(this.props.track.trackId === this.props.tracks.selectedTrack) {
+      // Only filter the selected track
+      entries = this.props.entry.FilteredEntries(this.props.track.entries);
+    }
+
     const context = this.state.context;
 
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
@@ -167,7 +174,7 @@ class Track extends React.Component {
     const selectedEntryId = this.props.entry.selectedEntry ? this.props.entry.selectedEntry.entryId : undefined;
     const hoverEntryIds = this.props.entry.hoverEntries.map(entry => entry.entryId);
 
-    this.props.track.entries.forEach(entry => {
+    entries.forEach(entry => {
       const startPixel = (Fraction(entry.startTime).sub(startOffset)).mul(widthRatio).floor().valueOf();
       const endPixel = (Fraction(entry.endTime).sub(startOffset)).mul(widthRatio).floor().valueOf();
 

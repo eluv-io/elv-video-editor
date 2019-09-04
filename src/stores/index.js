@@ -77,6 +77,8 @@ class RootStore {
         target: window.parent,
         timeout: 30
       });
+
+      client.SendMessage({options: {operation: "HideHeader"}, noResponse: true});
     }
 
     runInAction(() => this.client = client);

@@ -80,6 +80,7 @@ class Tracks {
 
   DownloadAudioTrack = async (selectedObject, partHash) => {
     let audioData = new Uint8Array([]);
+
     await new Promise(async resolve => {
       await this.rootStore.client.DownloadPart({
         libraryId: selectedObject.libraryId,
@@ -305,11 +306,12 @@ class Tracks {
   @action.bound
   SetSelectedTrack(trackId) {
     this.selectedTrack = trackId;
+    this.rootStore.entryStore.ClearFilter();
   }
 
   @action.bound
   ClearSelectedTrack() {
-    this.selectedTrack = undefined;
+    this.SetSelectedTrack(undefined);
   }
 
   @action.bound

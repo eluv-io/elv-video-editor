@@ -8,6 +8,8 @@ class EntryStore {
   @observable hoverEntries = [];
   @observable hoverTime;
 
+  @observable filter = "";
+
   constructor(rootStore) {
     this.rootStore = rootStore;
   }
@@ -19,6 +21,32 @@ class EntryStore {
 
     this.hoverEntries = [];
     this.hoverTime = undefined;
+
+    this.filter = "";
+  }
+
+  @action.bound
+  SetFilter(filter) {
+    this.filter = filter;
+  }
+
+  @action.bound
+  ClearFilter() {
+    this.filter = "";
+  }
+
+  @action.bound
+  FilteredEntries(entries) {
+    const formatString = string => string.toString().toLowerCase();
+    const filter = formatString(this.rootStore.entryStore.filter);
+
+    const minTime = this.rootStore.videoStore.scaleMinTime;
+    const maxTime = this.rootStore.videoStore.scaleMaxTime;
+
+    return entries.filter(({startTime, endTime, text}) =>
+      (!filter || formatString(text).includes(filter)) &&
+      endTime >= minTime && startTime <= maxTime
+    );
   }
 
   @action.bound

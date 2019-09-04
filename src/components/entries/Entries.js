@@ -6,6 +6,7 @@ import {BackButton} from "../Components";
 
 import PlayIcon from "../../static/icons/Play.svg";
 import {IconButton, onEnterPressed} from "elv-components-js";
+import {Input} from "../../utils/Utils";
 
 @inject("video")
 @inject("entry")
@@ -20,19 +21,17 @@ class Entries extends React.Component {
     };
   }
 
-  Entries() {
-    if(this.props.entry.entries.length > 0) {
-      return this.props.entry.entries;
-    }
-
-    const minTime = this.props.video.scaleMinTime;
-    const maxTime = this.props.video.scaleMaxTime;
+  Filter() {
+    if(this.props.entry.entries.length > 0 || this.props.entry.selectedEntry) { return null; }
 
     return (
-      this.props.track.entries
-        .filter(({startTime, endTime}) =>
-          endTime >= minTime && startTime <= maxTime
-        )
+      <div className="entries-filter">
+        <Input
+          value={this.props.entry.filter}
+          placeholder={"Filter..."}
+          onChange={event => this.props.entry.SetFilter(event.target.value)}
+        />
+      </div>
     );
   }
 
@@ -100,7 +99,7 @@ class Entries extends React.Component {
   }
 
   EntryList() {
-    const entries = this.Entries();
+    const entries = this.props.entry.FilteredEntries(this.props.track.entries);
     const activeEntries = this.props.track.intervalTree.search(
       this.props.video.currentTime,
       this.props.video.currentTime
@@ -153,6 +152,7 @@ class Entries extends React.Component {
     return (
       <div className="entries-container">
         { this.Header() }
+        { this.Filter() }
         { this.props.entry.selectedEntry ? this.SelectedEntry() : this.EntryList() }
       </div>
     );
