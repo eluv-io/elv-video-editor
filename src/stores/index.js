@@ -1,6 +1,7 @@
 import {configure, observable, action, runInAction} from "mobx";
-import KeyboardControlStore from "./KeyboardControls";
+import EditStore from "./Edit";
 import EntryStore from "./Entry";
+import KeyboardControlStore from "./KeyboardControls";
 import MenuStore from "./Menu";
 import OverlayStore from "./Overlay";
 import TrackStore from "./Tracks";
@@ -17,8 +18,9 @@ class RootStore {
   @observable client;
 
   constructor() {
-    this.keyboardControlStore = new KeyboardControlStore(this);
+    this.editStore = new EditStore(this);
     this.entryStore = new EntryStore(this);
+    this.keyboardControlStore = new KeyboardControlStore(this);
     this.menuStore = new MenuStore(this);
     this.overlayStore = new OverlayStore(this);
     this.trackStore = new TrackStore(this);
@@ -32,7 +34,8 @@ class RootStore {
       this.videoStore,
       this.entryStore,
       this.overlayStore,
-      this.trackStore
+      this.trackStore,
+      this.editStore
     ]
       .forEach(store => store.Reset());
   }
@@ -88,6 +91,7 @@ class RootStore {
 const rootStore = new RootStore();
 
 export const root = rootStore;
+export const edit = rootStore.editStore;
 export const entry = rootStore.entryStore;
 export const keyboardControls = rootStore.keyboardControlStore;
 export const menu = rootStore.menuStore;

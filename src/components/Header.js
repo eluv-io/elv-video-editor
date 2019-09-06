@@ -3,15 +3,12 @@ import {IconButton} from "elv-components-js";
 import MenuIcon from "../static/icons/Menu.svg";
 import {inject, observer} from "mobx-react";
 import KeyboardControls from "./controls/KeyboardControls";
+import Save from "./controls/Save";
 
 @inject("menu")
 @inject("video")
 @observer
 class Header extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
   render() {
     return (
       <header>
@@ -27,6 +24,7 @@ class Header extends React.Component {
           </h1>
         </div>
         <div className="header-right">
+          <Save />
           <KeyboardControls />
         </div>
       </header>

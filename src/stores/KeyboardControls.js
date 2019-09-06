@@ -43,6 +43,10 @@ class ControlStore {
           if (controls.altAction) {
             controlMap[button].altAction = controls.altAction.action;
           }
+
+          if (controls.controlAction) {
+            controlMap[button].controlAction = controls.controlAction.action;
+          }
         });
       });
     });
@@ -85,6 +89,17 @@ class ControlStore {
       event.preventDefault();
       action(event);
     }
+  }
+
+  @action.bound
+  Save() {
+    this.rootStore.editStore.Save();
+  }
+
+  Undo() {
+  }
+
+  Redo() {
   }
 
   @action.bound
@@ -297,6 +312,35 @@ class ControlStore {
           action: {
             description: "Toggle the specified track",
             action: (event) => this.ToggleTrackByIndex(event.key),
+          }
+        }
+      ]
+    ],
+    "Editing": [
+      [
+        ["s"],
+        {
+          controlAction: {
+            description: "Save",
+            action: () => this.Save(),
+          }
+        }
+      ],
+      [
+        ["z"],
+        {
+          controlAction: {
+            description: "Undo last action",
+            action: () => this.Undo(),
+          }
+        }
+      ],
+      [
+        ["r"],
+        {
+          controlAction: {
+            description: "Redo last action",
+            action: () => this.Redo(),
           }
         }
       ]

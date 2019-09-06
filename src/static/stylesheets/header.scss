@@ -11,6 +11,10 @@ header {
     width: auto;
   }
 
+  .header-right {
+    padding: 0 $elv-spacing-m;
+  }
+
   .menu-button {
     height: 100%;
     margin-right: $elv-spacing-xs;
@@ -34,8 +38,41 @@ header {
     font-weight: normal;
   }
 
-  .keyboard-controls-icon {
+  .header-icon {
     cursor: pointer;
-    margin-right: $elv-spacing-s;
+    height: $font-xxl;
+    margin-right: $elv-spacing-m;
+    padding: 0;
+    width: $font-xxl;
+
+    svg {
+      stroke: $elv-color-darkgray;
+
+      &:hover {
+        stroke: $elv-color-mediumgray;
+      }
+    }
+
+    &.save-icon-loading {
+      transform: scale(0.7);
+
+      div {
+        color: $elv-color-mediumgray;
+      }
+    }
+
+    &.keyboard-controls-icon {
+      height: $font-xxl;
+      margin-bottom: 2px;
+
+      path {
+        fill: $elv-color-darkgray;
+        stroke: transparent;
+
+        &:hover {
+          fill: $elv-color-mediumgray;
+        }
+      }
+    }
   }
 }

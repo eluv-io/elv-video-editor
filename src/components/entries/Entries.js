@@ -22,7 +22,7 @@ class Entries extends React.Component {
   }
 
   Filter() {
-    if(this.props.entry.entries.length > 0 || this.props.entry.selectedEntry) { return null; }
+    if(this.props.entry.selectedEntry) { return null; }
 
     return (
       <div className="entries-filter">
@@ -99,7 +99,10 @@ class Entries extends React.Component {
   }
 
   EntryList() {
-    const entries = this.props.entry.FilteredEntries(this.props.track.entries);
+    const entriesSelected = this.props.entry.entries.length > 0;
+    const entryList = entriesSelected ? this.props.entry.entries : this.props.track.entries;
+
+    const entries = this.props.entry.FilteredEntries(entryList);
     const activeEntries = this.props.track.intervalTree.search(
       this.props.video.currentTime,
       this.props.video.currentTime
@@ -110,7 +113,7 @@ class Entries extends React.Component {
 
 
     let actions;
-    if(this.props.entry.entries.length > 0) {
+    if(entriesSelected) {
       actions = (
         <div className="entry-actions">
           <BackButton onClick={this.props.entry.ClearEntries}/>

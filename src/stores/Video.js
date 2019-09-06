@@ -3,7 +3,7 @@ import FrameAccurateVideo, {FrameRates} from "../utils/FrameAccurateVideo";
 import {SafeTraverse} from "../utils/Utils";
 
 class VideoStore {
-  @observable contentObject;
+  @observable metadata = {};
   @observable name;
 
   @observable initialized = false;
@@ -52,6 +52,8 @@ class VideoStore {
       this.videoHandler.RemoveCallback();
       this.videoHandler = undefined;
     }
+
+    this.metadata = {};
 
     this.source = undefined;
     this.poster = undefined;
@@ -108,12 +110,11 @@ class VideoStore {
       });
     }
 
-    yield this.rootStore.trackStore.AddTracksFromHLSPlaylist(source);
-    yield this.rootStore.trackStore.AddTracksFromTags(videoObject.metadata.segment_level_tags);
-    yield this.rootStore.overlayStore.AddOverlayTracks(videoObject.metadata.frame_level_tags);
+    //yield this.rootStore.overlayStore.AddOverlayTracks(videoObject.metadata.frame_level_tags);
 
     this.source = source;
     this.poster = poster;
+    this.metadata = videoObject.metadata;
     this.loading = false;
   });
 

@@ -63,6 +63,10 @@ class KeyboardControls extends React.Component {
       controlGroups.push(this.Control(controls, actions.altAction, "Alt"));
     }
 
+    if(actions.controlAction) {
+      controlGroups.push(this.Control(controls, actions.controlAction, "Ctrl"));
+    }
+
     return controlGroups;
   }
 
@@ -93,7 +97,7 @@ class KeyboardControls extends React.Component {
 
   render() {
     return (
-      <div className="keyboard-controls-icon">
+      <div className="header-icon keyboard-controls-icon">
         <ToolTip content={this.ControlInfo()} className="keyboard-controls-tooltip">
           <ImageIcon icon={KeyboardIcon} />
         </ToolTip>

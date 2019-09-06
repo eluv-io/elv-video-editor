@@ -65,17 +65,20 @@ class Tracks {
 
   @action.bound
   AddTracksFromHLSPlaylist = flow(function * (playlistUrl) {
+    let subtitleTracks = [];
     try {
       const playoutUrl = (playlistUrl.split("?")[0]).replace("playlist.m3u8", "");
       const playlist = yield this.ParseHLSPlaylist(playlistUrl);
 
-      this.subtitleTracks = yield this.AddSubtitleTracksFromHLSPlaylist(playoutUrl, playlist.mediaGroups.SUBTITLES.subs);
+      subtitleTracks = yield this.AddSubtitleTracksFromHLSPlaylist(playoutUrl, playlist.mediaGroups.SUBTITLES.subs);
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error("Error parsing subtitle tracks from playlist:");
       // eslint-disable-next-line no-console
       console.error(error);
     }
+
+    return subtitleTracks;
   });
 
   DownloadAudioTrack = async (selectedObject, partHash) => {
@@ -152,14 +155,29 @@ class Tracks {
     }
   });
 
-  @action.bound
-  AddTracksFromTags = (segmentTags) => {
-    if(!segmentTags) { return null; }
+  AddTracksFromTags = (metadataTags) => {
+    if(!metadataTags) { return null; }
 
-    this.metadataTracks = [{
-      label: "Tags",
-      tags: segmentTags
-    }];
+    let metadataTracks = [];
+    Object.keys(metadataTags).forEach(key => {
+      const entries = metadataTags[key].entries.map(entry =>
+        this.Cue({
+          entryType: "metadata",
+          label: entry.label,
+          startTime: entry.start_time,
+          endTime: entry.end_time,
+          text: entry.text,
+          entry
+        })
+      );
+
+      metadataTracks.push({
+        label: metadataTags[key].name,
+        entries
+      });
+    });
+
+    return metadataTracks;
   };
 
   Cue({entryType, label, startTime, endTime, text, entry}) {
@@ -243,29 +261,13 @@ class Tracks {
     return cues;
   }
 
-  ParseTagTrack(track) {
-    return Object.keys(track.tags).map(tag => {
-      const entries = track.tags[tag];
-
-      return entries.map(({start, end}) =>
-        this.Cue({
-          label: track.label,
-          startTime: start,
-          endTime: end,
-          text: tag
-        })
-      );
-    })
-      .flat()
-      .sort((a, b) => a.startTime > b.startTime ? 1 : -1);
-  }
-
   @action.bound
   async InitializeTracks() {
     let tracks = [];
 
+    const subtitleTracks = await this.AddTracksFromHLSPlaylist(this.rootStore.videoStore.source);
     // Initialize video WebVTT tracks by fetching and parsing the VTT file
-    this.subtitleTracks.map(track => {
+    subtitleTracks.map(track => {
       const entries = this.ParseVTTTrack(track);
       const intervalTree = new IntervalTree();
       entries.forEach(entry => intervalTree.insert(entry.startTime, entry.endTime, entry));
@@ -279,16 +281,16 @@ class Tracks {
       });
     });
 
-    this.metadataTracks.map(track => {
-      const parsedTags = this.ParseTagTrack(track);
+    const metadataTracks = this.AddTracksFromTags(this.rootStore.videoStore.metadata.metadata_tags);
+    metadataTracks.map(track => {
       const intervalTree = new IntervalTree();
-      parsedTags.forEach(entry => intervalTree.insert(entry.startTime, entry.endTime, entry));
+      track.entries.forEach(entry => intervalTree.insert(entry.startTime, entry.endTime, entry));
 
       tracks.push({
         trackId: Id.next(),
         label: track.label,
         trackType: "metadata",
-        entries: parsedTags,
+        entries: track.entries,
         intervalTree
       });
     });
@@ -305,6 +307,8 @@ class Tracks {
 
   @action.bound
   SetSelectedTrack(trackId) {
+    if(this.selectedTrack === trackId) { return; }
+
     this.selectedTrack = trackId;
     this.rootStore.entryStore.ClearFilter();
   }

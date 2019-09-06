@@ -22,7 +22,6 @@ class Video extends React.Component {
     };
 
     this.InitializeVideo = this.InitializeVideo.bind(this);
-    this.InitializeTracks = this.InitializeTracks.bind(this);
   }
 
   componentWillMount() {
@@ -52,10 +51,6 @@ class Video extends React.Component {
     });
 
     this.props.video.Initialize(video);
-  }
-
-  InitializeTracks(trackContainer) {
-    this.props.video.InitializeTracks(trackContainer);
   }
 
   Poster() {
@@ -97,7 +92,6 @@ class Video extends React.Component {
           preload="auto"
           onWheel={({deltaY}) => this.props.video.ScrollVolume(deltaY)}
         />
-        { this.Poster() }
       </ResizableBox>
     );
   }
