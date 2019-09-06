@@ -92,7 +92,7 @@
   align-items: center;
   color: $elv-color-text-lightest;
   display: flex;
-  font-size: $font-m;
+  font-size: $elv-font-m;
   font-weight: lighter;
   justify-content: center;
 }
@@ -119,7 +119,7 @@
   button {
     align-items: center;
     display: flex;
-    height: $font-xxl;
+    height: $elv-font-xxl;
     justify-content: center;
     width: 50px;
 
@@ -147,7 +147,7 @@
   }
 
   select {
-    font-size: $font-m;
+    font-size: $elv-font-m;
 
     &:active,
     &:hover {
@@ -182,7 +182,7 @@
   }
 
   .video-volume-icon {
-    height: $font-l;
+    height: $elv-font-l;
     margin-right: $elv-spacing-s;
 
     svg {

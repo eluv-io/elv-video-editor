@@ -24,7 +24,7 @@ body,
 }
 
 body {
-  font-size: $font-m;
+  font-size: $elv-font-m;
   height: auto;
 
   * {
@@ -62,7 +62,7 @@ button {
   background-color: $color-background;
   border: 1px solid $color-border;
   cursor: pointer;
-  font-size: $font-s;
+  font-size: $elv-font-s;
   padding: $elv-spacing-xs $elv-spacing-s;
 
   &:not(.-elv-icon-button) {
@@ -116,16 +116,16 @@ button {
 .checkbox {
   background-color: $elv-color-black;
   border-radius: 3px;
-  height: $font-xxs;
+  height: $elv-font-xxs;
   outline: 1px solid $color-border;
   position: relative;
-  width: $font-xxs;
+  width: $elv-font-xxs;
 
   &.checked {
     &::after {
       color: $color-accent;
       content: "✓";
-      font-size: $font-m;
+      font-size: $elv-font-m;
       font-weight: 600;
       left: 0;
       position: absolute;

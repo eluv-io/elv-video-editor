@@ -41,7 +41,7 @@
 
   .-elv-slider {
     .-elv-slider-mark {
-      font-size: $font-xxs;
+      font-size: $elv-font-xxs;
     }
   }
 }
@@ -50,7 +50,7 @@
   @include elv-no-select;
   align-items: center;
   display: flex;
-  font-size: $font-m;
+  font-size: $elv-font-m;
   height: 100%;
   padding-left: $elv-spacing-s;
   position: relative;

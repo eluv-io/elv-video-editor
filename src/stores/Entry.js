@@ -1,4 +1,4 @@
-import {observable, action} from "mobx";
+import {observable, action, toJS} from "mobx";
 
 class EntryStore {
   @observable entries = [];
@@ -69,6 +69,11 @@ class EntryStore {
     );
   }
 
+  SelectedEntry() {
+    return this.rootStore.trackStore.SelectedTrack().entries
+      .find(entry => entry.entryId === this.selectedEntry.entryId);
+  }
+
   @action.bound
   SetSelectedEntry(entry) {
     this.selectedEntry = entry;
@@ -103,6 +108,22 @@ class EntryStore {
   ClearEntries() {
     this.entries = [];
     this.hoverEntries = [];
+  }
+
+  @action.bound
+  ModifyEntry(entryId, attribute, value) {
+    const track = this.rootStore.trackStore.SelectedTrack();
+
+    const entry = track.entries.find(entry => entry.entryId = entryId);
+
+    console.log(entry);
+
+    if(!entry) { return; }
+
+    console.log("updating", attribute, value);
+    console.log(toJS(entry));
+    entry[attribute] = value;
+    console.log(toJS(entry));
   }
 }
 

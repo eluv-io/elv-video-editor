@@ -22,7 +22,7 @@
     align-items: center;
     display: flex;
     flex-grow: 1;
-    font-size: $font-l;
+    font-size: $elv-font-l;
     margin: 0;
     padding: 0 $elv-spacing-xs;
     text-align: center;
@@ -63,7 +63,7 @@
 
   .video-info {
     display: grid;
-    font-size: $font-s;
+    font-size: $elv-font-s;
     grid-row-gap: $elv-spacing-s;
     grid-template-columns: minmax(50px, 2fr) minmax(100px, 5fr);
     max-width: 100%;

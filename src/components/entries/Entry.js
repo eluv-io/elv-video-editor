@@ -1,36 +1,41 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
 import {BackButton} from "../Components";
+import {Input} from "../../utils/Utils";
+
+@inject("entry")
+@observer
+class EntryForm extends React.Component {
+  render() {
+    const entry = this.props.entry.SelectedEntry();
+    //const entry = this.props.entry.selectedEntry;
+
+    return (
+      <div className="entry-details">
+        <label>Tag</label>
+        <Input
+          onChange={event => this.props.entry.ModifyEntry(entry.entryId, "text", event.target.value)}
+          value={entry.text}
+        />
+
+        <label>Start Time</label>
+        <Input value={entry.startTimeSMPTE} />
+
+        <label>End Time</label>
+        <Input value={entry.endTimeSMPTE} />
+      </div>
+    );
+  }
+}
 
 @inject("entry")
 @observer
 class Entry extends React.Component {
-  Actions(playable) {
-    return (
-      <React.Fragment>
-        <div className="entry-back">
-          <BackButton onClick={this.props.entry.ClearSelectedEntry} />
-        </div>
-        <div>
-          <button
-            tabIndex={0}
-            className="entry-play"
-            onClick={this.props.entry.PlayCurrentEntry}
-          >
-            {playable ? "Play Segment" : ""}
-          </button>
-        </div>
-      </React.Fragment>
-    );
-  }
-
   VttEntry(entry) {
     const cue = entry.entry;
 
     return (
       <div className="entry-details">
-        { this.Actions(true) }
-
         <label>Text</label>
         <div>{cue.text}</div>
 
@@ -73,10 +78,8 @@ class Entry extends React.Component {
   TagEntry(entry) {
     return (
       <div className="entry-details">
-        { this.Actions(true) }
-
         <label>Tag</label>
-        <div>{entry.text}</div>
+        <div>{entry.text} {entry.entryId}</div>
 
         <label>Start Time</label>
         <span>{`${entry.startTime.toFixed(3)} (${entry.startTimeSMPTE})`}</span>
@@ -90,8 +93,6 @@ class Entry extends React.Component {
   OverlayEntry(entry) {
     return (
       <div className="entry-details">
-        { this.Actions() }
-
         <label>Tag</label>
         <div>{entry.text}</div>
 
@@ -118,7 +119,9 @@ class Entry extends React.Component {
     );
   }
 
-  RenderEntry(entry) {
+  render() {
+    const entry = this.props.entry.selectedEntry;
+
     if(entry.entryType === "vtt") {
       return this.VttEntry(entry);
     } else if(entry.entryType === "overlay") {
@@ -127,14 +130,55 @@ class Entry extends React.Component {
       return this.TagEntry(entry);
     }
   }
+}
+
+@inject("entry")
+@observer
+class EntryContainer extends React.Component {
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      editing: false
+    };
+  }
+
+  Actions() {
+    const playable = ["vtt", "metadata"].includes(this.props.entry.selectedEntry.entryType);
+    const editable = ["metadata", "overlay"].includes(this.props.entry.selectedEntry.entryType);
+    const back = () => this.state.editing ? this.setState({editing: false}) : this.props.entry.ClearSelectedEntry();
+
+    return (
+      <div className="entry-actions-container">
+        <BackButton onClick={back}/>
+        <div className="entry-actions">
+          <button
+            hidden={!editable || this.state.editing}
+            tabIndex={0}
+            onClick={() => this.setState({editing: true})}
+          >
+            Edit
+          </button>
+          <button
+            hidden={!playable}
+            tabIndex={0}
+            onClick={this.props.entry.PlayCurrentEntry}
+          >
+            Play
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   render() {
     return (
       <div className="entry-container">
-        { this.RenderEntry(this.props.entry.selectedEntry) }
+        { this.Actions() }
+        { this.state.editing ? <EntryForm/> : <Entry/> }
       </div>
     );
   }
 }
 
-export default Entry;
+export default EntryContainer;

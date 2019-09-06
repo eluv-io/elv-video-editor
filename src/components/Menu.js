@@ -20,6 +20,14 @@ class Menu extends React.Component {
     this.SelectObject = this.SelectObject.bind(this);
   }
 
+  async componentDidMount() {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    this.SelectObject(
+      "ilibHWX7HKdhK2gNxpD5XXLVeufwogg",
+      "iq__MVkVSJsRssqGSQPDSK5pF1MaCsK"
+    );
+  }
+
   async SelectLibrary(library) {
     this.setState({library});
   }

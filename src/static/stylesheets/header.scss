@@ -34,16 +34,16 @@ header {
   }
 
   h1 {
-    font-size: $font-l;
+    font-size: $elv-font-l;
     font-weight: normal;
   }
 
   .header-icon {
     cursor: pointer;
-    height: $font-xxl;
+    height: $elv-font-xxl;
     margin-right: $elv-spacing-m;
     padding: 0;
-    width: $font-xxl;
+    width: $elv-font-xxl;
 
     svg {
       stroke: $elv-color-darkgray;
@@ -62,7 +62,7 @@ header {
     }
 
     &.keyboard-controls-icon {
-      height: $font-xxl;
+      height: $elv-font-xxl;
       margin-bottom: 2px;
 
       path {

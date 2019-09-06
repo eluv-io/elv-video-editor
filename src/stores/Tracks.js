@@ -1,9 +1,10 @@
-import {observable, action, runInAction, flow} from "mobx";
+import {observable, action, flow} from "mobx";
 import {WebVTT} from "vtt.js";
 import Id from "../utils/Id";
 import IntervalTree from "node-interval-tree";
 import {Parser as HLSParser} from "m3u8-parser";
 import UrlJoin from "url-join";
+import {SortEntries} from "../utils/Utils";
 
 class Tracks {
   @observable tracks = [];
@@ -84,6 +85,8 @@ class Tracks {
   DownloadAudioTrack = async (selectedObject, partHash) => {
     let audioData = new Uint8Array([]);
 
+    return audioData;
+
     await new Promise(async resolve => {
       await this.rootStore.client.DownloadPart({
         libraryId: selectedObject.libraryId,
@@ -156,24 +159,27 @@ class Tracks {
   });
 
   AddTracksFromTags = (metadataTags) => {
-    if(!metadataTags) { return null; }
+    if(!metadataTags) { return []; }
 
     let metadataTracks = [];
     Object.keys(metadataTags).forEach(key => {
-      const entries = metadataTags[key].entries.map(entry =>
-        this.Cue({
-          entryType: "metadata",
-          label: entry.label,
-          startTime: entry.start_time,
-          endTime: entry.end_time,
-          text: entry.text,
-          entry
-        })
-      );
+      const entries = metadataTags[key].entries
+        .map(entry =>
+          this.Cue({
+            entryType: "metadata",
+            label: entry.label,
+            startTime: entry.start_time,
+            endTime: entry.end_time,
+            text: entry.text,
+            entry
+          })
+        );
 
       metadataTracks.push({
         label: metadataTags[key].name,
-        entries
+        trackType: "metadata",
+        key,
+        entries: SortEntries(entries)
       });
     });
 
@@ -262,10 +268,10 @@ class Tracks {
   }
 
   @action.bound
-  async InitializeTracks() {
+  InitializeTracks = flow(function * () {
     let tracks = [];
 
-    const subtitleTracks = await this.AddTracksFromHLSPlaylist(this.rootStore.videoStore.source);
+    const subtitleTracks = yield this.AddTracksFromHLSPlaylist(this.rootStore.videoStore.source);
     // Initialize video WebVTT tracks by fetching and parsing the VTT file
     subtitleTracks.map(track => {
       const entries = this.ParseVTTTrack(track);
@@ -289,14 +295,15 @@ class Tracks {
       tracks.push({
         trackId: Id.next(),
         label: track.label,
+        key: track.key,
         trackType: "metadata",
         entries: track.entries,
         intervalTree
       });
     });
 
-    runInAction(() => this.tracks = tracks);
-  }
+    this.tracks = tracks;
+  });
 
   @action.bound
   SelectedTrack() {

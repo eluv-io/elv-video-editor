@@ -43,6 +43,11 @@ class MenuStore {
   }
 
   @action.bound
+  UpdateVersionHash(versionHash) {
+    this.selectedObject.versionHash = versionHash;
+  }
+
+  @action.bound
   SelectVideo = flow(function * ({libraryId, objectId, versionHash}) {
     this.rootStore.Reset();
 
@@ -56,7 +61,7 @@ class MenuStore {
       libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
     }
 
-    const object = yield this.rootStore.client.ContentObject({objectId, versionHash});
+    const object = yield this.rootStore.client.ContentObject({libraryId, objectId, versionHash});
 
     if(!versionHash) {
       versionHash = object.hash;
