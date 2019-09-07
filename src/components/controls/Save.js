@@ -13,7 +13,7 @@ class Save extends React.Component {
         <IconButton
           onClick={this.props.edit.Save}
           icon={SaveIcon}
-          className="header-icon save-icon"
+          className={`header-icon save-icon ${this.props.edit.saveFailed ? "save-failed" : ""}`}
         />
       </LoadingElement>
     );

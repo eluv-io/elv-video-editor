@@ -61,6 +61,16 @@ header {
       }
     }
 
+    &.save-failed {
+      svg {
+        stroke: $elv-color-mediumred;
+
+        &:hover {
+          stroke: $elv-color-red;
+        }
+      }
+    }
+
     &.keyboard-controls-icon {
       height: $elv-font-xxl;
       margin-bottom: 2px;
