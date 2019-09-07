@@ -56,3 +56,12 @@ export const SafeTraverse = (object, ...keys) => {
 
   return result;
 };
+
+export const ChunkArray = (array, chunkSize) => {
+  let results = [];
+  while(array.length) {
+    results.push(array.splice(0, chunkSize));
+  }
+
+  return results;
+};

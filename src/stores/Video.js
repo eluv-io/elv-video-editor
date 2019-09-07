@@ -1,6 +1,5 @@
 import {observable, action, flow, computed} from "mobx";
 import FrameAccurateVideo, {FrameRates} from "../utils/FrameAccurateVideo";
-import {SafeTraverse} from "../utils/Utils";
 
 class VideoStore {
   @observable metadata = {};
@@ -95,7 +94,7 @@ class VideoStore {
     const playoutOptions = yield this.rootStore.client.PlayoutOptions({
       versionHash: videoObject.versionHash,
       protocols: ["hls"],
-      drms: ["aes-128"]
+      drms: []
     });
 
     const source = playoutOptions["hls"].playoutUrl;
@@ -112,13 +111,15 @@ class VideoStore {
     //yield this.rootStore.overlayStore.AddOverlayTracks(videoObject.metadata.frame_level_tags);
 
     this.source = source;
+    this.rootStore.trackStore.InitializeTracks();
+
     this.poster = poster;
     this.metadata = videoObject.metadata;
     this.loading = false;
   });
 
   @action.bound
-  Initialize = flow(function * (video) {
+  Initialize(video) {
     this.video = video;
 
     const videoHandler = new FrameAccurateVideo({
@@ -129,8 +130,6 @@ class VideoStore {
     });
 
     this.videoHandler = videoHandler;
-
-    yield this.rootStore.trackStore.InitializeTracks();
 
     video.load();
 
@@ -170,21 +169,7 @@ class VideoStore {
       videoHandler.Update();
       this.initialized = true;
     }));
-
-    const audioSegments =
-      SafeTraverse(
-        this.rootStore.menuStore.selectedObject.metadata,
-        "offerings", "default", "media_struct", "streams", "audio_2ch_und", "sources"
-      ) ||
-      SafeTraverse(
-        this.rootStore.menuStore.selectedObject.metadata,
-        "offerings", "default", "media_struct", "streams", "audio_2ch_eng", "sources"
-      );
-
-    if(audioSegments) {
-      this.rootStore.trackStore.AddAudioTracks(audioSegments);
-    }
-  });
+  }
 
   ToggleTrack(label) {
     const track = Array.from(this.video.textTracks).find(track => track.label === label);
