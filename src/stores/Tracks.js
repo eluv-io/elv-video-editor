@@ -239,8 +239,11 @@ class Tracks {
   ParseVTTTrack(track) {
     const vttParser = new WebVTT.Parser(window, WebVTT.StringDecoder());
 
-    let cues = [];
-    vttParser.oncue = cue => cues.push(this.FormatVTTCue(track.label, cue));
+    let cues = {};
+    vttParser.oncue = cue => {
+      const parsedCue = this.FormatVTTCue(track.label, cue);
+      cues[parsedCue.entryId] = parsedCue;
+    };
 
     try {
       vttParser.parse(track.vttData);
@@ -271,15 +274,13 @@ class Tracks {
     // Initialize video WebVTT tracks by fetching and parsing the VTT file
     subtitleTracks.map(track => {
       const entries = this.ParseVTTTrack(track);
-      const intervalTree = new IntervalTree();
-      entries.forEach(entry => intervalTree.insert(entry.startTime, entry.endTime, entry));
 
       tracks.push({
         trackId: Id.next(),
         ...track,
         trackType: "vtt",
         entries,
-        intervalTree
+        intervalTree: this.TrackIntervalTree(entries)
       });
     });
 
