@@ -70,7 +70,7 @@ class Entries extends React.Component {
   }
 
   Entry(entry, active, hover, playable=false) {
-    const onClick = () => this.props.entry.SetSelectedEntry(entry);
+    const onClick = () => this.props.entry.SetSelectedEntry(entry.entryId);
 
     return (
       <div
@@ -78,7 +78,7 @@ class Entries extends React.Component {
         tabIndex={0}
         onClick={onClick}
         onKeyPress={onEnterPressed(onClick)}
-        onMouseEnter={() => this.props.entry.SetHoverEntries([entry], entry.startTime)}
+        onMouseEnter={() => this.props.entry.SetHoverEntries([entry.entryId], entry.startTime)}
         onMouseLeave={() => this.props.entry.ClearHoverEntries()}
         className={`entry ${active ? "entry-active" : ""} ${hover ? "entry-hover" : ""}`}
         key={`entry-${entry.entryId}`}
@@ -87,7 +87,7 @@ class Entries extends React.Component {
           {entry.text}
         </div>
         <div className="entry-time-range">
-          {entry.startTimeSMPTE} - {entry.endTimeSMPTE}
+          {this.props.entry.TimeToSMPTE(entry.startTime)} - {this.props.entry.TimeToSMPTE(entry.endTime)}
         </div>
         { this.PlayEntry(entry, playable) }
       </div>
@@ -100,15 +100,16 @@ class Entries extends React.Component {
 
   EntryList() {
     const entriesSelected = this.props.entry.entries.length > 0;
-    const entryList = entriesSelected ? this.props.entry.entries : this.props.track.entries;
+    const entryList = entriesSelected ?
+      this.props.entry.Entries() :
+      Object.values(this.props.track.entries);
 
     const entries = this.props.entry.FilteredEntries(entryList);
-    const activeEntries = this.props.track.intervalTree.search(
+    const activeEntryIds = this.props.track.intervalTree.search(
       this.props.video.currentTime,
       this.props.video.currentTime
-    )
-      .map(entry => entry.entryId);
-    const hoverEntries = this.props.entry.hoverEntries.map(entry => entry.entryId);
+    );
+    const hoverEntryIds = this.props.entry.hoverEntries;
     const playable = ["vtt", "metadata"].includes(this.props.track.trackType);
 
 
@@ -141,8 +142,8 @@ class Entries extends React.Component {
           .map(entry =>
             this.Entry(
               entry,
-              activeEntries.includes(entry.entryId),
-              hoverEntries.includes(entry.entryId),
+              activeEntryIds.includes(entry.entryId),
+              hoverEntryIds.includes(entry.entryId),
               playable
             )
           )}

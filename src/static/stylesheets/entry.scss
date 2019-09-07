@@ -19,9 +19,9 @@
       border: 1px solid $elv-color-black;
       color: $elv-color-text-lightest;
       font-size: $elv-font-l;
+      height: 2rem;
       padding: 0 $elv-spacing-xs;
       width: 100%;
-      height: 2.0rem;
     }
   }
 
@@ -118,10 +118,26 @@
     width: 10rem;
   }
 
+  .entry-form {
+    button {
+      background-color: $color-accent;
+      flex-grow: 1;
+      margin-top: $elv-spacing-m;
+
+      &:hover {
+        background-color: $color-accent-highlight;
+      }
+
+      &.invalid {
+        background-color: $color-background;
+      }
+    }
+  }
+
   .entry-details {
+    align-items: center;
     display: grid;
     grid-row-gap: $elv-spacing-xxs;
-    align-items: center;
     grid-template-columns: 8rem 2fr;
     width: 100%;
 
@@ -134,6 +150,15 @@
       border: $color-border;
       color: $color-text;
       font-size: $elv-font-m;
+      margin-bottom: $elv-spacing-xxs;
+      width: 100%;
+
+      &.invalid,
+      &:invalid {
+        box-shadow: $elv-color-red 0 0 4px;
+        outline: 1px solid $elv-color-mediumred;
+
+      }
     }
   }
 

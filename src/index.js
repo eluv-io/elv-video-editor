@@ -12,13 +12,20 @@ import Menu from "./components/Menu";
 import SidePanel from "./components/SidePanel";
 
 @inject("root")
+@inject("keyboardControls")
 @observer
 class App extends React.Component {
   render() {
     if (!this.props.root.client) { return null; }
 
     return (
-      <div className="video-editor">
+      <div
+        tabIndex={0}
+        onKeyDown={this.props.keyboardControls.HandleModifiers}
+        onKeyUp={this.props.keyboardControls.HandleModifiers}
+        onKeyPress={this.props.keyboardControls.HandleInput}
+        className="video-editor"
+      >
         <Header/>
         <Menu/>
         <div className="video-level" key={`video-${this.props.root.videoStore.source}`}>

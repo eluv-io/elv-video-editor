@@ -79,7 +79,6 @@ class VideoStore {
 
     this.segmentEnd = undefined;
 
-    this.rootStore.keyboardControlStore.UnregisterControlListener();
     this.rootStore.entryStore.ClearEntries();
   }
 
@@ -171,8 +170,6 @@ class VideoStore {
       videoHandler.Update();
       this.initialized = true;
     }));
-
-    this.rootStore.keyboardControlStore.RegisterControlListener();
 
     const audioSegments =
       SafeTraverse(

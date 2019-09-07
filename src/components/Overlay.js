@@ -74,8 +74,8 @@ class Overlay extends React.Component {
         () => {
           return ({
             frame: this.props.video.frame,
-            hoverEntries: this.props.entry.hoverEntries.map(entry => entry.entryId).sort(),
-            selectedEntries: this.props.entry.entries.map(entry => entry.entryId).sort(),
+            hoverEntries: this.props.entry.hoverEntries,
+            selectedEntries: this.props.entry.entries,
             selectedEntry: this.props.entry.selectedEntry,
             videoWidth: this.state.videoWidth,
             videoHeight: this.state.videoHeight
@@ -109,7 +109,8 @@ class Overlay extends React.Component {
     return this.props.overlay.overlayTracks.map(track =>
       track.entries[this.props.video.frame]
     )
-      .flat();
+      .flat()
+      .map(entry => entry.entryId);
   }
 
   EntriesAt({clientX, clientY}) {
@@ -191,8 +192,8 @@ class Overlay extends React.Component {
       const endX = x2 * width;
       const endY = y2 * height;
 
-      const selectedEntryIds = this.props.entry.entries.map(entry => entry.entryId);
-      const hoverEntryIds = this.props.entry.hoverEntries.map(entry => entry.entryId);
+      const selectedEntryIds = this.props.entry.entries;
+      const hoverEntryIds = this.props.entry.hoverEntries;
 
       context.globalAlpha = 0.4;
       context.lineWidth = 2;

@@ -47,7 +47,8 @@ class Track extends React.Component {
           scaleMin: this.props.video.scaleMin,
           entries: this.props.entry.entries,
           hoverEntries: this.props.entry.hoverEntries,
-          selectedEntry: this.props.entry.selectedEntry
+          selectedEntry: this.props.entry.selectedEntry,
+          trackVersion: this.props.tracks.SelectedTrack() ? this.props.tracks.SelectedTrack().version : undefined
         }),
         () => this.Draw(),
         {delay: 25}
@@ -147,10 +148,10 @@ class Track extends React.Component {
       return;
     }
 
-    let entries = this.props.track.entries;
+    let entries = Object.values(this.props.track.entries);
     if(this.props.track.trackId === this.props.tracks.selectedTrack) {
       // Only filter the selected track
-      entries = this.props.entry.FilteredEntries(this.props.track.entries);
+      entries = this.props.entry.FilteredEntries(Object.values(this.props.track.entries));
     }
 
     const context = this.state.context;
@@ -168,11 +169,10 @@ class Track extends React.Component {
     const quarterHeight = halfHeight.div(2);
     const startY = quarterHeight.valueOf();
 
-    const activeEntries = this.Search(this.props.video.currentTime);
-    const activeEntryIds = activeEntries.map(entry => entry.entryId);
-    const selectedEntryIds = this.props.entry.entries.map(entry => entry.entryId);
-    const selectedEntryId = this.props.entry.selectedEntry ? this.props.entry.selectedEntry.entryId : undefined;
-    const hoverEntryIds = this.props.entry.hoverEntries.map(entry => entry.entryId);
+    const activeEntryIds = this.Search(this.props.video.currentTime);
+    const selectedEntryIds = this.props.entry.entries;
+    const selectedEntryId = this.props.entry.selectedEntry ? this.props.entry.selectedEntry : undefined;
+    const hoverEntryIds = this.props.entry.hoverEntries;
 
     entries.forEach(entry => {
       const startPixel = (Fraction(entry.startTime).sub(startOffset)).mul(widthRatio).floor().valueOf();
@@ -233,16 +233,20 @@ class Track extends React.Component {
 
     return (
       <div className="track-entry-container">
-        {this.props.entry.hoverEntries.map(entry =>
-          <div className="track-entry" key={`entry-${entry.entryId}`}>
-            <div className="track-entry-timestamps">
-              {`${entry.startTimeSMPTE} - ${entry.endTimeSMPTE}`}
+        {this.props.entry.hoverEntries.map(entryId => {
+          const entry = this.props.track.entries[entryId];
+
+          return (
+            <div className="track-entry" key={`entry-${entry.entryId}`}>
+              <div className="track-entry-timestamps">
+                {`${this.props.entry.TimeToSMPTE(entry.startTime)} - ${this.props.entry.TimeToSMPTE(entry.endTime)}`}
+              </div>
+              <div className="track-entry-content">
+                {entry.text}
+              </div>
             </div>
-            <div className="track-entry-content">
-              { entry.text }
-            </div>
-          </div>
-        )}
+          );
+        })}
       </div>
     );
   }

@@ -32,8 +32,16 @@ body {
   }
 }
 
+// Grow app container to max height
+body,
 .app {
-  padding-bottom: $elv-spacing-xxl;
+  display: flex;
+  flex-direction: column;
+}
+
+.app,
+.video-editor {
+  flex-grow: 1;
 }
 
 .mono {

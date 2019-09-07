@@ -2,22 +2,17 @@ import {observable, action} from "mobx";
 
 class ControlStore {
   @observable controlMap;
-  @observable enabled = true;
+  @observable modifiers = {
+    alt: false,
+    control: false,
+    shift: false,
+    meta: false
+  };
 
   constructor(rootStore) {
     this.rootStore = rootStore;
 
     this.InitializeControlMap();
-  }
-
-  @action.bound
-  EnableControls() {
-    this.enabled = true;
-  }
-
-  @action.bound
-  DisableControls() {
-    this.enabled = false;
   }
 
   @action.bound
@@ -32,19 +27,19 @@ class ControlStore {
         buttons.forEach(button => {
           controlMap[button] = {};
 
-          if (controls.action) {
+          if(controls.action) {
             controlMap[button].action = controls.action.action;
           }
 
-          if (controls.shiftAction) {
+          if(controls.shiftAction) {
             controlMap[button].shiftAction = controls.shiftAction.action;
           }
 
-          if (controls.altAction) {
+          if(controls.altAction) {
             controlMap[button].altAction = controls.altAction.action;
           }
 
-          if (controls.controlAction) {
+          if(controls.controlAction) {
             controlMap[button].controlAction = controls.controlAction.action;
           }
         });
@@ -54,30 +49,53 @@ class ControlStore {
     this.controlMap = controlMap;
   }
 
-  RegisterControlListener() {
-    document.addEventListener("keydown", this.HandleInput);
-  }
+  @action.bound
+  HandleModifiers(event) {
+    const down = event.type.toLowerCase() === "keydown";
+    switch(event.key.toLowerCase()) {
+      case "control":
+        this.modifiers.control = down;
+        break;
+      case "shift":
+        this.modifiers.shift = down;
+        break;
+      case "alt":
+        this.modifiers.alt = down;
+        break;
+      case "meta":
+        this.modifiers.meta = down;
+        break;
+    }
 
-  UnregisterControlListener() {
-    document.removeEventListener("keydown", this.HandleInput);
+    if(!down) { return; }
+
+    // Handle events only available on keydown - arrow keys and control / shift modified keys
+    const isArrowKey = ["arrowleft", "arrowright", "arrowup", "arrowdown"].includes(event.key.toLowerCase());
+
+    if(this.modifiers.control || this.modifiers.shift || isArrowKey) {
+      this.HandleInput(event);
+    }
   }
 
   @action.bound
   HandleInput(event) {
-    if(!this.enabled) { return; }
+    // Disable controls when using input element
+    if(document.activeElement && document.activeElement.tagName.toLowerCase() === "input") {
+      return;
+    }
 
     const actionMap = this.controlMap[event.key] || {};
 
     let action;
-    if(!action && event.shiftKey) {
+    if(!action && this.modifiers.shift) {
       action = actionMap.shiftAction;
     }
 
-    if(!action && event.altKey) {
+    if(!action && this.modifiers.alt) {
       action = actionMap.altAction;
     }
 
-    if(!action && event.ctrlKey) {
+    if(!action && this.modifiers.control) {
       action = actionMap.controlAction;
     }
 

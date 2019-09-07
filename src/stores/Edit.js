@@ -45,7 +45,7 @@ class EditStore {
 
     const metadataTracks = this.rootStore.trackStore.tracks.filter(track => track.trackType === "metadata");
     metadataTracks.forEach(track => {
-      const entryMetadata = track.entries.map(entry => ({
+      const entryMetadata = Object.values(track.entries).map(entry => ({
         ...entry.entry,
         label: entry.label,
         text: entry.text,

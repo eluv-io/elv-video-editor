@@ -1,4 +1,4 @@
-import {observable, action, toJS} from "mobx";
+import {observable, action} from "mobx";
 
 class EntryStore {
   @observable entries = [];
@@ -23,6 +23,10 @@ class EntryStore {
     this.hoverTime = undefined;
 
     this.filter = "";
+  }
+
+  TimeToSMPTE(time) {
+    return this.rootStore.videoStore.TimeToSMPTE(time);
   }
 
   @action.bound
@@ -53,9 +57,11 @@ class EntryStore {
   PlayCurrentEntry() {
     if(!this.selectedEntry) { return; }
 
+    const entry = this.SelectedEntry();
+
     this.rootStore.videoStore.PlaySegment(
-      this.rootStore.videoStore.TimeToFrame(this.selectedEntry.startTime),
-      this.rootStore.videoStore.TimeToFrame(this.selectedEntry.endTime)
+      this.rootStore.videoStore.TimeToFrame(entry.startTime),
+      this.rootStore.videoStore.TimeToFrame(entry.endTime)
     );
   }
 
@@ -70,18 +76,23 @@ class EntryStore {
   }
 
   SelectedEntry() {
-    return this.rootStore.trackStore.SelectedTrack().entries
-      .find(entry => entry.entryId === this.selectedEntry.entryId);
+    return this.rootStore.trackStore.SelectedTrack().entries[this.selectedEntry];
   }
 
   @action.bound
-  SetSelectedEntry(entry) {
-    this.selectedEntry = entry;
+  SetSelectedEntry(entryId) {
+    this.selectedEntry = entryId;
   }
 
   @action.bound
   ClearSelectedEntry() {
     this.selectedEntry = undefined;
+  }
+
+  Entries() {
+    return this.entries.map(entryId =>
+      this.rootStore.trackStore.SelectedTrack().entries[entryId]
+    );
   }
 
   @action.bound
@@ -111,19 +122,26 @@ class EntryStore {
   }
 
   @action.bound
-  ModifyEntry(entryId, attribute, value) {
-    const track = this.rootStore.trackStore.SelectedTrack();
+  ModifyEntry({entryId, text, startTime, endTime}) {
+    this.rootStore.trackStore.ModifyTrack(track => {
+      const entry = track.entries[entryId];
+      entry.text = text;
+      entry.startTime = startTime;
+      entry.endTime = endTime;
+    });
+  }
 
-    const entry = track.entries.find(entry => entry.entryId = entryId);
+  @action.bound
+  DeleteEntry(entryId) {
+    if(entryId === this.selectedEntry) {
+      this.ClearSelectedEntry();
+      this.entries = this.entries.filter(id => id !== entryId);
+      this.hoverEntries = this.hoverEntries.filter(id => id !== entryId);
+    }
 
-    console.log(entry);
-
-    if(!entry) { return; }
-
-    console.log("updating", attribute, value);
-    console.log(toJS(entry));
-    entry[attribute] = value;
-    console.log(toJS(entry));
+    this.rootStore.trackStore.ModifyTrack(track => {
+      delete track.entries[entryId];
+    });
   }
 }
 

@@ -1,5 +1,4 @@
 import React from "react";
-import {inject, observer} from "mobx-react";
 
 export const SortEntries = entries => entries.sort((a, b) => {
   a = {
@@ -26,20 +25,19 @@ export const SortEntries = entries => entries.sort((a, b) => {
   return a.startTime < b.startTime ? -1 : 1;
 });
 
-// Automatically disable and enable global keyboard controls when element is used
-export const OverrideKeyboardControls = (keyboardProps) => ({
-  onFocus: keyboardProps.DisableControls,
-  onBlur: keyboardProps.EnableControls
-});
-
-export const Input = inject("keyboardControls")(observer(
-  ({keyboardControls, ...props}) => (
+export const Input =
+  props => (
     <input
-      {...OverrideKeyboardControls(keyboardControls)}
       {...props}
+      onKeyPress={event => {
+        event.stopPropagation();
+
+        if(props.onKeyPress) {
+          props.onKeyPress(event);
+        }
+      }}
     />
-  )
-));
+  );
 
 // Traverse through a hashmap without throwing errors on undefined keys
 // If any keys undefined, returns undefined

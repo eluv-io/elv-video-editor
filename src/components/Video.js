@@ -101,7 +101,7 @@ class Video extends React.Component {
     const controlsLoading = this.props.video.source && !this.props.video.initialized;
 
     return (
-      <div className="video-component">
+      <div tabIndex={0} className="video-component">
         <LoadingElement loading={videoLoading} loadingClassname="video-controls-loading">
           { this.Video() }
         </LoadingElement>

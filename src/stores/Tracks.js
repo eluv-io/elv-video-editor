@@ -4,7 +4,6 @@ import Id from "../utils/Id";
 import IntervalTree from "node-interval-tree";
 import {Parser as HLSParser} from "m3u8-parser";
 import UrlJoin from "url-join";
-import {SortEntries} from "../utils/Utils";
 
 class Tracks {
   @observable tracks = [];
@@ -85,8 +84,6 @@ class Tracks {
   DownloadAudioTrack = async (selectedObject, partHash) => {
     let audioData = new Uint8Array([]);
 
-    return audioData;
-
     await new Promise(async resolve => {
       await this.rootStore.client.DownloadPart({
         libraryId: selectedObject.libraryId,
@@ -163,23 +160,25 @@ class Tracks {
 
     let metadataTracks = [];
     Object.keys(metadataTags).forEach(key => {
-      const entries = metadataTags[key].entries
-        .map(entry =>
-          this.Cue({
-            entryType: "metadata",
-            label: entry.label,
-            startTime: entry.start_time,
-            endTime: entry.end_time,
-            text: entry.text,
-            entry
-          })
-        );
+      let entries = {};
+      metadataTags[key].entries.forEach(entry => {
+        const parsedEntry = this.Cue({
+          entryType: "metadata",
+          label: entry.label,
+          startTime: entry.start_time,
+          endTime: entry.end_time,
+          text: entry.text,
+          entry
+        });
+
+        entries[parsedEntry.entryId] = parsedEntry;
+      });
 
       metadataTracks.push({
         label: metadataTags[key].name,
         trackType: "metadata",
         key,
-        entries: SortEntries(entries)
+        entries
       });
     });
 
@@ -189,18 +188,9 @@ class Tracks {
   Cue({entryType, label, startTime, endTime, text, entry}) {
     const isSMPTE = typeof startTime === "string" && startTime.split(":").length > 1;
 
-    let startTimeSMPTE, endTimeSMPTE;
     if(isSMPTE) {
-      // Given times are in SMPTE - calculate numerical time
-      startTimeSMPTE = startTime;
-      endTimeSMPTE = endTime;
-
       startTime = this.rootStore.videoStore.videoHandler.SMPTEToTime(startTime);
       endTime = this.rootStore.videoStore.videoHandler.SMPTEToTime(endTime);
-    } else {
-      // Given times are in numerical time - calculate SMPTE
-      startTimeSMPTE = this.rootStore.videoStore.videoHandler.TimeToSMPTE(startTime);
-      endTimeSMPTE = this.rootStore.videoStore.videoHandler.TimeToSMPTE(endTime);
     }
 
     return {
@@ -209,8 +199,6 @@ class Tracks {
       label,
       startTime,
       endTime,
-      startTimeSMPTE,
-      endTimeSMPTE,
       text,
       entry
     };
@@ -267,6 +255,14 @@ class Tracks {
     return cues;
   }
 
+  TrackIntervalTree(entries) {
+    const intervalTree = new IntervalTree();
+
+    Object.values(entries).forEach(entry => intervalTree.insert(entry.startTime, entry.endTime, entry.entryId));
+
+    return intervalTree;
+  }
+
   @action.bound
   InitializeTracks = flow(function * () {
     let tracks = [];
@@ -289,16 +285,14 @@ class Tracks {
 
     const metadataTracks = this.AddTracksFromTags(this.rootStore.videoStore.metadata.metadata_tags);
     metadataTracks.map(track => {
-      const intervalTree = new IntervalTree();
-      track.entries.forEach(entry => intervalTree.insert(entry.startTime, entry.endTime, entry));
-
       tracks.push({
         trackId: Id.next(),
+        version: 1,
         label: track.label,
         key: track.key,
         trackType: "metadata",
         entries: track.entries,
-        intervalTree
+        intervalTree: this.TrackIntervalTree(track.entries)
       });
     });
 
@@ -343,6 +337,14 @@ class Tracks {
 
     // Toggle track on video, using video's status as source of truth
     trackInfo.active = this.rootStore.videoStore.ToggleTrack(trackInfo.label);
+  }
+
+  @action.bound
+  ModifyTrack(f) {
+    const track = this.SelectedTrack();
+    f(track);
+    track.intervalTree = this.TrackIntervalTree(track.entries);
+    track.version += 1;
   }
 }
 
