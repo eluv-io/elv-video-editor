@@ -39,7 +39,11 @@ class Video extends React.Component {
   InitializeVideo(video) {
     if(!video) { return; }
 
-    const player = new HLSPlayer();
+    const config = {
+      capLevelToPlayerSize: true
+    };
+
+    const player = new HLSPlayer(config);
     const source = URI(this.props.video.source).addSearch("player_profile", "hls-js").toString();
 
     player.loadSource(source);

@@ -6,7 +6,6 @@ import {inject, observer} from "mobx-react";
 @inject("tracks")
 @observer
 class SidePanel extends React.Component {
-
   Entries() {
     if(!this.props.tracks.selectedTrack) { return null; }
 
@@ -14,10 +13,11 @@ class SidePanel extends React.Component {
 
     return <Entries track={track}/>;
   }
+
   render() {
     return (
       <ResizableBox
-        className="side-panel"
+        className={`side-panel ${this.props.tracks.selectedTrack ? "" : "hidden"}`}
         height={Infinity}
         width={500}
         handle={<div className="resize-handle"/>}

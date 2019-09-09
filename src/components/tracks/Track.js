@@ -21,7 +21,7 @@ class Track extends React.Component {
     this.state = {
       context: undefined,
       hovering: false,
-      hoverTime: 0
+      hoverTime: 0,
     };
 
     this.activeEntryIds = [];
@@ -51,7 +51,7 @@ class Track extends React.Component {
           trackVersion: this.props.tracks.SelectedTrack() ? this.props.tracks.SelectedTrack().version : undefined
         }),
         () => this.Draw(),
-        {delay: 25}
+        {delay: 75}
       ),
       // Update if active entry changed
       DisposeActiveReaction: reaction(

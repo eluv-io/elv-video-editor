@@ -4,7 +4,6 @@ import Id from "../utils/Id";
 import IntervalTree from "node-interval-tree";
 import {Parser as HLSParser} from "m3u8-parser";
 import UrlJoin from "url-join";
-import ConcatArrayBuffer from "arraybuffer-concat";
 import {ChunkArray} from "../utils/Utils";
 
 class Tracks {
@@ -134,24 +133,37 @@ class Tracks {
     const sampleSize = Math.round(channel.length / samples);
     const sampleDuration = 1 / samplesPerSecond;
 
+    let segmentMax = 0;
+
     const audioSamples = [...Array(samples).keys()]
       .map(i => channel.slice(i * sampleSize, (i + 1) * sampleSize))
-      .map((samples, i) => ({
-        startTime: startTime + i * sampleDuration,
-        endTime: startTime + (i + 1) * sampleDuration,
-        max: Math.max(...samples)
-      }));
+      .map((samples, i) => {
+        const sampleMax = Math.max(...samples);
+        if (sampleMax > segmentMax) {
+          segmentMax = sampleMax;
+        }
+
+        return {
+          startTime: startTime + i * sampleDuration,
+          endTime: startTime + (i + 1) * sampleDuration,
+          max: sampleMax
+        };
+      });
 
     const audioTrack = this.audioTracks.find(track => track.trackId === trackId);
     audioTrack.entries = [
       ...audioTrack.entries,
       ...audioSamples
     ];
+
+    if(segmentMax > audioTrack.max) {
+      audioTrack.max = segmentMax;
+    }
   });
 
   @action.bound
   AddAudioTracks = flow(function * () {
-    const concurrentRequests = 30;
+    const concurrentRequests = 1;
 
     const audioTracks = yield this.AudioTracksFromHLSPlaylist();
 
@@ -164,33 +176,35 @@ class Tracks {
             trackId,
             label: "Audio",
             trackType: "audio",
-            entries: []
+            entries: [],
+            max: 0
           });
 
           const duration = track.segments.reduce((duration, segment) => duration + segment.duration, 0);
-          const samplesPerSecond = duration < 300 ? 30 : 8;
+          const samplesPerSecond = duration < 300 ? 20 : 8;
 
-          const initSegment = await (await fetch(track.initSegmentUrl, { headers: {"Content-type": "audio/mp4"}})).arrayBuffer();
+          const initSegment = new Uint8Array(
+            await (await fetch(track.initSegmentUrl, { headers: {"Content-type": "audio/mp4"}})).arrayBuffer()
+          );
 
           const segmentChunks = ChunkArray(track.segments, concurrentRequests);
           for(let i = 0; i < segmentChunks.length; i++) {
             await Promise.all(
               segmentChunks[i].map(async segment => {
-                const segmentData = await (await fetch(segment.url)).arrayBuffer();
+                const segmentData = new Uint8Array(await (await fetch(segment.url)).arrayBuffer());
 
-                // Segments need init segment
-                const audioData = ConcatArrayBuffer(
-                  initSegment,
-                  segmentData
-                );
+                // Add init segment to start of segment data for necessary decoding information
+                const audioData = new Int8Array(initSegment.byteLength + segmentData.byteLength);
+                audioData.set(initSegment);
+                audioData.set(segmentData, initSegment.byteLength);
 
-                await this.AddAudioSegment(trackId, audioData, segment.duration, segment.number, samplesPerSecond);
+                await this.AddAudioSegment(trackId, audioData.buffer, segment.duration, segment.number, samplesPerSecond);
               })
             );
           }
         } catch(error) {
           // eslint-disable-next-line no-console
-          console.log(error);
+          console.error(error);
         }
       })
     );

@@ -1,5 +1,6 @@
 import {observable, action, flow, computed} from "mobx";
 import FrameAccurateVideo, {FrameRates} from "../utils/FrameAccurateVideo";
+import Fraction from "fraction.js/fraction";
 
 class VideoStore {
   @observable metadata = {};
@@ -111,11 +112,11 @@ class VideoStore {
     //yield this.rootStore.overlayStore.AddOverlayTracks(videoObject.metadata.frame_level_tags);
 
     this.source = source;
-    this.rootStore.trackStore.InitializeTracks();
-
     this.poster = poster;
     this.metadata = videoObject.metadata;
     this.loading = false;
+
+    this.rootStore.trackStore.InitializeTracks();
   });
 
   @action.bound
@@ -271,10 +272,11 @@ class VideoStore {
     if(!this.video || !this.video.duration) { return; }
 
     let deltaMin, deltaMax;
-    deltaY *= this.scale * -0.003;
 
     // deltaY: Positive => zoom in, negative => zoom out
     if(deltaY > 0) {
+      deltaY *= this.scale * -0.003;
+
       // When zooming in, zoom to mouse position
       let scalePosition = this.scale * position;
 
@@ -283,6 +285,8 @@ class VideoStore {
       deltaMin = deltaY * (scalePosition - this.scaleMin) / range;
       deltaMax = deltaY * (this.scaleMax - scalePosition) / range;
     } else {
+      deltaY *= this.scale * -0.002;
+
       // When zooming out, expand equally
       deltaMin = deltaY;
       deltaMax = deltaY;
@@ -325,6 +329,14 @@ class VideoStore {
     this.scaleMax = max;
 
     this.SeekPercentage(seek / this.scale, false);
+  }
+
+  ScaleMinTime() {
+    return Fraction(this.scaleMin).div(this.scale).mul(this.video.duration).valueOf();
+  }
+
+  ScaleMaxTime() {
+    return Fraction(this.scaleMax).div(this.scale).mul(this.video.duration).valueOf();
   }
 
   @action.bound

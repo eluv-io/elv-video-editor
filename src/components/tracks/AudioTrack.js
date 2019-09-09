@@ -33,7 +33,7 @@ class AudioTrack extends React.Component {
           scaleMin: this.props.video.scaleMin
         }),
         () => this.Draw(),
-        {delay: 500}
+        {delay: 250}
       ),
       // Resize reaction: Ensure canvas dimensions are updated on resize
       DisposeResizeReaction: reaction(
@@ -42,14 +42,14 @@ class AudioTrack extends React.Component {
           height: this.props.height
         }),
         ({width, height}) => {
-          if (this.state.context && this.state.context.canvas) {
+          if(this.state.context && this.state.context.canvas) {
             this.state.context.canvas.width = width;
             this.state.context.canvas.height = height;
 
             this.Draw();
           }
         },
-        {delay: 500}
+        {delay: 250}
       )
     });
   }
@@ -80,29 +80,38 @@ class AudioTrack extends React.Component {
     const startOffset = Fraction(this.props.video.scaleMin).div(this.props.video.scale).mul(this.props.video.duration);
 
     const widthRatio = Fraction(context.canvas.offsetWidth).div(duration);
-    const height = context.canvas.offsetHeight;
+    const halfHeight = context.canvas.offsetHeight * 0.5;
 
     context.fillStyle = "#ffffff";
     context.strokeStyle = "#ffffff";
 
-    const max = Math.max(...(this.props.track.entries.map(sample => sample.max)));
-    const scale = 1 / (max * 1.1);
+    const minTime = this.props.video.ScaleMinTime();
+    const maxTime = this.props.video.ScaleMaxTime();
 
-    this.props.track.entries.forEach(entry => {
-      const startPixel = (Fraction(entry.startTime).sub(startOffset)).mul(widthRatio).floor().valueOf();
-      const endPixel = (Fraction(entry.endTime).sub(startOffset)).mul(widthRatio).floor().valueOf();
+    const entries = this.props.track.entries
+      .filter(entry => entry.startTime >= minTime && entry.endTime <= maxTime);
 
+    const scale = 1 / (this.props.track.max * 1.1);
 
-      if(endPixel.valueOf() < 0 || startPixel.valueOf() > context.canvas.offsetWidth) {
-        return;
-      }
+    for(let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      const nextEntry = i === (entries.length - 1) ? entry : entries[i+1];
 
-      const maxHeight = height * entry.max * scale;
+      const startX = (Fraction(entry.startTime).sub(startOffset)).mul(widthRatio).floor().valueOf();
+      const endX = (Fraction(entry.endTime).sub(startOffset)).mul(widthRatio).floor().valueOf();
+
+      const startY = (halfHeight * entry.max * scale);
+      const endY = (halfHeight * nextEntry.max * scale);
 
       context.beginPath();
-      context.fillRect(startPixel, height - maxHeight, endPixel - startPixel, maxHeight);
-      context.stroke();
-    });
+
+      context.moveTo(startX, halfHeight + startY);
+      context.lineTo(endX, halfHeight + endY);
+      context.lineTo(endX, halfHeight - endY);
+      context.lineTo(startX, halfHeight - startY);
+      context.closePath();
+      context.fill();
+    }
   }
 
   Canvas() {

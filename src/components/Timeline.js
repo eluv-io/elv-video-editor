@@ -127,6 +127,7 @@ class Timeline extends React.Component {
         trackId: track.trackId,
         trackType: track.trackType,
         label: this.TrackLabel(track),
+        className: track.trackType === "audio" ? "track-lane-audio" : "",
         content: (
           track.trackType === "audio" ?
             <AudioTrack track={track} width={this.state.trackDimensions.width} height={this.state.trackDimensions.height} /> :
