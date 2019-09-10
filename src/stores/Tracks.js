@@ -148,7 +148,8 @@ class Tracks {
           endTime: startTime + (i + 1) * sampleDuration,
           max: sampleMax
         };
-      });
+      })
+      .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
 
     const audioTrack = this.audioTracks.find(track => track.trackId === trackId);
     if(audioTrack) {
@@ -371,6 +372,8 @@ class Tracks {
     this.AddAudioTracks();
   }
 
+  /* User Actions */
+
   @action.bound
   SelectedTrack() {
     if(!this.selectedTrack) { return; }
@@ -409,6 +412,19 @@ class Tracks {
 
     // Toggle track on video, using video's status as source of truth
     trackInfo.active = this.rootStore.videoStore.ToggleTrack(trackInfo.label);
+  }
+
+  @action.bound
+  CreateTrack({label, key}) {
+    this.tracks.push({
+      trackId: Id.next(),
+      version: 1,
+      label,
+      key,
+      trackType: "metadata",
+      entries: {},
+      intervalTree: new IntervalTree()
+    });
   }
 
   @action.bound

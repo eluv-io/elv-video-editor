@@ -20,7 +20,7 @@ class Timeline extends React.Component {
       indicatorOffset: 0,
       show: {
         Subtitles: true,
-        Metadata: true,
+        Tags: true,
         Audio: false
       }
     };
@@ -63,7 +63,7 @@ class Timeline extends React.Component {
     }
   }
 
-  TrackLane({trackId, trackType, label, content, key, className=""}) {
+  TrackLane({trackId, trackType, label, content, className=""}) {
     const clickable = trackId && trackType !== "audio";
     const selected = trackId && this.props.tracks.selectedTrack === trackId;
     const selectTrack = () => {
@@ -77,7 +77,7 @@ class Timeline extends React.Component {
     };
 
     return (
-      <div key={`track-lane-${key || label}`} className={`track-lane ${className}`}>
+      <div key={`track-lane-${trackId}`} className={`track-lane ${className}`}>
         <div
           onClick={selectTrack}
           onKeyPress={onEnterPressed(selectTrack)}
@@ -164,7 +164,7 @@ class Timeline extends React.Component {
         .map(track => this.Track(track));
     }
 
-    if(this.state.show.Metadata) {
+    if(this.state.show.Tags) {
       metadataTracks = this.props.tracks.tracks
         .filter(track => track.trackType !== "vtt").slice()
         .sort((a, b) => (a.label > b.label ? 1 : -1))
@@ -191,7 +191,7 @@ class Timeline extends React.Component {
     return (
       <button
         onClick={() => this.setState({show: {...this.state.show, [name]: !enabled}})}
-        className={`track-button ${enabled ? "track-button-enabled" : ""}`}
+        className={`${enabled ? "enabled" : ""}`}
       >
         { name }
       </button>
@@ -204,15 +204,25 @@ class Timeline extends React.Component {
     const audioTracks = this.props.tracks.audioTracks;
 
     const subtitleToggle = subtitleTracks.length > 0 ? this.TrackToggleButton("Subtitles") : null;
-    const metadataToggle = metadataTracks.length > 0 ? this.TrackToggleButton("Metadata") : null;
+    const metadataToggle = metadataTracks.length > 0 ? this.TrackToggleButton("Tags") : null;
     const audioToggle = audioTracks.length > 0 ? this.TrackToggleButton("Audio") : null;
 
 
     return (
-      <div className="track-toggle-options">
+      <div className="timeline-actions">
         { subtitleToggle }
         { metadataToggle }
         { audioToggle }
+      </div>
+    );
+  }
+
+  AddTrackButton() {
+    return (
+      <div className="timeline-actions">
+        <button onClick={() => this.props.tracks.CreateTrack({label: "New Track", key: "new_track"})}>
+          Add Track
+        </button>
       </div>
     );
   }
@@ -223,14 +233,15 @@ class Timeline extends React.Component {
     return (
       <div className="timeline">
         {this.TrackLane({
+          trackId: -1,
           label: <span className="mono">{`${this.props.video.frame} :: ${this.props.video.smpte}`}</span>,
           content: <Scale />,
-          key: "scale",
           className: "video-scale-lane"
         })}
 
         { this.TrackToggle() }
         { this.Tracks() }
+        { this.AddTrackButton() }
       </div>
     );
   }

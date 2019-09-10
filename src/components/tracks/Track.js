@@ -173,19 +173,18 @@ class Track extends React.Component {
     // Where the currently visible segment starts
     const startOffset = Fraction(this.props.video.scaleMin).div(this.props.video.scale).mul(this.props.video.duration);
 
-    const widthRatio = Fraction(context.canvas.offsetWidth).div(duration);
-    const halfHeight = Fraction(context.canvas.offsetHeight).div(2);
-    const quarterHeight = halfHeight.div(2);
-    const startY = quarterHeight.valueOf();
+    const widthRatio = context.canvas.offsetWidth / duration;
+    const halfHeight = Math.floor(context.canvas.offsetHeight * 0.5);
+    const startY = Math.floor(context.canvas.offsetHeight * 0.25);
 
     const activeEntryIds = this.Search(this.props.video.currentTime);
     const selectedEntryIds = this.props.entry.entries;
     const selectedEntryId = this.props.entry.selectedEntry ? this.props.entry.selectedEntry : undefined;
     const hoverEntryIds = this.props.entry.hoverEntries;
 
-    entries.forEach(entry => {
-      const startPixel = (Fraction(entry.startTime).sub(startOffset)).mul(widthRatio).floor().valueOf();
-      const endPixel = (Fraction(entry.endTime).sub(startOffset)).mul(widthRatio).floor().valueOf();
+    entries.map(entry => {
+      const startPixel = Math.floor((entry.startTime - startOffset) * widthRatio);
+      const endPixel = Math.floor((entry.endTime - startOffset) * widthRatio);
 
       if(endPixel.valueOf() < 0 || startPixel.valueOf() > context.canvas.offsetWidth) {
         return;

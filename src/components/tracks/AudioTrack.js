@@ -36,7 +36,7 @@ class AudioTrack extends React.Component {
           scaleMin: this.props.video.scaleMin
         }),
         () => this.Draw(),
-        {delay: 250}
+        {delay: 500}
       ),
       // Resize reaction: Ensure canvas dimensions are updated on resize
       DisposeResizeReaction: reaction(
@@ -97,31 +97,49 @@ class AudioTrack extends React.Component {
     const minTime = this.props.video.ScaleMinTime();
     const maxTime = this.props.video.ScaleMaxTime();
 
-    const entries = this.props.track.entries
+    let minStartTime = Infinity;
+    let maxEndTime = -Infinity;
+
+    let entries = this.props.track.entries
       .flat()
       .filter(entry => entry.startTime >= minTime && entry.endTime <= maxTime);
 
+    // If scale is large and there are many entries, skip some entries
+    // based on number of entries relative to rendered range on canvas
+    entries.forEach(entry => {
+      if(entry.startTime < minStartTime) { minStartTime = entry.startTime; }
+      if(entry.endTime > maxEndTime) { maxEndTime = entry.endTime; }
+    });
+
+    const entryRatio = (maxEndTime - minStartTime) / (maxTime - minTime);
+    const renderEvery = Math.floor(entries.length * entryRatio / (this.state.canvasWidth * 2)) || 1;
+
     const scale = 1 / (this.props.track.max * 1.1);
 
+    context.beginPath();
     for(let i = 0; i < entries.length; i++) {
+      if(renderEvery > 1 && i % renderEvery !== 0) {
+        continue;
+      }
+
       const entry = entries[i];
-      const nextEntry = i === (entries.length - 1) ? entry : entries[i+1];
+      const entryWidth = (entry.endTime - entry.startTime) * renderEvery + (renderEvery > 2 ? 1 : 0);
+      const nextEntry = i < entries.length - 1 ? entries[i + 1] : entry;
 
-      const startX = (Fraction(entry.startTime).sub(startOffset)).mul(widthRatio).floor().valueOf();
-      const endX = (Fraction(entry.endTime).sub(startOffset)).mul(widthRatio).floor().valueOf();
+      const startX = Math.floor((entry.startTime - startOffset) * widthRatio);
+      const endX = Math.floor((entry.startTime + entryWidth - startOffset) * widthRatio);
 
-      const startY = (halfHeight * entry.max * scale);
-      const endY = (halfHeight * nextEntry.max * scale);
-
-      context.beginPath();
+      const startY = Math.floor(halfHeight * entry.max * scale);
+      const endY = Math.floor(halfHeight * nextEntry.max * scale);
 
       context.moveTo(startX, halfHeight + startY);
       context.lineTo(endX, halfHeight + endY);
       context.lineTo(endX, halfHeight - endY);
       context.lineTo(startX, halfHeight - startY);
-      context.closePath();
-      context.fill();
     }
+
+    context.closePath();
+    context.fill();
   }
 
   Canvas() {
