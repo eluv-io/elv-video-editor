@@ -87,6 +87,10 @@ class EntryStore {
   @action.bound
   ClearSelectedEntry() {
     this.selectedEntry = undefined;
+
+    if(this.entries.length === 1) {
+      this.ClearEntries();
+    }
   }
 
   Entries() {
@@ -101,6 +105,10 @@ class EntryStore {
 
     this.entries = entries || [];
     this.entryTime = time;
+
+    if(entries.length === 1) {
+      this.SetSelectedEntry(entries[0]);
+    }
   }
 
   @action.bound

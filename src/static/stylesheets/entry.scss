@@ -82,6 +82,10 @@
         }
       }
     }
+
+    .entry-text {
+      padding: 0 $elv-spacing-s;
+    }
   }
 
   .entry-play-icon {
@@ -110,6 +114,7 @@
 }
 
 .entry-container {
+  overflow-y: auto;
   padding: $elv-spacing-ss $elv-spacing-s;
   text-align: left;
 

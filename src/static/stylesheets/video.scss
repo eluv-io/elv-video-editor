@@ -14,7 +14,7 @@
 
 .video-container {
   align-items: center;
-  background-color: $color-background-video;
+  background-color: $color-background-black;
   display: flex;
   flex-grow: 1;
   height: 100%;
@@ -104,7 +104,7 @@
 }
 
 .video-controls-container {
-  background-color: $color-background-video;
+  background-color: $color-background-black;
 
   &:not(.fullscreen) {
     flex-grow: 1;

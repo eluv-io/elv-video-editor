@@ -143,7 +143,7 @@ class Track extends React.Component {
   }
 
   DrawIfActiveChanged() {
-    const activeEntryIds = (this.Search(this.props.video.currentTime)).map(e => e.entryId).sort();
+    const activeEntryIds = (this.Search(this.props.video.currentTime)).sort();
 
     if(activeEntryIds.toString() === this.activeEntryIds.toString()) { return; }
 

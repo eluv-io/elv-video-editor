@@ -83,7 +83,7 @@ class Timeline extends React.Component {
           onKeyPress={onEnterPressed(selectTrack)}
           tabIndex={trackId ? 0 : undefined}
           className={`
-              track-label
+              track-label-container
               ${selected ? "track-label-selected" : ""}
               ${clickable? "track-label-clickable" : ""}
             `}
