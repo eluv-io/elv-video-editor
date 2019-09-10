@@ -57,11 +57,17 @@ export const SafeTraverse = (object, ...keys) => {
   return result;
 };
 
-export const ChunkArray = (array, chunkSize) => {
-  let results = [];
-  while(array.length) {
-    results.push(array.splice(0, chunkSize));
+export const SplitArray = (array, n) => {
+  const arrays =  [...Array(n)].map(() => []);
+
+  let i = 0;
+  let a = 0;
+  while(i < array.length) {
+    arrays[a].push(array[i]);
+
+    a = (a + 1) % n;
+    i += 1;
   }
 
-  return results;
+  return arrays;
 };

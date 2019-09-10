@@ -3,6 +3,7 @@ import FrameAccurateVideo, {FrameRates} from "../utils/FrameAccurateVideo";
 import Fraction from "fraction.js/fraction";
 
 class VideoStore {
+  @observable versionHash = "";
   @observable metadata = {};
   @observable name;
 
@@ -53,7 +54,9 @@ class VideoStore {
       this.videoHandler = undefined;
     }
 
+    this.versionHash = "";
     this.metadata = {};
+    this.name = "";
 
     this.source = undefined;
     this.poster = undefined;
@@ -91,6 +94,7 @@ class VideoStore {
   @action.bound
   SetVideo = flow(function * (videoObject) {
     this.name = videoObject.name;
+    this.versionHash = videoObject.versionHash;
 
     const playoutOptions = yield this.rootStore.client.PlayoutOptions({
       versionHash: videoObject.versionHash,

@@ -22,10 +22,13 @@ class Track extends React.Component {
       context: undefined,
       hovering: false,
       hoverTime: 0,
+      canvasHeight: 0,
+      canvasWidth: 0
     };
 
     this.activeEntryIds = [];
 
+    this.OnCanvasResize = this.OnCanvasResize.bind(this);
     this.Draw = this.Draw.bind(this);
     this.DrawIfActiveChanged = this.DrawIfActiveChanged.bind(this);
     this.Click = this.Click.bind(this);
@@ -64,14 +67,13 @@ class Track extends React.Component {
       // Resize reaction: Ensure canvas dimensions are updated on resize
       DisposeResizeReaction: reaction(
         () => ({
-          width: this.props.width,
-          height: this.props.height
+          width: this.state.canvasWidth,
+          height: this.state.canvasHeight
         }),
         ({width, height}) => {
-          if (this.state.context && this.state.context.canvas) {
+          if(this.state.context) {
             this.state.context.canvas.width = width;
             this.state.context.canvas.height = height;
-
             this.Draw();
           }
         },
@@ -84,6 +86,13 @@ class Track extends React.Component {
     this.state.DisposeDrawReaction();
     this.state.DisposeActiveReaction();
     this.state.DisposeResizeReaction();
+  }
+
+  OnCanvasResize({height, width}) {
+    this.setState({
+      canvasHeight: height,
+      canvasWidth: width
+    });
   }
 
   // X position of mouse over canvas (as percent)
@@ -258,6 +267,7 @@ class Track extends React.Component {
         onClick={this.Click}
         onMouseMove={this.Hover}
         onMouseLeave={this.ClearHover}
+        HandleResize={this.OnCanvasResize}
         SetRef={context => this.setState({context})}
       />
     );
@@ -279,8 +289,6 @@ class Track extends React.Component {
 
 Track.propTypes = {
   track: PropTypes.object.isRequired,
-  width: PropTypes.number.isRequired,
-  height: PropTypes.number.isRequired,
   entry: PropTypes.object,
   video: PropTypes.object
 };

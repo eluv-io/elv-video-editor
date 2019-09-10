@@ -4,7 +4,7 @@ import Id from "../utils/Id";
 import IntervalTree from "node-interval-tree";
 import {Parser as HLSParser} from "m3u8-parser";
 import UrlJoin from "url-join";
-import {ChunkArray} from "../utils/Utils";
+import {SplitArray} from "../utils/Utils";
 
 class Tracks {
   @observable tracks = [];
@@ -151,20 +151,22 @@ class Tracks {
       });
 
     const audioTrack = this.audioTracks.find(track => track.trackId === trackId);
-    audioTrack.entries = [
-      ...audioTrack.entries,
-      ...audioSamples
-    ];
+    if(audioTrack) {
+      audioTrack.entries = [
+        ...audioTrack.entries,
+        audioSamples
+      ];
 
-    if(segmentMax > audioTrack.max) {
-      audioTrack.max = segmentMax;
+      if (segmentMax > audioTrack.max) {
+        audioTrack.max = segmentMax;
+      }
     }
   });
 
   @action.bound
   AddAudioTracks = flow(function * () {
-    const concurrentRequests = 1;
-
+    const loadingVersion = this.rootStore.videoStore.versionHash;
+    const concurrentRequests = 5;
     const audioTracks = yield this.AudioTracksFromHLSPlaylist();
 
     yield Promise.all(
@@ -187,10 +189,17 @@ class Tracks {
             await (await fetch(track.initSegmentUrl, { headers: {"Content-type": "audio/mp4"}})).arrayBuffer()
           );
 
-          const segmentChunks = ChunkArray(track.segments, concurrentRequests);
-          for(let i = 0; i < segmentChunks.length; i++) {
-            await Promise.all(
-              segmentChunks[i].map(async segment => {
+          const segmentLists = SplitArray(track.segments, concurrentRequests);
+          await Promise.all(
+            segmentLists.map(async segmentList => {
+              for(let i = 0; i < segmentList.length; i++) {
+                // Abort if video has changed
+                if(this.rootStore.videoStore.versionHash !== loadingVersion) {
+                  return;
+                }
+
+                const segment = segmentList[i];
+
                 const segmentData = new Uint8Array(await (await fetch(segment.url)).arrayBuffer());
 
                 // Add init segment to start of segment data for necessary decoding information
@@ -198,10 +207,10 @@ class Tracks {
                 audioData.set(initSegment);
                 audioData.set(segmentData, initSegment.byteLength);
 
-                await this.AddAudioSegment(trackId, audioData.buffer, segment.duration, segment.number, samplesPerSecond);
-              })
-            );
-          }
+                this.AddAudioSegment(trackId, audioData.buffer, segment.duration, segment.number, samplesPerSecond);
+              }
+            })
+          );
         } catch(error) {
           // eslint-disable-next-line no-console
           console.error(error);

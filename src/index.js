@@ -12,6 +12,7 @@ import Menu from "./components/Menu";
 import SidePanel from "./components/SidePanel";
 
 @inject("root")
+@inject("video")
 @inject("keyboardControls")
 @observer
 class App extends React.Component {
@@ -32,7 +33,7 @@ class App extends React.Component {
           <SidePanel/>
           <Video/>
         </div>
-        <Timeline/>
+        <Timeline key={`timeline-${this.props.video.versionHash}`}/>
       </div>
     );
   }

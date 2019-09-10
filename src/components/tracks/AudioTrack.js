@@ -13,9 +13,12 @@ class AudioTrack extends React.Component {
     super(props);
 
     this.state = {
-      context: undefined
+      context: undefined,
+      canvasHeight: 0,
+      canvasWidth: 0
     };
 
+    this.OnCanvasResize = this.OnCanvasResize.bind(this);
     this.Draw = this.Draw.bind(this);
   }
 
@@ -38,14 +41,13 @@ class AudioTrack extends React.Component {
       // Resize reaction: Ensure canvas dimensions are updated on resize
       DisposeResizeReaction: reaction(
         () => ({
-          width: this.props.width,
-          height: this.props.height
+          width: this.state.canvasWidth,
+          height: this.state.canvasHeight
         }),
         ({width, height}) => {
-          if(this.state.context && this.state.context.canvas) {
+          if(this.state.context) {
             this.state.context.canvas.width = width;
             this.state.context.canvas.height = height;
-
             this.Draw();
           }
         },
@@ -57,6 +59,13 @@ class AudioTrack extends React.Component {
   componentWillUnmount() {
     this.state.DisposeDrawReaction();
     this.state.DisposeResizeReaction();
+  }
+
+  OnCanvasResize({height, width}) {
+    this.setState({
+      canvasHeight: height,
+      canvasWidth: width
+    });
   }
 
   // X position of mouse over canvas (as percent)
@@ -82,13 +91,14 @@ class AudioTrack extends React.Component {
     const widthRatio = Fraction(context.canvas.offsetWidth).div(duration);
     const halfHeight = context.canvas.offsetHeight * 0.5;
 
-    context.fillStyle = "#ffffff";
-    context.strokeStyle = "#ffffff";
+    context.fillStyle = "#acacac";
+    context.strokeStyle = "#acacac";
 
     const minTime = this.props.video.ScaleMinTime();
     const maxTime = this.props.video.ScaleMaxTime();
 
     const entries = this.props.track.entries
+      .flat()
       .filter(entry => entry.startTime >= minTime && entry.endTime <= maxTime);
 
     const scale = 1 / (this.props.track.max * 1.1);
@@ -118,6 +128,7 @@ class AudioTrack extends React.Component {
     return (
       <TrackCanvas
         className="track"
+        HandleResize={this.OnCanvasResize}
         SetRef={context => this.setState({context})}
       />
     );
@@ -137,8 +148,6 @@ class AudioTrack extends React.Component {
 
 AudioTrack.propTypes = {
   track: PropTypes.object.isRequired,
-  width: PropTypes.number.isRequired,
-  height: PropTypes.number.isRequired,
   video: PropTypes.object
 };
 

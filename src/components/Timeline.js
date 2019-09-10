@@ -15,8 +15,14 @@ class Timeline extends React.Component {
     super(props);
 
     this.state = {
-      trackDimensions: new DOMRect(),
-      trackContainerDimensions: new DOMRect()
+      indicatorTrackWidth: 0,
+      indicatorHeight: 0,
+      indicatorOffset: 0,
+      show: {
+        Subtitles: true,
+        Metadata: true,
+        Audio: false
+      }
     };
 
     this.WatchResize = this.WatchResize.bind(this);
@@ -34,11 +40,22 @@ class Timeline extends React.Component {
     if(element) {
       this.resizeObserver = new ResizeObserver((entries) => {
         const container = entries[0];
-        const track = document.getElementsByClassName("track-lane-content")[0];
+        const trackLanes = entries[0].target.getElementsByClassName("track-lane-content");
+
+        if(trackLanes.length === 0) {
+          this.setState({
+            indicatorTrackWidth: 0,
+            indicatorHeight: 0,
+            indicatorOffset: 0
+          });
+
+          return;
+        }
 
         this.setState({
-          trackDimensions: track ? track.getBoundingClientRect() : new DOMRect(),
-          trackContainerDimensions: container.contentRect
+          indicatorTrackWidth: trackLanes[0].offsetWidth,
+          indicatorHeight: container.contentRect.height,
+          indicatorOffset: trackLanes[0].offsetLeft
         });
       });
 
@@ -82,11 +99,11 @@ class Timeline extends React.Component {
 
   CurrentTimeIndicator() {
     const scale = this.props.video.scaleMax - this.props.video.scaleMin;
-    const indicatorPosition = (this.props.video.seek - this.props.video.scaleMin) * (this.state.trackDimensions.width / scale) + this.state.trackDimensions.left;
+    const indicatorPosition = (this.props.video.seek - this.props.video.scaleMin) * (this.state.indicatorTrackWidth / scale) + this.state.indicatorOffset;
 
     return (
       <div
-        style={{height: (this.state.trackContainerDimensions.height - 1) + "px", left: (indicatorPosition - 1) + "px"}}
+        style={{height: this.state.indicatorHeight + "px", left: (indicatorPosition - 1) + "px"}}
         className="track-time-indicator"
       />
     );
@@ -130,8 +147,8 @@ class Timeline extends React.Component {
         className: track.trackType === "audio" ? "track-lane-audio" : "",
         content: (
           track.trackType === "audio" ?
-            <AudioTrack track={track} width={this.state.trackDimensions.width} height={this.state.trackDimensions.height} /> :
-            <Track track={track} width={this.state.trackDimensions.width} height={this.state.trackDimensions.height} />
+            <AudioTrack track={track} /> :
+            <Track track={track} />
         ),
         labelToolTip: <span>{tooltip}</span>
       })
@@ -139,25 +156,63 @@ class Timeline extends React.Component {
   }
 
   Tracks() {
+    let subtitleTracks, metadataTracks, audioTracks;
+    if(this.state.show.Subtitles) {
+      subtitleTracks = this.props.tracks.tracks
+        .filter(track => track.trackType === "vtt").slice()
+        .sort((a, b) => (a.label > b.label ? 1 : -1))
+        .map(track => this.Track(track));
+    }
+
+    if(this.state.show.Metadata) {
+      metadataTracks = this.props.tracks.tracks
+        .filter(track => track.trackType !== "vtt").slice()
+        .sort((a, b) => (a.label > b.label ? 1 : -1))
+        .map(track => this.Track(track));
+    }
+
+    if(this.state.show.Audio) {
+      audioTracks = this.props.tracks.audioTracks
+        .map(track => this.Track(track));
+    }
+
     return (
       <div ref={this.WatchResize} className="tracks-container">
         { this.CurrentTimeIndicator() }
-        {
-          this.props.tracks.tracks
-            .filter(track => track.trackType === "vtt").slice()
-            .sort((a, b) => (a.label > b.label ? 1 : -1))
-            .map(track => this.Track(track))
-        }
-        {
-          this.props.tracks.tracks
-            .filter(track => track.trackType !== "vtt").slice()
-            .sort((a, b) => (a.label > b.label ? 1 : -1))
-            .map(track => this.Track(track))
-        }
-        {
-          this.props.tracks.audioTracks
-            .map(track => this.Track(track))
-        }
+        { subtitleTracks }
+        { metadataTracks }
+        { audioTracks }
+      </div>
+    );
+  }
+
+  TrackToggleButton(name) {
+    const enabled = this.state.show[name];
+    return (
+      <button
+        onClick={() => this.setState({show: {...this.state.show, [name]: !enabled}})}
+        className={`track-button ${enabled ? "track-button-enabled" : ""}`}
+      >
+        { name }
+      </button>
+    );
+  }
+
+  TrackToggle() {
+    const subtitleTracks = this.props.tracks.tracks.filter(track => track.trackType === "vtt");
+    const metadataTracks = this.props.tracks.tracks.filter(track => track.trackType === "metadata");
+    const audioTracks = this.props.tracks.audioTracks;
+
+    const subtitleToggle = subtitleTracks.length > 0 ? this.TrackToggleButton("Subtitles") : null;
+    const metadataToggle = metadataTracks.length > 0 ? this.TrackToggleButton("Metadata") : null;
+    const audioToggle = audioTracks.length > 0 ? this.TrackToggleButton("Audio") : null;
+
+
+    return (
+      <div className="track-toggle-options">
+        { subtitleToggle }
+        { metadataToggle }
+        { audioToggle }
       </div>
     );
   }
@@ -173,7 +228,9 @@ class Timeline extends React.Component {
           key: "scale",
           className: "video-scale-lane"
         })}
-        {this.Tracks()}
+
+        { this.TrackToggle() }
+        { this.Tracks() }
       </div>
     );
   }
