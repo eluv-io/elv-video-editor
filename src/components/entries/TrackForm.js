@@ -74,7 +74,7 @@ class TrackForm extends React.Component {
           </button>
         </div>
 
-        <div className="track-delete-button">
+        <div className="delete-button">
           <button onClick={this.HandleDelete}>
             Remove Track
           </button>

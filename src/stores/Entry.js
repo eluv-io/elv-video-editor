@@ -1,4 +1,5 @@
 import {observable, action} from "mobx";
+import Id from "../utils/Id";
 
 class EntryStore {
   @observable entries = [];
@@ -9,6 +10,8 @@ class EntryStore {
   @observable hoverTime;
 
   @observable filter = "";
+
+  @observable editingEntry = false;
 
   constructor(rootStore) {
     this.rootStore = rootStore;
@@ -23,6 +26,8 @@ class EntryStore {
     this.hoverTime = undefined;
 
     this.filter = "";
+
+    this.editingEntry = false;
   }
 
   TimeToSMPTE(time) {
@@ -47,10 +52,12 @@ class EntryStore {
     const minTime = this.rootStore.videoStore.scaleMinTime;
     const maxTime = this.rootStore.videoStore.scaleMaxTime;
 
-    return entries.filter(({startTime, endTime, text}) =>
-      (!filter || formatString(text).includes(filter)) &&
-      endTime >= minTime && startTime <= maxTime
-    );
+    return entries
+      .filter(({startTime, endTime, text}) =>
+        (!filter || formatString(text).includes(filter)) &&
+        endTime >= minTime && startTime <= maxTime
+      )
+      .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
   }
 
   @action.bound
@@ -82,6 +89,8 @@ class EntryStore {
   @action.bound
   SetSelectedEntry(entryId) {
     this.selectedEntry = entryId;
+
+    this.ClearEditing();
   }
 
   @action.bound
@@ -91,6 +100,8 @@ class EntryStore {
     if(this.entries.length === 1) {
       this.ClearEntries();
     }
+
+    this.ClearEditing();
   }
 
   Entries() {
@@ -130,17 +141,49 @@ class EntryStore {
   }
 
   @action.bound
-  ModifyEntry({entryId, text, startTime, endTime}) {
-    this.rootStore.trackStore.ModifyTrack(track => {
-      const entry = track.entries[entryId];
-      entry.text = text;
-      entry.startTime = startTime;
-      entry.endTime = endTime;
-    });
+  SetEditing(entryId) {
+    this.SetSelectedEntry(entryId);
+
+    this.editingEntry = true;
   }
 
   @action.bound
-  DeleteEntry(entryId) {
+  ClearEditing() {
+    this.editingEntry = false;
+  }
+
+  @action.bound
+  CreateEntry() {
+    const entryId = Id.next();
+
+    this.SetEditing(entryId);
+  }
+
+  @action.bound
+  ModifyEntry({entryId, text, startTime, endTime}) {
+    this.rootStore.trackStore.ModifyTrack(track => {
+      const entry = track.entries[entryId];
+
+      if(entry) {
+        entry.text = text;
+        entry.startTime = startTime;
+        entry.endTime = endTime;
+      } else {
+        entryId = this.rootStore.trackStore.AddEntry({
+          trackId: track.trackId,
+          text,
+          startTime,
+          endTime
+        });
+      }
+    });
+
+    this.SetSelectedEntry(entryId);
+    this.ClearEditing();
+  }
+
+  @action.bound
+  RemoveEntry(entryId) {
     if(entryId === this.selectedEntry) {
       this.ClearSelectedEntry();
       this.entries = this.entries.filter(id => id !== entryId);

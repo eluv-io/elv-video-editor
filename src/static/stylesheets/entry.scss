@@ -33,6 +33,24 @@
     }
   }
 
+  .add-entry-button {
+    bottom: 0;
+    width: 100%;
+    z-index: 100;
+
+    display: flex;
+
+    button {
+      flex-grow: 1;
+      background-color: $color-accent;
+      border: 0;
+
+      &:hover {
+        background-color: $color-accent-highlight;
+      }
+    }
+  }
+
   .entries-time-range {
     color: $elv-color-text-lighter;
     font-size: $elv-font-s;
@@ -121,12 +139,12 @@
   }
 }
 
-.track-delete-button {
+.delete-button {
   bottom: $elv-spacing-m;
   position: absolute;
   width: 90%;
 
-  &.track-delete-button {
+  &.delete-button {
     button {
       background-color: $color-background;
       border: 1px solid $color-border;
@@ -157,6 +175,26 @@
       background-color: $color-background;
     }
   }
+
+  .time-input {
+    display: flex;
+    margin-bottom: $elv-spacing-xxs;
+
+    .-elv-icon-button {
+      width: auto;
+      margin: 0 0 0 $elv-spacing-xxs;
+      background-color: transparent;
+
+      svg {
+        padding: $elv-spacing-xxs;
+      }
+
+    }
+
+    input {
+      margin: 0;
+    }
+  }
 }
 
 .entry-details {
@@ -172,6 +210,8 @@
   }
 
   input {
+    min-width: 0;
+    max-width: 100%;
     background-color: $color-background-active;
     border: $color-border;
     color: $color-text;
@@ -192,6 +232,15 @@
   align-items: center;
   display: flex;
   margin-bottom: $elv-spacing-s;
+
+  .cancel-button {
+    background-color: $color-background;
+    margin-right: $elv-spacing-xs;
+
+    &:hover {
+      background-color: $color-background-active;
+    }
+  }
 
   .back-button {
     margin-right: $elv-spacing-xs;

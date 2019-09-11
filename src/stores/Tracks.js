@@ -24,6 +24,7 @@ class Tracks {
     this.subtitleTracks = [];
     this.metadataTracks = [];
     this.selectedTrack = undefined;
+    this.editingTrack = false;
   }
 
   /* HLS Playlist Parsing */
@@ -443,15 +444,17 @@ class Tracks {
       intervalTree: new IntervalTree()
     });
 
+    this.rootStore.entryStore.ClearSelectedEntry();
+
     this.SetEditing(trackId);
   }
 
   @action.bound
   EditTrack({trackId, label, key}) {
-    const trackInfo = this.tracks.find(track => track.trackId === trackId);
+    const track = this.tracks.find(track => track.trackId === trackId);
 
-    trackInfo.label = label;
-    trackInfo.key = key;
+    track.label = label;
+    track.key = key;
 
     this.ClearEditing();
   }
@@ -469,6 +472,16 @@ class Tracks {
     this.ClearSelectedTrack();
 
     this.tracks = this.tracks.filter(track => track.trackId !== trackId);
+  }
+
+  @action.bound
+  AddEntry({trackId, text, startTime, endTime}) {
+    const track = this.tracks.find(track => track.trackId === trackId);
+    const cue = this.Cue({entryType: "metadata", text, startTime, endTime});
+
+    track.entries[cue.entryId] = cue;
+
+    return cue.entryId;
   }
 }
 

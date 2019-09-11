@@ -2,6 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import {inject, observer} from "mobx-react";
 import EntryDetails from "./Entry";
+import EntryForm from "./EntryForm";
 import {BackButton} from "../Components";
 import PlayIcon from "../../static/icons/Play.svg";
 import {IconButton, onEnterPressed} from "elv-components-js";
@@ -31,6 +32,25 @@ class Entries extends React.Component {
           placeholder={"Filter..."}
           onChange={event => this.props.entry.SetFilter(event.target.value)}
         />
+      </div>
+    );
+  }
+
+  AddEntryButton() {
+    if(
+      this.props.track.trackType !== "metadata" ||
+      this.props.tracks.editingTrack ||
+      this.props.entry.editingEntry ||
+      this.props.entry.selectedEntry
+    ) {
+      return null;
+    }
+
+    return (
+      <div className="add-entry-button">
+        <button onClick={this.props.entry.CreateEntry}>
+          Add Tag
+        </button>
       </div>
     );
   }
@@ -101,7 +121,11 @@ class Entries extends React.Component {
   }
 
   SelectedEntry() {
-    return <EntryDetails />;
+    if(this.props.entry.editingEntry) {
+      return <EntryForm />;
+    } else {
+      return <EntryDetails/>;
+    }
   }
 
   EntryList() {
@@ -173,6 +197,7 @@ class Entries extends React.Component {
     return (
       <div className="entries-container">
         { this.Header() }
+        { this.AddEntryButton() }
         { this.Content() }
       </div>
     );
