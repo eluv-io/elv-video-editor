@@ -35,15 +35,15 @@
 
   .add-entry-button {
     bottom: 0;
+    display: flex;
     width: 100%;
+
     z-index: 100;
 
-    display: flex;
-
     button {
-      flex-grow: 1;
       background-color: $color-accent;
       border: 0;
+      flex-grow: 1;
 
       &:hover {
         background-color: $color-accent-highlight;
@@ -181,14 +181,13 @@
     margin-bottom: $elv-spacing-xxs;
 
     .-elv-icon-button {
-      width: auto;
-      margin: 0 0 0 $elv-spacing-xxs;
       background-color: transparent;
+      margin: 0 0 0 $elv-spacing-xxs;
+      width: auto;
 
       svg {
         padding: $elv-spacing-xxs;
       }
-
     }
 
     input {
@@ -210,20 +209,19 @@
   }
 
   input {
-    min-width: 0;
-    max-width: 100%;
     background-color: $color-background-active;
     border: $color-border;
     color: $color-text;
     font-size: $elv-font-m;
     margin-bottom: $elv-spacing-xxs;
+    max-width: 100%;
+    min-width: 0;
     width: 100%;
 
     &.invalid,
     &:invalid {
       box-shadow: $elv-color-red 0 0 4px;
       outline: 1px solid $elv-color-mediumred;
-
     }
   }
 }

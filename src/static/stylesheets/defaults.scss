@@ -131,7 +131,7 @@ button {
 
   &.checked {
     &::after {
-      color: $color-accent;
+      color: $elv-color-white;
       content: "✓";
       font-size: $elv-font-m;
       font-weight: 600;

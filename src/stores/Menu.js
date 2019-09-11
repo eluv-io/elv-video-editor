@@ -1,9 +1,13 @@
 import {observable, action, flow} from "mobx";
+import UrlJoin from "url-join";
 
 class MenuStore {
+  @observable libraryId = "";
+  @observable objectId = "";
+
   @observable showMenu = true;
 
-  @observable libraries = [];
+  @observable libraries = {};
   @observable objects = {};
 
   @observable selectedObject;
@@ -38,8 +42,8 @@ class MenuStore {
   }
 
   @action.bound
-  ToggleMenu() {
-    this.showMenu = !this.showMenu;
+  ToggleMenu(open) {
+    this.showMenu = open;
   }
 
   @action.bound
@@ -60,6 +64,14 @@ class MenuStore {
     if(!libraryId) {
       libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
     }
+
+    this.rootStore.client.SendMessage({
+      options: {
+        operation: "SetFramePath",
+        path: versionHash ? versionHash : UrlJoin(libraryId, objectId)
+      },
+      noResponse: true
+    });
 
     const object = yield this.rootStore.client.ContentObject({libraryId, objectId, versionHash});
 
@@ -84,7 +96,9 @@ class MenuStore {
   ListLibraries = flow(function * () {
     const libraryIds = yield this.rootStore.client.ContentLibraries();
 
-    this.libraries = (yield Promise.all(
+    this.libraries = {};
+
+    (yield Promise.all(
       libraryIds.map(async libraryId => {
         try {
           const metadata = await this.rootStore.client.ContentObjectMetadata({
@@ -94,7 +108,7 @@ class MenuStore {
 
           metadata.name = metadata.name || libraryId;
 
-          return {
+          this.libraries[libraryId] = {
             libraryId,
             metadata,
           };
@@ -102,13 +116,23 @@ class MenuStore {
           return undefined;
         }
       })
-    ))
-      .filter(library => library)
-      .sort((a, b) => a.metadata.name.toLowerCase() > b.metadata.name.toLowerCase() ? 1 : -1);
+    ));
   });
 
   @action.bound
   ListObjects = flow(function * (libraryId) {
+    const metadata = yield this.rootStore.client.ContentObjectMetadata({
+      libraryId,
+      objectId: libraryId.replace("ilib", "iq__")
+    });
+
+    metadata.name = metadata.name || libraryId;
+
+    this.libraries[libraryId] = {
+      libraryId,
+      metadata,
+    };
+
     let { contents } = yield this.rootStore.client.ContentObjects({
       libraryId,
       filterOptions: {
@@ -139,6 +163,26 @@ class MenuStore {
       })
     ));
   });
+
+  @action.bound
+  SetLibraryId(libraryId) {
+    this.libraryId = libraryId;
+  }
+
+  @action.bound
+  ClearLibraryId() {
+    this.libraryId = "";
+  }
+
+  @action.bound
+  SetObjectId(objectId) {
+    this.objectId = objectId;
+  }
+
+  @action.bound
+  ClearObjectId() {
+    this.objectId = "";
+  }
 }
 
 export default MenuStore;

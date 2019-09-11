@@ -16,7 +16,7 @@ class Header extends React.Component {
           <IconButton
             icon={MenuIcon}
             title="Menu"
-            onClick={this.props.menu.ToggleMenu}
+            onClick={() => this.props.menu.ToggleMenu(!this.props.menu.showMenu)}
             className={`menu-button ${this.props.menu.showMenu ? "menu-button-active" : ""}`}
           />
           <h1 className="header-text">

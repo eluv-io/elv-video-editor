@@ -228,9 +228,9 @@ class VideoStore {
     }
 
     // Segment play specified - stop when segment ends
-    if(this.segmentEnd && this.frame >= this.segmentEnd - 2) {
+    if(this.segmentEnd && this.frame >= this.segmentEnd - 3) {
       this.video.pause();
-      this.Seek(this.segmentEnd);
+      this.Seek(this.segmentEnd - 1);
       this.segmentEnd = undefined;
     }
   }

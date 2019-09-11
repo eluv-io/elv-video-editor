@@ -11,28 +11,28 @@ class Menu extends React.Component {
   constructor(props) {
     super(props);
 
-    this.state = {
-      library: undefined,
-      objectId: undefined
-    };
-
     this.SelectLibrary = this.SelectLibrary.bind(this);
     this.SelectObject = this.SelectObject.bind(this);
   }
 
-  async SelectLibrary(library) {
-    this.setState({library});
+  async SelectLibrary(libraryId) {
+    this.props.menu.SetLibraryId(libraryId);
   }
 
-  async SelectObject(libraryId, objectId, versionHash) {
-    this.props.menu.ToggleMenu();
+  async SelectObject(libraryId, objectId) {
+    this.props.menu.SetLibraryId(libraryId);
+    this.props.menu.SetObjectId(objectId);
+
+    this.props.menu.ToggleMenu(false);
     this.setState({objectId});
 
-    await this.props.menu.SelectVideo({libraryId, objectId, versionHash});
+    await this.props.menu.SelectVideo({libraryId, objectId});
   }
 
   SelectedObject() {
     const object = this.props.menu.selectedObject;
+
+    if(!object) { return null; }
 
     const videoTags = !object.metadata.video_tags ? null : (
       <React.Fragment>
@@ -47,7 +47,7 @@ class Menu extends React.Component {
         render={() => (
           <div className="menu-entries">
             <div className="menu-header">
-              <BackButton onClick={() => this.setState({objectId: undefined})} />
+              <BackButton onClick={this.props.menu.ClearObjectId} />
               <h4>{object.name}</h4>
             </div>
 
@@ -72,64 +72,63 @@ class Menu extends React.Component {
   }
 
   Objects() {
-    const libraryId = this.state.library.libraryId;
+    const libraryId = this.props.menu.libraryId;
+    const library = this.props.menu.libraries[libraryId];
 
-    const objects = (
+    return (
       <AsyncComponent
         key="objects-container"
         Load={async () => await this.props.menu.ListObjects(libraryId)}
       >
-        {
-          (this.props.menu.objects[libraryId] || []).length === 0 ?
-            <div className="menu-empty">No Content Available</div> :
-            <ul>
-              {
-                (this.props.menu.objects[libraryId] || []).map(object => {
-                  const onClick = () => this.SelectObject(libraryId, object.objectId, object.versionHash);
+        <div className="menu-entries">
+          <div className="menu-header">
+            <BackButton onClick={this.props.menu.ClearLibraryId} />
+            <h4>{library ? library.metadata.name : ""}</h4>
+          </div>
+          {
+            (this.props.menu.objects[libraryId] || []).length === 0 ?
+              <div className="menu-empty">No Content Available</div> :
+              <ul>
+                {
+                  (this.props.menu.objects[libraryId] || []).map(object => {
+                    const onClick = () => this.SelectObject(libraryId, object.objectId);
 
-                  return (
-                    <li
-                      tabIndex={0}
-                      onClick={onClick}
-                      onKeyPress={onEnterPressed(onClick)}
-                      key={`content-object-${object.objectId}`}
-                    >
-                      {object.metadata.name}
-                    </li>
-                  );
-                })
-              }
-            </ul>
-        }
-      </AsyncComponent>
-    );
-
-    return (
-      <div className="menu-entries">
-        <div className="menu-header">
-          <BackButton onClick={() => this.setState({library: undefined})} />
-          <h4>{this.state.library.metadata.name}</h4>
+                    return (
+                      <li
+                        tabIndex={0}
+                        onClick={onClick}
+                        onKeyPress={onEnterPressed(onClick)}
+                        key={`content-object-${object.objectId}`}
+                      >
+                        {object.metadata.name}
+                      </li>
+                    );
+                  })
+                }
+              </ul>
+          }
         </div>
-
-        { objects }
-      </div>
+      </AsyncComponent>
     );
   }
 
   Libraries() {
+    const libraries = Object.values(this.props.menu.libraries)
+      .sort((a, b) => a.metadata.name.toLowerCase() > b.metadata.name.toLowerCase() ? 1 : -1);
+
     return (
       <AsyncComponent
         key="libraries-container"
         Load={this.props.menu.ListLibraries}
       >
         {
-          Object.keys(this.props.menu.libraries).length === 0 ?
+          libraries.length == 0 ?
             <div className="menu-empty">No Libraries Available</div> :
             <div className="menu-entries">
               <ul>
                 {
-                  this.props.menu.libraries.map(library => {
-                    const onClick = () => this.SelectLibrary(library);
+                  libraries.map(library => {
+                    const onClick = () => this.SelectLibrary(library.libraryId);
 
                     return (
                       <li
@@ -151,9 +150,9 @@ class Menu extends React.Component {
   }
 
   Navigation() {
-    if(this.state.objectId) {
+    if(this.props.menu.objectId) {
       return this.SelectedObject();
-    } if(this.state.library) {
+    } if(this.props.menu.libraryId) {
       return this.Objects();
     } else {
       return this.Libraries();
