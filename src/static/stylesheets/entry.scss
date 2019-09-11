@@ -11,6 +11,14 @@
   .entries-header {
     background-color: $color-background-active;
     padding: $elv-spacing-s 0;
+
+    &.modifiable {
+      cursor: pointer;
+
+      &:hover {
+        background-color: $color-accent-dark;
+      }
+    }
   }
 
   .entries-filter {
@@ -113,6 +121,83 @@
   }
 }
 
+.track-delete-button {
+  bottom: $elv-spacing-m;
+  position: absolute;
+  width: 90%;
+
+  &.track-delete-button {
+    button {
+      background-color: $color-background;
+      border: 1px solid $color-border;
+      color: $elv-color-text-white;
+
+      &:hover {
+        background-color: $elv-color-mediumred;
+      }
+    }
+  }
+}
+
+.entry-form {
+  flex-grow: 1;
+  padding: $elv-spacing-s;
+  position: relative;
+
+  button {
+    background-color: $color-accent;
+    flex-grow: 1;
+    margin-top: $elv-spacing-m;
+
+    &:hover {
+      background-color: $color-accent-highlight;
+    }
+
+    &.invalid {
+      background-color: $color-background;
+    }
+  }
+}
+
+.entry-details {
+  align-items: center;
+  display: grid;
+  grid-row-gap: $elv-spacing-xxs;
+  grid-template-columns: 8rem 2fr;
+  width: 100%;
+
+  label {
+    color: $elv-color-text-lighter;
+    text-align: left;
+  }
+
+  input {
+    background-color: $color-background-active;
+    border: $color-border;
+    color: $color-text;
+    font-size: $elv-font-m;
+    margin-bottom: $elv-spacing-xxs;
+    width: 100%;
+
+    &.invalid,
+    &:invalid {
+      box-shadow: $elv-color-red 0 0 4px;
+      outline: 1px solid $elv-color-mediumred;
+
+    }
+  }
+}
+
+.entry-actions-container {
+  align-items: center;
+  display: flex;
+  margin-bottom: $elv-spacing-s;
+
+  .back-button {
+    margin-right: $elv-spacing-xs;
+  }
+}
+
 .entry-container {
   overflow-y: auto;
   padding: $elv-spacing-ss $elv-spacing-s;
@@ -121,60 +206,6 @@
   .entry-edit-button {
     margin-top: $elv-spacing-s;
     width: 10rem;
-  }
-
-  .entry-form {
-    button {
-      background-color: $color-accent;
-      flex-grow: 1;
-      margin-top: $elv-spacing-m;
-
-      &:hover {
-        background-color: $color-accent-highlight;
-      }
-
-      &.invalid {
-        background-color: $color-background;
-      }
-    }
-  }
-
-  .entry-details {
-    align-items: center;
-    display: grid;
-    grid-row-gap: $elv-spacing-xxs;
-    grid-template-columns: 8rem 2fr;
-    width: 100%;
-
-    label {
-      color: $elv-color-text-lighter;
-    }
-
-    input {
-      background-color: $color-background-active;
-      border: $color-border;
-      color: $color-text;
-      font-size: $elv-font-m;
-      margin-bottom: $elv-spacing-xxs;
-      width: 100%;
-
-      &.invalid,
-      &:invalid {
-        box-shadow: $elv-color-red 0 0 4px;
-        outline: 1px solid $elv-color-mediumred;
-
-      }
-    }
-  }
-
-  .entry-actions-container {
-    align-items: center;
-    display: flex;
-    margin-bottom: $elv-spacing-s;
-
-    .back-button {
-      margin-right: $elv-spacing-xs;
-    }
   }
 
   .entry-actions {

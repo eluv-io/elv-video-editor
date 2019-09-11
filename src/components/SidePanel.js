@@ -11,7 +11,7 @@ class SidePanel extends React.Component {
 
     const track = this.props.tracks.SelectedTrack();
 
-    return <Entries track={track}/>;
+    return <Entries track={track} key={`entries-${track.trackId}`}/>;
   }
 
   render() {

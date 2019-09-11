@@ -3,21 +3,21 @@ import PropTypes from "prop-types";
 import {inject, observer} from "mobx-react";
 import EntryDetails from "./Entry";
 import {BackButton} from "../Components";
-
 import PlayIcon from "../../static/icons/Play.svg";
 import {IconButton, onEnterPressed} from "elv-components-js";
 import {Input} from "../../utils/Utils";
+import TrackForm from "./TrackForm";
 
 @inject("video")
+@inject("tracks")
 @inject("entry")
 @observer
 class Entries extends React.Component {
   constructor(props) {
     super(props);
 
-    // TODO: reaction to set limit back to 100
     this.state = {
-      entryLimit: 100
+      entryLimit: 100,
     };
   }
 
@@ -36,6 +36,8 @@ class Entries extends React.Component {
   }
 
   Header() {
+    const modifiable = this.props.track.trackType === "metadata";
+
     let header;
     if(this.props.track.trackType === "vtt") {
       header = <h4>{this.props.track.label} - WebVTT Track</h4>;
@@ -44,7 +46,11 @@ class Entries extends React.Component {
     }
 
     return (
-      <div className="entries-header">
+      <div
+        onClick={modifiable ? () => this.props.tracks.SetEditing(this.props.track.trackId) : undefined}
+        tabIndex={modifiable ? 0 : undefined}
+        className={`entries-header ${modifiable ? "modifiable" : ""}`}
+      >
         { header }
         <div className="entries-time-range">
           {this.props.video.scaleMinSMPTE} - {this.props.video.scaleMaxSMPTE}
@@ -136,6 +142,7 @@ class Entries extends React.Component {
 
     return (
       <div className="entries">
+        { this.Filter() }
         { actions }
         { entries
           .slice(0, this.state.entryLimit)
@@ -152,12 +159,21 @@ class Entries extends React.Component {
     );
   }
 
+  Content() {
+    if(this.props.tracks.editingTrack) {
+      return <TrackForm track={this.props.track} />;
+    } else if(this.props.entry.selectedEntry) {
+      return this.SelectedEntry();
+    } else {
+      return this.EntryList();
+    }
+  }
+
   render() {
     return (
       <div className="entries-container">
         { this.Header() }
-        { this.Filter() }
-        { this.props.entry.selectedEntry ? this.SelectedEntry() : this.EntryList() }
+        { this.Content() }
       </div>
     );
   }

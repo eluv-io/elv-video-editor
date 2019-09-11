@@ -12,6 +12,7 @@ class Tracks {
   @observable subtitleTracks = [];
   @observable metadataTracks = [];
   @observable selectedTrack;
+  @observable editingTrack = false;
 
   constructor(rootStore) {
     this.rootStore = rootStore;
@@ -387,6 +388,8 @@ class Tracks {
 
     this.selectedTrack = trackId;
     this.rootStore.entryStore.ClearFilter();
+
+    this.ClearEditing();
   }
 
   @action.bound
@@ -415,9 +418,23 @@ class Tracks {
   }
 
   @action.bound
+  SetEditing(trackId) {
+    this.SetSelectedTrack(trackId);
+
+    this.editingTrack = true;
+  }
+
+  @action.bound
+  ClearEditing() {
+    this.editingTrack = false;
+  }
+
+  @action.bound
   CreateTrack({label, key}) {
+    const trackId = Id.next();
+
     this.tracks.push({
-      trackId: Id.next(),
+      trackId,
       version: 1,
       label,
       key,
@@ -425,6 +442,18 @@ class Tracks {
       entries: {},
       intervalTree: new IntervalTree()
     });
+
+    this.SetEditing(trackId);
+  }
+
+  @action.bound
+  EditTrack({trackId, label, key}) {
+    const trackInfo = this.tracks.find(track => track.trackId === trackId);
+
+    trackInfo.label = label;
+    trackInfo.key = key;
+
+    this.ClearEditing();
   }
 
   @action.bound
@@ -433,6 +462,13 @@ class Tracks {
     f(track);
     track.intervalTree = this.TrackIntervalTree(track.entries);
     track.version += 1;
+  }
+
+  @action.bound
+  RemoveTrack(trackId) {
+    this.ClearSelectedTrack();
+
+    this.tracks = this.tracks.filter(track => track.trackId !== trackId);
   }
 }
 

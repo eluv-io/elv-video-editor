@@ -150,3 +150,42 @@ button {
     background-color: $color-background-active;
   }
 }
+
+.-elv-modal {
+  &.-elv-modal {
+    .-elv-modal-content {
+      background-color: $color-background;
+      border: 1px solid $color-border;
+      box-shadow: none;
+      color: $color-text;
+
+      form {
+        legend {
+          border-bottom: 1px solid $color-border;
+        }
+      }
+
+      button {
+        background-color: $color-accent;
+        border: 1px solid $color-border;
+        color: $color-text;
+
+        &.secondary {
+          background-color: $color-background;
+
+          &:hover {
+            background-color: $color-background-active;
+            border: 1px solid $color-border;
+            color: $color-text;
+          }
+        }
+
+        &:hover {
+          background-color: $color-accent-highlight;
+          border: 1px solid $color-border;
+          color: $color-text;
+        }
+      }
+    }
+  }
+}

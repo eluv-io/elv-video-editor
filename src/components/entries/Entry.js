@@ -122,7 +122,7 @@ class EntryForm extends React.Component {
         </div>
         <div className="entry-actions-container">
           <button className={submittable ? "" : "invalid"} onClick={this.HandleSubmit}>
-            Save
+            Done
           </button>
         </div>
       </div>

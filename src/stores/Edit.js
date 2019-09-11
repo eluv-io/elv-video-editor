@@ -63,7 +63,7 @@ class EditStore {
           entries: SortEntries(entryMetadata)
         };
 
-        if (originalMetadata) {
+        if(originalMetadata) {
           originalMetadata.entries = SortEntries(originalMetadata.entries || []);
 
           const trackDiff = diff(
@@ -79,7 +79,12 @@ class EditStore {
         updatedMetadata[track.key] = trackMetadata;
       });
 
-      if (Object.keys(updatedMetadata).length === 0) {
+      const keys = metadataTracks.map(track => track.key);
+      const keysToDelete = Object.keys(metadata)
+        .filter(key => !keys.includes(key));
+
+
+      if(Object.keys(updatedMetadata).length === 0 && keysToDelete.length === 0) {
         this.saving = false;
         this.saveFailed = false;
         return;
@@ -90,6 +95,7 @@ class EditStore {
         objectId,
       });
 
+      // Update changed metadata
       yield Promise.all(
         Object.keys(updatedMetadata).map(async key => {
           await client.ReplaceMetadata({
@@ -98,6 +104,18 @@ class EditStore {
             writeToken: write_token,
             metadataSubtree: UrlJoin("metadata_tags", key),
             metadata: updatedMetadata[key]
+          });
+        })
+      );
+
+      // Delete missing metadata keys
+      yield Promise.all(
+        keysToDelete.map(async key => {
+          await client.DeleteMetadata({
+            libraryId,
+            objectId,
+            writeToken: write_token,
+            metadataSubtree: UrlJoin("metadata_tags", key)
           });
         })
       );
