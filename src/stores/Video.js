@@ -1,17 +1,22 @@
 import {observable, action, flow, computed} from "mobx";
 import FrameAccurateVideo, {FrameRates} from "../utils/FrameAccurateVideo";
 import Fraction from "fraction.js/fraction";
+import UrlJoin from "url-join";
+import URI from "urijs";
 
 class VideoStore {
   @observable versionHash = "";
   @observable metadata = {};
   @observable name;
+  @observable videoTags = [];
 
   @observable initialized = false;
   @observable loading = false;
 
   @observable source;
   @observable poster;
+  @observable baseVideoFrameUrl = undefined;
+  @observable previewSupported = false;
 
   @observable dropFrame = false;
   @observable frameRateKey = "NTSC";
@@ -57,9 +62,12 @@ class VideoStore {
     this.versionHash = "";
     this.metadata = {};
     this.name = "";
+    this.videoTags = [];
 
     this.source = undefined;
     this.poster = undefined;
+    this.baseVideoFrameUrl = undefined;
+    this.previewSupported = false;
 
     this.dropFrame = false;
     this.frameRateKey = "NTSC";
@@ -111,6 +119,27 @@ class VideoStore {
         rep: "player_background",
         channelAuth: true
       });
+    }
+
+    this.videoTags = videoObject.metadata.video_level_tags || [];
+
+    this.baseVideoFrameUrl = yield this.rootStore.client.Rep({
+      versionHash: videoObject.versionHash,
+      rep: UrlJoin("playout", "default", "frames.png")
+    });
+
+    try {
+      // Query preview API to check support
+      const response = yield fetch(URI(this.baseVideoFrameUrl).addSearch("frame", 0).toString());
+      if(response.ok) {
+        this.previewSupported = true;
+      } else {
+        // eslint-disable-next-line no-console
+        console.error("Preview not supported for this content");
+      }
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error("Preview not supported for this content");
     }
 
     //yield this.rootStore.overlayStore.AddOverlayTracks(videoObject.metadata.frame_level_tags);
@@ -202,7 +231,7 @@ class VideoStore {
 
   @action.bound
   TimeToFrame(time) {
-    return this.videoHandler.TimeToFrame(time);
+    return this.videoHandler.TimeToFrame(time).floor().valueOf();
   }
 
   @action.bound
@@ -459,6 +488,13 @@ class VideoStore {
         videoContainer.msRequestFullscreen();
       }
     }
+  }
+
+  @action.bound
+  VideoFrame(frame) {
+    return URI(this.baseVideoFrameUrl)
+      .addSearch("frame", frame)
+      .toString();
   }
 }
 

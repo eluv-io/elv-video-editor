@@ -6,6 +6,7 @@ import LoadingElement from "elv-components-js/src/components/LoadingElement";
 import {BackButton} from "./Components";
 
 @inject("menu")
+@inject("video")
 @observer
 class Menu extends React.Component {
   constructor(props) {
@@ -34,10 +35,10 @@ class Menu extends React.Component {
 
     if(!object) { return null; }
 
-    const videoTags = !object.metadata.video_tags ? null : (
+    const videoTags = this.props.video.videoTags.length === 0 ? null : (
       <React.Fragment>
         <label>Video Tags</label>
-        <span className="wrap">{Object.keys(object.metadata.video_tags).join(", ")}</span>
+        <span className="wrap">{this.props.video.videoTags.join(", ")}</span>
       </React.Fragment>
     );
 

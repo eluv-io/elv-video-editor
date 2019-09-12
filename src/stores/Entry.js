@@ -49,8 +49,8 @@ class EntryStore {
     const formatString = string => string.toString().toLowerCase();
     const filter = formatString(this.rootStore.entryStore.filter);
 
-    const minTime = this.rootStore.videoStore.scaleMinTime;
-    const maxTime = this.rootStore.videoStore.scaleMaxTime;
+    const minTime = this.rootStore.videoStore.ScaleMinTime();
+    const maxTime = this.rootStore.videoStore.ScaleMaxTime();
 
     return entries
       .filter(({startTime, endTime, text}) =>

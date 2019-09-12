@@ -230,10 +230,9 @@ class Tracks {
     let metadataTracks = [];
     Object.keys(metadataTags).forEach(key => {
       let entries = {};
-      metadataTags[key].entries.forEach(entry => {
+      metadataTags[key].tags.forEach(entry => {
         const parsedEntry = this.Cue({
           entryType: "metadata",
-          label: entry.label,
           startTime: entry.start_time,
           endTime: entry.end_time,
           text: entry.text,
@@ -244,7 +243,7 @@ class Tracks {
       });
 
       metadataTracks.push({
-        label: metadataTags[key].name,
+        label: metadataTags[key].label,
         trackType: "metadata",
         key,
         entries

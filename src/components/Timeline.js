@@ -2,6 +2,7 @@ import React from "react";
 import {inject, observer} from "mobx-react";
 import Track from "./tracks/Track";
 import AudioTrack from "./tracks/AudioTrack";
+import PreviewTrack from "./tracks/PreviewTrack";
 import {onEnterPressed} from "elv-components-js";
 import ResizeObserver from "resize-observer-polyfill";
 import {Scale} from "./controls/Controls";
@@ -19,9 +20,10 @@ class Timeline extends React.Component {
       indicatorHeight: 0,
       indicatorOffset: 0,
       show: {
+        Audio: false,
+        Preview: true,
         Subtitles: true,
         Tags: true,
-        Audio: false
       }
     };
 
@@ -77,7 +79,7 @@ class Timeline extends React.Component {
     };
 
     return (
-      <div key={`track-lane-${trackId}`} className={`track-lane ${className}`}>
+      <div key={`track-lane-${trackId || label}`} className={`track-lane ${className}`}>
         <div
           onClick={selectTrack}
           onKeyPress={onEnterPressed(selectTrack)}
@@ -156,7 +158,18 @@ class Timeline extends React.Component {
   }
 
   Tracks() {
-    let subtitleTracks, metadataTracks, audioTracks;
+    let previewTrack, subtitleTracks, metadataTracks, audioTracks;
+    if(this.state.show.Preview && this.props.video.previewSupported) {
+      previewTrack = this.TrackLane({
+        trackType: "preview",
+        label: "Preview",
+        className: "track-lane-preview",
+        content: (
+          <PreviewTrack />
+        )
+      });
+    }
+
     if(this.state.show.Subtitles) {
       subtitleTracks = this.props.tracks.tracks
         .filter(track => track.trackType === "vtt").slice()
@@ -179,6 +192,7 @@ class Timeline extends React.Component {
     return (
       <div ref={this.WatchResize} className="tracks-container">
         { this.CurrentTimeIndicator() }
+        { previewTrack }
         { subtitleTracks }
         { metadataTracks }
         { audioTracks }
@@ -203,13 +217,14 @@ class Timeline extends React.Component {
     const metadataTracks = this.props.tracks.tracks.filter(track => track.trackType === "metadata");
     const audioTracks = this.props.tracks.audioTracks;
 
+    const previewToggle = this.props.video.previewSupported ? this.TrackToggleButton("Preview") : null;
     const subtitleToggle = subtitleTracks.length > 0 ? this.TrackToggleButton("Subtitles") : null;
     const metadataToggle = metadataTracks.length > 0 ? this.TrackToggleButton("Tags") : null;
     const audioToggle = audioTracks.length > 0 ? this.TrackToggleButton("Audio") : null;
 
-
     return (
       <div className="timeline-actions">
+        { previewToggle }
         { subtitleToggle }
         { metadataToggle }
         { audioToggle }
@@ -233,7 +248,6 @@ class Timeline extends React.Component {
     return (
       <div className="timeline">
         {this.TrackLane({
-          trackId: -1,
           label: <span className="mono">{`${this.props.video.frame} :: ${this.props.video.smpte}`}</span>,
           content: <Scale />,
           className: "video-scale-lane"
