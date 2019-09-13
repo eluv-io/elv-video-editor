@@ -223,7 +223,7 @@ class Timeline extends React.Component {
     const audioToggle = audioTracks.length > 0 ? this.TrackToggleButton("Audio") : null;
 
     return (
-      <div className="timeline-actions">
+      <div className="timeline-actions toggle-tracks">
         { previewToggle }
         { subtitleToggle }
         { metadataToggle }
@@ -252,10 +252,9 @@ class Timeline extends React.Component {
           content: <Scale />,
           className: "video-scale-lane"
         })}
-
-        { this.TrackToggle() }
         { this.Tracks() }
         { this.AddTrackButton() }
+        { this.TrackToggle() }
       </div>
     );
   }

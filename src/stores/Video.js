@@ -10,8 +10,8 @@ class VideoStore {
   @observable name;
   @observable videoTags = [];
 
-  @observable initialized = false;
   @observable loading = false;
+  @observable initialized = false;
 
   @observable source;
   @observable poster;
@@ -40,11 +40,11 @@ class VideoStore {
 
   @observable segmentEnd = undefined;
 
-  @computed get scaleMinTime() { return this.videoHandler.ProgressToTime(this.scaleMin / this.scale); }
-  @computed get scaleMaxTime() { return this.videoHandler.ProgressToTime(this.scaleMax / this.scale); }
+  @computed get scaleMinTime() { return this.ProgressToTime(this.scaleMin / this.scale); }
+  @computed get scaleMaxTime() { return this.ProgressToTime(this.scaleMax / this.scale); }
 
-  @computed get scaleMinSMPTE() { return this.videoHandler.ProgressToSMPTE(this.scaleMin / this.scale); }
-  @computed get scaleMaxSMPTE() { return this.videoHandler.ProgressToSMPTE(this.scaleMax / this.scale); }
+  @computed get scaleMinSMPTE() { return this.ProgressToSMPTE(this.scaleMin / this.scale); }
+  @computed get scaleMaxSMPTE() { return this.ProgressToSMPTE(this.scaleMax / this.scale); }
 
   constructor(rootStore) {
     this.rootStore = rootStore;
@@ -52,6 +52,7 @@ class VideoStore {
 
   @action.bound
   Reset() {
+    this.loading = true;
     this.initialized = false;
 
     if(this.videoHandler) {
@@ -94,60 +95,59 @@ class VideoStore {
   }
 
   @action.bound
-  IndicateLoading() {
-    this.loading = true;
-    this.Reset();
-  }
-
-  @action.bound
   SetVideo = flow(function * (videoObject) {
-    this.name = videoObject.name;
-    this.versionHash = videoObject.versionHash;
-
-    const playoutOptions = yield this.rootStore.client.PlayoutOptions({
-      versionHash: videoObject.versionHash,
-      protocols: ["hls"],
-      drms: []
-    });
-
-    const source = playoutOptions["hls"].playoutUrl;
-
-    let poster;
-    if(videoObject.metadata.image || videoObject.metadata.public.image) {
-      poster = yield this.rootStore.client.Rep({
-        versionHash: videoObject.versionHash,
-        rep: "player_background",
-        channelAuth: true
-      });
-    }
-
-    this.videoTags = videoObject.metadata.video_level_tags || [];
-
-    this.baseVideoFrameUrl = yield this.rootStore.client.Rep({
-      versionHash: videoObject.versionHash,
-      rep: UrlJoin("playout", "default", "frames.png")
-    });
+    this.loading = true;
 
     try {
-      // Query preview API to check support
-      const response = yield fetch(URI(this.baseVideoFrameUrl).addSearch("frame", 0).toString());
-      if(response.ok) {
-        this.previewSupported = true;
-      } else {
+      this.name = videoObject.name;
+      this.versionHash = videoObject.versionHash;
+
+      const playoutOptions = yield this.rootStore.client.PlayoutOptions({
+        versionHash: videoObject.versionHash,
+        protocols: ["hls"],
+        drms: []
+      });
+
+      const source = playoutOptions["hls"].playoutUrl;
+
+      let poster;
+      if(videoObject.metadata.image || videoObject.metadata.public.image) {
+        poster = yield this.rootStore.client.Rep({
+          versionHash: videoObject.versionHash,
+          rep: "player_background",
+          channelAuth: true
+        });
+      }
+
+      this.videoTags = videoObject.metadata.video_level_tags || [];
+
+      this.baseVideoFrameUrl = yield this.rootStore.client.Rep({
+        versionHash: videoObject.versionHash,
+        rep: UrlJoin("playout", "default", "frames.png")
+      });
+
+      try {
+        // Query preview API to check support
+        const response = yield fetch(URI(this.baseVideoFrameUrl).addSearch("frame", 0).toString());
+        if(response.ok) {
+          this.previewSupported = true;
+        } else {
+          // eslint-disable-next-line no-console
+          console.error("Preview not supported for this content");
+        }
+      } catch(error) {
         // eslint-disable-next-line no-console
         console.error("Preview not supported for this content");
       }
-    } catch(error) {
-      // eslint-disable-next-line no-console
-      console.error("Preview not supported for this content");
+
+      //yield this.rootStore.overlayStore.AddOverlayTracks(videoObject.metadata.frame_level_tags);
+
+      this.source = source;
+      this.poster = poster;
+      this.metadata = videoObject.metadata;
+    } finally {
+      this.loading = false;
     }
-
-    //yield this.rootStore.overlayStore.AddOverlayTracks(videoObject.metadata.frame_level_tags);
-
-    this.source = source;
-    this.poster = poster;
-    this.metadata = videoObject.metadata;
-    this.loading = false;
 
     this.rootStore.trackStore.InitializeTracks();
   });
@@ -199,9 +199,13 @@ class VideoStore {
     }));
 
     // When sufficiently loaded, update video info and mark video as initialized
-    this.video.addEventListener("canplaythrough", action(() => {
-      videoHandler.Update();
-      this.initialized = true;
+    const loadedSource = this.source;
+    this.video.addEventListener("durationchange", action(() => {
+      if(this.source !== loadedSource) { return; }
+      if(this.video.duration > 0 && isFinite(this.video.duration)) {
+        videoHandler.Update();
+        this.initialized = true;
+      }
     }));
   }
 
@@ -220,17 +224,30 @@ class VideoStore {
   }
 
   @action.bound
+  ProgressToTime(seek) {
+    if(!this.videoHandler) { return 0; }
+
+    return this.videoHandler.ProgressToSMPTE(seek / this.scale);
+  }
+
+  @action.bound
   ProgressToSMPTE(seek) {
+    if(!this.videoHandler) { return; }
+
     return this.videoHandler.ProgressToSMPTE(seek / this.scale);
   }
 
   @action.bound
   TimeToSMPTE(time) {
+    if(!this.videoHandler) { return; }
+
     return this.videoHandler.TimeToSMPTE(time);
   }
 
   @action.bound
   TimeToFrame(time) {
+    if(!this.videoHandler) { return 0; }
+
     return this.videoHandler.TimeToFrame(time).floor().valueOf();
   }
 

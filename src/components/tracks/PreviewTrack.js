@@ -49,8 +49,7 @@ class PreviewTrack extends React.Component {
       return (
         <div className="preview-frame" key={`preview-frame-${frame}`}>
           <img
-            //src={this.props.video.VideoFrame(frame)}
-            src={this.props.video.poster}
+            src={this.props.video.VideoFrame(frame)}
           />
         </div>
       );

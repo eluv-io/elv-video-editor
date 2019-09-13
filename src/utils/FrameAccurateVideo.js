@@ -40,7 +40,7 @@ class FrameAccurateVideo {
   }
 
   TimeToFrame(time) {
-    return Fraction(time).mul(this.frameRate);
+    return Fraction(time || 0).mul(this.frameRate);
   }
 
   TimeToSMPTE(time) {
@@ -129,7 +129,7 @@ class FrameAccurateVideo {
   }
 
   TotalFrames() {
-    return Fraction(this.video.duration).mul(this.frameRate).valueOf();
+    return Fraction(this.video.duration || 0).mul(this.frameRate).valueOf();
   }
 
   /* Controls */

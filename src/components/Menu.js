@@ -33,8 +33,6 @@ class Menu extends React.Component {
   SelectedObject() {
     const object = this.props.menu.selectedObject;
 
-    if(!object) { return null; }
-
     const videoTags = this.props.video.videoTags.length === 0 ? null : (
       <React.Fragment>
         <label>Video Tags</label>

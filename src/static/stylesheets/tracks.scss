@@ -7,7 +7,7 @@ $preview-track-height: 5rem;
 }
 
 .tracks-container {
-  margin: $elv-spacing-m 0;
+  margin: 0 0 $elv-spacing-m;
   position: relative;
   width: 100%;
 }
@@ -65,6 +65,7 @@ $preview-track-height: 5rem;
 
   .track-label-container {
     border: 0;
+    font-size: $elv-font-s;
   }
 
   .track-lane-content {
@@ -110,6 +111,7 @@ $preview-track-height: 5rem;
   max-height: 100%;
   overflow: hidden;
   padding-bottom: 2px;
+  width: 100%;
 
   img {
     height: 100%;
@@ -179,6 +181,10 @@ $preview-track-height: 5rem;
       }
     }
   }
+}
+
+.toggle-tracks {
+  justify-content: center;
 }
 
 $slider-height: 12px;
