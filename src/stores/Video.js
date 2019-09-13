@@ -140,8 +140,6 @@ class VideoStore {
         console.error("Preview not supported for this content");
       }
 
-      //yield this.rootStore.overlayStore.AddOverlayTracks(videoObject.metadata.frame_level_tags);
-
       this.source = source;
       this.poster = poster;
       this.metadata = videoObject.metadata;
@@ -149,6 +147,7 @@ class VideoStore {
       this.loading = false;
     }
 
+    this.rootStore.overlayStore.AddOverlayTracks(this.metadata.overlay_tags);
     this.rootStore.trackStore.InitializeTracks();
   });
 

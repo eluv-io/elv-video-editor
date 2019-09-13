@@ -73,6 +73,7 @@ class Overlay extends React.Component {
       DisposeDrawReaction: reaction(
         () => {
           return ({
+            enabled: this.props.overlay.overlayEnabled,
             frame: this.props.video.frame,
             hoverEntries: this.props.entry.hoverEntries,
             selectedEntries: this.props.entry.entries,
@@ -107,10 +108,9 @@ class Overlay extends React.Component {
 
     // Get the entries for the current frame, injecting the overlay track label into each entry
     return this.props.overlay.overlayTracks.map(track =>
-      track.entries[this.props.video.frame]
+      track.entries[this.props.video.frame] || []
     )
-      .flat()
-      .map(entry => entry.entryId);
+      .flat();
   }
 
   EntriesAt({clientX, clientY}) {
@@ -151,7 +151,11 @@ class Overlay extends React.Component {
   }
 
   ToolTipContent() {
-    if(!this.state.hovering || this.props.entry.hoverEntries.length === 0) {
+    if(
+      !this.state.hovering ||
+      this.props.entry.hoverEntries.length === 0 ||
+      this.props.video.playing
+    ) {
       return null;
     }
 
@@ -186,6 +190,8 @@ class Overlay extends React.Component {
     if(entries.length === 0) { return; }
 
     entries.forEach(entry => {
+      if(!entry.box) { return; }
+
       const {x1, x2, y1, y2} = entry.box;
       const startX = x1 * width;
       const startY = y1 * height;
@@ -221,6 +227,8 @@ class Overlay extends React.Component {
   }
 
   render() {
+    if(!this.props.overlay.overlayEnabled) { return null; }
+
     return (
       <div className="overlay-container" style={{width: `${this.state.videoWidth}px`}}>
         <ToolTip
