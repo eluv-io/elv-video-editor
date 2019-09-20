@@ -69,7 +69,9 @@ class RootStore {
 
       if(!privateKey) { throw Error("No private key specified"); }
 
-      client = await ElvClient.FromConfigurationUrl({configUrl: EluvioConfiguration["config-url"]});
+      client = await ElvClient.FromConfigurationUrl({
+        configUrl: EluvioConfiguration["config-url"]
+      });
 
       const wallet = client.GenerateWallet();
       const signer = wallet.AddAccount({privateKey});
@@ -87,10 +89,13 @@ class RootStore {
 
     runInAction(() => this.client = client);
 
-    const appPath = URI(await client.SendMessage({options: {operation: "GetFramePath"}}))
-      .path()
-      .replace(/^\//, "")
-      .split("/");
+    let appPath = "";
+    if(window.self !== window.top) {
+      appPath = URI(await client.SendMessage({options: {operation: "GetFramePath"}}))
+        .path()
+        .replace(/^\//, "")
+        .split("/");
+    }
 
     if(appPath.length >= 1 && appPath[0].startsWith("hq__")){
       // Version Hash

@@ -5,6 +5,7 @@ import {
   FrameControl,
   FrameRate,
   FullscreenToggle,
+  PlaybackLevel,
   PlaybackRate,
   PlayPause,
   Scale,
@@ -45,6 +46,7 @@ class VideoControls extends React.Component {
           <FrameControl label="Forward 1 Second" seconds={1} icon={SecondForward} />
         </div>
         <div className="controls right-controls">
+          <PlaybackLevel />
           <Volume />
           <FullscreenToggle />
         </div>

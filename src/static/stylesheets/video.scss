@@ -216,13 +216,18 @@ select {
   border: 0;
   color: $color-foreground;
   left: $elv-spacing-xs;
-  width: 80px;
+  width: 5rem;
 
   option {
     background-color: $color-background-active;
   }
 
   &.video-playback-rate {
-    width: 50px;
+    width: 3.5rem;
+  }
+
+  &.video-playback-level {
+    margin-right: $elv-spacing-m;
+    width: 10rem;
   }
 }

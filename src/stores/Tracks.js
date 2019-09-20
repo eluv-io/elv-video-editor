@@ -169,7 +169,7 @@ class Tracks {
   @action.bound
   AddAudioTracks = flow(function * () {
     const loadingVersion = this.rootStore.videoStore.versionHash;
-    const concurrentRequests = 5;
+    const concurrentRequests = 3;
     const audioTracks = yield this.AudioTracksFromHLSPlaylist();
 
     yield Promise.all(

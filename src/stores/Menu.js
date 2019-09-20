@@ -64,13 +64,15 @@ class MenuStore {
       libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
     }
 
-    this.rootStore.client.SendMessage({
-      options: {
-        operation: "SetFramePath",
-        path: versionHash ? versionHash : UrlJoin(libraryId, objectId)
-      },
-      noResponse: true
-    });
+    if(window.self !== window.top) {
+      this.rootStore.client.SendMessage({
+        options: {
+          operation: "SetFramePath",
+          path: versionHash ? versionHash : UrlJoin(libraryId, objectId)
+        },
+        noResponse: true
+      });
+    }
 
     const object = yield this.rootStore.client.ContentObject({libraryId, objectId, versionHash});
 

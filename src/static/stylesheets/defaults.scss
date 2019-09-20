@@ -44,6 +44,13 @@ body,
   flex-grow: 1;
 }
 
+.video-editor,
+.video-component {
+  &:focus {
+    outline: 0;
+  }
+}
+
 .mono {
   font-family: monospace;
 }

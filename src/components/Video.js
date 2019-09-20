@@ -1,7 +1,6 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
 import HLSPlayer from "hls.js";
-import URI from "urijs";
 import VideoControls from "./VideoControls";
 import LoadingElement from "elv-components-js/src/components/LoadingElement";
 import Overlay from "./Overlay";
@@ -40,13 +39,13 @@ class Video extends React.Component {
     if(!video) { return; }
 
     const config = {
-      capLevelToPlayerSize: true
+      nudgeOffset: 0.2,
+      nudgeMaxRetry: 30
     };
 
     const player = new HLSPlayer(config);
-    const source = URI(this.props.video.source).addSearch("player_profile", "hls-js").toString();
 
-    player.loadSource(source);
+    player.loadSource(this.props.video.source);
     player.attachMedia(video);
 
     this.setState({
@@ -54,7 +53,7 @@ class Video extends React.Component {
       video
     });
 
-    this.props.video.Initialize(video);
+    this.props.video.Initialize(video, player);
   }
 
   Poster() {

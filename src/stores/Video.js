@@ -3,6 +3,7 @@ import FrameAccurateVideo, {FrameRates} from "../utils/FrameAccurateVideo";
 import Fraction from "fraction.js/fraction";
 import UrlJoin from "url-join";
 import URI from "urijs";
+import HLS from "hls.js";
 
 class VideoStore {
   @observable versionHash = "";
@@ -12,6 +13,9 @@ class VideoStore {
 
   @observable loading = false;
   @observable initialized = false;
+
+  @observable levels = [];
+  @observable currentLevel;
 
   @observable source;
   @observable poster;
@@ -54,6 +58,12 @@ class VideoStore {
   Reset() {
     this.loading = true;
     this.initialized = false;
+
+    this.video = undefined;
+    this.player = undefined;
+
+    this.levels = [];
+    this.currentLevel = undefined;
 
     if(this.videoHandler) {
       this.videoHandler.RemoveCallback();
@@ -152,8 +162,9 @@ class VideoStore {
   });
 
   @action.bound
-  Initialize(video) {
+  Initialize(video, player) {
     this.video = video;
+    this.player = player;
 
     const videoHandler = new FrameAccurateVideo({
       video: video,
@@ -171,6 +182,11 @@ class VideoStore {
 
     this.volume = video.volume;
     this.muted = video.muted;
+
+    this.player.on(HLS.Events.LEVEL_SWITCHED, action(() => {
+      this.levels = this.player.levels;
+      this.currentLevel = this.player.currentLevel;
+    }));
 
     // Use video element as source of truth - attach handlers to relevant events to update app state
     this.video.addEventListener("pause", action(() => this.playing = false));
@@ -201,11 +217,17 @@ class VideoStore {
     const loadedSource = this.source;
     this.video.addEventListener("durationchange", action(() => {
       if(this.source !== loadedSource) { return; }
+
       if(this.video.duration > 0 && isFinite(this.video.duration)) {
         videoHandler.Update();
         this.initialized = true;
       }
     }));
+
+    this.video.addEventListener("error", () => {
+      // eslint-disable-next-line no-console
+      console.error("Video error: " + video.error.code);
+    });
   }
 
   ToggleTrack(label) {
@@ -287,6 +309,12 @@ class VideoStore {
     } else {
       this.video.pause();
     }
+  }
+
+  @action.bound
+  SetPlaybackLevel(level) {
+    this.player.levelController.manualLevel = level;
+    this.player.streamController.immediateLevelSwitch();
   }
 
   @action.bound

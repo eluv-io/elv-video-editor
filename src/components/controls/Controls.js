@@ -14,6 +14,29 @@ import VolumeOff from "../../static/icons/VolumeOff.svg";
 import VolumeLow from "../../static/icons/VolumeLow.svg";
 import VolumeHigh from "../../static/icons/VolumeHigh.svg";
 
+let PlaybackLevel = (props) => {
+  return (
+    <ToolTip content={<span>Playback Level</span>}>
+      <select
+        aria-label="Playback Level"
+        value={props.video.currentLevel}
+        className={"video-playback-level"}
+        onChange={event => props.video.SetPlaybackLevel(event.target.value)}
+      >
+        {Object.keys(props.video.levels).map(levelIndex => {
+          const level = props.video.levels[levelIndex];
+
+          return (
+            <option key={`playback-level-${levelIndex}`} value={levelIndex}>
+              {`${level.attrs.RESOLUTION} (${(level.bitrate / 1000 / 1000).toFixed(1)}Mbps)`}
+            </option>
+          );
+        })}
+      </select>
+    </ToolTip>
+  );
+};
+
 let PlaybackRate = (props) => {
   // TODO: Negative rates
 
@@ -188,6 +211,7 @@ DropFrame = inject("video")(observer(DropFrame));
 FrameControl = inject("video")(observer(FrameControl));
 FrameRate = inject("video")(observer(FrameRate));
 FullscreenToggle = inject("video")(observer(FullscreenToggle));
+PlaybackLevel = inject("video")(observer(PlaybackLevel));
 PlaybackRate = inject("video")(observer(PlaybackRate));
 PlayPause = inject("video")(observer(PlayPause));
 Scale = inject("video")(observer(Scale));
@@ -199,6 +223,7 @@ export {
   FrameControl,
   FrameRate,
   FullscreenToggle,
+  PlaybackLevel,
   PlaybackRate,
   PlayPause,
   Scale,
