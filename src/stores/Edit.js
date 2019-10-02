@@ -1,9 +1,7 @@
-import {action, flow, observable} from "mobx";
+import {action, flow, observable, toJS} from "mobx";
 import {diff} from "deep-object-diff";
 import {SortEntries} from "../utils/Utils";
 import UrlJoin from "url-join";
-
-const appVersionTag = "eluvio_video_editor_save";
 
 class EditStore {
   @observable saving = false;
@@ -36,20 +34,13 @@ class EditStore {
         metadataSubtree: "metadata_tags"
       })) || {};
 
-      const pruneLastVersion = (yield client.ContentObjectMetadata({
-        libraryId,
-        objectId,
-        versionHash: originalVersionHash,
-        metadataSubtree: appVersionTag
-      })) || {};
-
       let updatedMetadata = {};
 
       const metadataTracks = this.rootStore.trackStore.tracks.filter(track => track.trackType === "metadata");
+
       metadataTracks.forEach(track => {
         const entryMetadata = Object.values(track.entries).map(entry => ({
           ...entry.entry,
-          label: entry.label,
           text: entry.text,
           start_time: entry.startTime,
           end_time: entry.endTime,
@@ -59,19 +50,19 @@ class EditStore {
 
         const trackMetadata = {
           ...originalMetadata,
-          name: track.label,
-          entries: SortEntries(entryMetadata)
+          label: track.label,
+          tags: SortEntries(entryMetadata)
         };
 
         if(originalMetadata) {
-          originalMetadata.entries = SortEntries(originalMetadata.entries || []);
+          originalMetadata.tags = SortEntries(originalMetadata.tags || []);
 
           const trackDiff = diff(
             originalMetadata,
             trackMetadata
           );
 
-          if (Object.keys(trackDiff).length === 0) {
+          if(Object.keys(trackDiff).length === 0) {
             return;
           }
         }
@@ -82,7 +73,6 @@ class EditStore {
       const keys = metadataTracks.map(track => track.key);
       const keysToDelete = Object.keys(metadata)
         .filter(key => !keys.includes(key));
-
 
       if(Object.keys(updatedMetadata).length === 0 && keysToDelete.length === 0) {
         this.saving = false;
@@ -103,7 +93,7 @@ class EditStore {
             objectId,
             writeToken: write_token,
             metadataSubtree: UrlJoin("metadata_tags", key),
-            metadata: updatedMetadata[key]
+            metadata: toJS(updatedMetadata[key])
           });
         })
       );
@@ -120,14 +110,6 @@ class EditStore {
         })
       );
 
-      yield client.ReplaceMetadata({
-        libraryId,
-        objectId,
-        writeToken: write_token,
-        metadataSubtree: appVersionTag,
-        metadata: true
-      });
-
       const {hash} = yield client.FinalizeContentObject({
         libraryId,
         objectId,
@@ -135,14 +117,6 @@ class EditStore {
       });
 
       this.rootStore.menuStore.UpdateVersionHash(hash);
-
-      if(pruneLastVersion) {
-        yield client.DeleteContentVersion({
-          libraryId,
-          objectId,
-          versionHash: originalVersionHash
-        });
-      }
 
       this.saveFailed = false;
     } catch(error) {

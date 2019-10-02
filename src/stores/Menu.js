@@ -29,6 +29,8 @@ class MenuStore {
     // Determine whether or not each type is a video type
     await Promise.all(
       Object.keys(isVideoType).map(async typeHash => {
+        if(!typeHash) { return; }
+
         const typeName = await this.rootStore.client.ContentObjectMetadata({
           versionHash: typeHash,
           metadataSubtree: "name"
