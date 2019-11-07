@@ -7,6 +7,7 @@ class EntryStore {
   @observable selectedEntry;
 
   @observable hoverEntries = [];
+  @observable hoverTrack;
   @observable hoverTime;
 
   @observable filter = "";
@@ -49,8 +50,8 @@ class EntryStore {
     const formatString = string => string.toString().toLowerCase();
     const filter = formatString(this.rootStore.entryStore.filter);
 
-    const minTime = this.rootStore.videoStore.ScaleMinTime();
-    const maxTime = this.rootStore.videoStore.ScaleMaxTime();
+    const minTime = this.rootStore.videoStore.scaleMinTime;
+    const maxTime = this.rootStore.videoStore.scaleMaxTime;
 
     return entries
       .filter(({startTime, endTime, text}) =>
@@ -123,14 +124,16 @@ class EntryStore {
   }
 
   @action.bound
-  SetHoverEntries(entries, time) {
+  SetHoverEntries(entries, trackId, time) {
     this.hoverEntries = entries || [];
+    this.hoverTrack = trackId;
     this.hoverTime = time;
   }
 
   @action.bound
   ClearHoverEntries() {
     this.hoverEntries = [];
+    this.hoverTrack = undefined;
     this.hoverTime = undefined;
   }
 
@@ -138,6 +141,7 @@ class EntryStore {
   ClearEntries() {
     this.entries = [];
     this.hoverEntries = [];
+    this.selectedEntry = undefined;
   }
 
   @action.bound

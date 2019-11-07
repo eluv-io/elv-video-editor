@@ -12,7 +12,8 @@ module.exports = {
   output: {
     path: Path.resolve(__dirname, "dist"),
     filename: "index.js",
-    chunkFilename: "[name].bundle.js"
+    chunkFilename: "[name].bundle.js",
+    globalObject: "this"
   },
   devServer: {
     disableHostCheck: true,
@@ -64,6 +65,10 @@ module.exports = {
   ],
   module: {
     rules: [
+      {
+        test: /Worker\.js$/,
+        use: { loader: "worker-loader" }
+      },
       {
         test: /\.(css|scss)$/,
         use: [

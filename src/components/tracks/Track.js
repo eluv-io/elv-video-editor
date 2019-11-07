@@ -4,11 +4,9 @@ import TrackCanvas from "./TrackCanvas";
 import {inject, observer} from "mobx-react";
 import Fraction from "fraction.js";
 import {ToolTip} from "elv-components-js";
-import {reaction} from "mobx";
+import {reaction, toJS} from "mobx";
 
-const color = "#ffffff";
-const selectedColor = "#0fafff";
-const activeColor = "#36ff00";
+import TrackWorker from "../../workers/TrackWorker";
 
 @inject("video")
 @inject("entry")
@@ -20,8 +18,6 @@ class Track extends React.Component {
 
     this.state = {
       context: undefined,
-      hovering: false,
-      hoverTime: 0,
       canvasHeight: 0,
       canvasWidth: 0
     };
@@ -29,8 +25,6 @@ class Track extends React.Component {
     this.activeEntryIds = [];
 
     this.OnCanvasResize = this.OnCanvasResize.bind(this);
-    this.Draw = this.Draw.bind(this);
-    this.DrawIfActiveChanged = this.DrawIfActiveChanged.bind(this);
     this.Click = this.Click.bind(this);
     this.Hover = this.Hover.bind(this);
     this.ClearHover = this.ClearHover.bind(this);
@@ -38,54 +32,133 @@ class Track extends React.Component {
 
   componentDidMount() {
     // Initialize reactionary re-draw handlers
-
     this.setState({
-      // Draw reaction - Ensure canvas gets redrawn when state changes
-      DisposeDrawReaction: reaction(
-        () => ({
-          filter: this.props.entry.filter,
-          duration: this.props.video.duration,
-          scale: this.props.video.scale,
-          scaleMax: this.props.video.scaleMax,
-          scaleMin: this.props.video.scaleMin,
-          entries: this.props.entry.entries,
-          hoverEntries: this.props.entry.hoverEntries,
-          selectedEntry: this.props.entry.selectedEntry,
-          trackVersion: this.props.tracks.SelectedTrack() ? this.props.tracks.SelectedTrack().version : undefined
-        }),
-        () => this.Draw(),
-        {delay: 75}
-      ),
-      // Update if active entry changed
-      DisposeActiveReaction: reaction(
-        () => ({
-          frame: this.props.video.frame
-        }),
-        () => this.DrawIfActiveChanged(),
-        {delay: 100}
-      ),
-      // Resize reaction: Ensure canvas dimensions are updated on resize
-      DisposeResizeReaction: reaction(
-        () => ({
-          width: this.state.canvasWidth,
-          height: this.state.canvasHeight
-        }),
-        ({width, height}) => {
-          if(this.state.context) {
-            this.state.context.canvas.width = width;
-            this.state.context.canvas.height = height;
-            this.Draw();
-          }
-        },
-        {delay: 100}
-      )
+      reactions: [
+        // Update on scale change
+        reaction(
+          () => ({
+            version: this.props.track.version,
+            entries: this.props.track.entries.length
+          }),
+          () => {
+            this.state.worker.postMessage({
+              operation: "SetEntries",
+              trackId: this.props.track.trackId,
+              entries: toJS(this.props.track.entries)
+            });
+          },
+          {delay: 10}
+        ),
+        // Update on scale change
+        reaction(
+          () => ({
+            scale: this.props.video.scale,
+            scaleMax: this.props.video.scaleMax,
+            scaleMin: this.props.video.scaleMin,
+            duration: this.props.video.duration
+          }),
+          () => {
+            this.state.worker.postMessage({
+              operation: "SetScale",
+              trackId: this.props.track.trackId,
+              scale: {
+                scale: this.props.video.scale,
+                scaleMin: this.props.video.scaleMin,
+                scaleMax: this.props.video.scaleMax,
+              },
+              duration: this.props.video.duration
+            });
+          },
+          {delay: 10}
+        ),
+        // Update on filter change
+        reaction(
+          () => ({
+            filter: this.props.entry.filter
+          }),
+          () => {
+            this.state.worker.postMessage({
+              operation: "SetFilter",
+              trackId: this.props.track.trackId,
+              filter: this.props.entry.filter
+            });
+          },
+          {delay: 100}
+        ),
+        // Update on selected / hover change
+        reaction(
+          () => ({
+            hoverEntries: this.props.entry.hoverEntries,
+            selectedEntries: this.props.entry.entries,
+            selectedEntry: this.props.entry.selectedEntry
+          }),
+          () => {
+            const selectedEntryIds = toJS(this.props.entry.entries);
+            const selectedEntryId = toJS(this.props.entry.selectedEntry ? this.props.entry.selectedEntry : undefined);
+            const hoverEntryIds = toJS(this.props.entry.hoverEntries);
+
+            this.state.worker.postMessage({
+              operation: "SetSelected",
+              trackId: this.props.track.trackId,
+              selectedEntryId,
+              selectedEntryIds,
+              hoverEntryIds
+            });
+          },
+          {delay: 50}
+        ),
+        // Update on active entry changed
+        reaction(
+          () => ({
+            frame: this.props.video.frame
+          }),
+          () => {
+            const activeEntryIds = toJS(this.Search(this.props.video.currentTime)).sort();
+
+            if(activeEntryIds.toString() === this.activeEntryIds.toString()) { return; }
+
+            this.activeEntryIds = activeEntryIds;
+
+            this.state.worker.postMessage({
+              operation: "SetActive",
+              trackId: this.props.track.trackId,
+              activeEntryIds
+            });
+          },
+          {delay: 25}
+        ),
+        // Update on resize
+        reaction(
+          () => ({
+            width: this.state.canvasWidth,
+            height: this.state.canvasHeight
+          }),
+          ({width, height}) => {
+            if(this.state.context) {
+              this.state.context.canvas.width = width;
+              this.state.context.canvas.height = height;
+
+              this.state.worker.postMessage({
+                operation: "Resize",
+                trackId: this.props.track.trackId,
+                width: this.state.canvasWidth,
+                height: this.state.canvasHeight
+              });
+            }
+          },
+          {delay: 100}
+        )
+      ]
     });
   }
 
   componentWillUnmount() {
-    this.state.DisposeDrawReaction();
-    this.state.DisposeActiveReaction();
-    this.state.DisposeResizeReaction();
+    this.state.reactions.forEach(dispose => dispose());
+
+    this.state.worker.postMessage({
+      operation: "Destroy",
+      trackId: this.props.track.trackId
+    });
   }
 
   OnCanvasResize({height, width}) {
@@ -128,133 +201,49 @@ class Track extends React.Component {
     const time = this.TimeAt(clientX);
     const entries = this.Search(time);
 
-    this.props.entry.SetHoverEntries(entries, this.props.video.TimeToSMPTE(time));
-
-    this.setState({
-      hovering: true,
-      hoverTime: this.TimeAt(clientX)
-    });
+    this.props.entry.SetHoverEntries(entries, this.props.track.trackId, this.props.video.TimeToSMPTE(time));
   }
 
   ClearHover() {
-    this.props.entry.SetHoverEntries([]);
-
-    this.setState({hovering: false});
-  }
-
-  DrawIfActiveChanged() {
-    const activeEntryIds = (this.Search(this.props.video.currentTime)).sort();
-
-    if(activeEntryIds.toString() === this.activeEntryIds.toString()) { return; }
-
-    this.activeEntryIds = activeEntryIds;
-
-    this.Draw();
-  }
-
-  Draw() {
-    if(!this.state.context || !this.state.context.canvas) {
-      return;
-    }
-
-    let entries = Object.values(this.props.track.entries);
-    if(this.props.track.trackId === this.props.tracks.selectedTrack) {
-      // Only filter the selected track
-      entries = this.props.entry.FilteredEntries(Object.values(this.props.track.entries));
-    }
-
-    const context = this.state.context;
-
-    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-
-    // How much of the duration of the video is currently visible
-    const duration = Fraction(this.props.video.scaleMax - this.props.video.scaleMin).div(this.props.video.scale).mul(this.props.video.duration);
-
-    // Where the currently visible segment starts
-    const startOffset = Fraction(this.props.video.scaleMin).div(this.props.video.scale).mul(this.props.video.duration);
-
-    const widthRatio = context.canvas.offsetWidth / duration;
-    const halfHeight = Math.floor(context.canvas.offsetHeight * 0.5);
-    const startY = Math.floor(context.canvas.offsetHeight * 0.25);
-
-    const activeEntryIds = this.Search(this.props.video.currentTime);
-    const selectedEntryIds = this.props.entry.entries;
-    const selectedEntryId = this.props.entry.selectedEntry ? this.props.entry.selectedEntry : undefined;
-    const hoverEntryIds = this.props.entry.hoverEntries;
-
-    entries.map(entry => {
-      const startPixel = Math.floor((entry.startTime - startOffset) * widthRatio);
-      const endPixel = Math.floor((entry.endTime - startOffset) * widthRatio);
-
-      if(endPixel.valueOf() < 0 || startPixel.valueOf() > context.canvas.offsetWidth) {
-        return;
-      }
-
-      context.beginPath();
-      context.globalAlpha = 0.4;
-
-      if(selectedEntryId === entry.entryId) {
-        // Currently shown entry
-
-        context.globalAlpha = 0.6;
-        context.fillStyle = color;
-        context.strokeStyle = color;
-        context.fillRect(startPixel, startY, endPixel - startPixel, halfHeight);
-        context.rect(startPixel, startY, endPixel - startPixel, halfHeight);
-      } else if(selectedEntryIds.includes(entry.entryId)) {
-        // Selected item - highlight fill
-
-        context.fillStyle = selectedColor;
-        context.strokeStyle = selectedColor;
-        context.fillRect(startPixel, startY, endPixel - startPixel, halfHeight);
-        context.rect(startPixel, startY, endPixel - startPixel, halfHeight);
-      } else if(hoverEntryIds.includes(entry.entryId)) {
-        // Hover item - fill
-
-        context.fillStyle = color;
-        context.strokeStyle = color;
-        context.fillRect(startPixel, startY, endPixel - startPixel, halfHeight);
-        context.rect(startPixel, startY, endPixel - startPixel, halfHeight);
-      } else if(activeEntryIds.includes(entry.entryId)) {
-        // Active item - highlight fill
-
-        context.fillStyle = activeColor;
-        context.strokeStyle = activeColor;
-        context.fillRect(startPixel, startY, endPixel - startPixel, halfHeight);
-        context.rect(startPixel, startY, endPixel - startPixel, halfHeight);
-      } else {
-        // Regular item - outline
-
-        context.fillStyle = color;
-        context.strokeStyle = color;
-        context.rect(startPixel, startY, endPixel - startPixel, halfHeight);
-      }
-
-      context.stroke();
-    });
+    this.props.entry.ClearHoverEntries([]);
   }
 
   ToolTipContent() {
-    if(!this.state.hovering || !this.props.entry.hoverEntries || this.props.entry.hoverEntries.length === 0) {
+    const hovering = this.props.track.trackId === this.props.entry.hoverTrack;
+    if(!hovering || !this.props.entry.hoverEntries || this.props.entry.hoverEntries.length === 0) {
+      return null;
+    }
+
+    const formatString = string => (string || "").toString().toLowerCase();
+    const filter = formatString(this.props.entry.filter);
+
+    const entries = this.props.entry.hoverEntries.map(entryId => {
+      const entry = this.props.track.entries[entryId];
+
+      if(filter && !formatString(entry.text).includes(filter)) {
+        return null;
+      }
+
+      return (
+        <div className="track-entry" key={`entry-${entry.entryId}`}>
+          <div className="track-entry-timestamps">
+            {`${this.props.entry.TimeToSMPTE(entry.startTime)} - ${this.props.entry.TimeToSMPTE(entry.endTime)}`}
+          </div>
+          <div className="track-entry-content">
+            {entry.text}
+          </div>
+        </div>
+      );
+    })
+      .filter(entry => entry);
+
+    if(entries.length === 0) {
       return null;
     }
 
     return (
       <div className="track-entry-container">
-        {this.props.entry.hoverEntries.map(entryId => {
-          const entry = this.props.track.entries[entryId];
-
-          return (
-            <div className="track-entry" key={`entry-${entry.entryId}`}>
-              <div className="track-entry-timestamps">
-                {`${this.props.entry.TimeToSMPTE(entry.startTime)} - ${this.props.entry.TimeToSMPTE(entry.endTime)}`}
-              </div>
-              <div className="track-entry-content">
-                {entry.text}
-              </div>
-            </div>
-          );
-        })}
+        { entries }
       </div>
     );
   }
@@ -267,7 +256,41 @@ class Track extends React.Component {
         onMouseMove={this.Hover}
         onMouseLeave={this.ClearHover}
         HandleResize={this.OnCanvasResize}
-        SetRef={context => this.setState({context})}
+        SetRef={context => {
+          this.setState({context});
+
+          const worker = new TrackWorker();
+
+          worker.postMessage({
+            operation: "Initialize",
+            trackId: this.props.track.trackId,
+            width: this.state.canvasWidth,
+            height: this.state.canvasHeight,
+            entries: toJS(this.props.track.entries),
+            scale: {
+              scale: this.props.video.scale,
+              scaleMin: this.props.video.scaleMin,
+              scaleMax: this.props.video.scaleMax
+            },
+            duration: this.props.video.duration
+          });
+
+          // Paint image from worker
+          worker.onmessage = e => {
+            if(e.data.trackId !== this.props.track.trackId) { return; }
+
+            const {data, width, height} = e.data.imageData;
+
+            this.state.context.putImageData(
+              new ImageData(data, width, height),
+              0, 0,
+              0, 0,
+              width, height
+            );
+          };
+
+          this.setState({worker});
+        }}
       />
     );
   }

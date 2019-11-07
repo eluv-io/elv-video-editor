@@ -142,7 +142,6 @@ class Entries extends React.Component {
     const hoverEntryIds = this.props.entry.hoverEntries;
     const playable = ["vtt", "metadata"].includes(this.props.track.trackType);
 
-
     let actions;
     if(entriesSelected) {
       actions = (

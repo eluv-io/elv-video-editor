@@ -94,8 +94,8 @@ class AudioTrack extends React.Component {
     context.fillStyle = "#acacac";
     context.strokeStyle = "#acacac";
 
-    const minTime = this.props.video.ScaleMinTime();
-    const maxTime = this.props.video.ScaleMaxTime();
+    const minTime = this.props.video.scaleMinTime;
+    const maxTime = this.props.video.scaleMaxTime;
 
     let minStartTime = Infinity;
     let maxEndTime = -Infinity;

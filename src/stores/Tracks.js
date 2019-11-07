@@ -4,7 +4,7 @@ import Id from "../utils/Id";
 import IntervalTree from "node-interval-tree";
 import {Parser as HLSParser} from "m3u8-parser";
 import UrlJoin from "url-join";
-import {SplitArray} from "../utils/Utils";
+import "elv-components-js/src/utils/LimitedMap";
 
 class Tracks {
   @observable tracks = [];
@@ -168,6 +168,12 @@ class Tracks {
 
   @action.bound
   AddAudioTracks = flow(function * () {
+    if(!window.AudioContext) {
+      // eslint-disable-next-line no-console
+      console.error("AudioContext not supported in this browser");
+      return;
+    }
+
     const loadingVersion = this.rootStore.videoStore.versionHash;
     const concurrentRequests = 3;
     const audioTracks = yield this.AudioTracksFromHLSPlaylist();
@@ -192,27 +198,23 @@ class Tracks {
             await (await fetch(track.initSegmentUrl, { headers: {"Content-type": "audio/mp4"}})).arrayBuffer()
           );
 
-          const segmentLists = SplitArray(track.segments, concurrentRequests);
-          await Promise.all(
-            segmentLists.map(async segmentList => {
-              for(let i = 0; i < segmentList.length; i++) {
-                // Abort if video has changed
-                if(this.rootStore.videoStore.versionHash !== loadingVersion) {
-                  return;
-                }
-
-                const segment = segmentList[i];
-
-                const segmentData = new Uint8Array(await (await fetch(segment.url)).arrayBuffer());
-
-                // Add init segment to start of segment data for necessary decoding information
-                const audioData = new Int8Array(initSegment.byteLength + segmentData.byteLength);
-                audioData.set(initSegment);
-                audioData.set(segmentData, initSegment.byteLength);
-
-                this.AddAudioSegment(trackId, audioData.buffer, segment.duration, segment.number, samplesPerSecond);
+          await track.segments.limitedMap(
+            concurrentRequests,
+            async segment => {
+              // Abort if video has changed
+              if(this.rootStore.videoStore.versionHash !== loadingVersion) {
+                return;
               }
-            })
+
+              const segmentData = new Uint8Array(await (await fetch(segment.url)).arrayBuffer());
+
+              // Add init segment to start of segment data for necessary decoding information
+              const audioData = new Int8Array(initSegment.byteLength + segmentData.byteLength);
+              audioData.set(initSegment);
+              audioData.set(segmentData, initSegment.byteLength);
+
+              this.AddAudioSegment(trackId, audioData.buffer, segment.duration, segment.number, samplesPerSecond);
+            }
           );
         } catch(error) {
           // eslint-disable-next-line no-console
@@ -387,6 +389,7 @@ class Tracks {
     if(this.selectedTrack === trackId) { return; }
 
     this.selectedTrack = trackId;
+    this.rootStore.entryStore.ClearEntries();
     this.rootStore.entryStore.ClearFilter();
 
     this.ClearEditing();

@@ -1,6 +1,5 @@
 import {observable, action, flow, computed} from "mobx";
 import FrameAccurateVideo, {FrameRates} from "../utils/FrameAccurateVideo";
-import Fraction from "fraction.js/fraction";
 import UrlJoin from "url-join";
 import URI from "urijs";
 import HLS from "hls.js";
@@ -44,11 +43,11 @@ class VideoStore {
 
   @observable segmentEnd = undefined;
 
-  @computed get scaleMinTime() { return this.ProgressToTime(this.scaleMin / this.scale); }
-  @computed get scaleMaxTime() { return this.ProgressToTime(this.scaleMax / this.scale); }
+  @computed get scaleMinTime() { return this.ProgressToTime(this.scaleMin); }
+  @computed get scaleMaxTime() { return this.ProgressToTime(this.scaleMax); }
 
-  @computed get scaleMinSMPTE() { return this.ProgressToSMPTE(this.scaleMin / this.scale); }
-  @computed get scaleMaxSMPTE() { return this.ProgressToSMPTE(this.scaleMax / this.scale); }
+  @computed get scaleMinSMPTE() { return this.ProgressToSMPTE(this.scaleMin); }
+  @computed get scaleMaxSMPTE() { return this.ProgressToSMPTE(this.scaleMax); }
 
   constructor(rootStore) {
     this.rootStore = rootStore;
@@ -248,7 +247,7 @@ class VideoStore {
   ProgressToTime(seek) {
     if(!this.videoHandler) { return 0; }
 
-    return this.videoHandler.ProgressToSMPTE(seek / this.scale);
+    return this.videoHandler.ProgressToTime(seek / this.scale);
   }
 
   @action.bound
@@ -406,14 +405,6 @@ class VideoStore {
     this.scaleMax = max;
 
     this.SeekPercentage(seek / this.scale, false);
-  }
-
-  ScaleMinTime() {
-    return Fraction(this.scaleMin).div(this.scale).mul(this.video.duration).valueOf();
-  }
-
-  ScaleMaxTime() {
-    return Fraction(this.scaleMax).div(this.scale).mul(this.video.duration).valueOf();
   }
 
   @action.bound

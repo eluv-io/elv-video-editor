@@ -39,8 +39,8 @@ class PreviewTrack extends React.Component {
 
   Previews() {
     const previews = this.state.previews;
-    const interval = (this.props.video.ScaleMaxTime() - this.props.video.ScaleMinTime()) / previews;
-    const startTime = this.props.video.ScaleMinTime() + interval * 0.5;
+    const interval = (this.props.video.scaleMaxTime - this.props.video.scaleMinTime) / previews;
+    const startTime = this.props.video.scaleMinTime + interval * 0.5;
 
     return [...(Array(previews).keys())].map(i => {
       const time = startTime + interval * i;
