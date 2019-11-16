@@ -34,7 +34,7 @@ class Track extends React.Component {
     // Initialize reactionary re-draw handlers
     this.setState({
       reactions: [
-        // Update on scale change
+        // Update on entries change
         reaction(
           () => ({
             version: this.props.track.version,
@@ -47,7 +47,7 @@ class Track extends React.Component {
               entries: toJS(this.props.track.entries)
             });
           },
-          {delay: 10}
+          {delay: 25}
         ),
         // Update on scale change
         reaction(
@@ -69,7 +69,7 @@ class Track extends React.Component {
               duration: this.props.video.duration
             });
           },
-          {delay: 10}
+          {delay: 25}
         ),
         // Update on filter change
         reaction(

@@ -1,5 +1,5 @@
 import Fraction from "fraction.js/fraction";
-import {Rect} from "./Utils";
+import {Line} from "./Utils";
 
 const mainColor = {
   r: 200,
@@ -8,24 +8,8 @@ const mainColor = {
   a: 200,
 };
 
-const selectedColor = {
-  r: 25,
-  g: 200,
-  b: 255,
-  a: 150,
-  priority: true
-};
-
-const activeColor = {
-  r: 50,
-  g: 255,
-  b: 0,
-  a: 150,
-  priority: true
-};
-
-class TrackWorker {
-  constructor({trackId, height, width, entries, scale, duration}) {
+class AudioTrackWorker {
+  constructor({trackId, height, width, entries, scale, duration, max}) {
     this.trackId = trackId;
     this.entries = entries;
     this.scale = scale;
@@ -33,6 +17,7 @@ class TrackWorker {
     this.width = width;
     this.height = height;
     this.filter = "";
+    this.max = max;
 
     this.selectedEntryId = undefined;
     this.activeEntryIds = [];
@@ -57,51 +42,39 @@ class TrackWorker {
     const endTime = startTime.add(visibleDuration);
 
     // Filter non visible and non-matching entries
-    const formatString = string => (string || "").toString().toLowerCase();
-    const filter = formatString(this.filter);
-    entries = entries.filter(entry =>
-      entry.endTime >= startTime.valueOf() &&
-      entry.startTime <= endTime.valueOf() &&
-      (!filter || formatString(entry.text).includes(filter))
-    );
+    entries = entries
+      .filter(entry =>
+        entry.endTime >= startTime.valueOf() &&
+        entry.startTime <= endTime.valueOf()
+      )
+      .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
+
+    const renderEvery = Math.floor(entries.length / (this.width * 2)) || 1;
 
     const widthRatio = this.width / visibleDuration;
     const halfHeight = Math.floor(this.height * 0.5);
-    const startY = Math.floor(this.height * 0.25);
 
-    entries.map(entry => {
-      const startPixel = Math.floor((entry.startTime - startTime) * widthRatio);
-      const endPixel = Math.floor((entry.endTime - startTime) * widthRatio);
-
-      let color = mainColor;
-      if(this.selectedEntryId === entry.entryId) {
-        // Currently shown entry
-        //context.fillStyle = color;
-        color = selectedColor;
-      } else if(this.selectedEntryIds.includes(entry.entryId)) {
-        // Selected item - highlight fill
-
-        color = selectedColor;
-      } else if(this.hoverEntryIds.includes(entry.entryId)) {
-        // Hover item - fill
-
-        //context.fillStyle = color;
-        color = activeColor;
-      } else if(this.activeEntryIds.includes(entry.entryId)) {
-        // Active item - highlight fill
-
-        color = activeColor;
+    const audioScale = 1 / (this.max * 1.2);
+    for(let i = 0; i < entries.length; i++) {
+      if(renderEvery > 1 && i % renderEvery !== 0) {
+        continue;
       }
 
-      Rect(
-        imageData,
-        startPixel,
-        startY,
-        endPixel - startPixel,
-        halfHeight,
-        color
-      );
-    });
+      const entry = entries[i];
+      const nextEntryIndex = Math.min(i + renderEvery, entries.length - 1);
+      const nextEntry = entries[nextEntryIndex];
+
+      const startX = Math.floor((entry.startTime - startTime) * widthRatio);
+      const endX = Math.floor((nextEntry.startTime - startTime) * widthRatio);
+
+      const startY = Math.floor(halfHeight * entry.max * audioScale);
+      const endY = Math.floor(halfHeight * nextEntry.max * audioScale);
+
+      Line(imageData, mainColor, startX, halfHeight + startY, endX, halfHeight + endY);
+      Line(imageData, mainColor, endX, halfHeight + endY, endX, halfHeight - endY);
+      Line(imageData, mainColor, endX, halfHeight - endY, startX, halfHeight - startY);
+      Line(imageData, mainColor, startX, halfHeight - startY, startX, halfHeight + startY);
+    }
 
     postMessage({
       trackId: this.trackId,
@@ -121,7 +94,7 @@ self.addEventListener(
 
     switch(data.operation) {
       case "Initialize":
-        workers[data.trackId] = new TrackWorker(data);
+        workers[data.trackId] = new AudioTrackWorker(data);
         return;
 
       case "Destroy":
@@ -135,6 +108,7 @@ self.addEventListener(
       case "SetScale":
         worker.scale = data.scale;
         worker.duration = data.duration;
+        worker.max = data.max;
         break;
 
       case "SetTime":
