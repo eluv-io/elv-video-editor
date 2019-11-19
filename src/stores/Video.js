@@ -128,7 +128,12 @@ class VideoStore {
         });
       }
 
-      this.videoTags = videoObject.metadata.video_level_tags || [];
+      let videoTags = videoObject.metadata.video_level_tags || [];
+      if(typeof videoTags === "object") {
+        videoTags = Object.keys(videoTags);
+      }
+
+      this.videoTags = videoTags;
 
       this.baseVideoFrameUrl = yield this.rootStore.client.Rep({
         versionHash: videoObject.versionHash,
@@ -349,24 +354,13 @@ class VideoStore {
 
     let deltaMin, deltaMax;
 
-    // deltaY: Positive => zoom in, negative => zoom out
-    if(deltaY > 0) {
-      deltaY *= this.scale * -0.003;
+    const minProportion = position;
+    const maxProportion = 1 - position;
 
-      // When zooming in, zoom to mouse position
-      let scalePosition = this.scale * position;
+    deltaY *= this.scale * -0.003;
 
-      // Adjust scale according to mouse position relative to min/max positions
-      const range = this.scaleMax - this.scaleMin;
-      deltaMin = deltaY * (scalePosition - this.scaleMin) / range;
-      deltaMax = deltaY * (this.scaleMax - scalePosition) / range;
-    } else {
-      deltaY *= this.scale * -0.002;
-
-      // When zooming out, expand equally
-      deltaMin = deltaY;
-      deltaMax = deltaY;
-    }
+    deltaMin = deltaY * minProportion;
+    deltaMax = deltaY * maxProportion;
 
     this.SetScale(
       Math.max(0, this.scaleMin + deltaMin),

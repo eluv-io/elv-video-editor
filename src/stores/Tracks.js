@@ -175,7 +175,7 @@ class Tracks {
     }
 
     const loadingVersion = this.rootStore.videoStore.versionHash;
-    const concurrentRequests = 3;
+    const concurrentRequests = 2;
     const audioTracks = yield this.AudioTracksFromHLSPlaylist();
 
     yield Promise.all(

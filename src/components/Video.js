@@ -5,7 +5,6 @@ import VideoControls from "./VideoControls";
 import LoadingElement from "elv-components-js/src/components/LoadingElement";
 import Overlay from "./Overlay";
 import {ResizableBox} from "react-resizable";
-import {ImageIcon} from "elv-components-js";
 
 @inject("tracks")
 @inject("video")
@@ -54,19 +53,6 @@ class Video extends React.Component {
     });
 
     this.props.video.Initialize(video, player);
-  }
-
-  Poster() {
-    if(this.props.video.frame > 0 || !this.props.video.poster) { return null; }
-
-    return (
-      <ImageIcon
-        onClick={this.props.video.PlayPause}
-        icon={this.props.video.poster}
-        useLoadingIndicator={false}
-        className="video-poster"
-      />
-    );
   }
 
   Overlay() {

@@ -21,6 +21,8 @@ import SecondBackward from "../static/icons/DoubleBackward.svg";
 @observer
 class VideoControls extends React.Component {
   Seek() {
+    if(!this.props.video.fullScreen) { return null; }
+
     return <Seek />;
   }
 

@@ -59,13 +59,25 @@ $preview-track-height: 5rem;
   margin-right: $elv-spacing-m;
 }
 
+.video-seek-lane {
+  background-color: $color-background-black;
+
+  .track-label-container {
+    border: 0;
+  }
+
+  .track-lane-content {
+    border: 0;
+  }
+}
+
 .video-scale-lane {
   border: 0;
   margin-top: 1px;
 
   .track-label-container {
     border: 0;
-    font-size: $elv-font-s;
+    font-size: $elv-font-xs;
   }
 
   .track-lane-content {

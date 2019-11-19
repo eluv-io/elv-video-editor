@@ -5,7 +5,7 @@ import AudioTrack from "./tracks/AudioTrack";
 import PreviewTrack from "./tracks/PreviewTrack";
 import {onEnterPressed} from "elv-components-js";
 import ResizeObserver from "resize-observer-polyfill";
-import {Scale} from "./controls/Controls";
+import {Scale, Seek} from "./controls/Controls";
 import {Checkbox} from "./Components";
 
 @inject("tracks")
@@ -261,7 +261,14 @@ class Timeline extends React.Component {
     return (
       <div className="timeline">
         {this.TrackLane({
+          trackId: "-2",
           label: <span className="mono">{`${this.props.video.frame} :: ${this.props.video.smpte}`}</span>,
+          content: <Seek />,
+          className: "video-seek-lane"
+        })}
+        {this.TrackLane({
+          trackId: "-1",
+          label: <span className="mono">{`${this.props.video.scaleMinSMPTE} - ${this.props.video.scaleMaxSMPTE}`}</span>,
           content: <Scale />,
           className: "video-scale-lane"
         })}

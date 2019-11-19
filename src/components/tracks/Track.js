@@ -299,7 +299,10 @@ class Track extends React.Component {
     return (
       <ToolTip content={this.ToolTipContent()}>
         <div
-          onWheel={({deltaY, clientX}) => this.props.video.ScrollScale(this.ClientXToCanvasPosition(clientX), deltaY)}
+          onWheel={event => {
+            event.preventDefault();
+            this.props.video.ScrollScale(this.ClientXToCanvasPosition(event.clientX), event.deltaY);
+          }}
           className="track-container"
         >
           { this.Canvas() }
