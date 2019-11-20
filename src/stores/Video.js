@@ -46,8 +46,9 @@ class VideoStore {
   @computed get scaleMinTime() { return this.ProgressToTime(this.scaleMin); }
   @computed get scaleMaxTime() { return this.ProgressToTime(this.scaleMax); }
 
-  @computed get scaleMinSMPTE() { return this.ProgressToSMPTE(this.scaleMin); }
-  @computed get scaleMaxSMPTE() { return this.ProgressToSMPTE(this.scaleMax); }
+  // Pass dropFrame parameter so SMPTE strings are redrawn on dropframe display change
+  @computed get scaleMinSMPTE() { return this.ProgressToSMPTE(this.scaleMin, this.dropFrame); }
+  @computed get scaleMaxSMPTE() { return this.ProgressToSMPTE(this.scaleMax, this.dropFrame); }
 
   constructor(rootStore) {
     this.rootStore = rootStore;
@@ -177,6 +178,10 @@ class VideoStore {
     });
 
     this.videoHandler = videoHandler;
+
+    const rate = this.metadata.offerings.default.media_struct.streams.video.rate;
+    const rateKey = this.videoHandler.FractionToRateKey(rate);
+    this.SetFrameRate(rateKey);
 
     video.load();
 
@@ -332,6 +337,8 @@ class VideoStore {
 
   @action.bound
   SetFrameRate(frameRateKey) {
+    if(!frameRateKey) { return; }
+
     this.frameRateKey = frameRateKey;
     this.frameRate = FrameRates[frameRateKey];
     this.videoHandler.frameRate = this.frameRate;

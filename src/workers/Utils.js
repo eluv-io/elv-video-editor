@@ -1,3 +1,9 @@
+const Blend = (aa, ca, ab, cb) => {
+  if(aa === 0 && ab === 0) { return 0; }
+
+  return (ca * aa + cb * ab * (1 - aa)) / (aa + ab * (1 - aa));
+};
+
 export const SetPixel = (imageData, color, x, y) => {
   if(x < 0 || y < 0 || x >= imageData.width || y >= imageData.height) {
     return;
@@ -10,11 +16,19 @@ export const SetPixel = (imageData, color, x, y) => {
     return;
   }
 
-  if(color.priority || !(imageData.data[i] || imageData.data[i+1] || imageData.data[i+2] || imageData.data[i+3])) {
+  const aa = color.a / 255;
+  const ab = imageData.data[i + 3] / 255;
+
+  if(color.priority || aa === 0 || ab === 0) {
     imageData.data[i] = color.r;
     imageData.data[i + 1] = color.g;
     imageData.data[i + 2] = color.b;
     imageData.data[i + 3] = color.a;
+  } else {
+    imageData.data[i] = Blend(aa, color.r, ab, imageData.data[i]);
+    imageData.data[i + 1] = Blend(aa, color.g, ab, imageData.data[i + 1]);
+    imageData.data[i + 2] = Blend(aa, color.b, ab, imageData.data[i + 2]);
+    imageData.data[i + 3] = (aa + ab * (1 - aa)) * 255;
   }
 };
 

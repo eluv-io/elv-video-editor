@@ -25,6 +25,42 @@ class FrameAccurateVideo {
     this.Update = this.Update.bind(this);
   }
 
+  FractionToRateKey(input) {
+    let rate = input;
+    if(typeof input === "string") {
+      if(input.includes("/")) {
+        rate = input.split("/");
+        rate = rate[0] / rate[1];
+      } else {
+        rate = parseFloat(input);
+      }
+    }
+
+    switch(rate) {
+      case 24:
+        return "Film";
+      case 25:
+        return "PAL";
+      case 30:
+        return "Web";
+      case 50:
+        return "PALHD";
+      case 60:
+        return "High";
+      default:
+        if(Math.abs(24 - rate) < 0.1) {
+          return "NTSCFilm";
+        } else if(Math.abs(30 - rate) < 0.1) {
+          return "NTSC";
+        } else if(Math.abs(60 - rate) < 0.1) {
+          return "NTSCHD";
+        }
+
+        // eslint-disable-next-line no-console
+        console.error(`Unknown playback rate: ${input}`);
+    }
+  }
+
   /* Conversion utility methods */
 
   ProgressToTime(progress) {
@@ -119,7 +155,9 @@ class FrameAccurateVideo {
     const seconds = frame.div(frameRate).mod(60).floor();
     const frames = frame.mod(frameRate).floor();
 
-    return `${this.Pad(hours)}:${this.Pad(minutes)}:${this.Pad(seconds)}:${this.Pad(frames)}`;
+    const lastColon = this.dropFrame ? ";" : ":";
+
+    return `${this.Pad(hours)}:${this.Pad(minutes)}:${this.Pad(seconds)}${lastColon}${this.Pad(frames)}`;
   }
 
   Progress() {

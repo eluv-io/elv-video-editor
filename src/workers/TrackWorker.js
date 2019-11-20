@@ -1,20 +1,18 @@
 import Fraction from "fraction.js/fraction";
-import {FilledRect, Rect} from "./Utils";
+import {FilledRect} from "./Utils";
 
 const selectedColor = {
   r: 25,
   g: 200,
   b: 255,
-  a: 150,
-  priority: true
+  a: 150
 };
 
 const activeColor = {
   r: 50,
   g: 255,
   b: 0,
-  a: 150,
-  priority: true
+  a: 150
 };
 
 class TrackWorker {
@@ -90,15 +88,6 @@ class TrackWorker {
       FilledRect(
         imageData,
         color,
-        startPixel,
-        startY,
-        endPixel - startPixel,
-        halfHeight,
-      );
-
-      Rect(
-        imageData,
-        {r: 0, g: 0, b: 0, a: 0, priority: true},
         startPixel,
         startY,
         endPixel - startPixel,
