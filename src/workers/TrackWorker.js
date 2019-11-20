@@ -1,12 +1,5 @@
 import Fraction from "fraction.js/fraction";
-import {Rect} from "./Utils";
-
-const mainColor = {
-  r: 200,
-  g: 200,
-  b: 200,
-  a: 200,
-};
+import {FilledRect, Rect} from "./Utils";
 
 const selectedColor = {
   r: 25,
@@ -25,8 +18,9 @@ const activeColor = {
 };
 
 class TrackWorker {
-  constructor({trackId, height, width, entries, scale, duration}) {
+  constructor({trackId, color, height, width, entries, scale, duration}) {
     this.trackId = trackId;
+    this.color = color;
     this.entries = entries;
     this.scale = scale;
     this.duration = duration;
@@ -73,7 +67,7 @@ class TrackWorker {
       const startPixel = Math.floor((entry.startTime - startTime) * widthRatio);
       const endPixel = Math.floor((entry.endTime - startTime) * widthRatio);
 
-      let color = mainColor;
+      let color = this.color;
       if(this.selectedEntryId === entry.entryId) {
         // Currently shown entry
         //context.fillStyle = color;
@@ -86,20 +80,29 @@ class TrackWorker {
         // Hover item - fill
 
         //context.fillStyle = color;
-        color = activeColor;
+        color = selectedColor;
       } else if(this.activeEntryIds.includes(entry.entryId)) {
         // Active item - highlight fill
 
         color = activeColor;
       }
 
-      Rect(
+      FilledRect(
         imageData,
+        color,
         startPixel,
         startY,
         endPixel - startPixel,
         halfHeight,
-        color
+      );
+
+      Rect(
+        imageData,
+        {r: 0, g: 0, b: 0, a: 0, priority: true},
+        startPixel,
+        startY,
+        endPixel - startPixel,
+        halfHeight,
       );
     });
 

@@ -69,7 +69,7 @@ class Track extends React.Component {
               duration: this.props.video.duration
             });
           },
-          {delay: 25}
+          {delay: 50}
         ),
         // Update on filter change
         reaction(
@@ -105,7 +105,7 @@ class Track extends React.Component {
               hoverEntryIds
             });
           },
-          {delay: 50}
+          {delay: 75}
         ),
         // Update on active entry changed
         reaction(
@@ -125,7 +125,7 @@ class Track extends React.Component {
               activeEntryIds
             });
           },
-          {delay: 25}
+          {delay: 50}
         ),
         // Update on resize
         reaction(
@@ -264,6 +264,7 @@ class Track extends React.Component {
           worker.postMessage({
             operation: "Initialize",
             trackId: this.props.track.trackId,
+            color: toJS(this.props.track.color),
             width: this.state.canvasWidth,
             height: this.state.canvasHeight,
             entries: toJS(this.props.track.entries),

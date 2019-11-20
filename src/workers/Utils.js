@@ -97,15 +97,15 @@ export const Line = (imageData, color, x0, y0, x1, y1) => {
   points.map(point => SetPixel(imageData, color, point[0], point[1]));
 };
 
-export const FilledRect = (imageData, color, sx, sy, ex, ey) => {
-  for(let x = sx; x <= ex; x++) {
-    for(let y = sy; y <= ey; y++) {
-      SetPixel(imageData, color, x, y);
+export const FilledRect = (imageData, color, x, y, width, height) => {
+  for(let ix = 0; ix <= width; ix++) {
+    for(let iy = 0; iy <= height; iy++) {
+      SetPixel(imageData, color, x + ix, y + iy);
     }
   }
 };
 
-export const Rect = (imageData, x, y, width, height, color) => {
+export const Rect = (imageData, color, x, y, width, height) => {
   Line(imageData, color, x, y, x + width, y);
   Line(imageData, color, x + width, y, x + width, y + height);
   Line(imageData, color, x, y, x, y + height);

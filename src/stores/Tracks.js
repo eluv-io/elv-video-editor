@@ -6,6 +6,17 @@ import {Parser as HLSParser} from "m3u8-parser";
 import UrlJoin from "url-join";
 import "elv-components-js/src/utils/LimitedMap";
 
+const colors = [
+  {r: 200, g: 50,  b: 50,  a: 200},
+  {r: 50,  g: 200, b: 50,  a: 200},
+  {r: 50,  g: 50,  b: 200, a: 200},
+  {r: 50,  g: 200, b: 200, a: 200},
+  {r: 200, g: 50,  b: 200, a: 200},
+  {r: 200, g: 200, b: 50,  a: 200},
+  {r: 200, g: 200, b: 200, a: 200}
+];
+let colorIndex = 0;
+
 class Tracks {
   @observable tracks = [];
   @observable audioTracks = [];
@@ -16,6 +27,13 @@ class Tracks {
 
   constructor(rootStore) {
     this.rootStore = rootStore;
+    colorIndex = 0;
+  }
+
+  NextColor() {
+    const color = colors[colorIndex];
+    colorIndex = (colorIndex + 1) % colors.length;
+    return color;
   }
 
   Reset() {
@@ -345,6 +363,7 @@ class Tracks {
 
       this.tracks.push({
         trackId: Id.next(),
+        color: this.NextColor(),
         ...track,
         trackType: "vtt",
         entries,
@@ -358,6 +377,7 @@ class Tracks {
     metadataTracks.map(track => {
       this.tracks.push({
         trackId: Id.next(),
+        color: this.NextColor(),
         version: 1,
         label: track.label,
         key: track.key,
@@ -369,11 +389,13 @@ class Tracks {
   }
 
   @action.bound
-  InitializeTracks() {
-    this.AddSubtitleTracks();
-    this.AddMetadataTracks();
+  InitializeTracks = flow(function * () {
+    yield this.AddSubtitleTracks();
+    yield this.AddMetadataTracks();
+    yield this.rootStore.overlayStore.AddOverlayTracks();
+
     this.AddAudioTracks();
-  }
+  });
 
   /* User Actions */
 
@@ -438,6 +460,7 @@ class Tracks {
 
     this.tracks.push({
       trackId,
+      color: this.NextColor(),
       version: 1,
       label,
       key,

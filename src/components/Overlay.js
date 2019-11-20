@@ -5,13 +5,13 @@ import {reaction} from "mobx";
 import ToolTip from "elv-components-js/src/components/Tooltip";
 import ResizeObserver from "resize-observer-polyfill";
 
-const defaultColor = "#00ff00";
 const hoverColor = "#45fdff";
 const selectedColor = "#0fafff";
 const currentSelectionColor = "#ffffff";
 
 @inject("video")
 @inject("overlay")
+@inject("tracks")
 @inject("entry")
 @observer
 class Overlay extends React.Component {
@@ -107,10 +107,32 @@ class Overlay extends React.Component {
     if(this.props.video.frame === 0) { return []; }
 
     // Get the entries for the current frame, injecting the overlay track label into each entry
-    return this.props.overlay.overlayTracks.map(track =>
-      track.entries[this.props.video.frame] || []
-    )
-      .flat();
+    const frame = this.props.overlay.overlayTrack[this.props.video.frame.toString()] ||
+      this.props.overlay.overlayTrack[(this.props.video.frame - 1).toString()];
+
+    if(!frame) { return []; }
+
+    let entries = [];
+    this.props.tracks.tracks
+      .filter(track => track.trackType === "metadata")
+      .forEach(track => {
+        let key = track.key;
+        if(key === "optical_character_recognition") {
+          key = "ocr";
+        }
+
+        if(frame[key] && frame[key].tags) {
+          entries = entries.concat(
+            frame[key].tags.map(tag => ({
+              ...tag,
+              label: track.label,
+              color: track.color
+            }))
+          );
+        }
+      });
+
+    return entries;
   }
 
   EntriesAt({clientX, clientY}) {
@@ -120,9 +142,13 @@ class Overlay extends React.Component {
     clientY = (clientY - top) / height;
 
     return this.Entries().filter(entry => {
-      const {x1, x2, y1, y2} = entry.box;
+      const {x1, x2, y1, y2, x3, y3, x4, y4} = entry.box;
+      const minX = Math.min(x1, x2, x3 || x1, x4 || x2);
+      const maxX = Math.max(x1, x2, x3 || x1, x4 || x2);
+      const minY = Math.min(y1, y2, y3 || y1, y4 || y2);
+      const maxY = Math.max(y1, y2, y3 || y1, y4 || y2);
 
-      return (x1 <= clientX && x2 >= clientX && y1 <= clientY && y2 >= clientY);
+      return (minX <= clientX && maxX >= clientX && minY <= clientY && maxY >= clientY);
     });
   }
 
@@ -192,19 +218,24 @@ class Overlay extends React.Component {
     entries.forEach(entry => {
       if(!entry.box) { return; }
 
-      const {x1, x2, y1, y2} = entry.box;
-      const startX = x1 * width;
-      const startY = y1 * height;
-      const endX = x2 * width;
-      const endY = y2 * height;
+      let {x1, x2, y1, y2, x3, y3, x4, y4} = entry.box;
+
+      let points = [];
+      if(!x3) {
+        points = [[x1, y1], [x2, y1], [x2, y2], [x1, y2]];
+      } else {
+        points = [[x1, y1], [x2, y2], [x3, y3], [x4, y4]];
+      }
+      points = points.map(point => [point[0] * width, point[1] * height]);
 
       const selectedEntryIds = this.props.entry.entries;
       const hoverEntryIds = this.props.entry.hoverEntries;
 
-      context.globalAlpha = 0.4;
+      context.globalAlpha = 1.0;
       context.lineWidth = 2;
 
-      let color = defaultColor;
+      const toHex = n => n.toString(16).padStart(2, "0");
+      let color = `#${toHex(entry.color.r)}${toHex(entry.color.g)}${toHex(entry.color.b)}`;
       if(selectedEntryIds.includes(entry.entryId)) {
         context.globalAlpha = 0.8;
         color = selectedColor;
@@ -221,7 +252,11 @@ class Overlay extends React.Component {
       context.strokeStyle = color;
 
       context.beginPath();
-      context.rect(startX, startY, endX - startX, endY - startY);
+      context.moveTo(points[0][0], points[0][1]);
+      context.lineTo(points[1][0], points[1][1]);
+      context.lineTo(points[2][0], points[2][1]);
+      context.lineTo(points[3][0], points[3][1]);
+      context.lineTo(points[0][0], points[0][1]);
       context.stroke();
     });
   }

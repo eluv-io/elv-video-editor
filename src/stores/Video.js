@@ -161,7 +161,6 @@ class VideoStore {
       this.loading = false;
     }
 
-    this.rootStore.overlayStore.AddOverlayTracks(this.metadata.overlay_tags);
     this.rootStore.trackStore.InitializeTracks();
   });
 
