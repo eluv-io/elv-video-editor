@@ -1,7 +1,6 @@
 import {action, flow, observable, toJS} from "mobx";
 import {diff} from "deep-object-diff";
 import {SortEntries} from "../utils/Utils";
-import UrlJoin from "url-join";
 
 class EditStore {
   @observable saving = false;
@@ -27,13 +26,22 @@ class EditStore {
       const objectId = this.rootStore.menuStore.selectedObject.objectId;
       const originalVersionHash = this.rootStore.menuStore.selectedObject.versionHash;
 
-      const metadata = (yield client.ContentObjectMetadata({
-        libraryId,
-        objectId,
-        versionHash: originalVersionHash,
-        metadataSubtree: "metadata_tags"
-      })) || {};
+      let metadata = {};
+      try {
+        metadata = yield client.LinkData({
+          libraryId,
+          objectId,
+          versionHash: originalVersionHash,
+          linkPath: "asset_metadata/tags"
+        });
 
+        metadata = metadata.metadata_tags || {};
+      } catch(error) {
+        // eslint-disable-next-line no-console
+        console.error("Unable to retrieve existing tags");
+      }
+
+      let newMetadata = {};
       let updatedMetadata = {};
 
       const metadataTracks = this.rootStore.trackStore.tracks.filter(track => track.trackType === "metadata");
@@ -53,6 +61,8 @@ class EditStore {
           label: track.label,
           tags: SortEntries(entryMetadata)
         };
+
+        newMetadata[track.key] = trackMetadata;
 
         if(originalMetadata) {
           originalMetadata.tags = SortEntries(originalMetadata.tags || []);
@@ -74,6 +84,7 @@ class EditStore {
       const keysToDelete = Object.keys(metadata)
         .filter(key => !keys.includes(key));
 
+      // No difference between current tags and saved tags
       if(Object.keys(updatedMetadata).length === 0 && keysToDelete.length === 0) {
         this.saving = false;
         this.saveFailed = false;
@@ -82,33 +93,39 @@ class EditStore {
 
       const {write_token} = yield client.EditContentObject({
         libraryId,
-        objectId,
+        objectId
       });
 
-      // Update changed metadata
-      yield Promise.all(
-        Object.keys(updatedMetadata).map(async key => {
-          await client.ReplaceMetadata({
-            libraryId,
-            objectId,
-            writeToken: write_token,
-            metadataSubtree: UrlJoin("metadata_tags", key),
-            metadata: toJS(updatedMetadata[key])
-          });
-        })
-      );
+      // Upload new JSON file
+      newMetadata = {
+        ...this.rootStore.videoStore.tags,
+        metadata_tags: newMetadata
+      };
 
-      // Delete missing metadata keys
-      yield Promise.all(
-        keysToDelete.map(async key => {
-          await client.DeleteMetadata({
-            libraryId,
-            objectId,
-            writeToken: write_token,
-            metadataSubtree: UrlJoin("metadata_tags", key)
-          });
-        })
-      );
+      const data = (new TextEncoder()).encode(JSON.stringify(toJS(newMetadata)));
+      yield client.UploadFiles({
+        libraryId,
+        objectId,
+        writeToken: write_token,
+        fileInfo: [{
+          path: "MetadataTags.json",
+          mime_type: "application/json",
+          size: data.length,
+          data: data.buffer
+        }]
+      });
+
+      // Update link to tags
+      yield client.CreateLinks({
+        libraryId,
+        objectId,
+        writeToken: write_token,
+        links: [{
+          path: "asset_metadata/tags",
+          target: "MetadataTags.json",
+          type: "file"
+        }]
+      });
 
       const {hash} = yield client.FinalizeContentObject({
         libraryId,
