@@ -193,8 +193,8 @@ class Track extends React.Component {
     const time = this.TimeAt(clientX);
     const entries = this.Search(time);
 
-    this.props.entry.SetEntries(entries, this.props.video.TimeToSMPTE(time));
     this.props.tracks.SetSelectedTrack(this.props.track.trackId);
+    this.props.entry.SetEntries(entries, this.props.video.TimeToSMPTE(time));
   }
 
   Hover({clientX}) {

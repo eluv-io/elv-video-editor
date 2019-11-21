@@ -373,7 +373,7 @@ class Tracks {
   });
 
   AddMetadataTracks() {
-    const metadataTracks = this.AddTracksFromTags(this.rootStore.videoStore.metadata.metadata_tags);
+    const metadataTracks = this.AddTracksFromTags(this.rootStore.videoStore.tags.metadata_tags);
     metadataTracks.map(track => {
       this.tracks.push({
         trackId: Id.next(),

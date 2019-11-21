@@ -7,6 +7,7 @@ import HLS from "hls.js";
 class VideoStore {
   @observable versionHash = "";
   @observable metadata = {};
+  @observable tags = {};
   @observable name;
   @observable videoTags = [];
 
@@ -72,6 +73,7 @@ class VideoStore {
 
     this.versionHash = "";
     this.metadata = {};
+    this.tags = {};
     this.name = "";
     this.videoTags = [];
 
@@ -129,13 +131,6 @@ class VideoStore {
         });
       }
 
-      let videoTags = videoObject.metadata.video_level_tags || [];
-      if(typeof videoTags === "object") {
-        videoTags = Object.keys(videoTags);
-      }
-
-      this.videoTags = videoTags;
-
       this.baseVideoFrameUrl = yield this.rootStore.client.Rep({
         versionHash: videoObject.versionHash,
         rep: UrlJoin("playout", "default", "frames.png")
@@ -158,6 +153,23 @@ class VideoStore {
       this.source = source;
       this.poster = poster;
       this.metadata = videoObject.metadata;
+
+      if(this.metadata.asset_metadata && this.metadata.asset_metadata.tags) {
+        this.tags = yield this.rootStore.client.LinkData({
+          versionHash: this.versionHash,
+          linkPath: "asset_metadata/tags",
+          format: "json"
+        });
+
+        let videoTags = this.tags.video_level_tags || [];
+        if(typeof videoTags === "object") {
+          videoTags = Object.keys(videoTags);
+        }
+
+        this.videoTags = videoTags;
+      }
+
+
     } finally {
       this.loading = false;
     }
@@ -179,9 +191,14 @@ class VideoStore {
 
     this.videoHandler = videoHandler;
 
-    const rate = this.metadata.offerings.default.media_struct.streams.video.rate;
-    const rateKey = this.videoHandler.FractionToRateKey(rate);
-    this.SetFrameRate(rateKey);
+    try {
+      const rate = this.metadata.offerings.default.media_struct.streams.video.rate;
+      const rateKey = this.videoHandler.FractionToRateKey(rate);
+      this.SetFrameRate(rateKey);
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error("Unable to determine frame rate");
+    }
 
     video.load();
 

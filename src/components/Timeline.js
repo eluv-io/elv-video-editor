@@ -3,10 +3,11 @@ import {inject, observer} from "mobx-react";
 import Track from "./tracks/Track";
 import AudioTrack from "./tracks/AudioTrack";
 import PreviewTrack from "./tracks/PreviewTrack";
-import {onEnterPressed} from "elv-components-js";
+import {IconButton, onEnterPressed, ToolTip} from "elv-components-js";
 import ResizeObserver from "resize-observer-polyfill";
 import {Scale, Seek} from "./controls/Controls";
 import {Checkbox} from "./Components";
+import LayerIcon from "../static/icons/Layers.svg";
 
 @inject("tracks")
 @inject("video")
@@ -67,7 +68,7 @@ class Timeline extends React.Component {
   }
 
   TrackLane({trackId, trackType, label, content, className=""}) {
-    const clickable = trackId && trackType !== "audio";
+    const clickable = trackId > 0 && trackType !== "audio";
     const selected = trackId && this.props.tracks.selectedTrack === trackId;
     const selectTrack = () => {
       if(!clickable) { return; }
@@ -113,18 +114,34 @@ class Timeline extends React.Component {
   }
 
   TrackLabel(track) {
-    const toggleable = track.trackType === "vtt";
-    const Toggle = toggleable ? () => this.props.tracks.ToggleTrack(track.label) : undefined;
-
     let toggleButton;
-    if(toggleable) {
-      const tooltip = <span>{track.active ? "Disable" : "Enable"} {track.label}</span>;
+    if(track.hasOverlay) {
+      const overlayEnabled = this.props.overlay.overlayEnabled;
+      const trackEnabled = this.props.overlay.enabledOverlayTracks[track.key];
+      toggleButton = (
+        <ToolTip content={overlayEnabled ? <span>{`${trackEnabled ? "Disable Overlay" : "Enable Overlay"}`}</span> : null}>
+          <IconButton
+            icon={LayerIcon}
+            label={`${trackEnabled ? "Disable Overlay" : "Enable Overlay"}`}
+            onClick={event => {
+              event.stopPropagation();
 
+              if(!overlayEnabled) { return; }
+
+              this.props.overlay.ToggleOverlayTrack(track.key, !trackEnabled);
+            }}
+            className={`overlay-toggle ${trackEnabled && overlayEnabled ? "overlay-toggle-enabled" : "overlay-toggle-disabled"}`}
+          />
+        </ToolTip>
+      );
+    }
+
+    if(track.trackType === "vtt") {
       toggleButton = (
         <Checkbox
           value={track.active}
-          onChange={Toggle}
-          toolTip={tooltip}
+          onChange={() => this.props.tracks.ToggleTrack(track.label)}
+          toolTip={<span>{track.active ? "Disable" : "Enable"} {track.label}</span>}
           className="track-toggle"
         />
       );

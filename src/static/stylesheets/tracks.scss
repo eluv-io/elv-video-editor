@@ -59,6 +59,15 @@ $preview-track-height: 5rem;
   margin-right: $elv-spacing-m;
 }
 
+.video-seek-lane,
+.video-scale-lane {
+  .track-label-container {
+    &:focus {
+      outline: none;
+    }
+  }
+}
+
 .video-seek-lane {
   background-color: $color-background-black;
 
@@ -169,6 +178,28 @@ $preview-track-height: 5rem;
 
   &:hover {
     background-color: $color-accent-highlight;
+  }
+}
+
+.overlay-toggle {
+  max-height: $elv-font-m;
+  max-width: $elv-font-m;
+  position: absolute;
+  right: $elv-spacing-xs;
+
+  top: $elv-spacing-xs;
+  z-index: 1000;
+
+  &:hover {
+    svg {
+      stroke: $elv-color-white;
+    }
+  }
+
+  &.overlay-toggle-disabled {
+    svg {
+      stroke: $elv-color-mediumgray;
+    }
   }
 }
 

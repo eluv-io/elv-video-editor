@@ -5,10 +5,6 @@ import {reaction} from "mobx";
 import ToolTip from "elv-components-js/src/components/Tooltip";
 import ResizeObserver from "resize-observer-polyfill";
 
-const hoverColor = "#45fdff";
-const selectedColor = "#0fafff";
-const currentSelectionColor = "#ffffff";
-
 @inject("video")
 @inject("overlay")
 @inject("tracks")
@@ -21,10 +17,12 @@ class Overlay extends React.Component {
     this.state = {
       context: undefined,
       hovering: false,
+      hoverEntries: [],
+      clientX: -1,
+      clienY: -1
     };
 
     this.InitializeCanvas = this.InitializeCanvas.bind(this);
-    this.Click = this.Click.bind(this);
     this.Hover = this.Hover.bind(this);
     this.ClearHover = this.ClearHover.bind(this);
     this.Draw = this.Draw.bind(this);
@@ -75,11 +73,9 @@ class Overlay extends React.Component {
           return ({
             enabled: this.props.overlay.overlayEnabled,
             frame: this.props.video.frame,
-            hoverEntries: this.props.entry.hoverEntries,
-            selectedEntries: this.props.entry.entries,
-            selectedEntry: this.props.entry.selectedEntry,
             videoWidth: this.state.videoWidth,
-            videoHeight: this.state.videoHeight
+            videoHeight: this.state.videoHeight,
+            enabledTracks: JSON.stringify(this.props.overlay.enabledOverlayTracks)
           });
         },
         () => this.Draw(),
@@ -116,14 +112,11 @@ class Overlay extends React.Component {
     this.props.tracks.tracks
       .filter(track => track.trackType === "metadata")
       .forEach(track => {
-        let key = track.key;
-        if(key === "optical_character_recognition") {
-          key = "ocr";
-        }
+        if(!this.props.overlay.enabledOverlayTracks[track.key]) { return; }
 
-        if(frame[key] && frame[key].tags) {
+        if(frame[track.key] && frame[track.key].tags) {
           entries = entries.concat(
-            frame[key].tags.map(tag => ({
+            frame[track.key].tags.map(tag => ({
               ...tag,
               label: track.label,
               color: track.color
@@ -132,7 +125,7 @@ class Overlay extends React.Component {
         }
       });
 
-    return entries;
+    return entries.filter(entry => !!entry.box);
   }
 
   EntriesAt({clientX, clientY}) {
@@ -152,43 +145,31 @@ class Overlay extends React.Component {
     });
   }
 
-  Click({clientX, clientY}) {
-    if(this.props.video.playing) { return; }
-
-    const entries = this.EntriesAt({clientX, clientY});
-
-    this.props.entry.SetEntries(entries, this.props.video.smpte);
-  }
-
   Hover({clientX, clientY}) {
-    if(this.props.video.playing) { return; }
-
-    const hoverEntries = this.EntriesAt({clientX, clientY});
-
-    this.props.entry.SetHoverEntries(hoverEntries, this.props.video.smpte);
-
-    this.setState({hovering: true});
+    this.setState({
+      clientX,
+      clientY,
+      hoverEntries: this.EntriesAt({clientX, clientY}),
+      hovering: true
+    });
   }
 
   ClearHover() {
     this.setState({hovering: false});
-
-    this.props.entry.SetHoverEntries([]);
   }
 
   ToolTipContent() {
     if(
       !this.state.hovering ||
-      this.props.entry.hoverEntries.length === 0 ||
-      this.props.video.playing
+      this.state.hoverEntries.length === 0
     ) {
       return null;
     }
 
     return (
       <div className="track-entry-container">
-        {this.props.entry.hoverEntries.map(entry =>
-          <div className="track-entry" key={`entry-${entry.entryId}`}>
+        {this.state.hoverEntries.map((entry, i) =>
+          <div className="track-entry" key={`overlay-hover-entry-${i}`}>
             <div className="track-entry-content">
               { entry.text }
             </div>
@@ -212,9 +193,10 @@ class Overlay extends React.Component {
     const height = context.canvas.height;
 
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+    context.globalAlpha = 0.8;
+    context.lineWidth = 2;
 
     if(entries.length === 0) { return; }
-
     entries.forEach(entry => {
       if(!entry.box) { return; }
 
@@ -228,28 +210,9 @@ class Overlay extends React.Component {
       }
       points = points.map(point => [point[0] * width, point[1] * height]);
 
-      const selectedEntryIds = this.props.entry.entries;
-      const hoverEntryIds = this.props.entry.hoverEntries;
-
-      context.globalAlpha = 1.0;
-      context.lineWidth = 2;
-
       const toHex = n => n.toString(16).padStart(2, "0");
-      let color = `#${toHex(entry.color.r)}${toHex(entry.color.g)}${toHex(entry.color.b)}`;
-      if(selectedEntryIds.includes(entry.entryId)) {
-        context.globalAlpha = 0.8;
-        color = selectedColor;
-      } else if(hoverEntryIds.includes(entry.entryId)) {
-        context.globalAlpha = 0.8;
-        color = hoverColor;
-      }
 
-      // Highlight current entry in entry panel, if the panel is visible
-      if(this.props.entry.entries.length > 0 && entry.entryId === this.props.entry.selectedEntry) {
-        color = currentSelectionColor;
-      }
-
-      context.strokeStyle = color;
+      context.strokeStyle = `#${toHex(entry.color.r)}${toHex(entry.color.g)}${toHex(entry.color.b)}`;
 
       context.beginPath();
       context.moveTo(points[0][0], points[0][1]);
@@ -259,6 +222,15 @@ class Overlay extends React.Component {
       context.lineTo(points[0][0], points[0][1]);
       context.stroke();
     });
+
+    if(this.state.hovering) {
+      this.setState({
+        hoverEntries: this.EntriesAt({
+          clientX: this.state.clientX,
+          clientY: this.state.clientY
+        })
+      });
+    }
   }
 
   render() {
