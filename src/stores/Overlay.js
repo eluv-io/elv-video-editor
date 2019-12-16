@@ -25,7 +25,7 @@ class OverlayStore {
     this.overlayEnabled = true;
 
     Object.keys(Object.values(this.overlayTrack)[0]).forEach(trackKey => {
-      this. enabledOverlayTracks[trackKey] = true;
+      this.enabledOverlayTracks[trackKey] = true;
 
       const metadataTrack = this.rootStore.trackStore.tracks.find(track => track.key === trackKey);
 

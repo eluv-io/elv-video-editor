@@ -77,7 +77,7 @@ let FrameRate = (props) => {
 
 let DropFrame = (props) => {
   if(!["NTSC", "NTSCFilm", "NTSCHD"].includes(props.video.frameRateKey)) {
-    return;
+    return null;
   }
 
   return (

@@ -62,6 +62,10 @@ $preview-track-height: 5rem;
 .video-seek-lane,
 .video-scale-lane {
   .track-label-container {
+    span {
+      color: $elv-color-text-lightest;
+    }
+
     &:focus {
       outline: none;
     }
@@ -190,6 +194,10 @@ $preview-track-height: 5rem;
   top: $elv-spacing-xs;
   z-index: 100;
 
+  svg {
+    stroke: $elv-color-lightgray;
+  }
+
   &:hover {
     svg {
       stroke: $elv-color-white;
@@ -242,6 +250,10 @@ $slider-height: 12px;
 .track-entry-timestamps {
   display: flex;
   justify-content: center;
+}
+
+.track-entry-container {
+  padding: $elv-spacing-xxs;
 }
 
 .track-entry-content {

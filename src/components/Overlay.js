@@ -114,15 +114,31 @@ class Overlay extends React.Component {
       .forEach(track => {
         if(!this.props.overlay.enabledOverlayTracks[track.key]) { return; }
 
-        if(frame[track.key] && frame[track.key].tags) {
-          entries = entries.concat(
-            frame[track.key].tags.map(tag => ({
-              ...tag,
-              label: track.label,
-              color: track.color
-            }))
-          );
+        if(!frame[track.key] || typeof frame[track.key] !== "object") { return; }
+
+        let boxes = [];
+        if(frame[track.key].tags) {
+          boxes = frame[track.key].tags;
+        } else {
+          Object.keys(frame[track.key]).map(text => {
+            if(typeof frame[track.key][text] !== "object") { return; }
+
+            frame[track.key][text].map(entry => {
+              boxes.push({
+                ...entry,
+                text
+              });
+            });
+          });
         }
+
+        entries = entries.concat(
+          boxes.map(tag => ({
+            ...tag,
+            label: track.label,
+            color: track.color
+          }))
+        );
       });
 
     return entries.filter(entry => !!entry.box);

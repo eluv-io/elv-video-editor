@@ -169,7 +169,24 @@ class VideoStore {
         this.videoTags = videoTags;
       }
 
+      if(!this.tags || Object.keys(this.tags).length === 0) {
+        this.tags = {
+          metadata_tags: this.metadata.metadata_tags || {}
+        };
 
+        if(this.metadata.overlay_tags) {
+          this.tags.overlay_tags = {
+            frame_level_tags: this.metadata.overlay_tags
+          };
+        }
+
+        let videoTags = (this.metadata.metadata_tags || {}).video_level_tags || [];
+        if(typeof videoTags === "object") {
+          videoTags = Object.keys(videoTags);
+        }
+
+        this.videoTags = videoTags;
+      }
     } finally {
       this.loading = false;
     }
@@ -192,7 +209,16 @@ class VideoStore {
     this.videoHandler = videoHandler;
 
     try {
-      const rate = this.metadata.offerings.default.media_struct.streams.video.rate;
+      const offeringOptions = this.metadata.offerings.default.media_struct.streams || {};
+
+      let rate;
+      if(offeringOptions.video) {
+        rate = offeringOptions.video.rate;
+      } else {
+        const videoKey = Object.keys(offeringOptions).find(key => key.startsWith("video"));
+        rate = offeringOptions[videoKey].rate;
+      }
+
       const rateKey = this.videoHandler.FractionToRateKey(rate);
       this.SetFrameRate(rateKey);
     } catch(error) {
