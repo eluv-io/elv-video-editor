@@ -61,6 +61,9 @@ $preview-track-height: 5rem;
 
 .video-seek-lane,
 .video-scale-lane {
+  background-color: $color-background-black;
+  max-height: 2.5rem;
+
   .track-label-container {
     span {
       color: $elv-color-text-lightest;
@@ -73,14 +76,16 @@ $preview-track-height: 5rem;
 }
 
 .video-seek-lane {
-  background-color: $color-background-black;
-
   .track-label-container {
     border: 0;
+    border-top: 1px solid $color-border-dark;
+    font-size: $elv-font-s;
   }
 
   .track-lane-content {
+    background-color: inherit;
     border: 0;
+    border-top: 1px solid $color-border-dark;
   }
 }
 
@@ -94,7 +99,6 @@ $preview-track-height: 5rem;
   }
 
   .track-lane-content {
-    background-color: inherit;
     border: 0;
   }
 }

@@ -63,8 +63,8 @@ class VideoControls extends React.Component {
       <div className={`video-controls-container ${this.props.video.fullScreen ? "fullscreen" : ""}`}>
         <div className="mono video-time">{this.props.video.smpte}</div>
         { this.Controls() }
-        { this.Seek() }
         { this.Scale() }
+        { this.Seek() }
       </div>
     );
   }

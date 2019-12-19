@@ -96,15 +96,14 @@ let DropFrame = (props) => {
 
 let PlayPause = (props) => {
   const label = props.video.playing ? "Pause" : "Play";
+
   return (
-    <ToolTip content={<span>{label}</span>}>
-      <IconButton
-        className="video-control-play-pause"
-        label={label}
-        icon={props.video.playing ? PauseButton : PlayButton}
-        onClick={props.video.PlayPause}
-      />
-    </ToolTip>
+    <IconButton
+      className="video-control-play-pause"
+      label={label}
+      icon={props.video.playing ? PauseButton : PlayButton}
+      onClick={props.video.PlayPause}
+    />
   );
 };
 
@@ -152,15 +151,13 @@ let Volume = (props) => {
 
 let FrameControl = ({video, frames=0, seconds=0, label, icon}) => {
   return (
-    <ToolTip content={<span>{label}</span>}>
-      <IconButton
-        label={label}
-        icon={icon}
-        onClick={() => {
-          video.SeekFrames({frames, seconds});
-        }}
-      />
-    </ToolTip>
+    <IconButton
+      label={label}
+      icon={icon}
+      onClick={() => {
+        video.SeekFrames({frames, seconds});
+      }}
+    />
   );
 };
 

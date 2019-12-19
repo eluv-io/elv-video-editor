@@ -68,6 +68,14 @@ body,
     background-color: $color-background-active;
     border: 1px solid $color-border-active;
     color: $color-text;
+    font-size: $elv-font-s;
+    margin: 0;
+    padding: 0;
+
+    span {
+      margin: 0;
+      padding: $elv-spacing-xxs $elv-spacing-xs;
+    }
   }
 }
 

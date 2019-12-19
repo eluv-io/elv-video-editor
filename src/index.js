@@ -31,7 +31,7 @@ class App extends React.Component {
         <Menu/>
         <div className="video-level" key={`video-${this.props.root.videoStore.source}`}>
           <SidePanel/>
-          <Video/>
+          <Video key={`video-${this.props.video.videoKey}`}/>
         </div>
         <Timeline key={`timeline-${this.props.video.versionHash}`}/>
       </div>

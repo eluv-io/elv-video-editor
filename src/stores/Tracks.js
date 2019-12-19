@@ -28,6 +28,14 @@ class Tracks {
   constructor(rootStore) {
     this.rootStore = rootStore;
     colorIndex = 0;
+
+    if(!window.AudioContext && !window.webkitAudioContext) {
+      // eslint-disable-next-line no-console
+      console.error("AudioContext not supported in this browser");
+      return;
+    }
+
+    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
   }
 
   NextColor() {
@@ -130,11 +138,10 @@ class Tracks {
 
   @action.bound
   AddAudioSegment = flow(function * (trackId, audioData, duration, number, samplesPerSecond) {
-    const audioContext = new AudioContext();
-    const source = audioContext.createBufferSource();
+    const source = this.audioContext.createBufferSource();
     yield new Promise((resolve, reject) => {
       try {
-        audioContext.decodeAudioData(audioData, (buffer) => {
+        this.audioContext.decodeAudioData(audioData, (buffer) => {
           source.buffer = buffer;
           resolve();
         });
@@ -186,12 +193,6 @@ class Tracks {
 
   @action.bound
   AddAudioTracks = flow(function * () {
-    if(!window.AudioContext) {
-      // eslint-disable-next-line no-console
-      console.error("AudioContext not supported in this browser");
-      return;
-    }
-
     const loadingVersion = this.rootStore.videoStore.versionHash;
     const concurrentRequests = 2;
     const audioTracks = yield this.AudioTracksFromHLSPlaylist();

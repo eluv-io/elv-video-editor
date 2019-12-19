@@ -5,6 +5,8 @@ import URI from "urijs";
 import HLS from "hls.js";
 
 class VideoStore {
+  @observable videoKey = 0;
+
   @observable versionHash = "";
   @observable metadata = {};
   @observable tags = {};
@@ -196,11 +198,12 @@ class VideoStore {
 
   @action.bound
   Initialize(video, player) {
+    this.initialized = false;
     this.video = video;
     this.player = player;
 
     const videoHandler = new FrameAccurateVideo({
-      video: video,
+      video,
       frameRate: this.frameRate,
       dropFrame: this.dropFrame,
       callback: this.Update
@@ -275,10 +278,13 @@ class VideoStore {
       }
     }));
 
-    this.video.addEventListener("error", () => {
+    this.video.addEventListener("error", action(() => {
       // eslint-disable-next-line no-console
-      console.error("Video error: " + video.error.code);
-    });
+      console.error("Video error: ");
+      // eslint-disable-next-line no-console
+      console.error(video.error);
+      this.videoKey = this.videoKey + 1;
+    }));
   }
 
   ToggleTrack(label) {
@@ -471,6 +477,10 @@ class VideoStore {
 
   @action.bound
   SeekFrames({frames=0, seconds=0}) {
+    if(this.playing) {
+      this.PlayPause();
+    }
+
     if(seconds) {
       frames += this.frameRate.ceil().mul(seconds);
     }

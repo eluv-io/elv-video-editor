@@ -278,16 +278,16 @@ class Timeline extends React.Component {
     return (
       <div className="timeline">
         {this.TrackLane({
-          trackId: "-2",
-          label: <span className="mono">{`${this.props.video.frame} :: ${this.props.video.smpte}`}</span>,
-          content: <Seek />,
-          className: "video-seek-lane"
-        })}
-        {this.TrackLane({
-          trackId: "-1",
+          trackId: -1,
           label: <span className="mono">{`${this.props.video.scaleMinSMPTE} - ${this.props.video.scaleMaxSMPTE}`}</span>,
           content: <Scale />,
           className: "video-scale-lane"
+        })}
+        {this.TrackLane({
+          trackId: -2,
+          label: <span className="mono">{`${this.props.video.frame} :: ${this.props.video.smpte}`}</span>,
+          content: <Seek />,
+          className: "video-seek-lane"
         })}
         { this.Tracks() }
         { this.AddTrackButton() }
