@@ -24,6 +24,7 @@ class Tracks {
   @observable metadataTracks = [];
   @observable selectedTrack;
   @observable editingTrack = false;
+  @observable audioLoading = false;
 
   constructor(rootStore) {
     this.rootStore = rootStore;
@@ -51,6 +52,7 @@ class Tracks {
     this.metadataTracks = [];
     this.selectedTrack = undefined;
     this.editingTrack = false;
+    this.audioLoading = false;
   }
 
   /* HLS Playlist Parsing */
@@ -193,6 +195,10 @@ class Tracks {
 
   @action.bound
   AddAudioTracks = flow(function * () {
+    if(this.audioLoading) { return; }
+
+    this.audioLoading = true;
+
     const loadingVersion = this.rootStore.videoStore.versionHash;
     const concurrentRequests = 2;
     const audioTracks = yield this.AudioTracksFromHLSPlaylist();
@@ -389,13 +395,38 @@ class Tracks {
     });
   }
 
+  AddClipTrack() {
+    const clip = this.Cue({
+      entryType: "clip",
+      startTime: this.rootStore.videoStore.clipStartTime,
+      endTime: this.rootStore.videoStore.clipEndTime,
+      text: "Primary Content",
+      entry: {}
+    });
+
+    const entries = {
+      [clip.entryId]: clip
+    };
+
+    this.tracks.push({
+      trackId: Id.next(),
+      trackType: "clip",
+      color: {r: 100, g: 255, b: 255, a: 150},
+      entries,
+      key: "primary-content",
+      label: "Primary Content",
+      version: 1,
+      intervalTree: this.TrackIntervalTree(entries)
+    });
+  }
+
   @action.bound
   InitializeTracks = flow(function * () {
     yield this.AddSubtitleTracks();
     yield this.AddMetadataTracks();
     yield this.rootStore.overlayStore.AddOverlayTracks();
 
-    this.AddAudioTracks();
+    this.AddClipTrack();
   });
 
   /* User Actions */
@@ -508,6 +539,11 @@ class Tracks {
     track.entries[cue.entryId] = cue;
 
     return cue.entryId;
+  }
+
+  ClipInfo() {
+    const clipTrack = this.tracks.find(track => track.trackType === "clip");
+    return Object.values(clipTrack.entries)[0];
   }
 }
 

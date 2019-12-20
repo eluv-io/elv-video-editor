@@ -22,8 +22,8 @@ class Entry extends React.Component {
   }
 
   Actions(entry) {
-    const playable = ["vtt", "metadata"].includes(entry.entryType);
-    const editable = ["metadata", "overlay"].includes(entry.entryType);
+    const playable = ["vtt", "metadata", "clip"].includes(entry.entryType);
+    const editable = ["metadata", "overlay", "clip"].includes(entry.entryType);
 
     return (
       <div className="entry-actions-container">

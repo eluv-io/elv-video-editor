@@ -43,7 +43,7 @@ class AudioTrack extends React.Component {
               entries: toJS(this.props.track.entries).flat()
             });
           },
-          {delay: 50}
+          {delay: 500}
         ),
         // Update on scale change
         reaction(

@@ -268,6 +268,7 @@ class Track extends React.Component {
             width: this.state.canvasWidth,
             height: this.state.canvasHeight,
             entries: toJS(this.props.track.entries),
+            noActive: this.props.noActive,
             scale: {
               scale: this.props.video.scale,
               scaleMin: this.props.video.scaleMin,
@@ -316,7 +317,8 @@ class Track extends React.Component {
 Track.propTypes = {
   track: PropTypes.object.isRequired,
   entry: PropTypes.object,
-  video: PropTypes.object
+  video: PropTypes.object,
+  noActive: PropTypes.bool
 };
 
 export default Track;

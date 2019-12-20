@@ -168,7 +168,7 @@ class Timeline extends React.Component {
         content: (
           track.trackType === "audio" ?
             <AudioTrack track={track} /> :
-            <Track track={track} />
+            <Track track={track} noActive={track.trackType === "clip"} />
         ),
         labelToolTip: <span>{tooltip}</span>
       })
@@ -176,7 +176,7 @@ class Timeline extends React.Component {
   }
 
   Tracks() {
-    let previewTrack, subtitleTracks, metadataTracks, audioTracks;
+    let previewTrack, subtitleTracks, metadataTracks, audioTracks, clipTrack;
     if(this.state.show.Preview && this.props.video.previewSupported) {
       previewTrack = this.TrackLane({
         trackType: "preview",
@@ -197,7 +197,7 @@ class Timeline extends React.Component {
 
     if(this.state.show.Tags) {
       metadataTracks = this.props.tracks.tracks
-        .filter(track => track.trackType !== "vtt").slice()
+        .filter(track => track.trackType !== "vtt" && track.trackType !== "clip").slice()
         .sort((a, b) => (a.label > b.label ? 1 : -1))
         .map(track => this.Track(track));
     }
@@ -207,9 +207,12 @@ class Timeline extends React.Component {
         .map(track => this.Track(track));
     }
 
+    clipTrack = this.Track(this.props.tracks.tracks.find(track => track.trackType === "clip"));
+
     return (
       <div ref={this.WatchResize} className="tracks-container">
         { this.CurrentTimeIndicator() }
+        { clipTrack }
         { previewTrack }
         { subtitleTracks }
         { metadataTracks }
@@ -218,10 +221,12 @@ class Timeline extends React.Component {
     );
   }
 
-  TrackToggleButton(name, overlay=false) {
+  TrackToggleButton(name, overlay=false, click) {
     const enabled = overlay ? this.props.overlay.overlayEnabled : this.state.show[name];
 
     const onClick = () => {
+      if(click) { click(); }
+
       if(overlay) {
         this.props.overlay.ToggleOverlay(!this.props.overlay.overlayEnabled);
       } else {
@@ -242,14 +247,13 @@ class Timeline extends React.Component {
   TrackToggle() {
     const subtitleTracks = this.props.tracks.tracks.filter(track => track.trackType === "vtt");
     const metadataTracks = this.props.tracks.tracks.filter(track => track.trackType === "metadata");
-    const audioTracks = this.props.tracks.audioTracks;
     const overlayTrack = this.props.overlay.overlayTrack;
 
     const previewToggle = this.props.video.previewSupported ? this.TrackToggleButton("Preview") : null;
     const subtitleToggle = subtitleTracks.length > 0 ? this.TrackToggleButton("Subtitles") : null;
     const metadataToggle = metadataTracks.length > 0 ? this.TrackToggleButton("Tags") : null;
-    const audioToggle = audioTracks.length > 0 ? this.TrackToggleButton("Audio") : null;
     const overlayToggle = overlayTrack ? this.TrackToggleButton("Overlay", true) : null;
+    const audioToggle = this.TrackToggleButton("Audio", false, this.props.tracks.AddAudioTracks);
 
     return (
       <div className="timeline-actions toggle-tracks">

@@ -84,8 +84,20 @@ class EditStore {
       const keysToDelete = Object.keys(metadata)
         .filter(key => !keys.includes(key));
 
-      // No difference between current tags and saved tags
-      if(Object.keys(updatedMetadata).length === 0 && keysToDelete.length === 0) {
+      // Start/end time clip
+      const {startTime, endTime} = this.rootStore.trackStore.ClipInfo();
+      const startFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(startTime);
+      const startTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(startFrame);
+      const endFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(endTime);
+      const endTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(endFrame + 1);
+
+      const offering = this.rootStore.videoStore.metadata.offerings.default;
+
+      const metadataChanged = Object.keys(updatedMetadata).length > 0 && keysToDelete.length > 0;
+      const clipChanged = offering.start_time_rat !== startTimeRat || offering.end_time_rat !== endTimeRat;
+
+      // No difference between current tags and saved tags, or clip timing
+      if(!metadataChanged && !clipChanged) {
         this.saving = false;
         this.saveFailed = false;
         return;
@@ -96,36 +108,56 @@ class EditStore {
         objectId
       });
 
-      // Upload new JSON file
-      newMetadata = {
-        ...this.rootStore.videoStore.tags,
-        metadata_tags: newMetadata
-      };
+      if(metadataChanged) {
+        // Upload new JSON file
+        newMetadata = {
+          ...this.rootStore.videoStore.tags,
+          metadata_tags: newMetadata
+        };
 
-      const data = (new TextEncoder()).encode(JSON.stringify(toJS(newMetadata)));
-      yield client.UploadFiles({
-        libraryId,
-        objectId,
-        writeToken: write_token,
-        fileInfo: [{
-          path: "MetadataTags.json",
-          mime_type: "application/json",
-          size: data.length,
-          data: data.buffer
-        }]
-      });
+        const data = (new TextEncoder()).encode(JSON.stringify(toJS(newMetadata)));
+        yield client.UploadFiles({
+          libraryId,
+          objectId,
+          writeToken: write_token,
+          fileInfo: [{
+            path: "MetadataTags.json",
+            mime_type: "application/json",
+            size: data.length,
+            data: data.buffer
+          }]
+        });
 
-      // Update link to tags
-      yield client.CreateLinks({
-        libraryId,
-        objectId,
-        writeToken: write_token,
-        links: [{
-          path: "asset_metadata/tags",
-          target: "MetadataTags.json",
-          type: "file"
-        }]
-      });
+        // Update link to tags
+        yield client.CreateLinks({
+          libraryId,
+          objectId,
+          writeToken: write_token,
+          links: [{
+            path: "asset_metadata/tags",
+            target: "MetadataTags.json",
+            type: "file"
+          }]
+        });
+      }
+
+      if(clipChanged) {
+        yield client.ReplaceMetadata({
+          libraryId,
+          objectId,
+          writeToken: write_token,
+          metadataSubtree: "offerings/default/start_time_rat",
+          metadata: startTimeRat
+        });
+
+        yield client.ReplaceMetadata({
+          libraryId,
+          objectId,
+          writeToken: write_token,
+          metadataSubtree: "offerings/default/end_time_rat",
+          metadata: endTimeRat
+        });
+      }
 
       const {hash} = yield client.FinalizeContentObject({
         libraryId,
@@ -134,6 +166,8 @@ class EditStore {
       });
 
       this.rootStore.menuStore.UpdateVersionHash(hash);
+
+      yield this.rootStore.videoStore.ReloadMetadata();
 
       this.saveFailed = false;
     } catch(error) {

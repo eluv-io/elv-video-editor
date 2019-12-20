@@ -7,6 +7,9 @@ import HLS from "hls.js";
 class VideoStore {
   @observable videoKey = 0;
 
+  @observable clipStartTime = 0;
+  @observable clipEndTime;
+
   @observable versionHash = "";
   @observable metadata = {};
   @observable tags = {};
@@ -73,6 +76,9 @@ class VideoStore {
       this.videoHandler = undefined;
     }
 
+    this.clipStartTime = 0;
+    this.clipEndTime = undefined;
+
     this.versionHash = "";
     this.metadata = {};
     this.tags = {};
@@ -122,7 +128,10 @@ class VideoStore {
         drms: []
       });
 
-      const source = playoutOptions["hls"].playoutUrl;
+      // Specify playout for full, untrimmed content
+      const source = URI(playoutOptions["hls"].playoutUrl)
+        .addSearch("ignore_trimming", true)
+        .toString();
 
       let poster;
       if(videoObject.metadata.image || videoObject.metadata.public.image) {
@@ -155,6 +164,41 @@ class VideoStore {
       this.source = source;
       this.poster = poster;
       this.metadata = videoObject.metadata;
+
+      try {
+        const offering = this.metadata.offerings.default;
+
+        if(offering.start_time_rat) {
+          this.clipStartTime = FrameAccurateVideo.ParseRat(offering.start_time_rat);
+        }
+
+        const offeringOptions = offering.media_struct.streams || {};
+
+        let rate, duration;
+        if(offeringOptions.video) {
+          duration = FrameAccurateVideo.ParseRat(offeringOptions.video.duration.rat);
+          rate = offeringOptions.video.rate;
+        } else {
+          const videoKey = Object.keys(offeringOptions).find(key => key.startsWith("video"));
+          duration = FrameAccurateVideo.ParseRat(offeringOptions[videoKey].duration.rat);
+          rate = offeringOptions[videoKey].rate;
+        }
+
+        this.frameRateKey = FrameAccurateVideo.FractionToRateKey(rate);
+
+        if(offering.end_time_rat) {
+          // End time is end of specified frame
+          const frameRate = FrameRates[this.frameRateKey].valueOf();
+          this.clipEndTime = Number((FrameAccurateVideo.ParseRat(offering.end_time_rat) - (1 / frameRate)).toFixed(3));
+        } else {
+          this.clipEndTime = duration;
+        }
+      } catch(error) {
+        // eslint-disable-next-line no-console
+        console.error("Unable to determine frame rate");
+      }
+
+      // Tags
 
       if(this.metadata.asset_metadata && this.metadata.asset_metadata.tags) {
         this.tags = yield this.rootStore.client.LinkData({
@@ -196,6 +240,14 @@ class VideoStore {
     this.rootStore.trackStore.InitializeTracks();
   });
 
+  ReloadMetadata = flow(function * () {
+    const versionHash = this.rootStore.menuStore.selectedObject.versionHash;
+
+    this.metadata = yield this.rootStore.client.ContentObjectMetadata({
+      versionHash
+    });
+  });
+
   @action.bound
   Initialize(video, player) {
     this.initialized = false;
@@ -211,23 +263,7 @@ class VideoStore {
 
     this.videoHandler = videoHandler;
 
-    try {
-      const offeringOptions = this.metadata.offerings.default.media_struct.streams || {};
-
-      let rate;
-      if(offeringOptions.video) {
-        rate = offeringOptions.video.rate;
-      } else {
-        const videoKey = Object.keys(offeringOptions).find(key => key.startsWith("video"));
-        rate = offeringOptions[videoKey].rate;
-      }
-
-      const rateKey = this.videoHandler.FractionToRateKey(rate);
-      this.SetFrameRate(rateKey);
-    } catch(error) {
-      // eslint-disable-next-line no-console
-      console.error("Unable to determine frame rate");
-    }
+    this.SetFrameRate(this.frameRateKey);
 
     video.load();
 
@@ -275,6 +311,10 @@ class VideoStore {
       if(this.video.duration > 0 && isFinite(this.video.duration)) {
         videoHandler.Update();
         this.initialized = true;
+      }
+
+      if(!this.clipEndTime) {
+        this.clipEndTime = this.video.duration;
       }
     }));
 
@@ -326,7 +366,7 @@ class VideoStore {
   TimeToFrame(time) {
     if(!this.videoHandler) { return 0; }
 
-    return this.videoHandler.TimeToFrame(time).floor().valueOf();
+    return this.videoHandler.TimeToFrame(time);
   }
 
   @action.bound

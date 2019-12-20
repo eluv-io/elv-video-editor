@@ -1,9 +1,31 @@
 import Fraction from "fraction.js";
 
+export const FrameRateNumerator = {
+  NTSC: 1001,
+  NTSCFilm: 1001,
+  NTSCHD: 1001,
+  PAL: 1,
+  PALHD: 1,
+  Film: 1,
+  Web: 1,
+  High: 1
+};
+
+export const FrameRateDenominator = {
+  NTSC: 30000,
+  NTSCFilm: 24000,
+  NTSCHD: 60000,
+  PAL: 25,
+  PALHD: 50,
+  Film: 24,
+  Web: 30,
+  High: 60
+};
+
 export const FrameRates = {
-  NTSC: Fraction(30000).div(1001),
-  NTSCFilm: Fraction(24000).div(1001),
-  NTSCHD: Fraction(60000).div(1001),
+  NTSC: Fraction(FrameRateDenominator["NTSC"]).div(FrameRateNumerator["NTSC"]),
+  NTSCFilm: Fraction(FrameRateDenominator["NTSCFilm"]).div(FrameRateNumerator["NTSC"]),
+  NTSCHD: Fraction(FrameRateDenominator["NTSCHD"]).div(FrameRateNumerator["NTSCHD"]),
   PAL: Fraction(25),
   PALHD: Fraction(50),
   Film: Fraction(24),
@@ -25,7 +47,7 @@ class FrameAccurateVideo {
     this.Update = this.Update.bind(this);
   }
 
-  FractionToRateKey(input) {
+  static FractionToRateKey(input) {
     let rate = input;
     if(typeof input === "string") {
       if(input.includes("/")) {
@@ -63,6 +85,22 @@ class FrameAccurateVideo {
 
   /* Conversion utility methods */
 
+  static ParseRat(str) {
+    if(str.includes("/")) {
+      const num = parseInt(str.split("/")[0]);
+      const denom = parseInt(str.split("/")[1]);
+
+      return Number((num / denom).toFixed(3));
+    } else {
+      return parseInt(str);
+    }
+  }
+
+  FrameToRat(frame) {
+    const rateKey = FrameAccurateVideo.FractionToRateKey(this.frameRate);
+    return `${frame * FrameRateNumerator[rateKey]}/${FrameRateDenominator[rateKey]}`;
+  }
+
   ProgressToTime(progress) {
     const duration = this.video.duration || 0;
 
@@ -76,7 +114,7 @@ class FrameAccurateVideo {
   }
 
   TimeToFrame(time) {
-    return Fraction(time || 0).mul(this.frameRate);
+    return Fraction(time || 0).mul(this.frameRate).floor().valueOf();
   }
 
   TimeToSMPTE(time) {
@@ -126,7 +164,7 @@ class FrameAccurateVideo {
   }
 
   SMPTE(f) {
-    let frame = (f ? Fraction(f) : this.Frame()).floor();
+    let frame = (f ? Fraction(f) : Fraction(this.Frame())).floor();
     const frameRate = this.frameRate.round();
 
     if(this.dropFrame) {

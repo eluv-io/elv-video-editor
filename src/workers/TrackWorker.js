@@ -16,7 +16,7 @@ const activeColor = {
 };
 
 class TrackWorker {
-  constructor({trackId, color, height, width, entries, scale, duration}) {
+  constructor({trackId, color, height, width, entries, scale, duration, noActive}) {
     this.trackId = trackId;
     this.color = color;
     this.entries = entries;
@@ -25,6 +25,7 @@ class TrackWorker {
     this.width = width;
     this.height = height;
     this.filter = "";
+    this.noActive = noActive;
 
     this.selectedEntryId = undefined;
     this.activeEntryIds = [];
@@ -79,7 +80,7 @@ class TrackWorker {
 
         //context.fillStyle = color;
         color = selectedColor;
-      } else if(this.activeEntryIds.includes(entry.entryId)) {
+      } else if(!this.noActive && this.activeEntryIds.includes(entry.entryId)) {
         // Active item - highlight fill
 
         color = activeColor;
