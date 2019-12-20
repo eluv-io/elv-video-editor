@@ -4,6 +4,7 @@ import MenuIcon from "../static/icons/Menu.svg";
 import {inject, observer} from "mobx-react";
 import KeyboardControls from "./controls/KeyboardControls";
 import Save from "./controls/Save";
+import Upload from "./controls/Upload";
 
 @inject("menu")
 @inject("video")
@@ -24,6 +25,7 @@ class Header extends React.Component {
           </h1>
         </div>
         <div className="header-right">
+          <Upload />
           <Save />
           <KeyboardControls />
         </div>

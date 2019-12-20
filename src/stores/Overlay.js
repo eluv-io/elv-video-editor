@@ -1,4 +1,4 @@
-import {observable, action} from "mobx";
+import {observable, action, flow} from "mobx";
 
 class OverlayStore {
   @observable trackMap = {};
@@ -16,12 +16,26 @@ class OverlayStore {
   }
 
   @action.bound
-  AddOverlayTracks() {
-    let overlayTags = this.rootStore.videoStore.tags.overlay_tags;
+  AddOverlayTracks = flow(function * () {
+    const metadata = this.rootStore.videoStore.metadata;
+    if(!metadata.video_tags || !metadata.video_tags.overlay_tags) {
+      return;
+    }
 
-    if(!overlayTags) { return; }
+    let overlayTags = {};
+    for(let i = 0; i < Object.keys(metadata.video_tags.overlay_tags).length; i++) {
+      const {overlay_tags} = yield this.rootStore.client.LinkData({
+        versionHash: this.rootStore.videoStore.versionHash,
+        linkPath: `video_tags/overlay_tags/${i}`,
+        format: "json"
+      });
 
-    this.overlayTrack = overlayTags.frame_level_tags;
+      overlayTags = {...overlayTags, ...overlay_tags.frame_level_tags};
+    }
+
+    if(!overlayTags || Object.keys(overlayTags).length === 0) { return; }
+
+    this.overlayTrack = overlayTags;
     this.overlayEnabled = true;
 
     Object.keys(Object.values(this.overlayTrack)[0]).forEach(trackKey => {
@@ -34,7 +48,7 @@ class OverlayStore {
         this.trackMap[trackKey] = metadataTrack.trackId;
       }
     });
-  }
+  });
 
   @action.bound
   ToggleOverlay(enabled) {

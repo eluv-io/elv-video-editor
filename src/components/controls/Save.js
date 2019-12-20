@@ -1,6 +1,6 @@
 import React from "react";
 import {observer, inject} from "mobx-react";
-import {IconButton} from "elv-components-js";
+import {IconButton, ToolTip} from "elv-components-js";
 import SaveIcon from "../../static/icons/Save.svg";
 import LoadingElement from "elv-components-js/src/components/LoadingElement";
 
@@ -10,11 +10,13 @@ class Save extends React.Component {
   render() {
     return (
       <LoadingElement loading={this.props.edit.saving} loadingClassname="header-icon save-icon-loading">
-        <IconButton
-          onClick={this.props.edit.Save}
-          icon={SaveIcon}
-          className={`header-icon save-icon ${this.props.edit.saveFailed ? "save-failed" : ""}`}
-        />
+        <ToolTip content={<span>Save</span>}>
+          <IconButton
+            onClick={this.props.edit.Save}
+            icon={SaveIcon}
+            className={`header-icon save-icon ${this.props.edit.saveFailed ? "save-failed" : ""}`}
+          />
+        </ToolTip>
       </LoadingElement>
     );
   }

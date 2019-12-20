@@ -32,7 +32,7 @@ class EditStore {
           libraryId,
           objectId,
           versionHash: originalVersionHash,
-          linkPath: "asset_metadata/tags"
+          linkPath: "video_tags/metadata_tags"
         });
 
         metadata = metadata.metadata_tags || {};
@@ -93,7 +93,7 @@ class EditStore {
 
       const offering = this.rootStore.videoStore.metadata.offerings.default;
 
-      const metadataChanged = Object.keys(updatedMetadata).length > 0 && keysToDelete.length > 0;
+      const metadataChanged = Object.keys(updatedMetadata).length > 0 || keysToDelete.length > 0;
       const clipChanged = offering.start_time_rat !== startTimeRat || offering.end_time_rat !== endTimeRat;
 
       // No difference between current tags and saved tags, or clip timing
@@ -134,7 +134,7 @@ class EditStore {
           objectId,
           writeToken: write_token,
           links: [{
-            path: "asset_metadata/tags",
+            path: "video_tags/metadata_tags",
             target: "MetadataTags.json",
             type: "file"
           }]
@@ -177,7 +177,143 @@ class EditStore {
     }
 
     this.saving = false;
-  })
+  });
+
+  @action.bound
+  UploadMetadataTags = flow(function * ({metadataFile, overlayFiles}) {
+    if(this.rootStore.videoStore.loading) {
+      return;
+    }
+
+    const ReadFile = async file => await new Response(file).json();
+
+    let metadataTags, overlayTags;
+
+    // Read files and verify contents
+
+    if(metadataFile) {
+      metadataTags = yield ReadFile(metadataFile);
+
+      if(!metadataTags.metadata_tags) {
+        throw Error(`No metadata tags present in ${metadataFile.name}`);
+      }
+    }
+
+    if(overlayFiles.length > 0) {
+      overlayTags = yield Promise.all(
+        Array.from(overlayFiles).map(async file => {
+          const tags = await ReadFile(file);
+
+          if(!tags.overlay_tags) {
+            throw Error(`No overlay tags present in ${file.name}`);
+          }
+
+          const frames = Object.keys(tags.overlay_tags.frame_level_tags).map(frame => parseInt(frame));
+
+          return {
+            tags,
+            startFrame: Math.min(...frames),
+            endFrame: Math.max(...frames)
+          };
+        })
+      );
+    }
+
+    if(!metadataTags && !overlayTags) {
+      return;
+    }
+
+    const client = this.rootStore.client;
+    const libraryId = this.rootStore.menuStore.selectedObject.libraryId;
+    const objectId = this.rootStore.menuStore.selectedObject.objectId;
+
+    const {write_token} = yield client.EditContentObject({
+      libraryId,
+      objectId
+    });
+
+    if(metadataTags) {
+      // Upload and create a link to the metadata tag file
+      const data = (new TextEncoder()).encode(JSON.stringify(metadataTags));
+      yield client.UploadFiles({
+        libraryId,
+        objectId,
+        writeToken: write_token,
+        fileInfo: [{
+          path: "MetadataTags.json",
+          mime_type: "application/json",
+          size: data.length,
+          data: data.buffer
+        }]
+      });
+
+      yield client.CreateLinks({
+        libraryId,
+        objectId,
+        writeToken: write_token,
+        links: [{
+          path: "video_tags/metadata_tags",
+          target: "MetadataTags.json",
+          type: "file"
+        }]
+      });
+    }
+
+    if(overlayTags) {
+      // Sort overlay tags by start frame
+      overlayTags = overlayTags.sort((a, b) => a.startFrame < b.startFrame ? -1 : 1);
+
+      // Clear any existing tags
+      yield client.DeleteMetadata({
+        libraryId,
+        objectId,
+        writeToken: write_token,
+        metadataSubtree: "video_tags/overlay_tags"
+      });
+
+      // Upload and create a link to each overlay tag file
+      for(let i = 0; i < overlayTags.length; i++) {
+        const data = (new TextEncoder()).encode(JSON.stringify(overlayTags[i].tags));
+        const filename = `OverlayTags-${(i + 1).toString().padStart(3, "0")}.json`;
+        yield client.UploadFiles({
+          libraryId,
+          objectId,
+          writeToken: write_token,
+          fileInfo: [{
+            path: filename,
+            mime_type: "application/json",
+            size: data.length,
+            data: data.buffer
+          }]
+        });
+
+        // TODO: Add start/end info to links
+        yield client.CreateLinks({
+          libraryId,
+          objectId,
+          writeToken: write_token,
+          links: [{
+            path: `video_tags/overlay_tags/${i}`,
+            target: filename,
+            type: "file"
+          }]
+        });
+      }
+    }
+
+    const {hash} = yield client.FinalizeContentObject({
+      libraryId,
+      objectId,
+      writeToken: write_token
+    });
+
+    // Reload video
+    this.rootStore.menuStore.SelectVideo({
+      libraryId,
+      objectId,
+      versionHash: hash
+    });
+  });
 }
 
 export default EditStore;

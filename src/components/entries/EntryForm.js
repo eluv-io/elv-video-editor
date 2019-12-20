@@ -15,13 +15,16 @@ class EntryForm extends React.Component {
     const createForm = !entry;
     entry = entry || {};
 
+    const startTime = entry.startTime === undefined ? props.video.currentTime : entry.startTime;
+    const endTime = entry.endTime === undefined ? props.video.currentTime + 1 : entry.endTime;
+
     this.state = {
       createForm,
       entryId: entry.entryId,
       text: entry.text || "",
-      startTime: entry.startTime || props.video.currentTime,
+      startTime,
       startTimeValid: true,
-      endTime: entry.endTime || props.video.currentTime + 1,
+      endTime,
       endTimeValid: true,
       validText: true,
     };

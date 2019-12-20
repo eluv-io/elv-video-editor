@@ -172,6 +172,8 @@ button {
 
 .-elv-modal {
   &.-elv-modal {
+    background: $color-background-modal;
+
     .-elv-modal-content {
       background-color: $color-background;
       border: 1px solid $color-border;
@@ -204,6 +206,29 @@ button {
           border: 1px solid $color-border;
           color: $color-text;
         }
+      }
+    }
+  }
+}
+
+.labelled-field {
+  align-items: baseline;
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  padding: $elv-spacing-m 0 0;
+}
+
+.-elv-browse-widget {
+  .-elv-browse-widget-files {
+    background: $color-background-active;
+
+    &.-elv-browse-widget-files {
+      border: 1px solid $color-border-active;
+    }
+
+    table {
+      tr {
+        border-top: 1px solid $color-border;
       }
     }
   }

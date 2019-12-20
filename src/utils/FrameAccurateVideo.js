@@ -251,7 +251,7 @@ class FrameAccurateVideo {
     this.video.onplay = () => this.AddListener();
     this.video.onpause = () => {
       // On pause, seek to the nearest frame
-      this.Seek(this.Frame().add(this.frameRate.valueOf() > 30 ? 2 : 1));
+      this.Seek(this.Frame() + (this.frameRate.valueOf() > 30 ? 2 : 1));
       this.RemoveListener();
     };
 

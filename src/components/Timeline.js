@@ -156,6 +156,8 @@ class Timeline extends React.Component {
   }
 
   Track(track) {
+    if(!track) { return; }
+
     const toggleable = track.trackType === "vtt";
     const tooltip = toggleable ? `${track.active ? "Disable" : "Enable"} ${track.label}` : track.label;
 

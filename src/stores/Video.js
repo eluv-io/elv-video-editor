@@ -199,34 +199,14 @@ class VideoStore {
       }
 
       // Tags
-
-      if(this.metadata.asset_metadata && this.metadata.asset_metadata.tags) {
+      if(this.metadata.video_tags && this.metadata.video_tags.metadata_tags) {
         this.tags = yield this.rootStore.client.LinkData({
           versionHash: this.versionHash,
-          linkPath: "asset_metadata/tags",
+          linkPath: "video_tags/metadata_tags",
           format: "json"
         });
 
         let videoTags = this.tags.video_level_tags || [];
-        if(typeof videoTags === "object") {
-          videoTags = Object.keys(videoTags);
-        }
-
-        this.videoTags = videoTags;
-      }
-
-      if(!this.tags || Object.keys(this.tags).length === 0) {
-        this.tags = {
-          metadata_tags: this.metadata.metadata_tags || {}
-        };
-
-        if(this.metadata.overlay_tags) {
-          this.tags.overlay_tags = {
-            frame_level_tags: this.metadata.overlay_tags
-          };
-        }
-
-        let videoTags = (this.metadata.metadata_tags || {}).video_level_tags || [];
         if(typeof videoTags === "object") {
           videoTags = Object.keys(videoTags);
         }
