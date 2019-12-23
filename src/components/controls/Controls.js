@@ -167,6 +167,7 @@ let Seek = (props) => {
       key="video-progress"
       min={props.video.scaleMin}
       max={props.video.scaleMax}
+      marks={props.video.sliderMarks}
       value={props.video.seek}
       handleClassName="video-seek-handle"
       showMarks={true}
@@ -183,6 +184,7 @@ let Scale = (props) => {
       key="video-scale"
       min={0}
       max={props.video.scale}
+      marks={props.video.sliderMarks}
       handles={[
         {
           position: props.video.scaleMin,

@@ -49,6 +49,8 @@ class VideoStore {
 
   @observable segmentEnd = undefined;
 
+  @observable sliderMarks = 10;
+
   @computed get scaleMinTime() { return this.ProgressToTime(this.scaleMin); }
   @computed get scaleMaxTime() { return this.ProgressToTime(this.scaleMax); }
 
@@ -607,6 +609,13 @@ class VideoStore {
     return URI(this.baseVideoFrameUrl)
       .addSearch("frame", frame)
       .toString();
+  }
+
+  @action.bound
+  SetMarks() {
+    const width = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+
+    this.sliderMarks = Math.floor(width / 175);
   }
 }
 

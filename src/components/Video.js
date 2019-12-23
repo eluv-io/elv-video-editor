@@ -27,13 +27,6 @@ class Video extends React.Component {
     this.initialHeight = 0.4 * document.body.getBoundingClientRect().height;
   }
 
-  componentWillUnmount() {
-    if(this.resizeObserver) {
-      this.resizeObserver.disconnect();
-      this.resizeObserver = undefined;
-    }
-  }
-
   InitializeVideo(video) {
     if(!video) { return; }
 

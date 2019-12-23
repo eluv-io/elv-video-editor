@@ -43,6 +43,8 @@ class Timeline extends React.Component {
   WatchResize(element) {
     if(element) {
       this.resizeObserver = new ResizeObserver((entries) => {
+        this.props.video.SetMarks();
+
         const container = entries[0];
         const trackLanes = entries[0].target.getElementsByClassName("track-lane-content");
 
