@@ -164,6 +164,10 @@ class VideoStore {
       this.source = source;
       this.poster = poster;
       this.metadata = videoObject.metadata;
+      this.baseFileUrl = yield this.rootStore.client.FileUrl({
+        versionHash: this.versionHash,
+        filePath: "/"
+      });
 
       try {
         const offering = this.metadata.offerings.default;

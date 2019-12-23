@@ -81,7 +81,7 @@
     "raw-loader": "^0.5.1",
     "regenerator-runtime": "^0.12.1",
     "sass-lint": "^1.12.1",
-    "sass-lint-auto-fix": "^0.16.2",
+    "sass-lint-auto-fix": "^0.21.0",
     "sass-loader": "^7.1.0",
     "source-map-loader": "^0.2.4",
     "style-loader": "^0.22.1",

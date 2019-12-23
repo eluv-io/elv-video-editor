@@ -180,7 +180,7 @@ class EditStore {
   });
 
   @action.bound
-  UploadMetadataTags = flow(function * ({metadataFile, overlayFiles}) {
+  UploadMetadataTags = flow(function * ({metadataFile, metadataFileRemote, overlayFiles=[], overlayFilesRemote=[]}) {
     if(this.rootStore.videoStore.loading) {
       return;
     }
@@ -219,7 +219,7 @@ class EditStore {
       );
     }
 
-    if(!metadataTags && !overlayTags) {
+    if(!metadataTags && !overlayTags && !metadataFileRemote && overlayFilesRemote.length === 0) {
       return;
     }
 
@@ -232,6 +232,7 @@ class EditStore {
       objectId
     });
 
+    // Local metadata tag files
     if(metadataTags) {
       // Upload and create a link to the metadata tag file
       const data = (new TextEncoder()).encode(JSON.stringify(metadataTags));
@@ -259,6 +260,21 @@ class EditStore {
       });
     }
 
+    // Remote metadata tag files
+    if(metadataFileRemote) {
+      yield client.CreateLinks({
+        libraryId,
+        objectId,
+        writeToken: write_token,
+        links: [{
+          path: "video_tags/metadata_tags",
+          target: metadataFileRemote,
+          type: "file"
+        }]
+      });
+    }
+
+    // Local overlay files
     if(overlayTags) {
       // Sort overlay tags by start frame
       overlayTags = overlayTags.sort((a, b) => a.startFrame < b.startFrame ? -1 : 1);
@@ -295,6 +311,22 @@ class EditStore {
           links: [{
             path: `video_tags/overlay_tags/${i}`,
             target: filename,
+            type: "file"
+          }]
+        });
+      }
+    }
+
+    // Remote overlay files
+    if(overlayFilesRemote.length > 0) {
+      for(let i = 0; i < overlayFilesRemote.length; i++) {
+        yield client.CreateLinks({
+          libraryId,
+          objectId,
+          writeToken: write_token,
+          links: [{
+            path: `video_tags/overlay_tags/${i}`,
+            target: overlayFilesRemote[i],
             type: "file"
           }]
         });

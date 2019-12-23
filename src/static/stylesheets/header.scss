@@ -85,3 +85,14 @@ header {
     }
   }
 }
+
+.upload-section {
+  margin-bottom: $elv-spacing-l;
+
+  h3 {
+    font-size: $elv-font-m;
+    font-weight: 500;
+    margin: $elv-spacing-l 0 0;
+    text-align: center;
+  }
+}

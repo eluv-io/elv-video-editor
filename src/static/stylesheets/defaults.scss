@@ -239,3 +239,35 @@ button {
     }
   }
 }
+
+.-elv-tab-container {
+  &.secondary {
+    font-size: $elv-font-s;
+    margin: 0;
+
+    .-elv-tab {
+      &.-elv-tab {
+        border: 1px solid $elv-color-darkergray;
+        border-right: 0;
+
+        &.selected {
+          background: $elv-color-darkgray;
+          border: 1px solid $elv-color-darkergray;
+
+          &:last-child {
+            border-right: 1px solid $elv-color-darkergray;
+          }
+        }
+
+        &:hover {
+          background: $elv-color-darkergray;
+          color: $elv-color-text-white;
+        }
+
+        &:last-child {
+          border-right: 1px solid $elv-color-darkergray;
+        }
+      }
+    }
+  }
+}
