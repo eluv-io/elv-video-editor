@@ -41,11 +41,16 @@ class VideoControls extends React.Component {
           <DropFrame />
         </div>
         <div className="controls center-controls">
-          <FrameControl label="Backward 1 Second" seconds={-1} icon={SecondBackward} />
-          <FrameControl label="Backward 1 Frame" frames={-1} icon={FrameBackward} />
-          <PlayPause />
-          <FrameControl label="Forward 1 Frame" frames={1} icon={FrameForward} />
-          <FrameControl label="Forward 1 Second" seconds={1} icon={SecondForward} />
+          <div className="center-top-controls">
+            <div className="mono video-time">{this.props.video.smpte}</div>
+          </div>
+          <div className="center-bottom-controls">
+            <FrameControl label="Backward 1 Second" seconds={-1} icon={SecondBackward} />
+            <FrameControl label="Backward 1 Frame" frames={-1} icon={FrameBackward} />
+            <PlayPause />
+            <FrameControl label="Forward 1 Frame" frames={1} icon={FrameForward} />
+            <FrameControl label="Forward 1 Second" seconds={1} icon={SecondForward} />
+          </div>
         </div>
         <div className="controls right-controls">
           <PlaybackLevel />
@@ -61,7 +66,6 @@ class VideoControls extends React.Component {
 
     return (
       <div className={`video-controls-container ${this.props.video.fullScreen ? "fullscreen" : ""}`}>
-        <div className="mono video-time">{this.props.video.smpte}</div>
         { this.Controls() }
         { this.Scale() }
         { this.Seek() }

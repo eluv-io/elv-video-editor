@@ -112,7 +112,9 @@
 }
 
 .video-controls {
-  height: 45px;
+  align-items: end;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(33.33%, 1fr));
   padding-bottom: $elv-spacing-xs;
   position: relative;
 
@@ -147,6 +149,7 @@
   }
 
   select {
+    @include elv-ellipsis;
     font-size: $elv-font-m;
 
     &:active,
@@ -163,22 +166,23 @@
   .right-controls {
     align-items: center;
     display: flex;
-    height: 100%;
-    position: absolute;
-  }
-
-  .left-controls {
-    left: $elv-spacing-s;
+    height: auto;
+    padding: 0 $elv-spacing-s;
   }
 
   .right-controls {
-    right: $elv-spacing-s;
+    justify-content: flex-end;
   }
 
-  .center-controls {
+  .center-top-controls {
+    padding-top: $elv-spacing-xxs;
+  }
+
+  .center-bottom-controls {
     align-items: center;
     display: flex;
     justify-content: center;
+    padding-bottom: $elv-spacing-xxs;
   }
 
   .video-volume-icon {
