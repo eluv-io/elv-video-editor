@@ -3,6 +3,7 @@ import "./static/stylesheets/app.scss";
 import React from "react";
 import { render } from "react-dom";
 import {inject, observer, Provider} from "mobx-react";
+import UrlJoin from "url-join";
 
 import * as Stores from "./stores";
 import Header from "./components/Header";
@@ -17,6 +18,12 @@ import SidePanel from "./components/SidePanel";
 @observer
 class App extends React.Component {
   render() {
+    if(window.self === window.top) {
+      // Not in Core frame - Redirect
+      window.location = UrlJoin(EluvioConfiguration.coreUrl, "/", window.location.hash);
+      return;
+    }
+
     if (!this.props.root.client) { return null; }
 
     return (

@@ -7,7 +7,7 @@
 node_modules/*
 !node_modules/vtt.js
 
-configuration.json
+/configuration.js
 
 deploy.sh
 

@@ -6,7 +6,6 @@ import MenuStore from "./Menu";
 import OverlayStore from "./Overlay";
 import TrackStore from "./Tracks";
 import VideoStore from "./Video";
-import URI from "urijs";
 
 import {FrameClient} from "elv-client-js/src/FrameClient";
 
@@ -43,59 +42,18 @@ class RootStore {
 
   @action
   async InitializeClient() {
-    let client;
+    // Contained in IFrame
+    const client = new FrameClient({
+      target: window.parent,
+      timeout: 30
+    });
 
-    // Initialize ElvClient or FrameClient
-    if(window.self === window.top) {
-      const ElvClient = (await import(
-        /* webpackChunkName: "elv-client-js" */
-        /* webpackMode: "lazy" */
-        "elv-client-js"
-      )).ElvClient;
-
-      // Pull private key from URL args
-      let privateKey;
-      let queryParams = window.location.search.split("?")[1];
-      if(queryParams) {
-        queryParams = queryParams.split("&");
-
-        queryParams.forEach(param => {
-          const key = param.split("=")[0];
-          if(key === "privateKey") {
-            privateKey = param.split("=")[1];
-          }
-        });
-      }
-
-      if(!privateKey) { throw Error("No private key specified"); }
-
-      client = await ElvClient.FromConfigurationUrl({
-        configUrl: EluvioConfiguration["config-url"]
-      });
-
-      const wallet = client.GenerateWallet();
-      const signer = wallet.AddAccount({privateKey});
-
-      await client.SetSigner({signer});
-    } else {
-      // Contained in IFrame
-      client = new FrameClient({
-        target: window.parent,
-        timeout: 30
-      });
-
-      client.SendMessage({options: {operation: "HideHeader"}, noResponse: true});
-    }
+    client.SendMessage({options: {operation: "HideHeader"}, noResponse: true});
 
     runInAction(() => this.client = client);
-
-    let appPath = "";
-    if(window.self !== window.top) {
-      appPath = URI(await client.SendMessage({options: {operation: "GetFramePath"}}))
-        .path()
-        .replace(/^\//, "")
-        .split("/");
-    }
+    const appPath = window.location.hash
+      .replace(/^\/*#?\/*/, "")
+      .split("/");
 
     if(appPath.length >= 1 && appPath[0].startsWith("hq__")){
       // Version Hash

@@ -70,7 +70,7 @@ class MenuStore {
       this.rootStore.client.SendMessage({
         options: {
           operation: "SetFramePath",
-          path: versionHash ? versionHash : UrlJoin(libraryId, objectId)
+          path: UrlJoin("#", versionHash ? versionHash : UrlJoin(libraryId, objectId))
         },
         noResponse: true
       });
