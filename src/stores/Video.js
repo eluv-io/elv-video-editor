@@ -131,7 +131,7 @@ class VideoStore {
       });
 
       // Specify playout for full, untrimmed content
-      const source = URI(playoutOptions["hls"].playoutUrl)
+      const source = URI(playoutOptions["hls"].playoutMethods.clear.playoutUrl)
         .addSearch("ignore_trimming", true)
         .toString();
 
@@ -174,8 +174,8 @@ class VideoStore {
       try {
         const offering = this.metadata.offerings.default;
 
-        if(offering.start_time_rat) {
-          this.clipStartTime = FrameAccurateVideo.ParseRat(offering.start_time_rat);
+        if(offering.entry_point_rat) {
+          this.clipStartTime = FrameAccurateVideo.ParseRat(offering.entry_point_rat);
         }
 
         const offeringOptions = offering.media_struct.streams || {};
@@ -192,10 +192,10 @@ class VideoStore {
 
         this.frameRateKey = FrameAccurateVideo.FractionToRateKey(rate);
 
-        if(offering.end_time_rat) {
+        if(offering.exit_point_rat) {
           // End time is end of specified frame
           const frameRate = FrameRates[this.frameRateKey].valueOf();
-          this.clipEndTime = Number((FrameAccurateVideo.ParseRat(offering.end_time_rat) - (1 / frameRate)).toFixed(3));
+          this.clipEndTime = Number((FrameAccurateVideo.ParseRat(offering.exit_point_rat) - (1 / frameRate)).toFixed(3));
         } else {
           this.clipEndTime = duration;
         }

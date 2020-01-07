@@ -94,7 +94,7 @@ class EditStore {
       const offering = this.rootStore.videoStore.metadata.offerings.default;
 
       const metadataChanged = Object.keys(updatedMetadata).length > 0 || keysToDelete.length > 0;
-      const clipChanged = offering.start_time_rat !== startTimeRat || offering.end_time_rat !== endTimeRat;
+      const clipChanged = offering.entry_point_rat !== startTimeRat || offering.exit_point_rat !== endTimeRat;
 
       // No difference between current tags and saved tags, or clip timing
       if(!metadataChanged && !clipChanged) {
@@ -146,7 +146,7 @@ class EditStore {
           libraryId,
           objectId,
           writeToken: write_token,
-          metadataSubtree: "offerings/default/start_time_rat",
+          metadataSubtree: "offerings/default/entry_point_rat",
           metadata: startTimeRat
         });
 
@@ -154,7 +154,7 @@ class EditStore {
           libraryId,
           objectId,
           writeToken: write_token,
-          metadataSubtree: "offerings/default/end_time_rat",
+          metadataSubtree: "offerings/default/exit_point_rat",
           metadata: endTimeRat
         });
       }
