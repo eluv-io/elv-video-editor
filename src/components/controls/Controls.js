@@ -61,11 +61,12 @@ let PlaybackRate = (props) => {
 
 let FrameRate = (props) => {
   return (
-    <ToolTip content={<span>Frame Rate</span>}>
+    <ToolTip content={<span>Frame Rate: {props.video.frameRateRat}</span>}>
       <select
+        disabled={props.video.frameRateSpecified}
         aria-label="Frame Rate"
         value={props.video.frameRateKey}
-        onChange={event => props.video.SetFrameRate(event.target.value)}
+        onChange={event => props.video.SetFrameRate({rateKey: event.target.value})}
       >
         {Object.keys(FrameRates).map(frameRateKey =>
           <option key={`frame-rate-${frameRateKey}`} value={frameRateKey}>{frameRateKey}</option>

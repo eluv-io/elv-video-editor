@@ -159,6 +159,7 @@
 
 .entry-form {
   flex-grow: 1;
+  overflow-y: auto;
   padding: $elv-spacing-s;
   position: relative;
 

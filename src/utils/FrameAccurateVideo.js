@@ -1,17 +1,6 @@
 import Fraction from "fraction.js";
 
 export const FrameRateNumerator = {
-  NTSC: 1001,
-  NTSCFilm: 1001,
-  NTSCHD: 1001,
-  PAL: 1,
-  PALHD: 1,
-  Film: 1,
-  Web: 1,
-  High: 1
-};
-
-export const FrameRateDenominator = {
   NTSC: 30000,
   NTSCFilm: 24000,
   NTSCHD: 60000,
@@ -22,10 +11,21 @@ export const FrameRateDenominator = {
   High: 60
 };
 
+export const FrameRateDenominator = {
+  NTSC: 1001,
+  NTSCFilm: 1001,
+  NTSCHD: 1001,
+  PAL: 1,
+  PALHD: 1,
+  Film: 1,
+  Web: 1,
+  High: 1
+};
+
 export const FrameRates = {
-  NTSC: Fraction(FrameRateDenominator["NTSC"]).div(FrameRateNumerator["NTSC"]),
-  NTSCFilm: Fraction(FrameRateDenominator["NTSCFilm"]).div(FrameRateNumerator["NTSC"]),
-  NTSCHD: Fraction(FrameRateDenominator["NTSCHD"]).div(FrameRateNumerator["NTSCHD"]),
+  NTSC: Fraction(FrameRateNumerator["NTSC"]).div(FrameRateDenominator["NTSC"]),
+  NTSCFilm: Fraction(FrameRateNumerator["NTSCFilm"]).div(FrameRateDenominator["NTSC"]),
+  NTSCHD: Fraction(FrameRateNumerator["NTSCHD"]).div(FrameRateDenominator["NTSCHD"]),
   PAL: Fraction(25),
   PALHD: Fraction(50),
   Film: Fraction(24),
@@ -34,11 +34,14 @@ export const FrameRates = {
 };
 
 class FrameAccurateVideo {
-  constructor({video, frameRate, dropFrame=false, callback}) {
+  constructor({video, frameRate, frameRateRat, dropFrame=false, callback}) {
     this.video = video;
-    this.frameRate = frameRate || FrameRates.NTSC;
-    this.dropFrame = dropFrame && (frameRate.equals(FrameRates.NTSC) || frameRate.equals(FrameRates.NTSC_HD));
+    this.SetFrameRate({rate: frameRate, rateRat: frameRateRat});
     this.callback = callback;
+
+    // Only set drop frame if appropriate based on frame rate
+    const frameRateKey = FrameAccurateVideo.FractionToRateKey(`${this.frameRateNumerator}/${this.frameRateDenominator}`);
+    this.dropFrame = dropFrame && ["NTSC", "NTSCFilm", "NTSCHD"].includes(frameRateKey);
 
     if(callback) {
       this.RegisterCallback();
@@ -96,9 +99,31 @@ class FrameAccurateVideo {
     }
   }
 
+  SetFrameRate({rate, rateRat}) {
+    let num, denom;
+    if(rateRat) {
+      if(rateRat.includes("/")) {
+        num = parseInt(rateRat.split("/")[0]);
+        denom = parseInt(rateRat.split("/")[1]);
+      } else {
+        num = parseInt(rateRat);
+        denom = 1;
+      }
+
+      rate = Fraction(num).div(denom);
+    } else {
+      const rateKey = FrameAccurateVideo.FractionToRateKey(this.frameRate);
+      num = FrameRateNumerator[rateKey];
+      denom = FrameRateDenominator[rateKey];
+    }
+
+    this.frameRate = Fraction(rate);
+    this.frameRateNumerator = num;
+    this.frameRateDenominator = denom;
+  }
+
   FrameToRat(frame) {
-    const rateKey = FrameAccurateVideo.FractionToRateKey(this.frameRate);
-    return `${frame * FrameRateNumerator[rateKey]}/${FrameRateDenominator[rateKey]}`;
+    return `${frame * this.frameRateDenominator}/${this.frameRateNumerator}`;
   }
 
   ProgressToTime(progress) {

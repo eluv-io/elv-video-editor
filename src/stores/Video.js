@@ -1,5 +1,5 @@
 import {observable, action, flow, computed} from "mobx";
-import FrameAccurateVideo, {FrameRates} from "../utils/FrameAccurateVideo";
+import FrameAccurateVideo, {FrameRateDenominator, FrameRateNumerator, FrameRates} from "../utils/FrameAccurateVideo";
 import UrlJoin from "url-join";
 import URI from "urijs";
 import HLS from "hls.js";
@@ -30,6 +30,8 @@ class VideoStore {
   @observable dropFrame = false;
   @observable frameRateKey = "NTSC";
   @observable frameRate = FrameRates.NTSC;
+  @observable frameRateRat = `${FrameRateNumerator["NTSC"]}/${FrameRateDenominator["NTSC"]}`;
+  @observable frameRateSpecified = false;
 
   @observable currentTime = 0;
   @observable frame = 0;
@@ -95,6 +97,8 @@ class VideoStore {
     this.dropFrame = false;
     this.frameRateKey = "NTSC";
     this.frameRate = FrameRates.NTSC;
+    this.frameRateRat = `${FrameRateNumerator["NTSC"]}/${FrameRateDenominator["NTSC"]}`;
+    this.frameRateSpecified = false;
 
     this.currentTime = 0;
     this.frame = 0;
@@ -172,11 +176,10 @@ class VideoStore {
       });
 
       try {
-        const offering = this.metadata.offerings.default;
+        this.clipStartTime = 0;
+        this.clipEndTime = duration;
 
-        if(offering.entry_point_rat) {
-          this.clipStartTime = FrameAccurateVideo.ParseRat(offering.entry_point_rat);
-        }
+        const offering = this.metadata.offerings.default;
 
         const offeringOptions = offering.media_struct.streams || {};
 
@@ -190,14 +193,18 @@ class VideoStore {
           rate = offeringOptions[videoKey].rate;
         }
 
-        this.frameRateKey = FrameAccurateVideo.FractionToRateKey(rate);
+        this.frameRateSpecified = true;
+
+        this.SetFrameRate({rateRat: rate});
+
+        if(offering.entry_point_rat) {
+          this.clipStartTime = FrameAccurateVideo.ParseRat(offering.entry_point_rat);
+        }
 
         if(offering.exit_point_rat) {
           // End time is end of specified frame
           const frameRate = FrameRates[this.frameRateKey].valueOf();
           this.clipEndTime = Number((FrameAccurateVideo.ParseRat(offering.exit_point_rat) - (1 / frameRate)).toFixed(3));
-        } else {
-          this.clipEndTime = duration;
         }
       } catch(error) {
         // eslint-disable-next-line no-console
@@ -243,13 +250,12 @@ class VideoStore {
     const videoHandler = new FrameAccurateVideo({
       video,
       frameRate: this.frameRate,
+      frameRateRat: this.frameRateRat,
       dropFrame: this.dropFrame,
       callback: this.Update
     });
 
     this.videoHandler = videoHandler;
-
-    this.SetFrameRate(this.frameRateKey);
 
     video.load();
 
@@ -411,14 +417,23 @@ class VideoStore {
   }
 
   @action.bound
-  SetFrameRate(frameRateKey) {
-    if(!frameRateKey) { return; }
+  SetFrameRate({rateRat, rateKey}) {
+    if(!rateRat && !rateKey) { return; }
 
-    this.frameRateKey = frameRateKey;
-    this.frameRate = FrameRates[frameRateKey];
-    this.videoHandler.frameRate = this.frameRate;
+    if(rateRat) {
+      this.frameRate = FrameAccurateVideo.ParseRat(rateRat);
+      this.frameRateKey = FrameAccurateVideo.FractionToRateKey(rateRat);
+      this.frameRateRat = rateRat;
+    } else {
+      this.frameRateKey = rateKey;
+      this.frameRate = FrameRates[rateKey];
+      this.frameRateRat = `${FrameRateNumerator[rateKey]}/${FrameRateDenominator[rateKey]}`;
+    }
 
-    this.videoHandler.Update();
+    if(this.videoHandler) {
+      this.videoHandler.SetFrameRate({rateRat: this.frameRateRat});
+      this.videoHandler.Update();
+    }
   }
 
   @action.bound

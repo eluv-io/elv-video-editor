@@ -154,7 +154,9 @@
 
     &:active,
     &:hover {
-      color: $color-accent;
+      &:not(:disabled) {
+        color: $color-accent;
+      }
     }
   }
 
