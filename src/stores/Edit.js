@@ -89,7 +89,7 @@ class EditStore {
       const startFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(startTime);
       const startTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(startFrame);
       const endFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(endTime);
-      const endTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(endFrame + 1);
+      const endTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(endFrame);
 
       const offering = this.rootStore.videoStore.metadata.offerings.default;
 

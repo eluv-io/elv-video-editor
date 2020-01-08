@@ -422,11 +422,10 @@ class Tracks {
 
   @action.bound
   InitializeTracks = flow(function * () {
+    this.AddClipTrack();
     yield this.AddSubtitleTracks();
     yield this.AddMetadataTracks();
     yield this.rootStore.overlayStore.AddOverlayTracks();
-
-    this.AddClipTrack();
   });
 
   /* User Actions */

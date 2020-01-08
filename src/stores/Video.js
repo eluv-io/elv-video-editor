@@ -177,19 +177,16 @@ class VideoStore {
 
       try {
         this.clipStartTime = 0;
-        this.clipEndTime = duration;
 
         const offering = this.metadata.offerings.default;
 
         const offeringOptions = offering.media_struct.streams || {};
 
-        let rate, duration;
+        let rate;
         if(offeringOptions.video) {
-          duration = FrameAccurateVideo.ParseRat(offeringOptions.video.duration.rat);
           rate = offeringOptions.video.rate;
         } else {
           const videoKey = Object.keys(offeringOptions).find(key => key.startsWith("video"));
-          duration = FrameAccurateVideo.ParseRat(offeringOptions[videoKey].duration.rat);
           rate = offeringOptions[videoKey].rate;
         }
 
@@ -229,8 +226,6 @@ class VideoStore {
     } finally {
       this.loading = false;
     }
-
-    this.rootStore.trackStore.InitializeTracks();
   });
 
   ReloadMetadata = flow(function * () {
@@ -303,10 +298,12 @@ class VideoStore {
       if(this.video.duration > 0 && isFinite(this.video.duration)) {
         videoHandler.Update();
         this.initialized = true;
-      }
 
-      if(!this.clipEndTime) {
-        this.clipEndTime = this.video.duration;
+        if(!this.clipEndTime) {
+          this.clipEndTime = Number((this.video.duration).toFixed(3));
+        }
+
+        this.rootStore.trackStore.InitializeTracks();
       }
     }));
 
@@ -523,7 +520,7 @@ class VideoStore {
     }
 
     if(seconds) {
-      frames += this.frameRate.ceil().mul(seconds);
+      frames += Math.ceil(this.frameRate) * seconds;
     }
 
     // Adjust scale, if necessary
