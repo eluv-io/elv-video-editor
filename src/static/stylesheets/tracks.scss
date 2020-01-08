@@ -89,6 +89,12 @@ $preview-track-height: 5rem;
   }
 }
 
+.video-seek {
+  .-elv-slider {
+    background: $color-accent-seek-inactive;
+  }
+}
+
 .video-scale-lane {
   border: 0;
   margin-top: 1px;

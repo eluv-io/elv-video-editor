@@ -46,7 +46,7 @@ class EntryForm extends React.Component {
   }
 
   HandleTimeChange(event) {
-    const Valid = time => time >= 0 && time <= this.props.video.duration;
+    const Valid = time => time >= 0 && time <= this.props.video.duration + 1;
 
     this.setState({
       [event.target.name]: parseFloat(event.target.value)
