@@ -99,7 +99,10 @@ class EntryForm extends React.Component {
       <IconButton
         icon={ClockIcon}
         label="Set to current video time"
-        onClick={() => this.HandleTimeChange({target: {name, value: this.props.video.currentTime}})}
+        onClick={() => {
+          const time = this.props.video.FrameToTime(this.props.video.frame);
+          this.HandleTimeChange({target: {name, value: time}});
+        }}
       />
     );
   }

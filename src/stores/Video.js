@@ -359,6 +359,14 @@ class VideoStore {
   }
 
   @action.bound
+  FrameToTime(frame) {
+    if(!this.videoHandler) { return 0; }
+
+    // Pad number to ensure its rounded up
+    return Number((this.videoHandler.FrameToTime(frame) + 0.00051).toFixed(3));
+  }
+
+  @action.bound
   Update({frame, smpte, progress}) {
     if(!this.video) { return; }
 

@@ -126,6 +126,10 @@ class FrameAccurateVideo {
     return `${frame * this.frameRateDenominator}/${this.frameRateNumerator}`;
   }
 
+  FrameToTime(frame) {
+    return Fraction(frame).div(this.frameRate).valueOf();
+  }
+
   ProgressToTime(progress) {
     const duration = this.video.duration || 0;
 
