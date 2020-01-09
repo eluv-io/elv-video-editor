@@ -112,7 +112,7 @@ class Menu extends React.Component {
               });
             }}
           />
-          <h4>{library ? library.metadata.name : ""}</h4>
+          <h4>{library ? library.name : ""}</h4>
           <div className="menu-page-controls">
             <IconButton
               hidden={this.state.page === 1}
@@ -179,20 +179,22 @@ class Menu extends React.Component {
               <div className="menu-empty">No Content Available</div> :
               <ul>
                 {
-                  (this.props.menu.objects[libraryId] || []).map(object => {
-                    const onClick = () => this.SelectObject(libraryId, object.objectId);
+                  (this.props.menu.objects[libraryId] || [])
+                    .sort((a, b) => a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1)
+                    .map(object => {
+                      const onClick = () => this.SelectObject(libraryId, object.objectId);
 
-                    return (
-                      <li
-                        tabIndex={0}
-                        onClick={onClick}
-                        onKeyPress={onEnterPressed(onClick)}
-                        key={`content-object-${object.objectId}`}
-                      >
-                        {object.metadata.name}
-                      </li>
-                    );
-                  })
+                      return (
+                        <li
+                          tabIndex={0}
+                          onClick={onClick}
+                          onKeyPress={onEnterPressed(onClick)}
+                          key={`content-object-${object.objectId}`}
+                        >
+                          { object.name }
+                        </li>
+                      );
+                    })
                 }
               </ul>
           }
@@ -203,7 +205,7 @@ class Menu extends React.Component {
 
   Libraries() {
     const libraries = Object.values(this.props.menu.libraries)
-      .sort((a, b) => a.metadata.name.toLowerCase() > b.metadata.name.toLowerCase() ? 1 : -1);
+      .sort((a, b) => a.name.toLowerCase() > b.name.toLowerCase() ? 1 : -1);
 
     return (
       <AsyncComponent
@@ -226,7 +228,7 @@ class Menu extends React.Component {
                         onClick={onClick}
                         key={`library-${library.libraryId}`}
                       >
-                        {library.metadata.name}
+                        {library.name}
                       </li>
                     );
                   })

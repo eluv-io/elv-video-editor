@@ -16,33 +16,6 @@ class MenuStore {
     this.rootStore = rootStore;
   }
 
-  async FilterVideos(contents) {
-    const videoTypes = [
-      "ABR Master"
-    ];
-
-    const isVideoType = {};
-
-    // Collect unique type hashes
-    contents.forEach(object => isVideoType[object.versions[0].type] = false);
-
-    // Determine whether or not each type is a video type
-    await Promise.all(
-      Object.keys(isVideoType).map(async typeHash => {
-        if(!typeHash) { return; }
-
-        const typeName = await this.rootStore.client.ContentObjectMetadata({
-          versionHash: typeHash,
-          metadataSubtree: "name"
-        });
-
-        isVideoType[typeHash] = videoTypes.includes(typeName);
-      })
-    );
-
-    return contents.filter(object => isVideoType[object.versions[0].type]);
-  }
-
   @action.bound
   ToggleMenu(open) {
     this.showMenu = open;
@@ -88,7 +61,7 @@ class MenuStore {
       libraryId,
       objectId: object.id,
       versionHash,
-      name: metadata.name || versionHash,
+      name: metadata.public && metadata.public.name || metadata.name || versionHash,
       metadata
     };
 
@@ -109,11 +82,10 @@ class MenuStore {
             objectId: libraryId.replace("ilib", "iq__")
           });
 
-          metadata.name = metadata.name || libraryId;
-
           this.libraries[libraryId] = {
             libraryId,
-            metadata,
+            name: metadata.public && metadata.public.name || metadata.name || libraryId,
+            metadata
           };
         } catch(error) {
           return undefined;
@@ -129,12 +101,13 @@ class MenuStore {
       objectId: libraryId.replace("ilib", "iq__")
     });
 
-    metadata.name = metadata.name || libraryId;
-
     this.libraries[libraryId] = {
       libraryId,
+      name: metadata.public && metadata.public.name || metadata.name || libraryId,
       metadata,
     };
+
+    const videoFilter = {key: "/offerings/default/ready", type: "cnt", filter: true};
 
     let { contents, paging } = yield this.rootStore.client.ContentObjects({
       libraryId,
@@ -146,16 +119,13 @@ class MenuStore {
           "player_background",
           "public"
         ],
-        filter: filter ? {key: "name", type: "cnt", filter} : undefined,
+        filter: filter ? [videoFilter, {key: "/public/name", type: "cnt", filter}] : videoFilter,
         start: (page-1) * perPage,
         limit: perPage,
-        sort: "name",
+        sort: "public/name",
         cacheId
       }
     });
-
-    // Filter non-video objects
-    contents = yield this.FilterVideos(contents);
 
     this.objects[libraryId] = (yield Promise.all(
       contents.map(async object => {
@@ -164,6 +134,7 @@ class MenuStore {
         return {
           objectId: latestVersion.id,
           versionHash: latestVersion.hash,
+          name: latestVersion.meta.public && latestVersion.meta.public.name || latestVersion.meta.name || latestVersion.id,
           metadata: latestVersion.meta
         };
       })
