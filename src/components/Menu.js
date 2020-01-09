@@ -1,9 +1,12 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
-import {AsyncComponent, onEnterPressed} from "elv-components-js";
+import {AsyncComponent, IconButton, onEnterPressed} from "elv-components-js";
 
 import LoadingElement from "elv-components-js/src/components/LoadingElement";
 import {BackButton} from "./Components";
+
+import PageBack from "../static/icons/Backward.svg";
+import PageForward from "../static/icons/Forward.svg";
 
 @inject("menu")
 @inject("video")
@@ -11,6 +14,15 @@ import {BackButton} from "./Components";
 class Menu extends React.Component {
   constructor(props) {
     super(props);
+
+    this.state = {
+      page: 1,
+      perPage: 25,
+      filter: "",
+      filterInput: "",
+      cacheId: "",
+      count: 0
+    };
 
     this.SelectLibrary = this.SelectLibrary.bind(this);
     this.SelectObject = this.SelectObject.bind(this);
@@ -46,7 +58,18 @@ class Menu extends React.Component {
         render={() => (
           <div className="menu-entries">
             <div className="menu-header">
-              <BackButton onClick={this.props.menu.ClearObjectId} />
+              <BackButton
+                onClick={() => {
+                  this.props.menu.ClearObjectId();
+                  this.setState({
+                    page: 1,
+                    filter: "",
+                    filterInput: "",
+                    cacheId: "",
+                    count: 0
+                  });
+                }}
+              />
               <h4>{object.name}</h4>
             </div>
 
@@ -75,15 +98,82 @@ class Menu extends React.Component {
     const library = this.props.menu.libraries[libraryId];
 
     return (
-      <AsyncComponent
-        key="objects-container"
-        Load={async () => await this.props.menu.ListObjects(libraryId)}
-      >
-        <div className="menu-entries">
-          <div className="menu-header">
-            <BackButton onClick={this.props.menu.ClearLibraryId} />
-            <h4>{library ? library.metadata.name : ""}</h4>
+      <div className="menu-entries">
+        <div className="menu-header">
+          <BackButton
+            onClick={() => {
+              this.props.menu.ClearLibraryId();
+              this.setState({
+                page: 1,
+                filter: "",
+                filterInput: "",
+                count: 0,
+                cacheId: ""
+              });
+            }}
+          />
+          <h4>{library ? library.metadata.name : ""}</h4>
+          <div className="menu-page-controls">
+            <IconButton
+              hidden={this.state.page === 1}
+              icon={PageBack}
+              title="Previous Page"
+              onClick={() => this.setState({page: this.state.page - 1})}
+            />
+            <span
+              title="Current Page"
+              hidden={this.state.count === 0}
+              className="current-page"
+            >
+              {this.state.page} / {Math.ceil(this.state.count / this.state.perPage)}
+            </span>
+            <IconButton
+              hidden={this.state.perPage * this.state.page > this.state.count}
+              icon={PageForward}
+              title="Next Page"
+              onClick={() => this.setState({page: this.state.page + 1})}
+            />
           </div>
+        </div>
+
+        <div className="menu-filter">
+          <input
+            placeholder="Filter..."
+            value={this.state.filterInput}
+            onChange={event => {
+              this.setState({
+                filterInput: event.target.value
+              });
+
+              clearTimeout(this.filterTimeout);
+
+              this.filterTimeout = setTimeout(() => {
+                this.setState({
+                  page: 1,
+                  filter: this.state.filterInput,
+                  cacheId: "",
+                  count: 0
+                });
+              }, 500);
+            }}
+          />
+        </div>
+
+        <AsyncComponent
+          key={`objects-container-${this.state.filter}-${this.state.page}`}
+          Load={async () => {
+            const paging = await this.props.menu.ListObjects({
+              libraryId,
+              page: this.state.page,
+              perPage: this.state.perPage,
+              filter: this.state.filter,
+              cacheId: this.state.cacheId,
+              count: 0
+            });
+
+            this.setState({count: paging.items, cacheId: paging.cache_id});
+          }}
+        >
           {
             (this.props.menu.objects[libraryId] || []).length === 0 ?
               <div className="menu-empty">No Content Available</div> :
@@ -106,8 +196,8 @@ class Menu extends React.Component {
                 }
               </ul>
           }
-        </div>
-      </AsyncComponent>
+        </AsyncComponent>
+      </div>
     );
   }
 

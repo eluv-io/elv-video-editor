@@ -109,15 +109,20 @@ button {
   }
 }
 
-.async-component-loading,
-.async-component-error {
+.-elv-async-component,
+.-elv-async-component-loading,
+.-elv-async-component-error {
   align-items: center;
   display: flex;
-  height: 50%;
   justify-content: center;
   overflow-wrap: anywhere;
+  overflow-y: hidden;
   padding: 0 $elv-spacing-xs;
   width: 100%;
+
+  &.-elv-async-component-loading {
+    height: 50%;
+  }
 }
 
 .async-component-error {

@@ -123,7 +123,7 @@ class MenuStore {
   });
 
   @action.bound
-  ListObjects = flow(function * (libraryId) {
+  ListObjects = flow(function * ({libraryId, page=1, perPage=25, filter="", cacheId=""}) {
     const metadata = yield this.rootStore.client.ContentObjectMetadata({
       libraryId,
       objectId: libraryId.replace("ilib", "iq__")
@@ -136,7 +136,7 @@ class MenuStore {
       metadata,
     };
 
-    let { contents } = yield this.rootStore.client.ContentObjects({
+    let { contents, paging } = yield this.rootStore.client.ContentObjects({
       libraryId,
       filterOptions: {
         select: [
@@ -146,8 +146,11 @@ class MenuStore {
           "player_background",
           "public"
         ],
-        limit: 1000,
-        sort: "name"
+        filter: filter ? {key: "name", type: "cnt", filter} : undefined,
+        start: (page-1) * perPage,
+        limit: perPage,
+        sort: "name",
+        cacheId
       }
     });
 
@@ -165,6 +168,8 @@ class MenuStore {
         };
       })
     ));
+
+    return paging;
   });
 
   @action.bound
