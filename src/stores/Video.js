@@ -293,7 +293,7 @@ class VideoStore {
     // When sufficiently loaded, update video info and mark video as initialized
     const loadedSource = this.source;
     this.video.addEventListener("durationchange", action(() => {
-      if(this.source !== loadedSource) { return; }
+      if(this.initialized || this.source !== loadedSource) { return; }
 
       if(this.video.duration > 0 && isFinite(this.video.duration)) {
         videoHandler.Update();
