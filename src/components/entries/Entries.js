@@ -13,13 +13,33 @@ import TrackForm from "./TrackForm";
 @inject("tracks")
 @inject("entry")
 @observer
-class Entries extends React.Component {
+class EntryList extends React.Component {
   constructor(props) {
     super(props);
 
     this.state = {
-      entryLimit: 100,
+      entryStart: 0,
+      entryEnd: 100,
+      initialElementEntryId: undefined
     };
+  }
+
+  componentDidMount() {
+    // Scroll to current time on mount - determine which entry is 'current'
+    const entries = this.FilteredEntries();
+    const initialElementIndex = entries
+      .findIndex(entry => entry.endTime > this.props.video.currentTime);
+
+    if(initialElementIndex >= 0) {
+      const initialElementEntryId = entries[initialElementIndex].entryId;
+      const end = 100 * (Math.floor(initialElementIndex / 100) + 1);
+      const start = end - 100;
+      this.setState({
+        initialElementEntryId,
+        entryStart: start,
+        entryEnd: end
+      });
+    }
   }
 
   Filter() {
@@ -36,6 +56,136 @@ class Entries extends React.Component {
     );
   }
 
+  FilteredEntries() {
+    const entriesSelected = this.props.entry.entries.length > 0;
+    const entryList = entriesSelected ?
+      this.props.entry.Entries() :
+      Object.values(this.props.track.entries);
+
+    return this.props.entry.FilteredEntries(entryList);
+  }
+
+  PlayEntry(entry, playable) {
+    if(!playable) { return; }
+
+    return (
+      <IconButton
+        className="entry-play-icon"
+        label="Play Segment"
+        icon={PlayIcon}
+        onClick={event => {
+          event.stopPropagation();
+          this.props.entry.PlayEntry(entry);
+        }}
+      />
+    );
+  }
+
+  Entry(entry, active, hover, playable=false) {
+    const onClick = () => this.props.entry.SetSelectedEntry(entry.entryId);
+
+    // Scroll to current time on mount
+    let HandleScroll;
+    if(this.state.initialElementEntryId && entry.entryId === this.state.initialElementEntryId) {
+      HandleScroll = element => {
+        if(!element) { return; }
+
+        this.setState({initialElementEntryId: undefined});
+
+        element.parentNode.scroll(0, Math.max(0, element.offsetTop - 10));
+      };
+    }
+
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyPress={onEnterPressed(onClick)}
+        onMouseEnter={() => this.props.entry.SetHoverEntries([entry.entryId], entry.startTime)}
+        onMouseLeave={() => this.props.entry.ClearHoverEntries()}
+        className={`entry ${active ? "entry-active" : ""} ${hover ? "entry-hover" : ""}`}
+        key={`entry-${entry.entryId}`}
+        ref={HandleScroll}
+      >
+        <div className="entry-text">
+          {entry.text} {entry.entryId}
+        </div>
+        <div className="entry-time-range">
+          {this.props.entry.TimeToSMPTE(entry.startTime)} - {this.props.entry.TimeToSMPTE(entry.endTime)}
+        </div>
+        { this.PlayEntry(entry, playable) }
+      </div>
+    );
+  }
+
+  render() {
+    const entries = this.FilteredEntries();
+    const activeEntryIds = this.props.track.intervalTree.search(
+      this.props.video.currentTime,
+      this.props.video.currentTime
+    );
+    const hoverEntryIds = this.props.entry.hoverEntries;
+    const playable = ["vtt", "metadata"].includes(this.props.track.trackType);
+
+    let actions;
+    if(this.props.entry.entries.length > 0) {
+      actions = (
+        <div className="entry-actions">
+          <BackButton onClick={this.props.entry.ClearEntries}/>
+          { this.props.entry.entryTime }
+        </div>
+      );
+    }
+
+    let loadPreviousButton;
+    if(this.state.entryStart > 0) {
+      loadPreviousButton = (
+        <div className="entry">
+          <div className="load-entries-button" onClick={() => this.setState({entryStart: Math.max(0, this.state.entryStart - 100)})}>
+            Load Previous...
+          </div>
+        </div>
+      );
+    }
+
+    let loadNextButton;
+    if(entries.length > this.state.entryEnd) {
+      loadNextButton = (
+        <div className="entry">
+          <div className="load-entries-button" onClick={() => this.setState({entryEnd: this.state.entryEnd + 100})}>
+            Load More...
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="entries">
+        { this.Filter() }
+        { actions }
+        { loadPreviousButton }
+        { entries
+          .slice(this.state.entryStart, this.state.entryEnd)
+          .map(entry =>
+            this.Entry(
+              entry,
+              activeEntryIds.includes(entry.entryId),
+              hoverEntryIds.includes(entry.entryId),
+              playable
+            )
+          )}
+        { loadNextButton }
+      </div>
+    );
+  }
+}
+
+@inject("video")
+@inject("tracks")
+@inject("entry")
+@observer
+class Entries extends React.Component {
   AddEntryButton() {
     if(
       this.props.track.trackType !== "metadata" ||
@@ -79,47 +229,6 @@ class Entries extends React.Component {
     );
   }
 
-  PlayEntry(entry, playable) {
-    if(!playable) { return; }
-
-    return (
-      <IconButton
-        className="entry-play-icon"
-        label="Play Segment"
-        icon={PlayIcon}
-        onClick={event => {
-          event.stopPropagation();
-          this.props.entry.PlayEntry(entry);
-        }}
-      />
-    );
-  }
-
-  Entry(entry, active, hover, playable=false) {
-    const onClick = () => this.props.entry.SetSelectedEntry(entry.entryId);
-
-    return (
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={onClick}
-        onKeyPress={onEnterPressed(onClick)}
-        onMouseEnter={() => this.props.entry.SetHoverEntries([entry.entryId], entry.startTime)}
-        onMouseLeave={() => this.props.entry.ClearHoverEntries()}
-        className={`entry ${active ? "entry-active" : ""} ${hover ? "entry-hover" : ""}`}
-        key={`entry-${entry.entryId}`}
-      >
-        <div className="entry-text">
-          {entry.text}
-        </div>
-        <div className="entry-time-range">
-          {this.props.entry.TimeToSMPTE(entry.startTime)} - {this.props.entry.TimeToSMPTE(entry.endTime)}
-        </div>
-        { this.PlayEntry(entry, playable) }
-      </div>
-    );
-  }
-
   SelectedEntry() {
     if(this.props.entry.editingEntry) {
       return <EntryForm />;
@@ -128,67 +237,13 @@ class Entries extends React.Component {
     }
   }
 
-  EntryList() {
-    const entriesSelected = this.props.entry.entries.length > 0;
-    const entryList = entriesSelected ?
-      this.props.entry.Entries() :
-      Object.values(this.props.track.entries);
-
-    const entries = this.props.entry.FilteredEntries(entryList);
-    const activeEntryIds = this.props.track.intervalTree.search(
-      this.props.video.currentTime,
-      this.props.video.currentTime
-    );
-    const hoverEntryIds = this.props.entry.hoverEntries;
-    const playable = ["vtt", "metadata"].includes(this.props.track.trackType);
-
-    let actions;
-    if(entriesSelected) {
-      actions = (
-        <div className="entry-actions">
-          <BackButton onClick={this.props.entry.ClearEntries}/>
-          { this.props.entry.entryTime }
-        </div>
-      );
-    }
-
-    let loadMoreButton;
-    if(entries.length > this.state.entryLimit) {
-      loadMoreButton = (
-        <div className="entry">
-          <div className="load-entries-button" onClick={() => this.setState({entryLimit: this.state.entryLimit + 100})}>
-            Load More...
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="entries">
-        { this.Filter() }
-        { actions }
-        { entries
-          .slice(0, this.state.entryLimit)
-          .map(entry =>
-            this.Entry(
-              entry,
-              activeEntryIds.includes(entry.entryId),
-              hoverEntryIds.includes(entry.entryId),
-              playable
-            )
-          )}
-        {loadMoreButton}
-      </div>
-    );
-  }
-
   Content() {
     if(this.props.tracks.editingTrack) {
       return <TrackForm track={this.props.track} />;
     } else if(this.props.entry.selectedEntry) {
       return this.SelectedEntry();
     } else {
-      return this.EntryList();
+      return <EntryList track={this.props.track} />;
     }
   }
 

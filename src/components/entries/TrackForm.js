@@ -69,6 +69,9 @@ class TrackForm extends React.Component {
           />
         </div>
         <div className="entry-actions-container">
+          <button className="cancel-button" onClick={this.props.tracks.ClearEditing}>
+            Cancel
+          </button>
           <button className={submittable ? "" : "invalid"} onClick={this.HandleSubmit}>
             Done
           </button>

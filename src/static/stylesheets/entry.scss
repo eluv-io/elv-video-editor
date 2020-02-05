@@ -58,8 +58,10 @@
 
   .entries {
     flex-grow: 1;
+    margin-right: $elv-spacing-mxs;
     max-height: 100%;
-    overflow-y: auto;
+    overflow-y: scroll;
+    position: relative;
   }
 
   .entry-time-range {

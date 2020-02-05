@@ -25,18 +25,21 @@ class Tracks {
   @observable selectedTrack;
   @observable editingTrack = false;
   @observable audioLoading = false;
+  @observable audioSupported = true;
+
+  @observable totalEntries = 0;
 
   constructor(rootStore) {
     this.rootStore = rootStore;
     colorIndex = 0;
 
     if(!window.AudioContext && !window.webkitAudioContext) {
+      this.audioSupported = false;
+
       // eslint-disable-next-line no-console
       console.error("AudioContext not supported in this browser");
       return;
     }
-
-    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
   }
 
   NextColor() {
@@ -141,9 +144,9 @@ class Tracks {
   @action.bound
   AddAudioSegment = flow(function * (trackId, audioData, duration, number, samplesPerSecond) {
     const source = this.audioContext.createBufferSource();
-    yield new Promise((resolve, reject) => {
+    yield new Promise(async (resolve, reject) => {
       try {
-        this.audioContext.decodeAudioData(audioData, (buffer) => {
+        await this.audioContext.decodeAudioData(audioData, (buffer) => {
           source.buffer = buffer;
           resolve();
         });
@@ -195,6 +198,10 @@ class Tracks {
 
   @action.bound
   AddAudioTracks = flow(function * () {
+    if(!this.audioContext) {
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
     if(this.audioLoading) { return; }
 
     this.audioLoading = true;
@@ -368,6 +375,8 @@ class Tracks {
     subtitleTracks.map(track => {
       const entries = this.ParseVTTTrack(track);
 
+      this.totalEntries += Object.keys(entries.length);
+
       this.tracks.push({
         trackId: Id.next(),
         color: this.NextColor(),
@@ -382,6 +391,8 @@ class Tracks {
   AddMetadataTracks() {
     const metadataTracks = this.AddTracksFromTags(this.rootStore.videoStore.tags.metadata_tags);
     metadataTracks.map(track => {
+      this.totalEntries += Object.keys(track.entries).length;
+
       this.tracks.push({
         trackId: Id.next(),
         color: this.NextColor(),

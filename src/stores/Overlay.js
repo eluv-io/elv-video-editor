@@ -2,7 +2,6 @@ import {observable, action, flow} from "mobx";
 
 class OverlayStore {
   @observable trackMap = {};
-  @observable overlayTrack;
   @observable overlayEnabled = false;
   @observable enabledOverlayTracks = {};
 
@@ -22,7 +21,7 @@ class OverlayStore {
       return;
     }
 
-    let overlayTags = {};
+    let overlayTagChunks = [];
     for(let i = 0; i < Object.keys(metadata.video_tags.overlay_tags).length; i++) {
       const {overlay_tags} = yield this.rootStore.client.LinkData({
         versionHash: this.rootStore.videoStore.versionHash,
@@ -30,15 +29,14 @@ class OverlayStore {
         format: "json"
       });
 
-      overlayTags = {...overlayTags, ...overlay_tags.frame_level_tags};
+      overlayTagChunks.push(overlay_tags.frame_level_tags);
     }
 
-    if(!overlayTags || Object.keys(overlayTags).length === 0) { return; }
+    if(overlayTagChunks.length === 0) { return; }
 
-    this.overlayTrack = overlayTags;
-    this.overlayEnabled = true;
+    const overlayTags = Object.assign({}, ...overlayTagChunks);
 
-    Object.keys(Object.values(this.overlayTrack)[0]).forEach(trackKey => {
+    Object.keys(Object.values(overlayTags)[0]).forEach(trackKey => {
       this.enabledOverlayTracks[trackKey] = true;
 
       const metadataTrack = this.rootStore.trackStore.tracks.find(track => track.key === trackKey);
@@ -48,6 +46,10 @@ class OverlayStore {
         this.trackMap[trackKey] = metadataTrack.trackId;
       }
     });
+
+    // Overlay track is not observable for memory purposes
+    this.overlayTrack = overlayTags;
+    this.overlayEnabled = true;
   });
 
   @action.bound

@@ -31,6 +31,9 @@ class Track extends React.Component {
   }
 
   componentDidMount() {
+    // Update less often when there are many tags to improve performance
+    const delayFactor = Math.max(1, Math.log10(this.props.tracks.totalEntries));
+
     // Initialize reactionary re-draw handlers
     this.setState({
       reactions: [
@@ -47,7 +50,7 @@ class Track extends React.Component {
               entries: toJS(this.props.track.entries)
             });
           },
-          {delay: 25}
+          {delay: 25 * delayFactor}
         ),
         // Update on scale change
         reaction(
@@ -69,7 +72,7 @@ class Track extends React.Component {
               duration: this.props.video.duration
             });
           },
-          {delay: 50}
+          {delay: 50 * delayFactor}
         ),
         // Update on filter change
         reaction(
@@ -77,13 +80,17 @@ class Track extends React.Component {
             filter: this.props.entry.filter
           }),
           () => {
+            if(this.props.track.trackType === "clip") {
+              return;
+            }
+
             this.state.worker.postMessage({
               operation: "SetFilter",
               trackId: this.props.track.trackId,
               filter: this.props.entry.filter
             });
           },
-          {delay: 100}
+          {delay: 100 * delayFactor}
         ),
         // Update on selected / hover change
         reaction(
@@ -105,7 +112,7 @@ class Track extends React.Component {
               hoverEntryIds
             });
           },
-          {delay: 75}
+          {delay: 75 * delayFactor}
         ),
         // Update on active entry changed
         reaction(
@@ -125,7 +132,7 @@ class Track extends React.Component {
               activeEntryIds
             });
           },
-          {delay: 50}
+          {delay: 50 * delayFactor}
         ),
         // Update on resize
         reaction(
@@ -146,7 +153,7 @@ class Track extends React.Component {
               });
             }
           },
-          {delay: 100}
+          {delay: 100 * delayFactor}
         )
       ]
     });
@@ -173,7 +180,6 @@ class Track extends React.Component {
     return Fraction(clientX - this.state.context.canvas.offsetLeft).div(this.state.context.canvas.offsetWidth).valueOf();
   }
 
-  // Binary search to find an entry at the given time
   Search(time) {
     return this.props.track.intervalTree.search(time, time);
   }
