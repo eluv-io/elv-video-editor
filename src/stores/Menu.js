@@ -6,6 +6,7 @@ class MenuStore {
   @observable objectId = "";
 
   @observable showMenu = true;
+  @observable showVideoOnly = true;
 
   @observable libraries = {};
   @observable objects = {};
@@ -24,6 +25,11 @@ class MenuStore {
   @action.bound
   UpdateVersionHash(versionHash) {
     this.selectedObject.versionHash = versionHash;
+  }
+
+  @action.bound
+  ToggleVideoFilter(showVideoOnly) {
+    this.showVideoOnly = showVideoOnly;
   }
 
   @action.bound
@@ -62,7 +68,8 @@ class MenuStore {
       objectId: object.id,
       versionHash,
       name: metadata.public && metadata.public.name || metadata.name || versionHash,
-      metadata
+      metadata,
+      isVideo: metadata.offerings && metadata.offerings.default && metadata.offerings.default.ready
     };
 
     this.rootStore.videoStore.SetVideo(this.selectedObject);
@@ -107,7 +114,14 @@ class MenuStore {
       metadata,
     };
 
-    const videoFilter = {key: "/offerings/default/ready", type: "cnt", filter: true};
+    let filters = [];
+    if(filter) {
+      filters.push({key: "/public/name", type: "cnt", filter});
+    }
+
+    if(this.showVideoOnly) {
+      filters.push({key: "/offerings/default/ready", type: "eq", filter: true});
+    }
 
     let { contents, paging } = yield this.rootStore.client.ContentObjects({
       libraryId,
@@ -119,7 +133,7 @@ class MenuStore {
           "player_background",
           "public"
         ],
-        filter: filter ? [videoFilter, {key: "/public/name", type: "cnt", filter}] : videoFilter,
+        filter: filters,
         start: (page-1) * perPage,
         limit: perPage,
         sort: "public/name",

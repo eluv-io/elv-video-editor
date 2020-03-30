@@ -18,6 +18,7 @@ class VideoStore {
 
   @observable loading = false;
   @observable initialized = false;
+  @observable isVideo = false;
 
   @observable levels = [];
   @observable currentLevel;
@@ -68,6 +69,7 @@ class VideoStore {
   Reset() {
     this.loading = true;
     this.initialized = false;
+    this.isVideo = false;
 
     this.video = undefined;
     this.player = undefined;
@@ -127,105 +129,116 @@ class VideoStore {
     try {
       this.name = videoObject.name;
       this.versionHash = videoObject.versionHash;
-
-      const playoutOptions = yield this.rootStore.client.PlayoutOptions({
-        versionHash: videoObject.versionHash,
-        protocols: ["hls"],
-        drms: ["aes-128"]
-      });
-
-      // Specify playout for full, untrimmed content
-      const playoutMethods = playoutOptions["hls"].playoutMethods;
-      const source = URI(
-        (playoutMethods["aes-128"] || playoutMethods.clear).playoutUrl
-      )
-        .addSearch("ignore_trimming", true)
-        .toString();
-
-      let poster;
-      if(videoObject.metadata.image || videoObject.metadata.public.image) {
-        poster = yield this.rootStore.client.Rep({
-          versionHash: videoObject.versionHash,
-          rep: "player_background",
-          channelAuth: true
-        });
-      }
-
-      this.baseVideoFrameUrl = yield this.rootStore.client.Rep({
-        versionHash: videoObject.versionHash,
-        rep: UrlJoin("playout", "default", "frames.png")
-      });
-
-      try {
-        // Query preview API to check support
-        const response = yield fetch(URI(this.baseVideoFrameUrl).addSearch("frame", 0).toString());
-        if(response.ok) {
-          this.previewSupported = true;
-        } else {
-          // eslint-disable-next-line no-console
-          console.error("Preview not supported for this content");
-        }
-      } catch(error) {
-        // eslint-disable-next-line no-console
-        console.error("Preview not supported for this content");
-      }
-
-      this.source = source;
-      this.poster = poster;
       this.metadata = videoObject.metadata;
       this.baseFileUrl = yield this.rootStore.client.FileUrl({
         versionHash: this.versionHash,
         filePath: "/"
       });
 
-      try {
-        this.clipStartTime = 0;
+      this.isVideo = videoObject.isVideo;
 
-        const offering = this.metadata.offerings.default;
-
-        const offeringOptions = offering.media_struct.streams || {};
-
-        let rate;
-        if(offeringOptions.video) {
-          rate = offeringOptions.video.rate;
-        } else {
-          const videoKey = Object.keys(offeringOptions).find(key => key.startsWith("video"));
-          rate = offeringOptions[videoKey].rate;
-        }
-
-        this.frameRateSpecified = true;
-
-        this.SetFrameRate({rateRat: rate});
-
-        if(offering.entry_point_rat) {
-          this.clipStartTime = FrameAccurateVideo.ParseRat(offering.entry_point_rat);
-        }
-
-        if(offering.exit_point_rat) {
-          // End time is end of specified frame
-          const frameRate = FrameRates[this.frameRateKey].valueOf();
-          this.clipEndTime = Number((FrameAccurateVideo.ParseRat(offering.exit_point_rat) - (1 / frameRate)).toFixed(3));
-        }
-      } catch(error) {
-        // eslint-disable-next-line no-console
-        console.error("Unable to determine frame rate");
-      }
-
-      // Tags
-      if(this.metadata.video_tags && this.metadata.video_tags.metadata_tags) {
-        this.tags = yield this.rootStore.client.LinkData({
-          versionHash: this.versionHash,
-          linkPath: "video_tags/metadata_tags",
-          format: "json"
+      if(!this.isVideo) {
+        this.initialized = true;
+      } else {
+        const playoutOptions = yield this.rootStore.client.PlayoutOptions({
+          versionHash: videoObject.versionHash,
+          protocols: ["hls"],
+          drms: ["aes-128"]
         });
 
-        let videoTags = this.tags.video_level_tags || [];
-        if(typeof videoTags === "object") {
-          videoTags = Object.keys(videoTags);
+        // Specify playout for full, untrimmed content
+        const playoutMethods = playoutOptions["hls"].playoutMethods;
+        const source = URI(
+          (playoutMethods["aes-128"] || playoutMethods.clear).playoutUrl
+        )
+          .addSearch("ignore_trimming", true)
+          .toString();
+
+        let poster;
+        if(videoObject.metadata.image || videoObject.metadata.public.image) {
+          poster = yield this.rootStore.client.Rep({
+            versionHash: videoObject.versionHash,
+            rep: "player_background",
+            channelAuth: true
+          });
         }
 
-        this.videoTags = videoTags;
+        this.baseVideoFrameUrl = yield this.rootStore.client.Rep({
+          versionHash: videoObject.versionHash,
+          rep: UrlJoin("playout", "default", "frames.png")
+        });
+
+        try {
+          // Query preview API to check support
+          const response = yield fetch(URI(this.baseVideoFrameUrl).addSearch("frame", 0).toString());
+          if(response.ok) {
+            this.previewSupported = true;
+          } else {
+            // eslint-disable-next-line no-console
+            console.error("Preview not supported for this content");
+          }
+        } catch(error) {
+          // eslint-disable-next-line no-console
+          console.error("Preview not supported for this content");
+        }
+
+        this.source = source;
+        this.poster = poster;
+
+        try {
+          this.clipStartTime = 0;
+
+          const offering = this.metadata.offerings.default;
+
+          const offeringOptions = offering.media_struct.streams || {};
+
+          let rate;
+          if(offeringOptions.video) {
+            rate = offeringOptions.video.rate;
+          } else {
+            const videoKey = Object.keys(offeringOptions).find(key => key.startsWith("video"));
+            rate = offeringOptions[videoKey].rate;
+          }
+
+          this.frameRateSpecified = true;
+
+          this.SetFrameRate({rateRat: rate});
+
+          if(offering.entry_point_rat) {
+            this.clipStartTime = FrameAccurateVideo.ParseRat(offering.entry_point_rat);
+          }
+
+          if(offering.exit_point_rat) {
+            // End time is end of specified frame
+            const frameRate = FrameRates[this.frameRateKey].valueOf();
+            this.clipEndTime = Number((FrameAccurateVideo.ParseRat(offering.exit_point_rat) - (1 / frameRate)).toFixed(3));
+          }
+        } catch(error) {
+          // eslint-disable-next-line no-console
+          console.error("Unable to determine frame rate");
+        }
+
+        // Tags
+        if(this.metadata.video_tags && this.metadata.video_tags.metadata_tags) {
+          this.tags = yield this.rootStore.client.LinkData({
+            versionHash: this.versionHash,
+            linkPath: "video_tags/metadata_tags",
+            format: "json"
+          });
+
+          let videoTags = this.tags.video_level_tags || [];
+          if(typeof videoTags === "object") {
+            videoTags = Object.keys(videoTags);
+          }
+
+          this.videoTags = videoTags;
+        }
       }
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to load:");
+      // eslint-disable-next-line no-console
+      console.log(error);
     } finally {
       this.loading = false;
     }

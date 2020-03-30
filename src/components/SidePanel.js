@@ -3,6 +3,7 @@ import {ResizableBox} from "react-resizable";
 import Entries from "./entries/Entries";
 import {inject, observer} from "mobx-react";
 
+@inject("video")
 @inject("tracks")
 @observer
 class SidePanel extends React.Component {

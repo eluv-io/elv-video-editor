@@ -16,6 +16,7 @@ header {
 
 .video-level {
   display: flex;
+  height: 50vh;
 }
 
 .side-panel {
@@ -42,6 +43,8 @@ header {
 }
 
 .video-component {
+  background-color: $color-background-black;
+
   .resize-handle {
     bottom: -6px;
     cursor: s-resize;

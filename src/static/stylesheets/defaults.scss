@@ -107,6 +107,10 @@ button {
   &:focus {
     outline: 1px dotted $color-foreground;
   }
+
+  &.primary {
+    background-color: $elv-color-mediumblue;
+  }
 }
 
 .-elv-async-component,

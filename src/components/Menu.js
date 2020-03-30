@@ -159,8 +159,24 @@ class Menu extends React.Component {
           />
         </div>
 
+        <div className="menu-video-filter">
+          <button
+            className={this.props.menu.showVideoOnly ? "secondary" : "primary"}
+            onClick={() => this.setState({cacheId: ""}, () => this.props.menu.ToggleVideoFilter(false))}
+          >
+            Show All
+          </button>
+          <button
+            className={this.props.menu.showVideoOnly ? "primary" : "secondary"}
+            onClick={() => this.setState({cacheId: ""}, () => this.props.menu.ToggleVideoFilter(true))}
+          >
+            Show Video Only
+          </button>
+
+        </div>
+
         <AsyncComponent
-          key={`objects-container-${this.state.filter}-${this.state.page}`}
+          key={`objects-container-${this.state.filter}-${this.state.page}-${this.props.menu.showVideoOnly}`}
           Load={async () => {
             const paging = await this.props.menu.ListObjects({
               libraryId,

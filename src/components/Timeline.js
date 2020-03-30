@@ -257,7 +257,7 @@ class Timeline extends React.Component {
     const subtitleToggle = subtitleTracks.length > 0 ? this.TrackToggleButton("Subtitles") : null;
     const metadataToggle = metadataTracks.length > 0 ? this.TrackToggleButton("Tags") : null;
     const overlayToggle = overlayTrack ? this.TrackToggleButton("Overlay", true) : null;
-    const audioToggle = this.TrackToggleButton("Audio", false, this.props.tracks.AddAudioTracks);
+    const audioToggle = this.props.video.isVideo ? this.TrackToggleButton("Audio", false, this.props.tracks.AddAudioTracks) : null;
 
     return (
       <div className="timeline-actions toggle-tracks">
