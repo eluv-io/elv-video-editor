@@ -7,7 +7,7 @@ import OverlayStore from "./Overlay";
 import TrackStore from "./Tracks";
 import VideoStore from "./Video";
 
-import {FrameClient} from "elv-client-js/src/FrameClient";
+import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
 
 // Force strict mode so mutations are only allowed within actions.
 configure({
