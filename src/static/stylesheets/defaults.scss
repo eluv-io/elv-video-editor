@@ -297,9 +297,9 @@ button {
 .progress-bar-container {
   background-color: $color-background-active;
   border-radius: $elv-spacing-xs;
+  flex: 1 1 0;
   height: $elv-spacing-xs;
   position: relative;
-  width: 100%;
 
   .progress-bar {
     background-color: $color-accent-highlight;
