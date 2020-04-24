@@ -344,6 +344,7 @@ class ControlStore {
           }
         }
       ],
+      /*
       [
         ["z"],
         {
@@ -362,6 +363,7 @@ class ControlStore {
           }
         }
       ]
+     */
     ]
   };
 }

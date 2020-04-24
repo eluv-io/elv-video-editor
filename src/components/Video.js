@@ -27,6 +27,12 @@ class Video extends React.Component {
     this.initialHeight = 0.4 * document.body.getBoundingClientRect().height;
   }
 
+  componentWillUnmount() {
+    if(this.state.player) {
+      this.state.player.destroy();
+    }
+  }
+
   InitializeVideo(video) {
     if(!video) { return; }
 
@@ -37,13 +43,13 @@ class Video extends React.Component {
 
     const player = new HLSPlayer(config);
 
-    player.loadSource(this.props.video.source);
-    player.attachMedia(video);
-
     this.setState({
       player,
       video
     });
+
+    player.loadSource(this.props.video.source);
+    player.attachMedia(video);
 
     this.props.video.Initialize(video, player);
   }

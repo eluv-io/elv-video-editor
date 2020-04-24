@@ -2,10 +2,10 @@ import Fraction from "fraction.js/fraction";
 import {Line} from "./Utils";
 
 const mainColor = {
-  r: 40,
-  g: 160,
-  b: 110,
-  a: 255,
+  r: 50,
+  g: 200,
+  b: 50,
+  a: 255
 };
 
 class AudioTrackWorker {

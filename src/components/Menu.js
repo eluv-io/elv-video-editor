@@ -33,13 +33,17 @@ class Menu extends React.Component {
   }
 
   async SelectObject(libraryId, objectId) {
-    this.props.menu.SetLibraryId(libraryId);
-    this.props.menu.SetObjectId(objectId);
+    try {
+      this.props.menu.SetLibraryId(libraryId);
+      this.props.menu.SetObjectId(objectId);
 
-    this.props.menu.ToggleMenu(false);
-    this.setState({objectId});
+      this.props.menu.ToggleMenu(false);
+      this.setState({objectId});
 
-    await this.props.menu.SelectVideo({libraryId, objectId});
+      await this.props.menu.SelectVideo({libraryId, objectId});
+    } catch(error) {
+      this.props.menu.ClearObjectId();
+    }
   }
 
   SelectedObject() {

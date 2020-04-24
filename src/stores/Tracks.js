@@ -20,8 +20,6 @@ let colorIndex = 0;
 class Tracks {
   @observable tracks = [];
   @observable audioTracks = [];
-  @observable subtitleTracks = [];
-  @observable metadataTracks = [];
   @observable selectedTrack;
   @observable editingTrack = false;
   @observable audioLoading = false;
@@ -51,8 +49,6 @@ class Tracks {
   Reset() {
     this.tracks = [];
     this.audioTracks = [];
-    this.subtitleTracks = [];
-    this.metadataTracks = [];
     this.selectedTrack = undefined;
     this.editingTrack = false;
     this.audioLoading = false;
@@ -406,6 +402,50 @@ class Tracks {
     });
   }
 
+  AddSegmentTracks() {
+    if(!this.rootStore.videoStore.isVideo) { return; }
+
+    try {
+      const streams = this.rootStore.videoStore.metadata.offerings.default.media_struct.streams;
+
+      ["video", "audio"].forEach(stream => {
+        const sources = streams[stream].sources;
+
+        let segments = {};
+        sources.forEach(({timeline_start, timeline_end, source}) => {
+          let segment = this.Cue({
+            entryType: "segment",
+            startTime: parseFloat(timeline_start.float.toFixed(2)),
+            endTime: parseFloat(timeline_end.float.toFixed(2)),
+            text: `${timeline_start.float.toFixed(2)} - ${timeline_end.float.toFixed(2)}`,
+            entry: {}
+          });
+
+          segment.source = source;
+          segment.streamType = stream;
+
+          segments[segment.entryId] = segment;
+        });
+
+        this.tracks.push({
+          trackId: Id.next(),
+          color: this.NextColor(),
+          version: 1,
+          label: `${stream === "video" ? "Video" : "Audio"} Segments`,
+          key: `${stream}-segments`,
+          trackType: "segments",
+          entries: segments,
+          intervalTree: this.TrackIntervalTree(segments)
+        });
+      });
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to load segment tracks:");
+      // eslint-disable-next-line no-console
+      console.error(error);
+    }
+  }
+
   AddClipTrack() {
     const clip = this.Cue({
       entryType: "clip",
@@ -436,6 +476,7 @@ class Tracks {
     this.AddClipTrack();
     yield this.AddSubtitleTracks();
     yield this.AddMetadataTracks();
+    yield this.AddSegmentTracks();
     yield this.rootStore.overlayStore.AddOverlayTracks();
   });
 

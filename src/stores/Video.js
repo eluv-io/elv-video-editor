@@ -248,7 +248,8 @@ class VideoStore {
     const versionHash = this.rootStore.menuStore.selectedObject.versionHash;
 
     this.metadata = yield this.rootStore.client.ContentObjectMetadata({
-      versionHash
+      versionHash,
+      select: ["public", "offerings", "video_tags"]
     });
   });
 
@@ -279,6 +280,18 @@ class VideoStore {
     this.player.on(HLS.Events.LEVEL_SWITCHED, action(() => {
       this.levels = this.player.levels;
       this.currentLevel = this.player.currentLevel;
+    }));
+
+    this.player.on(HLS.Events.ERROR, action((event, data) => {
+      if(data.fatal || (data.type === "networkError" && parseInt(data.response.code) >= 500)) {
+        this.rootStore.menuStore.SetErrorMessage("Playback Error");
+        // eslint-disable-next-line no-console
+        console.error("HLS playback error:");
+        // eslint-disable-next-line no-console
+        console.error(data);
+
+        this.Reset();
+      }
     }));
 
     // Use video element as source of truth - attach handlers to relevant events to update app state

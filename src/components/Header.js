@@ -21,7 +21,7 @@ class Header extends React.Component {
             className={`menu-button ${this.props.menu.showMenu ? "menu-button-active" : ""}`}
           />
           <h1 className="header-text">
-            { this.props.video.name || "Eluvio Timeline Editor" }
+            { this.props.video.name || "Eluvio Video Editor" }
           </h1>
         </div>
         <div className="header-right">

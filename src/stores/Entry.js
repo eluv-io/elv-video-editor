@@ -198,6 +198,44 @@ class EntryStore {
       delete track.entries[entryId];
     });
   }
+
+  async DownloadSegment(entryId, callback) {
+    const entry = this.rootStore.trackStore.SelectedTrack().entries[entryId];
+
+    const partHash = entry.source;
+    const startTime = this.TimeToSMPTE(entry.startTime);
+    const endTime = this.TimeToSMPTE(entry.endTime);
+    const type = entry.streamType;
+    const name = this.rootStore.videoStore.name.substring(0, 10);
+
+    const filename = `${name}-${type}--${startTime}-${endTime}.mp4`;
+
+    const client = this.rootStore.client;
+    const data = await client.DownloadPart({
+      libraryId: this.rootStore.menuStore.libraryId,
+      objectId: this.rootStore.menuStore.objectId,
+      versionHash: this.rootStore.videoStore.versionHash,
+      partHash,
+      callback,
+      format: "blob"
+    });
+
+    const downloadUrl = window.URL.createObjectURL(data);
+
+    // Download from URL:
+
+    let element = document.createElement("a");
+    element.href = downloadUrl;
+    element.download = filename;
+
+    element.style.display = "none";
+    document.body.appendChild(element);
+
+    element.click();
+
+    document.body.removeChild(element);
+    window.URL.revokeObjectURL(downloadUrl);
+  }
 }
 
 export default EntryStore;

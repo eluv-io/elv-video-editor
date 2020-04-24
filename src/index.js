@@ -14,6 +14,7 @@ import SidePanel from "./components/SidePanel";
 
 @inject("root")
 @inject("video")
+@inject("menu")
 @inject("keyboardControls")
 @observer
 class App extends React.Component {
@@ -37,6 +38,7 @@ class App extends React.Component {
         <Header/>
         <Menu/>
         <div className="video-level" key={`video-${this.props.root.videoStore.source}`}>
+          { this.props.menu.error ? <div className="error-message">Error: { this.props.menu.error }</div> : null }
           <SidePanel/>
           <Video key={`video-${this.props.video.videoKey}`}/>
         </div>

@@ -32,8 +32,11 @@ class KeyboardControlsModal extends React.Component {
   Control(controls, action, modifier) {
     controls = this.FormatControls(controls, modifier);
 
-    const labels = controls.map(control =>
-      <label key={`keyboard-control-label-${control}`} className="control-label">{control}</label>
+    const labels = controls.map((control, i) =>
+      <React.Fragment key={`keyboard-control-label-${control}`}>
+        <label className="control-label">{control}</label>
+        { i < controls.length - 1 ? <label className="control-label"> | </label> : null }
+      </React.Fragment>
     );
 
     return (

@@ -1,7 +1,32 @@
-import React from "react";
+import React, {useState} from "react";
 import {inject, observer} from "mobx-react";
 import {BackButton} from "../Components";
 import {Confirm} from "elv-components-js";
+
+const DownloadButton = ({Download}) => {
+  const [progress, setProgress] = useState({bytesFinished: 0, bytesTotal: 1});
+  const [downloading, setDownloading] = useState(false);
+
+  if(!downloading) {
+    return (
+      <button
+        tabIndex={0}
+        onClick={() => {
+          setDownloading(true);
+          Download({callback: setProgress});
+        }}
+      >
+        Download
+      </button>
+    );
+  } else {
+    return (
+      <div className="progress-bar-container">
+        <div className="progress-bar" style={{width: `${progress.bytesFinished * 100 / progress.bytesTotal}%`}} />
+      </div>
+    );
+  }
+};
 
 @inject("entry")
 @observer
@@ -24,6 +49,7 @@ class Entry extends React.Component {
   Actions(entry) {
     const playable = ["vtt", "metadata", "clip"].includes(entry.entryType);
     const editable = ["metadata", "overlay", "clip"].includes(entry.entryType);
+    const downloadable = ["segment"].includes(entry.entryType);
 
     return (
       <div className="entry-actions-container">
@@ -50,6 +76,11 @@ class Entry extends React.Component {
           >
             Remove
           </button>
+          {
+            downloadable ?
+              <DownloadButton key={`download-${entry.entryId}`} Download={({callback}) => this.props.entry.DownloadSegment(entry.entryId, callback)} /> :
+              null
+          }
         </div>
       </div>
     );

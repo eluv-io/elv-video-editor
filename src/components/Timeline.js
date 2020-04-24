@@ -24,6 +24,7 @@ class Timeline extends React.Component {
       show: {
         Audio: false,
         Preview: true,
+        Segments: false,
         Subtitles: true,
         Tags: true,
       }
@@ -180,7 +181,7 @@ class Timeline extends React.Component {
   }
 
   Tracks() {
-    let previewTrack, subtitleTracks, metadataTracks, audioTracks, clipTrack;
+    let previewTrack, subtitleTracks, metadataTracks, segmentTracks, audioTracks, clipTrack;
     if(this.state.show.Preview && this.props.video.previewSupported) {
       previewTrack = this.TrackLane({
         trackType: "preview",
@@ -199,9 +200,16 @@ class Timeline extends React.Component {
         .map(track => this.Track(track));
     }
 
+    if(this.state.show.Segments) {
+      segmentTracks = this.props.tracks.tracks
+        .filter(track => track.trackType === "segments").slice()
+        .sort((a, b) => (a.label > b.label ? 1 : -1))
+        .map(track => this.Track(track));
+    }
+
     if(this.state.show.Tags) {
       metadataTracks = this.props.tracks.tracks
-        .filter(track => track.trackType !== "vtt" && track.trackType !== "clip").slice()
+        .filter(track => track.trackType !== "vtt" && track.trackType !== "clip" && track.trackType !== "segments").slice()
         .sort((a, b) => (a.label > b.label ? 1 : -1))
         .map(track => this.Track(track));
     }
@@ -220,6 +228,7 @@ class Timeline extends React.Component {
         { previewTrack }
         { subtitleTracks }
         { metadataTracks }
+        { segmentTracks }
         { audioTracks }
       </div>
     );
@@ -257,6 +266,7 @@ class Timeline extends React.Component {
     const subtitleToggle = subtitleTracks.length > 0 ? this.TrackToggleButton("Subtitles") : null;
     const metadataToggle = metadataTracks.length > 0 ? this.TrackToggleButton("Tags") : null;
     const overlayToggle = overlayTrack ? this.TrackToggleButton("Overlay", true) : null;
+    const segmentsToggle = this.props.video.isVideo ? this.TrackToggleButton("Segments") : null;
     const audioToggle = this.props.video.isVideo ? this.TrackToggleButton("Audio", false, this.props.tracks.AddAudioTracks) : null;
 
     return (
@@ -265,6 +275,7 @@ class Timeline extends React.Component {
         { previewToggle }
         { subtitleToggle }
         { metadataToggle }
+        { segmentsToggle }
         { audioToggle }
       </div>
     );

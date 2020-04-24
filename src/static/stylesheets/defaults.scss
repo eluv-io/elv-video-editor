@@ -69,6 +69,19 @@ body,
   display: none !important; // sass-lint:disable-line no-important
 }
 
+.error-message {
+  align-items: center;
+  color: $color-error;
+  display: flex;
+  font-size: $elv-font-l;
+  height: 100%;
+  justify-content: center;
+  padding-bottom: $elv-spacing-l;
+  position: absolute;
+  width: 100%;
+  z-index: 100;
+}
+
 .-elv-tooltip {
   &.-elv-tooltip {
     background-color: $color-background-active;
@@ -278,5 +291,20 @@ button {
         }
       }
     }
+  }
+}
+
+.progress-bar-container {
+  background-color: $color-background-active;
+  border-radius: $elv-spacing-xs;
+  height: $elv-spacing-xs;
+  position: relative;
+  width: 100%;
+
+  .progress-bar {
+    background-color: $color-accent-highlight;
+    border-radius: $elv-spacing-xxs;
+    height: 100%;
+    position: absolute;
   }
 }

@@ -4,6 +4,7 @@ import UrlJoin from "url-join";
 class MenuStore {
   @observable libraryId = "";
   @observable objectId = "";
+  @observable error = "";
 
   @observable showMenu = true;
   @observable showVideoOnly = true;
@@ -33,46 +34,68 @@ class MenuStore {
   }
 
   @action.bound
+  SetErrorMessage(error) {
+    this.error = error;
+  }
+
+  @action.bound
+  ClearErrorMessage() {
+    this.error = "";
+  }
+
+  @action.bound
   SelectVideo = flow(function * ({libraryId, objectId, versionHash}) {
-    this.rootStore.Reset();
-    this.selectedObject = undefined;
+    try {
+      this.rootStore.Reset();
+      this.ClearErrorMessage();
+      this.selectedObject = undefined;
 
-    if(versionHash) {
-      objectId = this.rootStore.client.utils.DecodeVersionHash(versionHash).objectId;
+      if(versionHash) {
+        objectId = this.rootStore.client.utils.DecodeVersionHash(versionHash).objectId;
+      }
+
+      if(!libraryId) {
+        libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
+      }
+
+      if(window.self !== window.top) {
+        this.rootStore.client.SendMessage({
+          options: {
+            operation: "SetFramePath",
+            path: UrlJoin("#", versionHash ? versionHash : UrlJoin(libraryId, objectId))
+          },
+          noResponse: true
+        });
+      }
+
+      const object = yield this.rootStore.client.ContentObject({libraryId, objectId, versionHash});
+
+      if(!versionHash) {
+        versionHash = object.hash;
+      }
+
+      const metadata = yield this.rootStore.client.ContentObjectMetadata({objectId, versionHash});
+
+      this.selectedObject = {
+        libraryId,
+        objectId: object.id,
+        versionHash,
+        name: metadata.public && metadata.public.name || metadata.name || versionHash,
+        metadata,
+        isVideo: metadata.offerings && metadata.offerings.default && metadata.offerings.default.ready
+      };
+
+      this.rootStore.videoStore.SetVideo(this.selectedObject);
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to load object:");
+      // eslint-disable-next-line no-console
+      console.error(error);
+
+      this.SetErrorMessage(error.message || error);
+
+      throw error;
     }
-
-    if(!libraryId) {
-      libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
-    }
-
-    if(window.self !== window.top) {
-      this.rootStore.client.SendMessage({
-        options: {
-          operation: "SetFramePath",
-          path: UrlJoin("#", versionHash ? versionHash : UrlJoin(libraryId, objectId))
-        },
-        noResponse: true
-      });
-    }
-
-    const object = yield this.rootStore.client.ContentObject({libraryId, objectId, versionHash});
-
-    if(!versionHash) {
-      versionHash = object.hash;
-    }
-
-    const metadata = yield this.rootStore.client.ContentObjectMetadata({objectId, versionHash});
-
-    this.selectedObject = {
-      libraryId,
-      objectId: object.id,
-      versionHash,
-      name: metadata.public && metadata.public.name || metadata.name || versionHash,
-      metadata,
-      isVideo: metadata.offerings && metadata.offerings.default && metadata.offerings.default.ready
-    };
-
-    this.rootStore.videoStore.SetVideo(this.selectedObject);
   });
 
   @action.bound
