@@ -20,6 +20,8 @@ class VideoStore {
   @observable initialized = false;
   @observable isVideo = false;
 
+  @observable consecutiveSegmentErrors = 0;
+
   @observable levels = [];
   @observable currentLevel;
 
@@ -118,6 +120,8 @@ class VideoStore {
     this.scaleMax = this.scale;
 
     this.segmentEnd = undefined;
+
+    this.consecutiveSegmentErrors = 0;
 
     this.rootStore.entryStore.ClearEntries();
   }
@@ -284,14 +288,23 @@ class VideoStore {
 
     this.player.on(HLS.Events.ERROR, action((event, data) => {
       if(data.fatal || (data.type === "networkError" && parseInt(data.response.code) >= 500)) {
-        this.rootStore.menuStore.SetErrorMessage("Playback Error");
+        this.consecutiveSegmentErrors += 1;
         // eslint-disable-next-line no-console
         console.error("HLS playback error:");
         // eslint-disable-next-line no-console
         console.error(data);
 
-        this.Reset();
+        // Give up and show an error message after several failures
+        if(this.consecutiveSegmentErrors >= 3) {
+          this.rootStore.menuStore.SetErrorMessage("Playback Error");
+          this.Reset();
+        }
       }
+    }));
+
+    this.player.on(HLS.Events.FRAG_LOADED, action(() => {
+      // Loaded good segment, reset error count
+      this.consecutiveSegmentErrors = 0;
     }));
 
     // Use video element as source of truth - attach handlers to relevant events to update app state
