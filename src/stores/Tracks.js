@@ -409,6 +409,12 @@ class Tracks {
       const streams = this.rootStore.videoStore.metadata.offerings.default.media_struct.streams;
 
       ["video", "audio"].forEach(stream => {
+        if(!streams[stream]) {
+          // eslint-disable-next-line no-console
+          console.error(`No ${stream} stream found. Skipping ${stream} segment track.`);
+          return;
+        }
+
         const sources = streams[stream].sources;
 
         let segments = {};

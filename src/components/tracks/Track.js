@@ -7,6 +7,7 @@ import {ToolTip} from "elv-components-js";
 import {reaction, toJS} from "mobx";
 
 import TrackWorker from "../../workers/TrackWorker";
+import {StopScroll} from "../../utils/Utils";
 
 @inject("video")
 @inject("entry")
@@ -307,10 +308,8 @@ class Track extends React.Component {
     return (
       <ToolTip content={this.ToolTipContent()}>
         <div
-          onWheel={event => {
-            event.preventDefault();
-            this.props.video.ScrollScale(this.ClientXToCanvasPosition(event.clientX), event.deltaY);
-          }}
+          ref={StopScroll({shift: true})}
+          onWheel={({deltaY, clientX, shiftKey}) => shiftKey && this.props.video.ScrollScale(this.ClientXToCanvasPosition(clientX), deltaY)}
           className="track-container"
         >
           { this.Canvas() }

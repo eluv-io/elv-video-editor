@@ -1,5 +1,21 @@
 import React from "react";
 
+// onWheel is a passive event, which prevents disabling page scroll
+// React doesn't support marking callbacks as active, so we can use `ref` to attach the handler directly to the element to prevent scrolling instead
+export const StopScroll = ({shift=false}={}) => {
+  return element => {
+    if(!element) { return; }
+
+    const Handler = event => {
+      if((!shift && event.shiftKey) || shift && !event.shiftKey) { return; }
+
+      event.preventDefault();
+    };
+
+    element.addEventListener("wheel", Handler, false);
+  };
+};
+
 export const SortEntries = entries => entries.sort((a, b) => {
   a = {
     ...a,

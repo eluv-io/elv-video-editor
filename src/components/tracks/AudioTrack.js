@@ -6,6 +6,7 @@ import {reaction, toJS} from "mobx";
 
 import AudioTrackWorker from "../../workers/AudioTrackWorker";
 import Fraction from "fraction.js/fraction";
+import {StopScroll} from "../../utils/Utils";
 
 @inject("video")
 @inject("entry")
@@ -165,7 +166,8 @@ class AudioTrack extends React.Component {
   render() {
     return (
       <div
-        onWheel={({deltaY, clientX}) => this.props.video.ScrollScale(this.ClientXToCanvasPosition(clientX), deltaY)}
+        ref={StopScroll({shift: true})}
+        onWheel={({deltaY, clientX, shiftKey}) => shiftKey && this.props.video.ScrollScale(this.ClientXToCanvasPosition(clientX), deltaY)}
         className="track-container"
       >
         { this.Canvas() }

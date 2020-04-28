@@ -147,13 +147,13 @@ class VideoStore {
         const playoutOptions = yield this.rootStore.client.PlayoutOptions({
           versionHash: videoObject.versionHash,
           protocols: ["hls"],
-          drms: ["aes-128"]
+          drms: ["clear", "aes-128"]
         });
 
         // Specify playout for full, untrimmed content
         const playoutMethods = playoutOptions["hls"].playoutMethods;
         const source = URI(
-          (playoutMethods["aes-128"] || playoutMethods.clear).playoutUrl
+          (playoutMethods.clear || playoutMethods["aes-128"]).playoutUrl
         )
           .addSearch("ignore_trimming", true)
           .toString();

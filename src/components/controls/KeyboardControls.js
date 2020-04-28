@@ -19,7 +19,7 @@ const ControlMap = {
 class KeyboardControlsModal extends React.Component {
   FormatControls(controls, modifier) {
     return controls.map(control => {
-      control = ControlMap[control] || control.toUpperCase();
+      control = ControlMap[control] || (control.length === 1 ? control.toUpperCase() : control);
 
       if(modifier) {
         control = `${modifier} + ${control}`;

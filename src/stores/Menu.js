@@ -68,6 +68,8 @@ class MenuStore {
         });
       }
 
+      window.location.hash = `${UrlJoin("#", versionHash ? versionHash : UrlJoin(libraryId, objectId))}`;
+
       const object = yield this.rootStore.client.ContentObject({libraryId, objectId, versionHash});
 
       if(!versionHash) {

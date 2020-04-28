@@ -13,6 +13,7 @@ import MinimizeIcon from "../../static/icons/Minimize.svg";
 import VolumeOff from "../../static/icons/VolumeOff.svg";
 import VolumeLow from "../../static/icons/VolumeLow.svg";
 import VolumeHigh from "../../static/icons/VolumeHigh.svg";
+import {StopScroll} from "../../utils/Utils";
 
 let PlaybackLevel = (props) => {
   return (
@@ -128,6 +129,7 @@ let Volume = (props) => {
 
   return (
     <div
+      ref={StopScroll()}
       onWheel={({deltaY}) => props.video.ScrollVolume(deltaY)}
       className="video-volume-controls"
     >

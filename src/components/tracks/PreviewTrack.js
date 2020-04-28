@@ -1,6 +1,7 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
 import ResizeObserver from "resize-observer-polyfill";
+import {StopScroll} from "../../utils/Utils";
 
 @inject("video")
 @inject("tracks")
@@ -25,16 +26,18 @@ class PreviewTrack extends React.Component {
 
   // Keep track of track container height and track content width to properly render the time indicator
   WatchResize(element) {
-    if(element) {
-      this.resizeObserver = new ResizeObserver(entries => {
-        const track = entries[0];
+    if(!element) { return; }
 
-        // Set number of previews on the timeline based on width
-        this.setState({previews: Math.ceil(track.contentRect.width / 125)});
-      });
+    StopScroll()(element);
 
-      this.resizeObserver.observe(element);
-    }
+    this.resizeObserver = new ResizeObserver(entries => {
+      const track = entries[0];
+
+      // Set number of previews on the timeline based on width
+      this.setState({previews: Math.ceil(track.contentRect.width / 125)});
+    });
+
+    this.resizeObserver.observe(element);
   }
 
   Previews() {
@@ -60,7 +63,7 @@ class PreviewTrack extends React.Component {
     return (
       <div
         ref={this.WatchResize}
-        onWheel={({deltaY, clientX}) => this.props.video.ScrollScale(this.ClientXToCanvasPosition(clientX), deltaY)}
+        onWheel={({deltaY, clientX, shiftKey}) => shiftKey && this.props.video.ScrollScale(this.ClientXToCanvasPosition(clientX), deltaY)}
         className="track-container preview-track-container"
       >
         { this.Previews() }

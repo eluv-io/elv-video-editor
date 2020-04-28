@@ -282,6 +282,16 @@ class ControlStore {
             action: () => this.ChangeVolume(0.25)
           }
         }
+      ],
+      [
+        [],
+        {
+          keyLabel: "Scroll (over video or volume control)",
+          action: {
+            description: "Adjust volume up or down",
+            action: () => {}
+          }
+        }
       ]
     ],
     "Seeking": [
@@ -330,6 +340,16 @@ class ControlStore {
           action: {
             description: "Toggle the specified track",
             action: (event) => this.ToggleTrackByIndex(event.key),
+          }
+        }
+      ],
+      [
+        [],
+        {
+          keyLabel: "Shift + Scroll (over track)",
+          action: {
+            description: "Adjust timeline scale",
+            action: () => {}
           }
         }
       ]

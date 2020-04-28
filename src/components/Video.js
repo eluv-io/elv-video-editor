@@ -5,6 +5,7 @@ import VideoControls from "./VideoControls";
 import LoadingElement from "elv-components-js/src/components/LoadingElement";
 import Overlay from "./Overlay";
 import {ResizableBox} from "react-resizable";
+import {StopScroll} from "../utils/Utils";
 
 @inject("tracks")
 @inject("video")
@@ -35,6 +36,9 @@ class Video extends React.Component {
 
   InitializeVideo(video) {
     if(!video) { return; }
+
+    // Add scroll handler for volume to video element
+    StopScroll()(video);
 
     const config = {
       nudgeOffset: 0.2,
