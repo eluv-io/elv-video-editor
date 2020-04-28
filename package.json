@@ -1,11 +1,12 @@
 {
   "name": "elv-video-editor",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "",
   "main": "index.js",
   "license": "MIT",
   "homepage": "https://github.com/eluv-io/elv-video-editor",
   "scripts": {
+    "bump-version": "npm --git-tag-version --no-commit-hooks version patch",
     "serve": "webpack-dev-server --hot --port 8083",
     "build": "rm -rf dist/* && NODE_ENV=production node ./node_modules/webpack-cli/bin/cli.js -p --progress --colors --devtool none",
     "add-build": "git add dist",
