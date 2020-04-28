@@ -6,6 +6,7 @@ import {IconButton, Range, Slider, ToolTip} from "elv-components-js";
 import {FrameRates} from "../../utils/FrameAccurateVideo";
 import Fraction from "fraction.js/fraction";
 
+import SaveImageIcon from "../../static/icons/Image.svg";
 import PauseButton from "../../static/icons/Pause.svg";
 import PlayButton from "../../static/icons/Play.svg";
 import MaximizeIcon from "../../static/icons/Maximize.svg";
@@ -14,6 +15,19 @@ import VolumeOff from "../../static/icons/VolumeOff.svg";
 import VolumeLow from "../../static/icons/VolumeLow.svg";
 import VolumeHigh from "../../static/icons/VolumeHigh.svg";
 import {StopScroll} from "../../utils/Utils";
+
+let SaveFrame = (props) => {
+  return (
+    <ToolTip content={<span>Save Current Frame</span>}>
+      <IconButton
+        aria-label="Save Current Frame"
+        icon={SaveImageIcon}
+        className={"video-control-save-frame"}
+        onClick={props.video.SaveFrame}
+      />
+    </ToolTip>
+  );
+};
 
 let PlaybackLevel = (props) => {
   return (
@@ -216,6 +230,7 @@ FullscreenToggle = inject("video")(observer(FullscreenToggle));
 PlaybackLevel = inject("video")(observer(PlaybackLevel));
 PlaybackRate = inject("video")(observer(PlaybackRate));
 PlayPause = inject("video")(observer(PlayPause));
+SaveFrame = inject("video")(observer(SaveFrame));
 Scale = inject("video")(observer(Scale));
 Seek = inject("video")(observer(Seek));
 Volume = inject("video")(observer(Volume));
@@ -228,6 +243,7 @@ export {
   PlaybackLevel,
   PlaybackRate,
   PlayPause,
+  SaveFrame,
   Scale,
   Seek,
   Volume

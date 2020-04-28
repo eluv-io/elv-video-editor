@@ -1,5 +1,6 @@
 import {observable, action} from "mobx";
 import Id from "../utils/Id";
+import {DownloadFromUrl} from "../utils/Utils";
 
 class EntryStore {
   @observable entries = [];
@@ -222,19 +223,7 @@ class EntryStore {
 
     const downloadUrl = window.URL.createObjectURL(data);
 
-    // Download from URL:
-
-    let element = document.createElement("a");
-    element.href = downloadUrl;
-    element.download = filename;
-
-    element.style.display = "none";
-    document.body.appendChild(element);
-
-    element.click();
-
-    document.body.removeChild(element);
-    window.URL.revokeObjectURL(downloadUrl);
+    DownloadFromUrl(downloadUrl, filename);
   }
 }
 

@@ -146,6 +146,14 @@
         stroke: none;
       }
     }
+
+    &.video-control-save-frame {
+      svg {
+        fill: transparent;
+        stroke: $color-foreground;
+        stroke-width: 1.5px;
+      }
+    }
   }
 
   select {

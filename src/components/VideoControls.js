@@ -8,6 +8,7 @@ import {
   PlaybackLevel,
   PlaybackRate,
   PlayPause,
+  SaveFrame,
   Scale,
   Seek,
   Volume
@@ -56,6 +57,7 @@ class VideoControls extends React.Component {
           <PlaybackLevel />
           <Volume />
           <FullscreenToggle />
+          <SaveFrame />
         </div>
       </div>
     );

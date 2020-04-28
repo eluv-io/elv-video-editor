@@ -3,6 +3,7 @@ import FrameAccurateVideo, {FrameRateDenominator, FrameRateNumerator, FrameRates
 import UrlJoin from "url-join";
 import URI from "urijs";
 import HLS from "hls.js";
+import {DownloadFromUrl} from "../utils/Utils";
 
 class VideoStore {
   @observable videoKey = 0;
@@ -678,6 +679,21 @@ class VideoStore {
     const width = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
 
     this.sliderMarks = Math.floor(width / 175);
+  }
+
+  @action.bound
+  SaveFrame() {
+    if(!this.video) { return; }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = this.video.videoWidth;
+    canvas.height = this.video.videoHeight;
+    canvas.getContext("2d").drawImage(this.video, 0, 0, this.video.videoWidth, this.video.videoHeight);
+    canvas.toBlob(blob => {
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const filename = `${this.name}_${this.smpte.replace(":", "-")}.png`;
+      DownloadFromUrl(downloadUrl, filename);
+    });
   }
 }
 
