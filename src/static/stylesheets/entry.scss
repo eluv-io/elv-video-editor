@@ -11,14 +11,26 @@
   .entries-header {
     background-color: $color-background-active;
     padding: $elv-spacing-s 0;
+    position: relative;
 
     &.modifiable {
       cursor: pointer;
 
       &:hover {
         background-color: $color-accent-dark;
+
+        .track-edit-icon {
+          stroke: $color-foreground;
+        }
       }
     }
+  }
+
+  .track-edit-icon {
+    height: $elv-font-xxl;
+    position: absolute;
+    right: $elv-spacing-xs;
+    top: $elv-spacing-xs;
   }
 
   .entries-filter {
@@ -185,7 +197,8 @@
 
     .-elv-icon-button {
       background-color: transparent;
-      margin: 0 0 0 $elv-spacing-xxs;
+      flex: 1 1 0;
+      margin: 0;
       width: auto;
 
       svg {
@@ -194,7 +207,18 @@
     }
 
     input {
+      flex: 3 1 0;
       margin: 0;
+    }
+
+    .entry-form-smpte-time {
+      align-items: center;
+      color: $color-foreground;
+      display: flex;
+      flex: 2 1 0;
+      font-size: $elv-font-xs;
+      font-weight: 500;
+      justify-content: center;
     }
   }
 }

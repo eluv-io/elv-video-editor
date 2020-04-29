@@ -136,7 +136,7 @@ class MenuStore {
     this.libraries[libraryId] = {
       libraryId,
       name: metadata.public && metadata.public.name || metadata.name || libraryId,
-      metadata,
+      metadata
     };
 
     let filters = [];

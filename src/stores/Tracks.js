@@ -6,6 +6,17 @@ import {Parser as HLSParser} from "m3u8-parser";
 import UrlJoin from "url-join";
 import "elv-components-js/src/utils/LimitedMap";
 
+/*
+ * Track Types:
+ *
+ * audio - Audio waveform
+ * clip - Start/end points for playout trimming
+ * metadata - Metadata tags
+ * preview - Preview images
+ * segments - Audio/video segment parts + download
+ * vtt - VTT Subtitles
+ */
+
 const colors = [
   {r: 200, g: 50,  b: 50,  a: 150},
   {r: 50,  g: 200, b: 50,  a: 150},

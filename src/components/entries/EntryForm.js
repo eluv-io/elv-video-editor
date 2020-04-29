@@ -134,6 +134,7 @@ class EntryForm extends React.Component {
               required
               className={this.state.startTimeValid ? "" : "invalid"}
             />
+            <div className="entry-form-smpte-time">{ this.props.video.TimeToSMPTE(this.state.startTime) }</div>
             { this.CurrentTimeButton("startTime") }
           </div>
 
@@ -149,6 +150,7 @@ class EntryForm extends React.Component {
               required
               className={this.state.endTimeValid ? "" : "invalid"}
             />
+            <div className="entry-form-smpte-time">{ this.props.video.TimeToSMPTE(this.state.endTime) }</div>
             { this.CurrentTimeButton("endTime") }
           </div>
         </div>

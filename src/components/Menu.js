@@ -65,13 +65,6 @@ class Menu extends React.Component {
               <BackButton
                 onClick={() => {
                   this.props.menu.ClearObjectId();
-                  this.setState({
-                    page: 1,
-                    filter: "",
-                    filterInput: "",
-                    cacheId: "",
-                    count: 0
-                  });
                 }}
               />
               <h4>{object.name}</h4>

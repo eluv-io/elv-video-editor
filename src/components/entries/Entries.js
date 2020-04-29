@@ -4,10 +4,12 @@ import {inject, observer} from "mobx-react";
 import EntryDetails from "./Entry";
 import EntryForm from "./EntryForm";
 import {BackButton} from "../Components";
-import PlayIcon from "../../static/icons/Play.svg";
-import {IconButton, onEnterPressed} from "elv-components-js";
+import {IconButton, ImageIcon, onEnterPressed} from "elv-components-js";
 import {Input} from "../../utils/Utils";
 import TrackForm from "./TrackForm";
+
+import PlayIcon from "../../static/icons/Play.svg";
+import EditIcon from "../../static/icons/Edit.svg";
 
 @inject("video")
 @inject("tracks")
@@ -206,25 +208,41 @@ class Entries extends React.Component {
   }
 
   Header() {
-    const modifiable = this.props.track.trackType === "metadata";
+    const editable = this.props.track.trackType === "metadata";
 
-    let header;
-    if(this.props.track.trackType === "vtt") {
-      header = <h4>{this.props.track.label} - WebVTT Track</h4>;
-    } else {
-      header = <h4>{this.props.track.label} - Metadata Track</h4>;
+    let header = <h4>{this.props.track.label} - Track</h4>;
+    switch(this.props.track.trackType) {
+      case "audio":
+        header = <h4>{this.props.track.label} - Audio Track</h4>;
+        break;
+      case "clip":
+        header = <h4>{this.props.track.label} (Trim Playout)</h4>;
+        break;
+      case "metadata":
+        header = <h4>{this.props.track.label} - Metadata Track</h4>;
+        break;
+      case "preview":
+        header = <h4>{this.props.track.label} - Preview Track</h4>;
+        break;
+      case "segments":
+        header = <h4>{this.props.track.label}</h4>;
+        break;
+      case "vtt":
+        header = <h4>{this.props.track.label} - WebVTT Track</h4>;
+        break;
     }
 
     return (
       <div
-        onClick={modifiable ? () => this.props.tracks.SetEditing(this.props.track.trackId) : undefined}
-        tabIndex={modifiable ? 0 : undefined}
-        className={`entries-header ${modifiable ? "modifiable" : ""}`}
+        onClick={editable ? () => this.props.tracks.SetEditing(this.props.track.trackId) : undefined}
+        tabIndex={editable ? 0 : undefined}
+        className={`entries-header ${editable ? "modifiable" : ""}`}
       >
         { header }
         <div className="entries-time-range">
           {this.props.video.scaleMinSMPTE} - {this.props.video.scaleMaxSMPTE}
         </div>
+        { editable ? <ImageIcon className="track-edit-icon" icon={EditIcon} /> : null }
       </div>
     );
   }
