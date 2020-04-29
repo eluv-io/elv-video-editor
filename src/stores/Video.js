@@ -148,7 +148,8 @@ class VideoStore {
         const playoutOptions = yield this.rootStore.client.PlayoutOptions({
           versionHash: videoObject.versionHash,
           protocols: ["hls"],
-          drms: ["clear", "aes-128"]
+          drms: ["clear", "aes-128"],
+          hlsjsProfile: false
         });
 
         // Specify playout for full, untrimmed content
@@ -157,6 +158,7 @@ class VideoStore {
           (playoutMethods.clear || playoutMethods["aes-128"]).playoutUrl
         )
           .addSearch("ignore_trimming", true)
+          .addSearch("player_profile", "hls-js-2441")
           .toString();
 
         let poster;
