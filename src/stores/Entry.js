@@ -85,7 +85,7 @@ class EntryStore {
   }
 
   SelectedEntry() {
-    return this.rootStore.trackStore.SelectedTrack().entries[this.selectedEntry];
+    return this.rootStore.trackStore.TrackEntries(this.rootStore.trackStore.SelectedTrack().trackId)[this.selectedEntry];
   }
 
   @action.bound
@@ -107,9 +107,8 @@ class EntryStore {
   }
 
   Entries() {
-    return this.entries.map(entryId =>
-      this.rootStore.trackStore.SelectedTrack().entries[entryId]
-    );
+    const entries = this.rootStore.trackStore.TrackEntries(this.rootStore.trackStore.SelectedTrack().trackId);
+    return this.entries.map(entryId => entries[entryId]);
   }
 
   @action.bound
@@ -167,7 +166,7 @@ class EntryStore {
   @action.bound
   ModifyEntry({entryId, text, startTime, endTime}) {
     this.rootStore.trackStore.ModifyTrack(track => {
-      const entry = track.entries[entryId];
+      const entry = this.rootStore.trackStore.TrackEntries(track.trackId)[entryId];
 
       if(entry) {
         entry.text = text;
@@ -196,12 +195,12 @@ class EntryStore {
     }
 
     this.rootStore.trackStore.ModifyTrack(track => {
-      delete track.entries[entryId];
+      delete this.rootStore.trackStore.TrackEntries(track.trackId)[entryId];
     });
   }
 
   async DownloadSegment(entryId, callback) {
-    const entry = this.rootStore.trackStore.SelectedTrack().entries[entryId];
+    const entry = this.rootStore.trackStore.TrackEntries(this.rootStore.trackStore.SelectedTrack().trackId)[entryId];
 
     const partHash = entry.source;
     const startTime = this.TimeToSMPTE(entry.startTime);

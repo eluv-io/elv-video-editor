@@ -70,8 +70,14 @@
     background-color: transparent;
   }
 
+  .-elv-slider {
+    background: linear-gradient(180deg, darken($color-accent-seek-inactive, 3%), lighten($color-accent-seek-inactive, 5%));
+    border: 0;
+    outline: 0;
+  }
+
   .-elv-slider-active {
-    background-color: $color-accent;
+    background: linear-gradient(90deg, darken($color-accent, 15%), lighten($color-accent, 15%));
   }
 
   .-elv-slider-marks-container {

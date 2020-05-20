@@ -1,4 +1,4 @@
-import {observable, action, flow} from "mobx";
+import {observable, action, flow, toJS} from "mobx";
 import {WebVTT} from "vtt.js";
 import Id from "../utils/Id";
 import IntervalTree from "node-interval-tree";
@@ -29,6 +29,9 @@ const colors = [
 let colorIndex = 0;
 
 class Tracks {
+  entries = {};
+  intervalTrees = {};
+
   @observable tracks = [];
   @observable audioTracks = [];
   @observable selectedTrack;
@@ -146,6 +149,33 @@ class Tracks {
     return vttTracks;
   });
 
+  AddTrack({label, key, type, entries, color}) {
+    const trackId = Id.next();
+    this.tracks.push({
+      trackId,
+      color: color || this.NextColor(),
+      version: 1,
+      label,
+      key: key || `track-${label}`,
+      trackType: type
+    });
+
+    this.entries[trackId] = entries;
+    this.intervalTrees[trackId] = this.CreateTrackIntervalTree(entries);
+
+    return trackId;
+  }
+
+  @action.bound
+  TrackEntries(trackId) {
+    return this.entries[trackId];
+  }
+
+  @action.bound
+  TrackEntryIntervalTree(trackId) {
+    return this.intervalTrees[trackId];
+  }
+
   /* Audio Tracks */
 
   @action.bound
@@ -227,7 +257,8 @@ class Tracks {
             label: "Audio",
             trackType: "audio",
             entries: [],
-            max: 0
+            max: 0,
+            version: 1
           });
 
           const duration = track.segments.reduce((duration, segment) => duration + segment.duration, 0);
@@ -277,7 +308,7 @@ class Tracks {
           startTime: entry.start_time,
           endTime: entry.end_time,
           text: entry.text,
-          entry
+          entry: toJS(entry)
         });
 
         entries[parsedEntry.entryId] = parsedEntry;
@@ -367,7 +398,7 @@ class Tracks {
     return cues;
   }
 
-  TrackIntervalTree(entries) {
+  CreateTrackIntervalTree(entries) {
     const intervalTree = new IntervalTree();
 
     Object.values(entries).forEach(entry => intervalTree.insert(entry.startTime, entry.endTime, entry.entryId));
@@ -380,18 +411,22 @@ class Tracks {
 
     // Initialize video WebVTT tracks by fetching and parsing the VTT file
     subtitleTracks.map(track => {
-      const entries = this.ParseVTTTrack(track);
+      try {
+        const entries = this.ParseVTTTrack(track);
 
-      this.totalEntries += Object.keys(entries.length);
+        this.totalEntries += Object.keys(entries).length;
 
-      this.tracks.push({
-        trackId: Id.next(),
-        color: this.NextColor(),
-        ...track,
-        trackType: "vtt",
-        entries,
-        intervalTree: this.TrackIntervalTree(entries)
-      });
+        this.AddTrack({
+          ...track,
+          type: "vtt",
+          entries
+        });
+      } catch(error) {
+        // eslint-disable-next-line no-console
+        console.error("Error parsing VTT track:");
+        // eslint-disable-next-line no-console
+        console.error(error);
+      }
     });
   });
 
@@ -400,15 +435,11 @@ class Tracks {
     metadataTracks.map(track => {
       this.totalEntries += Object.keys(track.entries).length;
 
-      this.tracks.push({
-        trackId: Id.next(),
-        color: this.NextColor(),
-        version: 1,
+      this.AddTrack({
         label: track.label,
         key: track.key,
-        trackType: "metadata",
-        entries: track.entries,
-        intervalTree: this.TrackIntervalTree(track.entries)
+        type: "metadata",
+        entries: track.entries
       });
     });
   }
@@ -444,15 +475,11 @@ class Tracks {
           segments[segment.entryId] = segment;
         });
 
-        this.tracks.push({
-          trackId: Id.next(),
-          color: this.NextColor(),
-          version: 1,
+        this.AddTrack({
           label: `${stream === "video" ? "Video" : "Audio"} Segments`,
           key: `${stream}-segments`,
-          trackType: "segments",
-          entries: segments,
-          intervalTree: this.TrackIntervalTree(segments)
+          type: "segments",
+          entries: segments
         });
       });
     } catch(error) {
@@ -476,15 +503,12 @@ class Tracks {
       [clip.entryId]: clip
     };
 
-    this.tracks.push({
-      trackId: Id.next(),
-      trackType: "clip",
-      color: {r: 100, g: 255, b: 255, a: 150},
-      entries,
-      key: "primary-content",
+    this.AddTrack({
       label: "Primary Content",
-      version: 1,
-      intervalTree: this.TrackIntervalTree(entries)
+      key: "primary-content",
+      type: "clip",
+      color: {r: 255, g: 255, b: 255, a: 200},
+      entries
     });
   }
 
@@ -556,17 +580,11 @@ class Tracks {
 
   @action.bound
   CreateTrack({label, key}) {
-    const trackId = Id.next();
-
-    this.tracks.push({
-      trackId,
-      color: this.NextColor(),
-      version: 1,
+    const trackId = this.AddTrack({
       label,
       key,
-      trackType: "metadata",
-      entries: {},
-      intervalTree: new IntervalTree()
+      type: "metadata",
+      entries: {}
     });
 
     this.rootStore.entryStore.ClearSelectedEntry();
@@ -588,7 +606,7 @@ class Tracks {
   ModifyTrack(f) {
     const track = this.SelectedTrack();
     f(track);
-    track.intervalTree = this.TrackIntervalTree(track.entries);
+    this.intervalTrees[track.trackId] = this.CreateTrackIntervalTree(this.entries[track.trackId]);
     track.version += 1;
   }
 
@@ -604,14 +622,14 @@ class Tracks {
     const track = this.tracks.find(track => track.trackId === trackId);
     const cue = this.Cue({entryType: "metadata", text, startTime, endTime});
 
-    track.entries[cue.entryId] = cue;
+    this.entries[track.trackId][cue.entryId] = cue;
 
     return cue.entryId;
   }
 
   ClipInfo() {
     const clipTrack = this.tracks.find(track => track.trackType === "clip");
-    return Object.values(clipTrack.entries)[0];
+    return Object.values(this.entries[clipTrack.trackId])[0];
   }
 }
 

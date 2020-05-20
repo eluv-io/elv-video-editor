@@ -25,7 +25,7 @@ class Timeline extends React.Component {
         Audio: false,
         Preview: true,
         Segments: false,
-        Subtitles: true,
+        Subtitles: false,
         Tags: true,
       }
     };

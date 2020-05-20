@@ -226,7 +226,7 @@ class Menu extends React.Component {
         Load={this.props.menu.ListLibraries}
       >
         {
-          libraries.length == 0 ?
+          libraries.length === 0 ?
             <div className="menu-empty">No Libraries Available</div> :
             <div className="menu-entries">
               <ul>
@@ -256,7 +256,7 @@ class Menu extends React.Component {
   Navigation() {
     if(this.props.menu.objectId) {
       return this.SelectedObject();
-    } if(this.props.menu.libraryId) {
+    } else if(this.props.menu.libraryId) {
       return this.Objects();
     } else {
       return this.Libraries();

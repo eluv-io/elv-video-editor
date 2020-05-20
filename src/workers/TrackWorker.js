@@ -59,8 +59,8 @@ class TrackWorker {
     );
 
     const widthRatio = this.width / visibleDuration;
-    const halfHeight = Math.floor(this.height * 0.5);
-    const startY = Math.floor(this.height * 0.25);
+    const entryHeight = Math.ceil(this.height * 0.60);
+    const startY = Math.ceil((this.height - entryHeight) / 2) - 2;
 
     entries.map(entry => {
       const startPixel = Math.floor((entry.startTime - startTime) * widthRatio);
@@ -92,7 +92,7 @@ class TrackWorker {
         startPixel,
         startY,
         endPixel - startPixel,
-        halfHeight,
+        entryHeight,
       );
     });
 

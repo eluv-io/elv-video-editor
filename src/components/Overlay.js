@@ -5,6 +5,8 @@ import {reaction} from "mobx";
 import ToolTip from "elv-components-js/src/components/Tooltip";
 import ResizeObserver from "resize-observer-polyfill";
 
+const frameSpread = 10;
+
 @inject("video")
 @inject("overlay")
 @inject("tracks")
@@ -103,8 +105,14 @@ class Overlay extends React.Component {
     if(this.props.video.frame === 0) { return []; }
 
     // Get the entries for the current frame, injecting the overlay track label into each entry
-    const frame = this.props.overlay.overlayTrack[this.props.video.frame.toString()] ||
-      this.props.overlay.overlayTrack[(this.props.video.frame - 1).toString()];
+    let frame;
+    for(let i = this.props.video.frame; i > Math.max(0, this.props.video.frame - frameSpread); i--) {
+      frame = this.props.overlay.overlayTrack[i.toString()];
+
+      if(frame) {
+        break;
+      }
+    }
 
     if(!frame) { return []; }
 

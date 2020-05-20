@@ -154,15 +154,15 @@
 }
 
 .delete-button {
-  bottom: $elv-spacing-m;
-  position: absolute;
-  width: 90%;
+  margin-top: auto;
+  padding-bottom: $elv-spacing-s;
 
   &.delete-button {
     button {
       background-color: $color-background;
       border: 1px solid $color-border;
       color: $elv-color-text-white;
+      width: 100%;
 
       &:hover {
         background-color: $elv-color-mediumred;
@@ -172,6 +172,8 @@
 }
 
 .entry-form {
+  display: flex;
+  flex-direction: column;
   flex-grow: 1;
   overflow-y: auto;
   padding: $elv-spacing-s;
@@ -219,6 +221,7 @@
       font-size: $elv-font-xs;
       font-weight: 500;
       justify-content: center;
+      padding-left: $elv-spacing-xxs;
     }
   }
 }

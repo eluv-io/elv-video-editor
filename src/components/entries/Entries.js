@@ -62,7 +62,7 @@ class EntryList extends React.Component {
     const entriesSelected = this.props.entry.entries.length > 0;
     const entryList = entriesSelected ?
       this.props.entry.Entries() :
-      Object.values(this.props.track.entries);
+      Object.values(this.props.tracks.TrackEntries(this.props.track.trackId));
 
     return this.props.entry.FilteredEntries(entryList);
   }
@@ -123,7 +123,7 @@ class EntryList extends React.Component {
 
   render() {
     const entries = this.FilteredEntries();
-    const activeEntryIds = this.props.track.intervalTree.search(
+    const activeEntryIds = this.props.tracks.TrackEntryIntervalTree(this.props.track.trackId).search(
       this.props.video.currentTime,
       this.props.video.currentTime
     );

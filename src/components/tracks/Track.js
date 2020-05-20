@@ -41,14 +41,13 @@ class Track extends React.Component {
         // Update on entries change
         reaction(
           () => ({
-            version: this.props.track.version,
-            entries: this.props.track.entries.length
+            version: this.props.track.version
           }),
           () => {
             this.state.worker.postMessage({
               operation: "SetEntries",
               trackId: this.props.track.trackId,
-              entries: toJS(this.props.track.entries)
+              entries: this.props.tracks.TrackEntries(this.props.track.trackId)
             });
           },
           {delay: 25 * delayFactor}
@@ -182,7 +181,7 @@ class Track extends React.Component {
   }
 
   Search(time) {
-    return this.props.track.intervalTree.search(time, time);
+    return this.props.tracks.TrackEntryIntervalTree(this.props.track.trackId).search(time, time);
   }
 
   TimeAt(clientX) {
@@ -225,7 +224,7 @@ class Track extends React.Component {
     const filter = formatString(this.props.entry.filter);
 
     const entries = this.props.entry.hoverEntries.map(entryId => {
-      const entry = this.props.track.entries[entryId];
+      const entry = this.props.tracks.TrackEntries(this.props.track.trackId)[entryId];
 
       if(filter && !formatString(entry.text).includes(filter)) {
         return null;
@@ -274,7 +273,7 @@ class Track extends React.Component {
             color: toJS(this.props.track.color),
             width: this.state.canvasWidth,
             height: this.state.canvasHeight,
-            entries: toJS(this.props.track.entries),
+            entries: this.props.tracks.TrackEntries(this.props.track.trackId),
             noActive: this.props.noActive,
             scale: {
               scale: this.props.video.scale,
