@@ -445,7 +445,7 @@ class Tracks {
   }
 
   AddSegmentTracks() {
-    if(!this.rootStore.videoStore.isVideo) { return; }
+    if(!this.rootStore.videoStore.isVideo || !this.rootStore.videoStore.metadata.offerings) { return; }
 
     try {
       const streams = this.rootStore.videoStore.metadata.offerings.default.media_struct.streams;

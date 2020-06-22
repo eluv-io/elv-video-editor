@@ -84,7 +84,8 @@ class MenuStore {
         versionHash,
         name: metadata.public && metadata.public.name || metadata.name || versionHash,
         metadata,
-        isVideo: metadata.offerings && metadata.offerings.default && metadata.offerings.default.ready
+        //isVideo: metadata.offerings && metadata.offerings.default && metadata.offerings.default.ready
+        isVideo: true
       };
 
       this.rootStore.videoStore.SetVideo(this.selectedObject);
@@ -145,7 +146,8 @@ class MenuStore {
     }
 
     if(this.showVideoOnly) {
-      filters.push({key: "/offerings/default/ready", type: "eq", filter: true});
+      // Filter no longer works
+      // filters.push({key: "/offerings/default/ready", type: "eq", filter: true});
     }
 
     let { contents, paging } = yield this.rootStore.client.ContentObjects({
