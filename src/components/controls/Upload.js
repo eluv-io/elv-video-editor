@@ -12,9 +12,8 @@ class UploadModal extends React.Component {
     this.state = {
       metadataRemote: false,
       overlayRemote: false,
-
-      metadataFile: undefined,
-      metadataFileRemote: undefined,
+      metadataFiles: [],
+      metadataFilesRemote: [],
       overlayFiles: [],
       overlayFilesRemote: []
     };
@@ -28,13 +27,13 @@ class UploadModal extends React.Component {
         <BrowseWidget
           key="metadata-browse-remote"
           remote={true}
-          header="Select Metadata Tag File"
+          header="Select Metadata Tag Files"
           fileMetadata={this.props.video.metadata.files || {}}
           mimeTypes={this.props.video.metadata.mime_types || {}}
           baseFileUrl={this.props.video.baseFileUrl}
           extensions={["json"]}
-          multiple={false}
-          onChange={filePaths => this.setState({metadataFileRemote: filePaths[0]})}
+          multiple={true}
+          onChange={filePaths => this.setState({metadataFilesRemote: filePaths})}
         />
       );
     } else {
@@ -42,11 +41,11 @@ class UploadModal extends React.Component {
         <BrowseWidget
           key="metadata-browse-local"
           name="Metadata Tags File"
-          multiple={false}
+          multiple={true}
           directories={false}
           required={false}
           accept={["application/json"]}
-          onChange={event => this.setState({metadataFile: event.target.files[0]})}
+          onChange={event => this.setState({metadataFiles: event.target.files})}
         />
       );
     }
@@ -59,8 +58,8 @@ class UploadModal extends React.Component {
           <Tabs
             onChange={() => this.setState({
               metadataRemote: !this.state.metadataRemote,
-              metadataFile: undefined,
-              metadataFileRemote: undefined
+              metadataFiles: [],
+              metadataFilesRemote: []
             })}
             selected={this.state.metadataRemote}
             options={[["Local", false], ["Remote", true]]}
@@ -135,9 +134,9 @@ class UploadModal extends React.Component {
       <Form
         legend="Upload Metadata Tags"
         OnSubmit={() => this.props.onSubmit({
-          metadataFile: this.state.metadataFile,
+          metadataFiles: this.state.metadataFiles,
           overlayFiles: this.state.overlayFiles,
-          metadataFileRemote: this.state.metadataFileRemote,
+          metadataFilesRemote: this.state.metadataFilesRemote,
           overlayFilesRemote: this.state.overlayFilesRemote
         })}
         OnCancel={this.props.onCancel}
@@ -165,13 +164,13 @@ class Upload extends React.Component {
     this.ActivateModal = this.ActivateModal.bind(this);
   }
 
-  async Upload({metadataFile, metadataFileRemote, overlayFiles, overlayFilesRemote}) {
+  async Upload({metadataFiles, metadataFilesRemote, overlayFiles, overlayFilesRemote}) {
     this.setState({uploading: true});
 
     try {
       await this.props.edit.UploadMetadataTags({
-        metadataFile,
-        metadataFileRemote,
+        metadataFiles,
+        metadataFilesRemote,
         overlayFiles,
         overlayFilesRemote
       });

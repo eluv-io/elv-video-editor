@@ -308,3 +308,26 @@ button {
     position: absolute;
   }
 }
+
+.-elv-file-browser {
+  table {
+    th {
+      font-weight: 500;
+    }
+
+    tr {
+      &.directory {
+        &:hover {
+          background-color: $elv-color-darkergray;
+        }
+      }
+
+      .item-icon {
+        svg {
+          stroke: $elv-color-mediumgray;
+          width: 1rem;
+        }
+      }
+    }
+  }
+}

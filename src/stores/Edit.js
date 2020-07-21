@@ -181,7 +181,7 @@ class EditStore {
   });
 
   @action.bound
-  UploadMetadataTags = flow(function * ({metadataFile, metadataFileRemote, overlayFiles=[], overlayFilesRemote=[]}) {
+  UploadMetadataTags = flow(function * ({metadataFiles, metadataFilesRemote, overlayFiles=[], overlayFilesRemote=[]}) {
     if(this.rootStore.videoStore.loading) {
       return;
     }
@@ -192,12 +192,22 @@ class EditStore {
 
     // Read files and verify contents
 
-    if(metadataFile) {
-      metadataTags = yield ReadFile(metadataFile);
+    if(metadataFiles.length > 0) {
+      metadataFiles = Array.from(metadataFiles).sort((a, b) => a.name < b.name);
 
-      if(!metadataTags.metadata_tags) {
-        throw Error(`No metadata tags present in ${metadataFile.name}`);
-      }
+      metadataTags = yield Promise.all(
+        Array.from(metadataFiles).map(async file => {
+          const tags = await ReadFile(file);
+
+          if(!tags.metadata_tags && !tags.video_level_tags) {
+            throw Error(`No metadata tags present in ${file.name}`);
+          }
+
+          return {
+            tags
+          };
+        })
+      );
     }
 
     if(overlayFiles.length > 0) {
@@ -220,7 +230,7 @@ class EditStore {
       );
     }
 
-    if(!metadataTags && !overlayTags && !metadataFileRemote && overlayFilesRemote.length === 0) {
+    if(!metadataTags && !overlayTags && metadataFilesRemote.length === 0 && overlayFilesRemote.length === 0) {
       return;
     }
 
@@ -234,45 +244,60 @@ class EditStore {
     });
 
     // Local metadata tag files
-    if(metadataTags) {
-      // Upload and create a link to the metadata tag file
-      const data = (new TextEncoder()).encode(JSON.stringify(metadataTags));
-      yield client.UploadFiles({
+    if(metadataTags || metadataFilesRemote) {
+      // Clear any existing tags
+      yield client.DeleteMetadata({
         libraryId,
         objectId,
         writeToken: write_token,
-        fileInfo: [{
-          path: "MetadataTags.json",
-          mime_type: "application/json",
-          size: data.length,
-          data: data.buffer
-        }]
-      });
-
-      yield client.CreateLinks({
-        libraryId,
-        objectId,
-        writeToken: write_token,
-        links: [{
-          path: "video_tags/metadata_tags",
-          target: "MetadataTags.json",
-          type: "file"
-        }]
+        metadataSubtree: "video_tags/metadata_tags"
       });
     }
 
+    if(metadataTags) {
+      // Upload and create a link to each metadata tag file
+      for(let i = 0; i < metadataTags.length; i++) {
+        const data = (new TextEncoder()).encode(JSON.stringify(metadataTags[i].tags));
+        const filename = `video_tags/MetadataTags-${(i + 1).toString().padStart(3, "0")}.json`;
+        yield client.UploadFiles({
+          libraryId,
+          objectId,
+          writeToken: write_token,
+          fileInfo: [{
+            path: filename,
+            mime_type: "application/json",
+            size: data.length,
+            data: data.buffer
+          }]
+        });
+
+        yield client.CreateLinks({
+          libraryId,
+          objectId,
+          writeToken: write_token,
+          links: [{
+            path: `video_tags/metadata_tags/${i}`,
+            target: filename,
+            type: "file"
+          }]
+        });
+      }
+    }
+
     // Remote metadata tag files
-    if(metadataFileRemote) {
-      yield client.CreateLinks({
-        libraryId,
-        objectId,
-        writeToken: write_token,
-        links: [{
-          path: "video_tags/metadata_tags",
-          target: metadataFileRemote,
-          type: "file"
-        }]
-      });
+    if(metadataFilesRemote.length > 0) {
+      for(let i = 0; i < metadataFilesRemote.length; i++) {
+        yield client.CreateLinks({
+          libraryId,
+          objectId,
+          writeToken: write_token,
+          links: [{
+            path: `video_tags/metadata_tags/${i}`,
+            target: metadataFilesRemote[i],
+            type: "file"
+          }]
+        });
+      }
     }
 
     // Local overlay files
@@ -291,7 +316,7 @@ class EditStore {
       // Upload and create a link to each overlay tag file
       for(let i = 0; i < overlayTags.length; i++) {
         const data = (new TextEncoder()).encode(JSON.stringify(overlayTags[i].tags));
-        const filename = `OverlayTags-${(i + 1).toString().padStart(3, "0")}.json`;
+        const filename = `video_tags/OverlayTags-${(i + 1).toString().padStart(3, "0")}.json`;
         yield client.UploadFiles({
           libraryId,
           objectId,

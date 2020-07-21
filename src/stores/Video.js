@@ -4,6 +4,7 @@ import UrlJoin from "url-join";
 import URI from "urijs";
 import HLS from "hls.js";
 import {DownloadFromUrl} from "../utils/Utils";
+import LodashObject from "lodash/object";
 
 class VideoStore {
   @observable videoKey = 0;
@@ -227,11 +228,38 @@ class VideoStore {
 
         // Tags
         if(this.metadata.video_tags && this.metadata.video_tags.metadata_tags) {
-          this.tags = yield this.rootStore.client.LinkData({
-            versionHash: this.versionHash,
-            linkPath: "video_tags/metadata_tags",
-            format: "json"
-          });
+          if(this.metadata.video_tags.metadata_tags["/"]) {
+            // Single tag file
+            this.tags = yield this.rootStore.client.LinkData({
+              versionHash: this.versionHash,
+              linkPath: "video_tags/metadata_tags",
+              format: "json"
+            });
+          } else {
+            let video_level_tags = {};
+            let metadata_tags = {};
+            yield this.rootStore.client.utils.LimitedMap(
+              5,
+              Object.keys(this.metadata.video_tags.metadata_tags),
+              async key => {
+                const tags = await this.rootStore.client.LinkData({
+                  versionHash: this.versionHash,
+                  linkPath: `video_tags/metadata_tags/${key}`,
+                  format: "json"
+                });
+
+                if(tags) {
+                  video_level_tags = LodashObject.merge(video_level_tags, tags.video_level_tags);
+                  metadata_tags = LodashObject.merge(metadata_tags, tags.metadata_tags);
+                }
+              }
+            );
+
+            this.tags = {
+              video_level_tags,
+              metadata_tags
+            };
+          }
 
           let videoTags = this.tags.video_level_tags || [];
           if(typeof videoTags === "object") {
