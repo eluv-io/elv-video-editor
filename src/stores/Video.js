@@ -340,7 +340,7 @@ class VideoStore {
     this.video.addEventListener("durationchange", action(() => {
       if(this.initialized || this.source !== loadedSource) { return; }
 
-      if(this.video.duration > 0 && isFinite(this.video.duration)) {
+      if(this.video.duration > 3 && isFinite(this.video.duration)) {
         videoHandler.Update();
         this.initialized = true;
 

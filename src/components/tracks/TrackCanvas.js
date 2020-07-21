@@ -24,9 +24,9 @@ class TrackCanvas extends React.Component {
   WatchResize(element) {
     if(element) {
       this.resizeObserver = new ResizeObserver(entries => {
-        const canvas = entries[0];
+        const node = entries[0].target.parentNode;
 
-        this.props.HandleResize(canvas.contentRect);
+        this.props.HandleResize({width: node.offsetWidth, height: node.offsetHeight});
       });
 
       this.resizeObserver.observe(element);

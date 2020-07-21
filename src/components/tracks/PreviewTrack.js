@@ -31,10 +31,10 @@ class PreviewTrack extends React.Component {
     StopScroll()(element);
 
     this.resizeObserver = new ResizeObserver(entries => {
-      const track = entries[0];
+      const track = entries[0].target.parentNode;
 
       // Set number of previews on the timeline based on width
-      this.setState({previews: Math.ceil(track.contentRect.width / 125)});
+      this.setState({previews: Math.ceil(track.offsetWidth / 125)});
     });
 
     this.resizeObserver.observe(element);

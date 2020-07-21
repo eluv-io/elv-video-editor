@@ -31,7 +31,7 @@
     "dash-js": "^1.3.5",
     "dashjs": "^2.9.3",
     "deep-object-diff": "^1.1.0",
-    "elv-components-js": "git+https://github.com/eluv-io/elv-components-js.git#645165da87ec42845a908a9ce0817db202523866",
+    "elv-components-js": "git+https://github.com/eluv-io/elv-components-js.git#2c76a0a3c06288d81a31a3f2b163b4e010ba308f",
     "fraction.js": "^4.0.12",
     "hls.js": "^0.12.4",
     "m3u8-parser": "^4.4.0",

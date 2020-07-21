@@ -181,6 +181,7 @@ let FrameControl = ({video, frames=0, seconds=0, label, icon}) => {
 let Seek = (props) => {
   return (
     <Slider
+      log={true}
       key="video-progress"
       min={props.video.scaleMin}
       max={props.video.scaleMax}
