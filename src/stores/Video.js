@@ -27,7 +27,6 @@ class VideoStore {
   @observable currentLevel;
 
   @observable source;
-  @observable poster;
   @observable baseVideoFrameUrl = undefined;
   @observable previewSupported = false;
 
@@ -95,7 +94,6 @@ class VideoStore {
     this.videoTags = [];
 
     this.source = undefined;
-    this.poster = undefined;
     this.baseVideoFrameUrl = undefined;
     this.previewSupported = false;
 
@@ -161,15 +159,6 @@ class VideoStore {
           .addSearch("player_profile", "hls-js-2441")
           .toString();
 
-        let poster;
-        if(videoObject.metadata.image || videoObject.metadata.public.image) {
-          poster = yield this.rootStore.client.Rep({
-            versionHash: videoObject.versionHash,
-            rep: "player_background",
-            channelAuth: true
-          });
-        }
-
         this.baseVideoFrameUrl = yield this.rootStore.client.Rep({
           versionHash: videoObject.versionHash,
           rep: UrlJoin("playout", "default", "frames.png")
@@ -190,7 +179,6 @@ class VideoStore {
         }
 
         this.source = source;
-        this.poster = poster;
 
         try {
           this.clipStartTime = 0;
@@ -296,7 +284,14 @@ class VideoStore {
 
     this.metadata = yield this.rootStore.client.ContentObjectMetadata({
       versionHash,
-      select: ["public", "offerings", "video_tags"]
+      select: [
+        "public/name",
+        "public/description",
+        "offerings",
+        "video_tags",
+        "files",
+        "mime_types"
+      ]
     });
   });
 
@@ -375,12 +370,13 @@ class VideoStore {
       }
     }));
 
-    // When sufficiently loaded, update video info and mark video as initialized
     const loadedSource = this.source;
-    this.video.addEventListener("durationchange", action(() => {
+
+    // When sufficiently loaded, update video info and mark video as initialized
+    const InitializeDuration = action(() => {
       if(this.initialized || this.source !== loadedSource) { return; }
 
-      if(this.video.duration > 3 && isFinite(this.video.duration)) {
+      if(this.video.readyState > 2 && this.video.duration > 3 && isFinite(this.video.duration)) {
         videoHandler.Update();
         this.initialized = true;
 
@@ -390,7 +386,10 @@ class VideoStore {
 
         this.rootStore.trackStore.InitializeTracks();
       }
-    }));
+    });
+
+    this.video.addEventListener("canplay", InitializeDuration);
+    this.video.addEventListener("durationchange", InitializeDuration);
 
     this.video.addEventListener("error", action(() => {
       // eslint-disable-next-line no-console

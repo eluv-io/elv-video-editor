@@ -76,7 +76,18 @@ class MenuStore {
         versionHash = object.hash;
       }
 
-      const metadata = yield this.rootStore.client.ContentObjectMetadata({objectId, versionHash});
+      const metadata = yield this.rootStore.client.ContentObjectMetadata({
+        objectId,
+        versionHash,
+        select: [
+          "public/name",
+          "public/description",
+          "offerings",
+          "video_tags",
+          "files",
+          "mime_types"
+        ]
+      });
 
       this.selectedObject = {
         libraryId,
@@ -112,13 +123,13 @@ class MenuStore {
         try {
           const metadata = await this.rootStore.client.ContentObjectMetadata({
             libraryId,
-            objectId: libraryId.replace("ilib", "iq__")
+            objectId: libraryId.replace("ilib", "iq__"),
+            select: ["name", "public/name"]
           });
 
           this.libraries[libraryId] = {
             libraryId,
-            name: metadata.public && metadata.public.name || metadata.name || libraryId,
-            metadata
+            name: metadata.public && metadata.public.name || metadata.name || libraryId
           };
         } catch(error) {
           return undefined;
@@ -131,13 +142,13 @@ class MenuStore {
   ListObjects = flow(function * ({libraryId, page=1, perPage=25, filter="", cacheId=""}) {
     const metadata = yield this.rootStore.client.ContentObjectMetadata({
       libraryId,
-      objectId: libraryId.replace("ilib", "iq__")
+      objectId: libraryId.replace("ilib", "iq__"),
+      select: ["name", "public/name"]
     });
 
     this.libraries[libraryId] = {
       libraryId,
-      name: metadata.public && metadata.public.name || metadata.name || libraryId,
-      metadata
+      name: metadata.public && metadata.public.name || metadata.name || libraryId
     };
 
     let filters = [];
@@ -154,11 +165,7 @@ class MenuStore {
       libraryId,
       filterOptions: {
         select: [
-          "description",
-          "image",
-          "name",
-          "player_background",
-          "public"
+          "public/name",
         ],
         filter: filters,
         start: (page-1) * perPage,

@@ -70,7 +70,7 @@ class Menu extends React.Component {
               <h4>{object.name}</h4>
             </div>
 
-            <h5>{object.metadata.description}</h5>
+            <h5>{(object.metadata.public || {}).description}</h5>
 
             <div className="video-info">
               <label>Library ID</label>
