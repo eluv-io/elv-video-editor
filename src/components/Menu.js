@@ -38,7 +38,6 @@ class Menu extends React.Component {
       this.props.menu.SetObjectId(objectId);
 
       this.props.menu.ToggleMenu(false);
-      this.setState({objectId});
 
       await this.props.menu.SelectVideo({libraryId, objectId});
     } catch(error) {
@@ -155,23 +154,6 @@ class Menu extends React.Component {
             }}
           />
         </div>
-
-        <div className="menu-video-filter">
-          <button
-            className={this.props.menu.showVideoOnly ? "secondary" : "primary"}
-            onClick={() => this.setState({cacheId: ""}, () => this.props.menu.ToggleVideoFilter(false))}
-          >
-            Show All
-          </button>
-          <button
-            className={this.props.menu.showVideoOnly ? "primary" : "secondary"}
-            onClick={() => this.setState({cacheId: ""}, () => this.props.menu.ToggleVideoFilter(true))}
-          >
-            Show Video Only
-          </button>
-
-        </div>
-
         <AsyncComponent
           key={`objects-container-${this.state.filter}-${this.state.page}-${this.props.menu.showVideoOnly}`}
           Load={async () => {
@@ -221,14 +203,32 @@ class Menu extends React.Component {
       .sort((a, b) => a.name.toLowerCase() > b.name.toLowerCase() ? 1 : -1);
 
     return (
-      <AsyncComponent
-        key="libraries-container"
-        Load={this.props.menu.ListLibraries}
-      >
-        {
-          libraries.length === 0 ?
-            <div className="menu-empty">No Libraries Available</div> :
-            <div className="menu-entries">
+      <div className="menu-entries">
+        <div className="menu-header">
+          <BackButton
+            onClick={() => this.props.menu.ToggleMenu(false)}
+          />
+          <h4>Content Libraries</h4>
+        </div>
+        <div className="menu-filter content-lookup">
+          <input
+            placeholder="Find content by ID, version hash or contract address"
+            value={this.state.contentId}
+            onChange={event => this.setState({contentId: event.target.value})}
+            onKeyPress={onEnterPressed(async () => {
+              await this.props.menu.LookupContent(this.state.contentId);
+
+              this.setState({contentId: ""});
+            })}
+          />
+        </div>
+        <AsyncComponent
+          key="libraries-container"
+          Load={this.props.menu.ListLibraries}
+        >
+          {
+            libraries.length === 0 ?
+              <div className="menu-empty">No Libraries Available</div> :
               <ul>
                 {
                   libraries.map(library => {
@@ -247,9 +247,9 @@ class Menu extends React.Component {
                   })
                 }
               </ul>
-            </div>
-        }
-      </AsyncComponent>
+          }
+        </AsyncComponent>
+      </div>
     );
   }
 

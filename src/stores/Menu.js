@@ -106,6 +106,7 @@ class MenuStore {
       // eslint-disable-next-line no-console
       console.error(error);
 
+      this.ClearObjectId();
       this.SetErrorMessage(error.message || error);
 
       throw error;
@@ -189,6 +190,69 @@ class MenuStore {
     ));
 
     return paging;
+  });
+
+  LookupContent = flow(function * (contentId) {
+    contentId = contentId.replace(/ /g, "");
+
+    if(!contentId) { return; }
+
+    try {
+      const client = this.rootStore.client;
+
+      let libraryId, objectId, accessType;
+      if(contentId.startsWith("ilib")) {
+        libraryId = contentId;
+        accessType = "library";
+      } else if(contentId.startsWith("hq__")) {
+        objectId = client.utils.DecodeVersionHash(contentId).objectId;
+      } else if(contentId.startsWith("iq__")) {
+        objectId = contentId;
+      } else if(contentId.startsWith("0x")) {
+        const id = client.utils.AddressToObjectId(contentId);
+        accessType = yield client.AccessType({id});
+
+        if(accessType === "library") {
+          libraryId = client.utils.AddressToLibraryId(contentId);
+        } else {
+          objectId = id;
+        }
+      } else {
+        objectId = client.utils.AddressToObjectId(client.utils.HashToAddress(contentId));
+      }
+
+      if(objectId && !libraryId) {
+        libraryId = yield client.ContentObjectLibraryId({objectId});
+      }
+
+      if(!accessType) {
+        accessType = yield client.AccessType({id: objectId});
+      }
+
+      switch(accessType) {
+        case "library":
+          this.SetLibraryId(libraryId);
+          break;
+        case "object":
+          this.SetLibraryId(libraryId);
+          this.SetObjectId(objectId);
+
+          this.ToggleMenu(false);
+
+          yield this.SelectVideo({libraryId, objectId});
+          break;
+        default:
+          // eslint-disable-next-line no-console
+          console.error("Invalid content:", contentId, accessType);
+      }
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to look up ID:");
+      // eslint-disable-next-line no-console
+      console.error(error);
+
+      return { error: "Invalid content ID" };
+    }
   });
 
   @action.bound

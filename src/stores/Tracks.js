@@ -221,7 +221,6 @@ class Tracks {
       .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
 
     const audioTrack = this.audioTracks.find(track => track.trackId === trackId);
-    console.log(audioTrack);
     if(audioTrack) {
       audioTrack.entries = [
         ...audioTrack.entries,
