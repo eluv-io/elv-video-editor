@@ -217,6 +217,7 @@ class VideoStore {
         if(this.metadata.video_tags && this.metadata.video_tags.metadata_tags) {
           if(this.metadata.video_tags.metadata_tags["/"]) {
             // Single tag file
+
             this.tags = yield this.rootStore.client.LinkData({
               versionHash: this.versionHash,
               linkPath: "video_tags/metadata_tags",
@@ -239,6 +240,8 @@ class VideoStore {
 
             tagData.forEach(tags => {
               if(tags) {
+                const tagVersion = tags.version || 0;
+
                 video_level_tags = Object.assign(video_level_tags, tags.video_level_tags);
 
                 if(tags.metadata_tags) {
@@ -250,6 +253,8 @@ class VideoStore {
                     } else {
                       metadata_tags[trackKey] = tags.metadata_tags[trackKey];
                     }
+
+                    metadata_tags[trackKey].version = tagVersion;
                   });
                 }
               }

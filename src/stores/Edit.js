@@ -50,15 +50,16 @@ class EditStore {
         const entries = this.rootStore.trackStore.TrackEntries(track.trackId);
         const entryMetadata = Object.values(entries).map(entry => ({
           ...entry.entry,
-          text: entry.text,
-          start_time: entry.startTime,
-          end_time: entry.endTime,
+          text: entry.content ? entry.content : entry.textList,
+          start_time: Math.floor(entry.startTime * 1000),
+          end_time: Math.floor(entry.endTime * 1000)
         }));
 
         const originalMetadata = metadata[track.key] || {};
 
         const trackMetadata = {
           ...originalMetadata,
+          version: 1,
           label: track.label,
           tags: SortEntries(entryMetadata)
         };
@@ -163,7 +164,8 @@ class EditStore {
       const {hash} = yield client.FinalizeContentObject({
         libraryId,
         objectId,
-        writeToken: write_token
+        writeToken: write_token,
+        commitMessage: "Video Editor"
       });
 
       this.rootStore.menuStore.UpdateVersionHash(hash);

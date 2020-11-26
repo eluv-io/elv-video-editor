@@ -55,7 +55,7 @@ class TrackWorker {
     entries = entries.filter(entry =>
       entry.endTime >= startTime.valueOf() &&
       entry.startTime <= endTime.valueOf() &&
-      (!filter || formatString(entry.text).includes(filter))
+      (!filter || formatString(entry.textList.join(" ")).includes(filter))
     );
 
     const widthRatio = this.width / visibleDuration;

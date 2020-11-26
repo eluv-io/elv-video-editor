@@ -160,12 +160,14 @@ class Track extends React.Component {
   }
 
   componentWillUnmount() {
-    this.state.reactions.forEach(dispose => dispose());
+    (this.state.reactions || []).forEach(dispose => dispose());
 
-    this.state.worker.postMessage({
-      operation: "Destroy",
-      trackId: this.props.track.trackId
-    });
+    if(this.state.worker) {
+      this.state.worker.postMessage({
+        operation: "Destroy",
+        trackId: this.props.track.trackId
+      });
+    }
   }
 
   OnCanvasResize({height, width}) {
@@ -226,7 +228,7 @@ class Track extends React.Component {
     const entries = this.props.entry.hoverEntries.map(entryId => {
       const entry = this.props.tracks.TrackEntries(this.props.track.trackId)[entryId];
 
-      if(filter && !formatString(entry.text).includes(filter)) {
+      if(filter && !formatString(entry.textList.join(" ")).includes(filter)) {
         return null;
       }
 
@@ -236,7 +238,7 @@ class Track extends React.Component {
             {`${this.props.entry.TimeToSMPTE(entry.startTime)} - ${this.props.entry.TimeToSMPTE(entry.endTime)}`}
           </div>
           <div className="track-entry-content">
-            {entry.text}
+            { entry.content ? <pre>{JSON.stringify(entry.content, null, 2)}</pre> : entry.textList.join(", ") }
           </div>
         </div>
       );
@@ -273,7 +275,7 @@ class Track extends React.Component {
             color: toJS(this.props.track.color),
             width: this.state.canvasWidth,
             height: this.state.canvasHeight,
-            entries: this.props.tracks.TrackEntries(this.props.track.trackId),
+            entries: toJS(this.props.tracks.TrackEntries(this.props.track.trackId)),
             noActive: this.props.noActive,
             scale: {
               scale: this.props.video.scale,

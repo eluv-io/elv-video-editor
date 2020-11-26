@@ -309,6 +309,42 @@ button {
   }
 }
 
+.list-field {
+  &.list-field {
+    display: flex;
+    flex-direction: column;
+
+    .asset-info-list-field-entry {
+      align-items: center;
+      background-color: inherit;
+      display: flex;
+      max-width: 30rem;
+      padding: 0 $elv-spacing-ml $elv-spacing-xs 0;
+      position: relative;
+    }
+
+    button {
+      background-color: transparent;
+      margin: 0;
+      max-width: 2rem;
+      padding: 0;
+
+      &:hover {
+        background-color: transparent;
+      }
+    }
+
+    .info-list-icon {
+      height: $elv-font-xxl;
+    }
+
+    .info-list-remove-icon {
+      position: absolute;
+      right: $elv-spacing-xs;
+    }
+  }
+}
+
 .-elv-file-browser {
   table {
     th {

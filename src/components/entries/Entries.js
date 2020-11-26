@@ -111,7 +111,7 @@ class EntryList extends React.Component {
         ref={HandleScroll}
       >
         <div className="entry-text">
-          {entry.text} {entry.entryId}
+          {entry.textList.join(", ")} {entry.entryId}
         </div>
         <div className="entry-time-range">
           {this.props.entry.TimeToSMPTE(entry.startTime)} - {this.props.entry.TimeToSMPTE(entry.endTime)}

@@ -302,11 +302,12 @@ class Tracks {
     let metadataTracks = [];
     Object.keys(metadataTags).forEach(key => {
       let entries = {};
+      const millis = metadataTags[key].version > 0;
       metadataTags[key].tags.forEach(entry => {
         const parsedEntry = this.Cue({
           entryType: "metadata",
-          startTime: entry.start_time,
-          endTime: entry.end_time,
+          startTime: millis ? (entry.start_time / 1000) : entry.start_time,
+          endTime: millis ? (entry.end_time / 1000) : entry.end_time,
           text: entry.text,
           entry: toJS(entry)
         });
@@ -333,13 +334,24 @@ class Tracks {
       endTime = this.rootStore.videoStore.videoHandler.SMPTEToTime(endTime);
     }
 
+    let textList, content;
+    if(Array.isArray(text)) {
+      textList = text;
+    } else if(typeof text === "object") {
+      content = text;
+      textList = [];
+    } else {
+      textList = [text];
+    }
+
     return {
       entryId: Id.next(),
       entryType,
       label,
       startTime,
       endTime,
-      text,
+      textList: toJS(textList),
+      content: toJS(content),
       entry
     };
   }
@@ -372,6 +384,7 @@ class Tracks {
       startTime: cue.startTime,
       endTime: cue.endTime,
       text: cue.text,
+      textList: [cue.text],
       entry: cueCopy
     });
   }

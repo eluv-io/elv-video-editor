@@ -172,12 +172,13 @@
 }
 
 .entry-form {
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
   overflow-y: auto;
   padding: $elv-spacing-s;
   position: relative;
+
+  .-elv-labelled-field {
+    grid-template-columns: 5rem 1fr;
+  }
 
   button {
     background-color: $color-accent;
@@ -231,8 +232,12 @@
   display: grid;
   grid-row-gap: $elv-spacing-xxs;
   grid-template-columns: 8rem 2fr;
+  padding-bottom: $elv-spacing-s;
   width: 100%;
+}
 
+.entry-details,
+.entry-form {
   label {
     color: $elv-color-text-lighter;
     text-align: left;
@@ -254,12 +259,18 @@
       outline: 1px solid $elv-color-mediumred;
     }
   }
+
+  pre {
+    background-color: $color-background-active;
+    border: 0;
+    font-size: $elv-font-s;
+  }
 }
 
 .entry-actions-container {
   align-items: center;
   display: flex;
-  margin-bottom: $elv-spacing-s;
+  margin-bottom: $elv-spacing-l;
 
   .cancel-button {
     background-color: $color-background;

@@ -249,6 +249,11 @@ $slider-height: 12px;
   padding: $elv-spacing-xs $elv-spacing-s;
   white-space: normal;
   word-wrap: break-spaces;
+
+  pre {
+    border: 0;
+    text-align: left;
+  }
 }
 
 .track-entry-timestamps {

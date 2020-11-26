@@ -48,7 +48,7 @@ class Entry extends React.Component {
 
   Actions(entry) {
     const playable = ["vtt", "metadata", "clip", "segment"].includes(entry.entryType);
-    const editable = ["metadata", "overlay", "clip"].includes(entry.entryType);
+    const editable = !entry.content && ["metadata", "overlay", "clip"].includes(entry.entryType);
     const downloadable = ["segment"].includes(entry.entryType);
 
     return (
@@ -86,13 +86,24 @@ class Entry extends React.Component {
     );
   }
 
+  EntryContent(entry) {
+    let content;
+    if(entry.content) {
+      content = <pre>{ JSON.stringify(entry.content, null, 2) }</pre>;
+    } else if(entry.textList) {
+      content = <div>{ entry.textList.join(", ") }</div>;
+    }
+
+    return content;
+  }
+
   VttEntry(entry) {
     const cue = entry.entry;
 
     return (
       <div className="entry-details">
-        <label>Text</label>
-        <div>{cue.text}</div>
+        <label>Content</label>
+        { this.EntryContent(cue)}
 
         <label>Start Time</label>
         <span>{`${cue.startTime} (${this.props.entry.TimeToSMPTE(entry.startTime)})`}</span>
@@ -133,8 +144,8 @@ class Entry extends React.Component {
   TagEntry(entry) {
     return (
       <div className="entry-details">
-        <label>Tag</label>
-        <div>{entry.text}</div>
+        <label>Content</label>
+        { this.EntryContent(entry)}
 
         <label>Start Time</label>
         <span>{`${entry.startTime} (${this.props.entry.TimeToSMPTE(entry.startTime)})`}</span>
@@ -148,8 +159,8 @@ class Entry extends React.Component {
   OverlayEntry(entry) {
     return (
       <div className="entry-details">
-        <label>Tag</label>
-        <div>{entry.text}</div>
+        <label>Content</label>
+        { this.EntryContent(entry)}
 
         <label>Confidence</label>
         <div>{entry.confidence.toFixed(3)}</div>

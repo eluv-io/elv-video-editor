@@ -16,6 +16,7 @@ class Menu extends React.Component {
     super(props);
 
     this.state = {
+      contentId: "",
       page: 1,
       perPage: 25,
       filter: "",

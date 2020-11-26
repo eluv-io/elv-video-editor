@@ -23,14 +23,16 @@ class OverlayStore {
       }
 
       let overlayTagChunks = [];
+      let overlayTagVersion = 0;
       const tagFiles = Object.keys(metadata.video_tags.overlay_tags);
       for(let i = 0; i < tagFiles.length; i++) {
-        const {overlay_tags} = yield this.rootStore.client.LinkData({
+        const {overlay_tags, version} = yield this.rootStore.client.LinkData({
           versionHash: this.rootStore.videoStore.versionHash,
           linkPath: `video_tags/overlay_tags/${tagFiles[i]}`,
           format: "json"
         });
 
+        overlayTagVersion = version || 0;
         overlayTagChunks.push(overlay_tags.frame_level_tags);
       }
 
@@ -39,6 +41,7 @@ class OverlayStore {
       }
 
       const overlayTags = Object.assign({}, ...overlayTagChunks);
+      overlayTags.version = overlayTagVersion;
 
       Object.keys(Object.values(overlayTags)[0]).forEach(trackKey => {
         this.enabledOverlayTracks[trackKey] = true;

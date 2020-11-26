@@ -48,15 +48,15 @@ class EntryStore {
 
   @action.bound
   FilteredEntries(entries) {
-    const formatString = string => string.toString().toLowerCase();
+    const formatString = string => (string || "").toString().toLowerCase();
     const filter = formatString(this.rootStore.entryStore.filter);
 
     const minTime = this.rootStore.videoStore.scaleMinTime;
     const maxTime = this.rootStore.videoStore.scaleMaxTime;
 
     return entries
-      .filter(({startTime, endTime, text}) =>
-        (!filter || formatString(text).includes(filter)) &&
+      .filter(({startTime, endTime, textList}) =>
+        (!filter || formatString(textList.join(" ")).includes(filter)) &&
         endTime >= minTime && startTime <= maxTime
       )
       .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
@@ -164,18 +164,18 @@ class EntryStore {
   }
 
   @action.bound
-  ModifyEntry({entryId, text, startTime, endTime}) {
+  ModifyEntry({entryId, textList, startTime, endTime}) {
     this.rootStore.trackStore.ModifyTrack(track => {
       const entry = this.rootStore.trackStore.TrackEntries(track.trackId)[entryId];
 
       if(entry) {
-        entry.text = text;
+        entry.textList = textList;
         entry.startTime = startTime;
         entry.endTime = endTime;
       } else {
         entryId = this.rootStore.trackStore.AddEntry({
           trackId: track.trackId,
-          text,
+          text: textList,
           startTime,
           endTime
         });

@@ -96,12 +96,14 @@ class AudioTrack extends React.Component {
   }
 
   componentWillUnmount() {
-    this.state.reactions.forEach(dispose => dispose());
+    (this.state.reactions || []).forEach(dispose => dispose());
 
-    this.state.worker.postMessage({
-      operation: "Destroy",
-      trackId: this.props.track.trackId
-    });
+    if(this.state.worker) {
+      this.state.worker.postMessage({
+        operation: "Destroy",
+        trackId: this.props.track.trackId
+      });
+    }
   }
 
   // X position of mouse over canvas (as percent)

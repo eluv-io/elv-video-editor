@@ -195,7 +195,7 @@ class Overlay extends React.Component {
         {this.state.hoverEntries.map((entry, i) =>
           <div className="track-entry" key={`overlay-hover-entry-${i}`}>
             <div className="track-entry-content">
-              { entry.text }
+              { Array.isArray(entry.text) ? entry.text.join(", ") : entry.text }
             </div>
           </div>
         )}

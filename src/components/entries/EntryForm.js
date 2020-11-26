@@ -1,8 +1,9 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
 import {Input} from "../../utils/Utils";
-import {Confirm, IconButton, onEnterPressed} from "elv-components-js";
+import {Confirm, IconButton, LabelledField, onEnterPressed} from "elv-components-js";
 import ClockIcon from "../../static/icons/Clock.svg";
+import ListField from "../../utils/ListField";
 
 @inject("video")
 @inject("entry")
@@ -21,7 +22,7 @@ class EntryForm extends React.Component {
     this.state = {
       createForm,
       entryId: entry.entryId,
-      text: entry.text || "",
+      textList: entry.textList || [],
       startTime,
       startTimeValid: true,
       endTime,
@@ -29,20 +30,10 @@ class EntryForm extends React.Component {
       validText: true,
     };
 
-    this.HandleTextChange = this.HandleTextChange.bind(this);
     this.HandleTimeChange = this.HandleTimeChange.bind(this);
     this.HandleSubmit = this.HandleSubmit.bind(this);
     this.HandleDelete = this.HandleDelete.bind(this);
     this.HandleCancel = this.HandleCancel.bind(this);
-  }
-
-  HandleTextChange(event) {
-    const text = event.target.value;
-
-    this.setState({
-      text,
-      validText: text.length > 0
-    });
   }
 
   HandleTimeChange(event) {
@@ -73,7 +64,7 @@ class EntryForm extends React.Component {
 
     this.props.entry.ModifyEntry({
       entryId: this.state.entryId,
-      text: this.state.text,
+      textList: this.state.textList,
       startTime: this.state.startTime,
       endTime: this.state.endTime
     });
@@ -112,47 +103,47 @@ class EntryForm extends React.Component {
 
     return (
       <div className="entry-form">
-        <div className="entry-details">
-          <label>Text</label>
-          <Input
-            name="text"
-            value={this.state.text}
-            onChange={this.HandleTextChange}
-            onKeyPress={onEnterPressed(this.HandleSubmit)}
-            required
+        <div className="entry-form-content">
+          <ListField
+            name="Text"
+            label="Text"
+            values={this.state.textList}
+            Update={(_, newValues) => this.setState({textList: newValues})}
           />
 
-          <label>Start Time</label>
-          <div className="time-input">
-            <Input
-              type="number"
-              step={0.000001}
-              name="startTime"
-              value={this.state.startTime}
-              onChange={this.HandleTimeChange}
-              onKeyPress={onEnterPressed(this.HandleSubmit)}
-              required
-              className={this.state.startTimeValid ? "" : "invalid"}
-            />
-            <div className="entry-form-smpte-time">{ this.props.video.TimeToSMPTE(this.state.startTime) }</div>
-            { this.CurrentTimeButton("startTime") }
-          </div>
+          <LabelledField label="Start Time">
+            <div className="time-input">
+              <Input
+                type="number"
+                step={0.000001}
+                name="startTime"
+                value={this.state.startTime}
+                onChange={this.HandleTimeChange}
+                onKeyPress={onEnterPressed(this.HandleSubmit)}
+                required
+                className={this.state.startTimeValid ? "" : "invalid"}
+              />
+              <div className="entry-form-smpte-time">{ this.props.video.TimeToSMPTE(this.state.startTime) }</div>
+              { this.CurrentTimeButton("startTime") }
+            </div>
+          </LabelledField>
 
-          <label>End Time</label>
-          <div className="time-input">
-            <Input
-              type="number"
-              step={0.000001}
-              name="endTime"
-              value={this.state.endTime}
-              onChange={this.HandleTimeChange}
-              onKeyPress={onEnterPressed(this.HandleSubmit)}
-              required
-              className={this.state.endTimeValid ? "" : "invalid"}
-            />
-            <div className="entry-form-smpte-time">{ this.props.video.TimeToSMPTE(this.state.endTime) }</div>
-            { this.CurrentTimeButton("endTime") }
-          </div>
+          <LabelledField label="End Time">
+            <div className="time-input">
+              <Input
+                type="number"
+                step={0.000001}
+                name="endTime"
+                value={this.state.endTime}
+                onChange={this.HandleTimeChange}
+                onKeyPress={onEnterPressed(this.HandleSubmit)}
+                required
+                className={this.state.endTimeValid ? "" : "invalid"}
+              />
+              <div className="entry-form-smpte-time">{ this.props.video.TimeToSMPTE(this.state.endTime) }</div>
+              { this.CurrentTimeButton("endTime") }
+            </div>
+          </LabelledField>
         </div>
         <div className="entry-actions-container">
           <button className="cancel-button" onClick={this.HandleCancel}>
