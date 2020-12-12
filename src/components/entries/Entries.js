@@ -11,9 +11,9 @@ import TrackForm from "./TrackForm";
 import PlayIcon from "../../static/icons/Play.svg";
 import EditIcon from "../../static/icons/Edit.svg";
 
-@inject("video")
-@inject("tracks")
-@inject("entry")
+@inject("videoStore")
+@inject("tracksStore")
+@inject("entryStore")
 @observer
 class EntryList extends React.Component {
   constructor(props) {
@@ -30,7 +30,7 @@ class EntryList extends React.Component {
     // Scroll to current time on mount - determine which entry is 'current'
     const entries = this.FilteredEntries();
     const initialElementIndex = entries
-      .findIndex(entry => entry.endTime > this.props.video.currentTime);
+      .findIndex(entry => entry.endTime > this.props.videoStore.currentTime);
 
     if(initialElementIndex >= 0) {
       const initialElementEntryId = entries[initialElementIndex].entryId;
@@ -45,26 +45,26 @@ class EntryList extends React.Component {
   }
 
   Filter() {
-    if(this.props.entry.selectedEntry) { return null; }
+    if(this.props.entryStore.selectedEntry) { return null; }
 
     return (
       <div className="entries-filter">
         <Input
-          value={this.props.entry.filter}
+          value={this.props.entryStore.filter}
           placeholder={"Filter..."}
-          onChange={event => this.props.entry.SetFilter(event.target.value)}
+          onChange={event => this.props.entryStore.SetFilter(event.target.value)}
         />
       </div>
     );
   }
 
   FilteredEntries() {
-    const entriesSelected = this.props.entry.entries.length > 0;
+    const entriesSelected = this.props.entryStore.entries.length > 0;
     const entryList = entriesSelected ?
-      this.props.entry.Entries() :
-      Object.values(this.props.tracks.TrackEntries(this.props.track.trackId));
+      this.props.entryStore.Entries() :
+      Object.values(this.props.tracksStore.TrackEntries(this.props.track.trackId));
 
-    return this.props.entry.FilteredEntries(entryList);
+    return this.props.entryStore.FilteredEntries(entryList);
   }
 
   PlayEntry(entry, playable) {
@@ -77,14 +77,14 @@ class EntryList extends React.Component {
         icon={PlayIcon}
         onClick={event => {
           event.stopPropagation();
-          this.props.entry.PlayEntry(entry);
+          this.props.entryStore.PlayEntry(entry);
         }}
       />
     );
   }
 
   Entry(entry, active, hover, playable=false) {
-    const onClick = () => this.props.entry.SetSelectedEntry(entry.entryId);
+    const onClick = () => this.props.entryStore.SetSelectedEntry(entry.entryId);
 
     // Scroll to current time on mount
     let HandleScroll;
@@ -104,8 +104,8 @@ class EntryList extends React.Component {
         tabIndex={0}
         onClick={onClick}
         onKeyPress={onEnterPressed(onClick)}
-        onMouseEnter={() => this.props.entry.SetHoverEntries([entry.entryId], entry.startTime)}
-        onMouseLeave={() => this.props.entry.ClearHoverEntries()}
+        onMouseEnter={() => this.props.entryStore.SetHoverEntries([entry.entryId], entry.startTime)}
+        onMouseLeave={() => this.props.entryStore.ClearHoverEntries()}
         className={`entry ${active ? "entry-active" : ""} ${hover ? "entry-hover" : ""}`}
         key={`entry-${entry.entryId}`}
         ref={HandleScroll}
@@ -114,7 +114,7 @@ class EntryList extends React.Component {
           {entry.textList.join(", ")} {entry.entryId}
         </div>
         <div className="entry-time-range">
-          {this.props.entry.TimeToSMPTE(entry.startTime)} - {this.props.entry.TimeToSMPTE(entry.endTime)}
+          {this.props.entryStore.TimeToSMPTE(entry.startTime)} - {this.props.entryStore.TimeToSMPTE(entry.endTime)}
         </div>
         { this.PlayEntry(entry, playable) }
       </div>
@@ -123,19 +123,19 @@ class EntryList extends React.Component {
 
   render() {
     const entries = this.FilteredEntries();
-    const activeEntryIds = this.props.tracks.TrackEntryIntervalTree(this.props.track.trackId).search(
-      this.props.video.currentTime,
-      this.props.video.currentTime
+    const activeEntryIds = this.props.tracksStore.TrackEntryIntervalTree(this.props.track.trackId).search(
+      this.props.videoStore.currentTime,
+      this.props.videoStore.currentTime
     );
-    const hoverEntryIds = this.props.entry.hoverEntries;
+    const hoverEntryIds = this.props.entryStore.hoverEntries;
     const playable = ["vtt", "metadata"].includes(this.props.track.trackType);
 
     let actions;
-    if(this.props.entry.entries.length > 0) {
+    if(this.props.entryStore.entries.length > 0) {
       actions = (
         <div className="entry-actions">
-          <BackButton onClick={this.props.entry.ClearEntries}/>
-          { this.props.entry.entryTime }
+          <BackButton onClick={this.props.entryStore.ClearEntries}/>
+          { this.props.entryStore.entryTime }
         </div>
       );
     }
@@ -183,24 +183,24 @@ class EntryList extends React.Component {
   }
 }
 
-@inject("video")
-@inject("tracks")
-@inject("entry")
+@inject("videoStore")
+@inject("tracksStore")
+@inject("entryStore")
 @observer
 class Entries extends React.Component {
   AddEntryButton() {
     if(
       this.props.track.trackType !== "metadata" ||
-      this.props.tracks.editingTrack ||
-      this.props.entry.editingEntry ||
-      this.props.entry.selectedEntry
+      this.props.tracksStore.editingTrack ||
+      this.props.entryStore.editingEntry ||
+      this.props.entryStore.selectedEntry
     ) {
       return null;
     }
 
     return (
       <div className="add-entry-button">
-        <button onClick={this.props.entry.CreateEntry}>
+        <button onClick={this.props.entryStore.CreateEntry}>
           Add Tag
         </button>
       </div>
@@ -234,13 +234,13 @@ class Entries extends React.Component {
 
     return (
       <div
-        onClick={editable ? () => this.props.tracks.SetEditing(this.props.track.trackId) : undefined}
+        onClick={editable ? () => this.props.tracksStore.SetEditing(this.props.track.trackId) : undefined}
         tabIndex={editable ? 0 : undefined}
         className={`entries-header ${editable ? "modifiable" : ""}`}
       >
         { header }
         <div className="entries-time-range">
-          {this.props.video.scaleMinSMPTE} - {this.props.video.scaleMaxSMPTE}
+          {this.props.videoStore.scaleMinSMPTE} - {this.props.videoStore.scaleMaxSMPTE}
         </div>
         { editable ? <ImageIcon className="track-edit-icon" icon={EditIcon} /> : null }
       </div>
@@ -248,7 +248,7 @@ class Entries extends React.Component {
   }
 
   SelectedEntry() {
-    if(this.props.entry.editingEntry) {
+    if(this.props.entryStore.editingEntry) {
       return <EntryForm />;
     } else {
       return <EntryDetails/>;
@@ -256,9 +256,9 @@ class Entries extends React.Component {
   }
 
   Content() {
-    if(this.props.tracks.editingTrack) {
+    if(this.props.tracksStore.editingTrack) {
       return <TrackForm track={this.props.track} />;
-    } else if(this.props.entry.selectedEntry) {
+    } else if(this.props.entryStore.selectedEntry) {
       return this.SelectedEntry();
     } else {
       return <EntryList track={this.props.track} />;

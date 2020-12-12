@@ -7,10 +7,10 @@ import ResizeObserver from "resize-observer-polyfill";
 
 const frameSpread = 10;
 
-@inject("video")
-@inject("overlay")
-@inject("tracks")
-@inject("entry")
+@inject("videoStore")
+@inject("overlayStore")
+@inject("tracksStore")
+@inject("entryStore")
 @observer
 class Overlay extends React.Component {
   constructor(props) {
@@ -73,11 +73,11 @@ class Overlay extends React.Component {
       DisposeDrawReaction: reaction(
         () => {
           return ({
-            enabled: this.props.overlay.overlayEnabled,
-            frame: this.props.video.frame,
+            enabled: this.props.overlayStore.overlayEnabled,
+            frame: this.props.videoStore.frame,
             videoWidth: this.state.videoWidth,
             videoHeight: this.state.videoHeight,
-            enabledTracks: JSON.stringify(this.props.overlay.enabledOverlayTracks)
+            enabledTracks: JSON.stringify(this.props.overlayStore.enabledOverlayTracks)
           });
         },
         () => this.Draw(),
@@ -102,12 +102,12 @@ class Overlay extends React.Component {
   }
 
   Entries() {
-    if(this.props.video.frame === 0) { return []; }
+    if(this.props.videoStore.frame === 0) { return []; }
 
     // Get the entries for the current frame, injecting the overlay track label into each entry
     let frame;
-    for(let i = this.props.video.frame; i > Math.max(0, this.props.video.frame - frameSpread); i--) {
-      frame = this.props.overlay.overlayTrack[i.toString()];
+    for(let i = this.props.videoStore.frame; i > Math.max(0, this.props.videoStore.frame - frameSpread); i--) {
+      frame = this.props.overlayStore.overlayTrack[i.toString()];
 
       if(frame) {
         break;
@@ -117,10 +117,10 @@ class Overlay extends React.Component {
     if(!frame) { return []; }
 
     let entries = [];
-    this.props.tracks.tracks
+    this.props.tracksStore.tracks
       .filter(track => track.trackType === "metadata")
       .forEach(track => {
-        if(!this.props.overlay.enabledOverlayTracks[track.key]) { return; }
+        if(!this.props.overlayStore.enabledOverlayTracks[track.key]) { return; }
 
         if(!frame[track.key] || typeof frame[track.key] !== "object") { return; }
 
@@ -258,7 +258,7 @@ class Overlay extends React.Component {
   }
 
   render() {
-    if(!this.props.overlay.overlayEnabled) { return null; }
+    if(!this.props.overlayStore.overlayEnabled) { return null; }
 
     return (
       <div className="overlay-container" style={{width: `${this.state.videoWidth}px`}}>

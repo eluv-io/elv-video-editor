@@ -157,12 +157,12 @@ class ControlStore {
 
   @action.bound
   SetVolume(volume) {
-    this.rootStore.videoStore.SetVolume(volume * this.rootStore.videoStore.scale);
+    this.rootStore.videoStore.SetVolume(volume * 100);
   }
 
   @action.bound
   ChangeVolume(delta) {
-    this.rootStore.videoStore.ChangeVolume(delta * this.rootStore.videoStore.scale);
+    this.rootStore.videoStore.ChangeVolume(delta * 100);
   }
 
   @action.bound

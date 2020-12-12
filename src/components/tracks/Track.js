@@ -9,9 +9,9 @@ import {reaction, toJS} from "mobx";
 import TrackWorker from "../../workers/TrackWorker";
 import {StopScroll} from "../../utils/Utils";
 
-@inject("video")
-@inject("entry")
-@inject("tracks")
+@inject("videoStore")
+@inject("entryStore")
+@inject("tracksStore")
 @observer
 class Track extends React.Component {
   constructor(props) {
@@ -33,7 +33,7 @@ class Track extends React.Component {
 
   componentDidMount() {
     // Update less often when there are many tags to improve performance
-    const delayFactor = Math.max(1, Math.log10(this.props.tracks.totalEntries));
+    const delayFactor = Math.max(1, Math.log10(this.props.tracksStore.totalEntries));
 
     // Initialize reactionary re-draw handlers
     this.setState({
@@ -47,7 +47,7 @@ class Track extends React.Component {
             this.state.worker.postMessage({
               operation: "SetEntries",
               trackId: this.props.track.trackId,
-              entries: this.props.tracks.TrackEntries(this.props.track.trackId)
+              entries: this.props.tracksStore.TrackEntries(this.props.track.trackId)
             });
           },
           {delay: 25 * delayFactor}
@@ -55,21 +55,21 @@ class Track extends React.Component {
         // Update on scale change
         reaction(
           () => ({
-            scale: this.props.video.scale,
-            scaleMax: this.props.video.scaleMax,
-            scaleMin: this.props.video.scaleMin,
-            duration: this.props.video.duration
+            scale: 100,
+            scaleMax: this.props.videoStore.scaleMax,
+            scaleMin: this.props.videoStore.scaleMin,
+            duration: this.props.videoStore.duration
           }),
           () => {
             this.state.worker.postMessage({
               operation: "SetScale",
               trackId: this.props.track.trackId,
               scale: {
-                scale: this.props.video.scale,
-                scaleMin: this.props.video.scaleMin,
-                scaleMax: this.props.video.scaleMax,
+                scale: 100,
+                scaleMin: this.props.videoStore.scaleMin,
+                scaleMax: this.props.videoStore.scaleMax,
               },
-              duration: this.props.video.duration
+              duration: this.props.videoStore.duration
             });
           },
           {delay: 50 * delayFactor}
@@ -77,7 +77,7 @@ class Track extends React.Component {
         // Update on filter change
         reaction(
           () => ({
-            filter: this.props.entry.filter
+            filter: this.props.entryStore.filter
           }),
           () => {
             if(this.props.track.trackType === "clip") {
@@ -87,7 +87,7 @@ class Track extends React.Component {
             this.state.worker.postMessage({
               operation: "SetFilter",
               trackId: this.props.track.trackId,
-              filter: this.props.entry.filter
+              filter: this.props.entryStore.filter
             });
           },
           {delay: 100 * delayFactor}
@@ -95,14 +95,14 @@ class Track extends React.Component {
         // Update on selected / hover change
         reaction(
           () => ({
-            hoverEntries: this.props.entry.hoverEntries,
-            selectedEntries: this.props.entry.entries,
-            selectedEntry: this.props.entry.selectedEntry
+            hoverEntries: this.props.entryStore.hoverEntries,
+            selectedEntries: this.props.entryStore.entries,
+            selectedEntry: this.props.entryStore.selectedEntry
           }),
           () => {
-            const selectedEntryIds = toJS(this.props.entry.entries);
-            const selectedEntryId = toJS(this.props.entry.selectedEntry ? this.props.entry.selectedEntry : undefined);
-            const hoverEntryIds = toJS(this.props.entry.hoverEntries);
+            const selectedEntryIds = toJS(this.props.entryStore.entries);
+            const selectedEntryId = toJS(this.props.entryStore.selectedEntry ? this.props.entryStore.selectedEntry : undefined);
+            const hoverEntryIds = toJS(this.props.entryStore.hoverEntries);
 
             this.state.worker.postMessage({
               operation: "SetSelected",
@@ -117,10 +117,10 @@ class Track extends React.Component {
         // Update on active entry changed
         reaction(
           () => ({
-            frame: this.props.video.frame
+            frame: this.props.videoStore.frame
           }),
           () => {
-            const activeEntryIds = toJS(this.Search(this.props.video.currentTime)).sort();
+            const activeEntryIds = toJS(this.Search(this.props.videoStore.currentTime)).sort();
 
             if(activeEntryIds.toString() === this.activeEntryIds.toString()) { return; }
 
@@ -183,15 +183,15 @@ class Track extends React.Component {
   }
 
   Search(time) {
-    return this.props.tracks.TrackEntryIntervalTree(this.props.track.trackId).search(time, time);
+    return this.props.tracksStore.TrackEntryIntervalTree(this.props.track.trackId).search(time, time);
   }
 
   TimeAt(clientX) {
     // How much of the duration of the video is currently visible
-    const duration = Fraction(this.props.video.scaleMax - this.props.video.scaleMin).div(this.props.video.scale).mul(this.props.video.duration);
+    const duration = Fraction(this.props.videoStore.scaleMax - this.props.videoStore.scaleMin).div(100).mul(this.props.videoStore.duration);
 
     // Where the currently visible segment starts
-    const startOffset = Fraction(this.props.video.scaleMin).div(this.props.video.scale).mul(this.props.video.duration);
+    const startOffset = Fraction(this.props.videoStore.scaleMin).div(100).mul(this.props.videoStore.duration);
 
     // Time corresponding to mouse position
     return duration.mul(this.ClientXToCanvasPosition(clientX)).add(startOffset).valueOf();
@@ -201,32 +201,32 @@ class Track extends React.Component {
     const time = this.TimeAt(clientX);
     const entries = this.Search(time);
 
-    this.props.tracks.SetSelectedTrack(this.props.track.trackId);
-    this.props.entry.SetEntries(entries, this.props.video.TimeToSMPTE(time));
+    this.props.tracksStore.SetSelectedTrack(this.props.track.trackId);
+    this.props.entryStore.SetEntries(entries, this.props.videoStore.TimeToSMPTE(time));
   }
 
   Hover({clientX}) {
     const time = this.TimeAt(clientX);
     const entries = this.Search(time);
 
-    this.props.entry.SetHoverEntries(entries, this.props.track.trackId, this.props.video.TimeToSMPTE(time));
+    this.props.entryStore.SetHoverEntries(entries, this.props.track.trackId, this.props.videoStore.TimeToSMPTE(time));
   }
 
   ClearHover() {
-    this.props.entry.ClearHoverEntries([]);
+    this.props.entryStore.ClearHoverEntries([]);
   }
 
   ToolTipContent() {
-    const hovering = this.props.track.trackId === this.props.entry.hoverTrack;
-    if(!hovering || !this.props.entry.hoverEntries || this.props.entry.hoverEntries.length === 0) {
+    const hovering = this.props.track.trackId === this.props.entryStore.hoverTrack;
+    if(!hovering || !this.props.entryStore.hoverEntries || this.props.entryStore.hoverEntries.length === 0) {
       return null;
     }
 
     const formatString = string => (string || "").toString().toLowerCase();
-    const filter = formatString(this.props.entry.filter);
+    const filter = formatString(this.props.entryStore.filter);
 
-    const entries = this.props.entry.hoverEntries.map(entryId => {
-      const entry = this.props.tracks.TrackEntries(this.props.track.trackId)[entryId];
+    const entries = this.props.entryStore.hoverEntries.map(entryId => {
+      const entry = this.props.tracksStore.TrackEntries(this.props.track.trackId)[entryId];
 
       if(filter && !formatString(entry.textList.join(" ")).includes(filter)) {
         return null;
@@ -235,7 +235,7 @@ class Track extends React.Component {
       return (
         <div className="track-entry" key={`entry-${entry.entryId}`}>
           <div className="track-entry-timestamps">
-            {`${this.props.entry.TimeToSMPTE(entry.startTime)} - ${this.props.entry.TimeToSMPTE(entry.endTime)}`}
+            {`${this.props.entryStore.TimeToSMPTE(entry.startTime)} - ${this.props.entryStore.TimeToSMPTE(entry.endTime)}`}
           </div>
           <div className="track-entry-content">
             { entry.content ? <pre>{JSON.stringify(entry.content, null, 2)}</pre> : entry.textList.join(", ") }
@@ -275,19 +275,21 @@ class Track extends React.Component {
             color: toJS(this.props.track.color),
             width: this.state.canvasWidth,
             height: this.state.canvasHeight,
-            entries: toJS(this.props.tracks.TrackEntries(this.props.track.trackId)),
+            entries: toJS(this.props.tracksStore.TrackEntries(this.props.track.trackId)),
             noActive: this.props.noActive,
             scale: {
-              scale: this.props.video.scale,
-              scaleMin: this.props.video.scaleMin,
-              scaleMax: this.props.video.scaleMax
+              scale: 100,
+              scaleMin: this.props.videoStore.scaleMin,
+              scaleMax: this.props.videoStore.scaleMax
             },
-            duration: this.props.video.duration
+            duration: this.props.videoStore.duration
           });
 
           // Paint image from worker
           worker.onmessage = e => {
-            if(e.data.trackId !== this.props.track.trackId) { return; }
+            if(e.data.trackId !== this.props.track.trackId) {
+              return;
+            }
 
             const {data, width, height} = e.data.imageData;
 
@@ -310,7 +312,7 @@ class Track extends React.Component {
       <ToolTip content={this.ToolTipContent()}>
         <div
           ref={StopScroll({shift: true})}
-          onWheel={({deltaY, clientX, shiftKey}) => shiftKey && this.props.video.ScrollScale(this.ClientXToCanvasPosition(clientX), deltaY)}
+          onWheel={({deltaY, clientX, shiftKey}) => shiftKey && this.props.videoStore.ScrollScale(this.ClientXToCanvasPosition(clientX), deltaY)}
           className="track-container"
         >
           { this.Canvas() }

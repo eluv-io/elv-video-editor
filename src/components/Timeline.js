@@ -5,13 +5,13 @@ import AudioTrack from "./tracks/AudioTrack";
 import PreviewTrack from "./tracks/PreviewTrack";
 import {IconButton, onEnterPressed, ToolTip} from "elv-components-js";
 import ResizeObserver from "resize-observer-polyfill";
-import {Scale, Seek} from "./controls/Controls";
+import {Clip, Scale} from "./controls/Controls";
 import {Checkbox} from "./Components";
 import LayerIcon from "../static/icons/Layers.svg";
 
-@inject("tracks")
-@inject("video")
-@inject("overlay")
+@inject("tracksStore")
+@inject("videoStore")
+@inject("overlayStore")
 @observer
 class Timeline extends React.Component {
   constructor(props) {
@@ -44,7 +44,7 @@ class Timeline extends React.Component {
   WatchResize(element) {
     if(element) {
       this.resizeObserver = new ResizeObserver((entries) => {
-        this.props.video.SetMarks();
+        this.props.videoStore.SetMarks();
 
         const container = entries[0];
         const trackLanes = entries[0].target.getElementsByClassName("track-lane-content");
@@ -72,14 +72,14 @@ class Timeline extends React.Component {
 
   TrackLane({trackId, trackType, label, content, className=""}) {
     const clickable = trackId > 0 && trackType !== "audio";
-    const selected = trackId && this.props.tracks.selectedTrack === trackId;
+    const selected = trackId && this.props.tracksStore.selectedTrack === trackId;
     const selectTrack = () => {
       if(!clickable) { return; }
 
       if(selected) {
-        this.props.tracks.ClearSelectedTrack();
+        this.props.tracksStore.ClearSelectedTrack();
       } else {
-        this.props.tracks.SetSelectedTrack(trackId);
+        this.props.tracksStore.SetSelectedTrack(trackId);
       }
     };
 
@@ -105,8 +105,8 @@ class Timeline extends React.Component {
   }
 
   CurrentTimeIndicator() {
-    const scale = this.props.video.scaleMax - this.props.video.scaleMin;
-    const indicatorPosition = (this.props.video.seek - this.props.video.scaleMin) * (this.state.indicatorTrackWidth / scale) + this.state.indicatorOffset;
+    const scale = this.props.videoStore.scaleMax - this.props.videoStore.scaleMin;
+    const indicatorPosition = (this.props.videoStore.seek - this.props.videoStore.scaleMin) * (this.state.indicatorTrackWidth / scale) + this.state.indicatorOffset;
 
     return (
       <div
@@ -119,8 +119,8 @@ class Timeline extends React.Component {
   TrackLabel(track) {
     let toggleButton;
     if(track.hasOverlay) {
-      const overlayEnabled = this.props.overlay.overlayEnabled;
-      const trackEnabled = this.props.overlay.enabledOverlayTracks[track.key];
+      const overlayEnabled = this.props.overlayStore.overlayEnabled;
+      const trackEnabled = this.props.overlayStore.enabledOverlayTracks[track.key];
       toggleButton = (
         <ToolTip content={overlayEnabled ? <span>{`${trackEnabled ? "Disable Overlay" : "Enable Overlay"}`}</span> : null}>
           <IconButton
@@ -131,7 +131,7 @@ class Timeline extends React.Component {
 
               if(!overlayEnabled) { return; }
 
-              this.props.overlay.ToggleOverlayTrack(track.key, !trackEnabled);
+              this.props.overlayStore.ToggleOverlayTrack(track.key, !trackEnabled);
             }}
             className={`overlay-toggle ${trackEnabled && overlayEnabled ? "overlay-toggle-enabled" : "overlay-toggle-disabled"}`}
           />
@@ -143,7 +143,7 @@ class Timeline extends React.Component {
       toggleButton = (
         <Checkbox
           value={track.active}
-          onChange={() => this.props.tracks.ToggleTrack(track.label)}
+          onChange={() => this.props.tracksStore.ToggleTrack(track.label)}
           toolTip={<span>{track.active ? "Disable" : "Enable"} {track.label}</span>}
           className="track-toggle"
         />
@@ -182,7 +182,7 @@ class Timeline extends React.Component {
 
   Tracks() {
     let previewTrack, subtitleTracks, metadataTracks, segmentTracks, audioTracks, clipTrack;
-    if(this.state.show.Preview && this.props.video.previewSupported) {
+    if(this.state.show.Preview && this.props.videoStore.previewSupported) {
       previewTrack = this.TrackLane({
         trackType: "preview",
         label: "Preview",
@@ -194,32 +194,32 @@ class Timeline extends React.Component {
     }
 
     if(this.state.show.Subtitles) {
-      subtitleTracks = this.props.tracks.tracks
+      subtitleTracks = this.props.tracksStore.tracks
         .filter(track => track.trackType === "vtt").slice()
         .sort((a, b) => (a.label > b.label ? 1 : -1))
         .map(track => this.Track(track));
     }
 
     if(this.state.show.Segments) {
-      segmentTracks = this.props.tracks.tracks
+      segmentTracks = this.props.tracksStore.tracks
         .filter(track => track.trackType === "segments").slice()
         .sort((a, b) => (a.label > b.label ? 1 : -1))
         .map(track => this.Track(track));
     }
 
     if(this.state.show.Tags) {
-      metadataTracks = this.props.tracks.tracks
+      metadataTracks = this.props.tracksStore.tracks
         .filter(track => track.trackType !== "vtt" && track.trackType !== "clip" && track.trackType !== "segments").slice()
         .sort((a, b) => (a.label > b.label ? 1 : -1))
         .map(track => this.Track(track));
     }
 
     if(this.state.show.Audio) {
-      audioTracks = this.props.tracks.audioTracks
+      audioTracks = this.props.tracksStore.audioTracks
         .map(track => this.Track(track));
     }
 
-    clipTrack = this.Track(this.props.tracks.tracks.find(track => track.trackType === "clip"));
+    clipTrack = this.Track(this.props.tracksStore.tracks.find(track => track.trackType === "clip"));
 
     return (
       <div ref={this.WatchResize} className="tracks-container">
@@ -235,13 +235,13 @@ class Timeline extends React.Component {
   }
 
   TrackToggleButton(name, overlay=false, click) {
-    const enabled = overlay ? this.props.overlay.overlayEnabled : this.state.show[name];
+    const enabled = overlay ? this.props.overlayStore.overlayEnabled : this.state.show[name];
 
     const onClick = () => {
       if(click) { click(); }
 
       if(overlay) {
-        this.props.overlay.ToggleOverlay(!this.props.overlay.overlayEnabled);
+        this.props.overlayStore.ToggleOverlay(!this.props.overlayStore.overlayEnabled);
       } else {
         this.setState({show: {...this.state.show, [name]: !enabled}});
       }
@@ -258,16 +258,16 @@ class Timeline extends React.Component {
   }
 
   TrackToggle() {
-    const subtitleTracks = this.props.tracks.tracks.filter(track => track.trackType === "vtt");
-    const metadataTracks = this.props.tracks.tracks.filter(track => track.trackType === "metadata");
-    const overlayTrack = this.props.overlay.overlayTrack;
+    const subtitleTracks = this.props.tracksStore.tracks.filter(track => track.trackType === "vtt");
+    const metadataTracks = this.props.tracksStore.tracks.filter(track => track.trackType === "metadata");
+    const overlayTrack = this.props.overlayStore.overlayTrack;
 
-    const previewToggle = this.props.video.previewSupported ? this.TrackToggleButton("Preview") : null;
+    const previewToggle = this.props.videoStore.previewSupported ? this.TrackToggleButton("Preview") : null;
     const subtitleToggle = subtitleTracks.length > 0 ? this.TrackToggleButton("Subtitles") : null;
     const metadataToggle = metadataTracks.length > 0 ? this.TrackToggleButton("Tags") : null;
     const overlayToggle = overlayTrack ? this.TrackToggleButton("Overlay", true) : null;
-    const segmentsToggle = this.props.video.isVideo ? this.TrackToggleButton("Segments") : null;
-    const audioToggle = this.props.video.isVideo ? this.TrackToggleButton("Audio", false, this.props.tracks.AddAudioTracks) : null;
+    const segmentsToggle = this.props.videoStore.isVideo ? this.TrackToggleButton("Segments") : null;
+    const audioToggle = this.props.videoStore.isVideo ? this.TrackToggleButton("Audio", false, this.props.tracksStore.AddAudioTracks) : null;
 
     return (
       <div className="timeline-actions toggle-tracks">
@@ -284,7 +284,7 @@ class Timeline extends React.Component {
   AddTrackButton() {
     return (
       <div className="timeline-actions">
-        <button onClick={() => this.props.tracks.CreateTrack({label: "New Track", key: "new_track"})}>
+        <button onClick={() => this.props.tracksStore.CreateTrack({label: "New Track", key: "new_track"})}>
           Add Track
         </button>
       </div>
@@ -292,26 +292,28 @@ class Timeline extends React.Component {
   }
 
   render() {
-    if(!this.props.video.initialized) { return null; }
+    if(!this.props.videoStore.initialized) { return null; }
 
     return (
-      <div className="timeline">
+      <>
         {this.TrackLane({
           trackId: -1,
-          label: <span className="mono">{`${this.props.video.scaleMinSMPTE} - ${this.props.video.scaleMaxSMPTE}`}</span>,
-          content: <Scale />,
+          label: <span className="mono">{`${this.props.videoStore.scaleMinSMPTE} - ${this.props.videoStore.scaleMaxSMPTE}`}</span>,
+          content: <Clip />,
           className: "video-scale-lane"
         })}
         {this.TrackLane({
           trackId: -2,
-          label: <span className="mono">{`${this.props.video.frame} :: ${this.props.video.smpte}`}</span>,
-          content: <Seek />,
+          label: <span className="mono">{`${this.props.videoStore.frame} :: ${this.props.videoStore.smpte}`}</span>,
+          content: <Scale />,
           className: "video-seek-lane"
         })}
-        { this.Tracks() }
-        { this.AddTrackButton() }
-        { this.TrackToggle() }
-      </div>
+        <div className="timeline">
+          { this.Tracks() }
+          { this.AddTrackButton() }
+          { this.TrackToggle() }
+        </div>
+      </>
     );
   }
 }

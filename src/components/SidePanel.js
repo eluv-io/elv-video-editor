@@ -3,14 +3,14 @@ import {ResizableBox} from "react-resizable";
 import Entries from "./entries/Entries";
 import {inject, observer} from "mobx-react";
 
-@inject("video")
-@inject("tracks")
+@inject("videoStore")
+@inject("tracksStore")
 @observer
 class SidePanel extends React.Component {
   Entries() {
-    if(!this.props.tracks.selectedTrack) { return null; }
+    if(!this.props.tracksStore.selectedTrack) { return null; }
 
-    const track = this.props.tracks.SelectedTrack();
+    const track = this.props.tracksStore.SelectedTrack();
 
     return <Entries track={track} key={`entries-${track.trackId}`}/>;
   }
@@ -18,7 +18,7 @@ class SidePanel extends React.Component {
   render() {
     return (
       <ResizableBox
-        className={`side-panel ${this.props.tracks.selectedTrack ? "" : "hidden"}`}
+        className={`side-panel ${this.props.tracksStore.selectedTrack ? "" : "hidden"}`}
         height={Infinity}
         width={500}
         handle={<div className="resize-handle"/>}

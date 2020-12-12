@@ -5,19 +5,19 @@ import {Confirm, IconButton, LabelledField, onEnterPressed} from "elv-components
 import ClockIcon from "../../static/icons/Clock.svg";
 import ListField from "../../utils/ListField";
 
-@inject("video")
-@inject("entry")
+@inject("videoStore")
+@inject("entryStore")
 @observer
 class EntryForm extends React.Component {
   constructor(props) {
     super(props);
 
-    let entry = this.props.entry.SelectedEntry();
+    let entry = this.props.entryStore.SelectedEntry();
     const createForm = !entry;
     entry = entry || {};
 
-    const startTime = entry.startTime === undefined ? props.video.currentTime : entry.startTime;
-    const endTime = entry.endTime === undefined ? props.video.currentTime + 1 : entry.endTime;
+    const startTime = entry.startTime === undefined ? props.videoStore.currentTime : entry.startTime;
+    const endTime = entry.endTime === undefined ? props.videoStore.currentTime + 1 : entry.endTime;
 
     this.state = {
       createForm,
@@ -37,7 +37,7 @@ class EntryForm extends React.Component {
   }
 
   HandleTimeChange(event) {
-    const Valid = time => time >= 0 && time <= this.props.video.duration + 1;
+    const Valid = time => time >= 0 && time <= this.props.videoStore.duration + 1;
 
     this.setState({
       [event.target.name]: parseFloat(event.target.value)
@@ -62,7 +62,7 @@ class EntryForm extends React.Component {
       return;
     }
 
-    this.props.entry.ModifyEntry({
+    this.props.entryStore.ModifyEntry({
       entryId: this.state.entryId,
       textList: this.state.textList,
       startTime: this.state.startTime,
@@ -74,15 +74,15 @@ class EntryForm extends React.Component {
     await Confirm({
       message: "Are you sure you want to remove this tag?",
       onConfirm: async () => {
-        this.props.entry.RemoveEntry(this.state.entryId);
+        this.props.entryStore.RemoveEntry(this.state.entryId);
       }
     });
   }
 
   HandleCancel() {
     this.state.createForm ?
-      this.props.entry.ClearSelectedEntry() :
-      this.props.entry.ClearEditing();
+      this.props.entryStore.ClearSelectedEntry() :
+      this.props.entryStore.ClearEditing();
   }
 
   CurrentTimeButton(name) {
@@ -91,7 +91,7 @@ class EntryForm extends React.Component {
         icon={ClockIcon}
         label="Set to current video time"
         onClick={() => {
-          const time = this.props.video.FrameToTime(this.props.video.frame);
+          const time = this.props.videoStore.FrameToTime(this.props.videoStore.frame);
           this.HandleTimeChange({target: {name, value: time}});
         }}
       />
@@ -123,7 +123,7 @@ class EntryForm extends React.Component {
                 required
                 className={this.state.startTimeValid ? "" : "invalid"}
               />
-              <div className="entry-form-smpte-time">{ this.props.video.TimeToSMPTE(this.state.startTime) }</div>
+              <div className="entry-form-smpte-time">{ this.props.videoStore.TimeToSMPTE(this.state.startTime) }</div>
               { this.CurrentTimeButton("startTime") }
             </div>
           </LabelledField>
@@ -140,7 +140,7 @@ class EntryForm extends React.Component {
                 required
                 className={this.state.endTimeValid ? "" : "invalid"}
               />
-              <div className="entry-form-smpte-time">{ this.props.video.TimeToSMPTE(this.state.endTime) }</div>
+              <div className="entry-form-smpte-time">{ this.props.videoStore.TimeToSMPTE(this.state.endTime) }</div>
               { this.CurrentTimeButton("endTime") }
             </div>
           </LabelledField>

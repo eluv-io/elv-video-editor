@@ -8,9 +8,9 @@ import AudioTrackWorker from "../../workers/AudioTrackWorker";
 import Fraction from "fraction.js/fraction";
 import {StopScroll} from "../../utils/Utils";
 
-@inject("video")
-@inject("entry")
-@inject("tracks")
+@inject("videoStore")
+@inject("entryStore")
+@inject("tracksStore")
 @observer
 class AudioTrack extends React.Component {
   constructor(props) {
@@ -49,10 +49,10 @@ class AudioTrack extends React.Component {
         // Update on scale change
         reaction(
           () => ({
-            scale: this.props.video.scale,
-            scaleMax: this.props.video.scaleMax,
-            scaleMin: this.props.video.scaleMin,
-            duration: this.props.video.duration,
+            scale: 100,
+            scaleMax: this.props.videoStore.scaleMax,
+            scaleMin: this.props.videoStore.scaleMin,
+            duration: this.props.videoStore.duration,
             max: this.props.track.max
           }),
           () => {
@@ -60,11 +60,11 @@ class AudioTrack extends React.Component {
               operation: "SetScale",
               trackId: this.props.track.trackId,
               scale: {
-                scale: this.props.video.scale,
-                scaleMin: this.props.video.scaleMin,
-                scaleMax: this.props.video.scaleMax,
+                scale: 100,
+                scaleMin: this.props.videoStore.scaleMin,
+                scaleMax: this.props.videoStore.scaleMax,
               },
-              duration: this.props.video.duration,
+              duration: this.props.videoStore.duration,
               max: this.props.track.max
             });
           },
@@ -136,11 +136,11 @@ class AudioTrack extends React.Component {
             entries: toJS(this.props.track.entries).flat(),
             max: this.props.track.max,
             scale: {
-              scale: this.props.video.scale,
-              scaleMin: this.props.video.scaleMin,
-              scaleMax: this.props.video.scaleMax
+              scale: 100,
+              scaleMin: this.props.videoStore.scaleMin,
+              scaleMax: this.props.videoStore.scaleMax
             },
-            duration: this.props.video.duration
+            duration: this.props.videoStore.duration
           });
 
           // Paint image from worker
@@ -169,7 +169,7 @@ class AudioTrack extends React.Component {
     return (
       <div
         ref={StopScroll({shift: true})}
-        onWheel={({deltaY, clientX, shiftKey}) => shiftKey && this.props.video.ScrollScale(this.ClientXToCanvasPosition(clientX), deltaY)}
+        onWheel={({deltaY, clientX, shiftKey}) => shiftKey && this.props.videoStore.ScrollScale(this.ClientXToCanvasPosition(clientX), deltaY)}
         className="track-container"
       >
         { this.Canvas() }

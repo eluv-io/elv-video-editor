@@ -8,8 +8,8 @@ import {DownloadFromUrl} from "../utils/Utils";
 class VideoStore {
   @observable videoKey = 0;
 
-  @observable clipStartTime = 0;
-  @observable clipEndTime;
+  @observable primaryContentStartTime = 0;
+  @observable primaryContentEndTime;
 
   @observable versionHash = "";
   @observable metadata = {};
@@ -48,20 +48,41 @@ class VideoStore {
   @observable muted = false;
 
   @observable seek = 0;
-  @observable scale = 10000;
   @observable scaleMin = 0;
-  @observable scaleMax = this.scale;
+  @observable scaleMax = 100;
 
   @observable segmentEnd = undefined;
 
-  @observable sliderMarks = 10;
+  @observable sliderMarks = 100;
+  @observable majorMarksEvery = 10;
 
-  @computed get scaleMinTime() { return this.ProgressToTime(this.scaleMin); }
-  @computed get scaleMaxTime() { return this.ProgressToTime(this.scaleMax); }
+  @observable clipInFrame;
+  @observable clipOutFrame;
+
+  @computed get scaleMinTime() { return this.duration ? this.ProgressToTime(this.scaleMin) : 0; }
+  @computed get scaleMaxTime() { return this.duration ? this.ProgressToTime(this.scaleMax) : 0; }
+
+  @computed get scaleMinFrame() { return this.duration ? this.ProgressToFrame(this.scaleMin) : 0; }
+  @computed get scaleMaxFrame() { return this.duration ? this.ProgressToFrame(this.scaleMax) : 0; }
 
   // Pass dropFrame parameter so SMPTE strings are redrawn on dropframe display change
-  @computed get scaleMinSMPTE() { return this.ProgressToSMPTE(this.scaleMin, this.dropFrame); }
-  @computed get scaleMaxSMPTE() { return this.ProgressToSMPTE(this.scaleMax, this.dropFrame); }
+  @computed get scaleMinSMPTE() { return this.duration ? this.ProgressToSMPTE(this.scaleMin, this.dropFrame) : ""; }
+  @computed get scaleMaxSMPTE() { return this.duration ? this.ProgressToSMPTE(this.scaleMax, this.dropFrame) : ""; }
+
+  DebounceControl({name, delay, Action}) {
+    if(this[`${name}LastFired`] && Date.now() - this[`${name}LastFired`] < delay) {
+      clearTimeout(this[`${name}Debounce`]);
+      this[`${name}Debounce`] = setTimeout(() => {
+        this[`${name}LastFired`] = Date.now();
+
+        Action();
+      }, delay - Math.max((Date.now() - this[`${name}LastFired`]), 0));
+    } else {
+      this[`${name}LastFired`] = Date.now();
+
+      Action();
+    }
+  }
 
   constructor(rootStore) {
     this.rootStore = rootStore;
@@ -84,8 +105,8 @@ class VideoStore {
       this.videoHandler = undefined;
     }
 
-    this.clipStartTime = 0;
-    this.clipEndTime = undefined;
+    this.primaryContentStartTime = 0;
+    this.primaryContentEndTime = undefined;
 
     this.versionHash = "";
     this.metadata = {};
@@ -114,13 +135,15 @@ class VideoStore {
     this.muted = false;
 
     this.seek = 0;
-    this.scale = 10000;
     this.scaleMin = 0;
-    this.scaleMax = this.scale;
+    this.scaleMax = 100;
 
     this.segmentEnd = undefined;
 
     this.consecutiveSegmentErrors = 0;
+
+    this.clipInFrame = undefined;
+    this.clipOutFrame = undefined;
 
     this.rootStore.entryStore.ClearEntries();
   }
@@ -181,7 +204,7 @@ class VideoStore {
         this.source = source;
 
         try {
-          this.clipStartTime = 0;
+          this.primaryContentStartTime = 0;
 
           const offering = this.metadata.offerings.default;
 
@@ -200,13 +223,13 @@ class VideoStore {
           this.SetFrameRate({rateRat: rate});
 
           if(offering.entry_point_rat) {
-            this.clipStartTime = FrameAccurateVideo.ParseRat(offering.entry_point_rat);
+            this.primaryContentStartTime = FrameAccurateVideo.ParseRat(offering.entry_point_rat);
           }
 
           if(offering.exit_point_rat) {
             // End time is end of specified frame
             const frameRate = FrameRates[this.frameRateKey].valueOf();
-            this.clipEndTime = Number((FrameAccurateVideo.ParseRat(offering.exit_point_rat) - (1 / frameRate)).toFixed(3));
+            this.primaryContentEndTime = Number((FrameAccurateVideo.ParseRat(offering.exit_point_rat) - (1 / frameRate)).toFixed(3));
           }
         } catch(error) {
           // eslint-disable-next-line no-console
@@ -355,7 +378,7 @@ class VideoStore {
     this.video.addEventListener("play", action(() => this.playing = true));
     this.video.addEventListener("ratechange", action(() => this.playbackRate = this.video.playbackRate));
     this.video.addEventListener("volumechange", action(() => {
-      this.volume = video.volume * this.scale;
+      this.volume = video.volume * 100;
       this.muted = video.muted;
     }));
     this.video.addEventListener("click", action(() => {
@@ -385,11 +408,14 @@ class VideoStore {
         videoHandler.Update();
         this.initialized = true;
 
-        if(!this.clipEndTime) {
-          this.clipEndTime = Number((this.video.duration).toFixed(3));
+        if(!this.primaryContentEndTime) {
+          this.primaryContentEndTime = Number((this.video.duration).toFixed(3));
         }
 
         this.rootStore.trackStore.InitializeTracks();
+
+        this.clipInFrame = 0;
+        this.clipOutFrame = this.videoHandler.TotalFrames() - 1;
       }
     });
 
@@ -420,17 +446,41 @@ class VideoStore {
   }
 
   @action.bound
+  SetClipMark({inFrame, outFrame, inProgress, outProgress}) {
+    if(typeof inProgress !== "undefined" && inProgress >= 0) {
+      inFrame = this.ProgressToFrame(inProgress);
+    }
+
+    if(typeof outProgress !== "undefined" && outProgress <= 100) {
+      outFrame = this.ProgressToFrame(outProgress);
+    }
+
+    if(typeof inFrame !== "undefined") { this.clipInFrame = Math.max(0, inFrame); }
+    if(outFrame) { this.clipOutFrame = Math.min(outFrame, this.videoHandler.TotalFrames() - 1); }
+
+    if(!this.clipInFrame) { this.clipInFrame = 0; }
+    if(!this.clipOutFrame) { this.clipOutFrame = this.videoHandler.TotalFrames() - 1; }
+  }
+
+  @action.bound
   ProgressToTime(seek) {
     if(!this.videoHandler) { return 0; }
 
-    return this.videoHandler.ProgressToTime(seek / this.scale);
+    return this.videoHandler.ProgressToTime(seek / 100);
   }
 
   @action.bound
   ProgressToSMPTE(seek) {
     if(!this.videoHandler) { return; }
 
-    return this.videoHandler.ProgressToSMPTE(seek / this.scale);
+    return this.videoHandler.ProgressToSMPTE(seek / 100);
+  }
+
+  @action.bound
+  ProgressToFrame(seek) {
+    if(!this.videoHandler) { return; }
+
+    return this.TimeToFrame(this.ProgressToTime(seek));
   }
 
   @action.bound
@@ -448,6 +498,20 @@ class VideoStore {
   }
 
   @action.bound
+  TimeToProgress(time) {
+    if(!this.videoHandler) { return 0; }
+
+    return 100 * time / this.duration;
+  }
+
+  @action.bound
+  FrameToProgress(frame) {
+    if(!this.videoHandler) { return 0; }
+
+    return this.TimeToProgress(this.FrameToTime(frame));
+  }
+
+  @action.bound
   FrameToTime(frame) {
     if(!this.videoHandler) { return 0; }
 
@@ -456,12 +520,19 @@ class VideoStore {
   }
 
   @action.bound
+  FrameToSMPTE(frame) {
+    if(!this.videoHandler) { return; }
+
+    return this.videoHandler.FrameToSMPTE(frame);
+  }
+
+  @action.bound
   Update({frame, smpte, progress}) {
     if(!this.video) { return; }
 
     this.frame = Math.floor(frame);
     this.smpte = smpte;
-    this.seek = progress * this.scale;
+    this.seek = progress * 100;
     this.duration = this.video.duration;
     this.currentTime = this.video.currentTime;
 
@@ -473,7 +544,7 @@ class VideoStore {
     if(this.playing && this.seek > this.scaleMax) {
       // If playing has gone beyond the max scale, push the whole scale slider forward by 50%
       const currentRange = this.scaleMax - this.scaleMin;
-      this.scaleMax = Math.min(this.scale, this.scaleMax + currentRange/2);
+      this.scaleMax = Math.min(100, this.scaleMax + currentRange/2);
       this.scaleMin = this.scaleMax - currentRange;
     }
 
@@ -547,7 +618,7 @@ class VideoStore {
     const minProportion = position;
     const maxProportion = 1 - position;
 
-    deltaY *= this.scale * -0.003;
+    deltaY *= 100 * -0.003;
 
     deltaMin = deltaY * minProportion;
     deltaMax = deltaY * maxProportion;
@@ -555,40 +626,14 @@ class VideoStore {
     this.SetScale(
       Math.max(0, this.scaleMin + deltaMin),
       this.seek,
-      Math.min(this.scale, this.scaleMax - deltaMax)
+      Math.min(100, this.scaleMax - deltaMax)
     );
   }
 
   @action.bound
   SetScale(min, seek, max) {
-    const bump = this.scale * 0.015;
-    const range = max - min;
-
-    // Prevent range from going too small
-    if(range < bump) { return; }
-
-    if(min >= seek) {
-      if(min === this.scaleMin) {
-        // Seek moved past min range
-        min = Math.max(0, min - bump);
-      } else {
-        // Min range moved ahead of seek
-        seek += bump;
-      }
-    } else if(seek >= max) {
-      if(max === this.scaleMax) {
-        // Seek moved ahead of max range
-        max = Math.min(this.scale, max + bump);
-      } else {
-        // Max range moved behind seek
-        seek -= bump;
-      }
-    }
-
-    this.scaleMin = min;
-    this.scaleMax = max;
-
-    this.SeekPercentage(seek / this.scale, false);
+    this.scaleMin = Math.max(0, Math.min(min, max - 5));
+    this.scaleMax = Math.min(100, Math.max(max, min + 5));
   }
 
   @action.bound
@@ -622,15 +667,15 @@ class VideoStore {
 
     // Adjust scale, if necessary
     const targetFrame = this.frame + frames;
-    const targetScale = (targetFrame / this.videoHandler.TotalFrames()) * this.scale;
-    const bump = this.scale * 0.015;
+    const targetScale = (targetFrame / this.videoHandler.TotalFrames()) * 100;
+    const bump = 100 * 0.015;
     const scaleWidth = this.scaleMax - this.scaleMin;
 
     if(targetScale <= this.scaleMin) {
       this.scaleMin = Math.max(0, targetScale - bump);
       this.scaleMax = this.scaleMin + scaleWidth;
     } else if(targetScale >= this.scaleMax) {
-      this.scaleMax = Math.min(this.scale, targetScale + bump);
+      this.scaleMax = Math.min(100, targetScale + bump);
       this.scaleMin = this.scaleMax - scaleWidth;
     }
 
@@ -642,13 +687,13 @@ class VideoStore {
     const volume = this.muted ? 0 : this.volume;
 
     this.SetVolume(
-      Math.max(0, Math.min(this.scale, volume - (deltaY * this.scale * 0.01)))
+      Math.max(0, Math.min(100, volume - (deltaY * 100 * 0.01)))
     );
   }
 
   @action.bound
   SetVolume(volume) {
-    this.video.volume = volume / this.scale;
+    this.video.volume = volume / 100;
 
     if(volume === 0) {
       this.video.muted = true;
@@ -659,7 +704,7 @@ class VideoStore {
 
   @action.bound
   ChangeVolume(delta) {
-    this.video.volume = Math.max(0, Math.min(1, this.video.volume + (delta / this.scale)));
+    this.video.volume = Math.max(0, Math.min(1, this.video.volume + (delta / 100)));
 
     if(this.video.volume === 0) {
       this.video.muted = true;

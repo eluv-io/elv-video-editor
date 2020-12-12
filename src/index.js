@@ -11,13 +11,27 @@ import Video from "./components/Video";
 import Timeline from "./components/Timeline";
 import Menu from "./components/Menu";
 import SidePanel from "./components/SidePanel";
+import ClipView from "./components/clips/ClipView";
 
-@inject("root")
-@inject("video")
-@inject("menu")
-@inject("keyboardControls")
+@inject("rootStore")
+@inject("videoStore")
+@inject("menuStore")
+@inject("keyboardControlsStore")
 @observer
 class App extends React.Component {
+  MainView() {
+    return (
+      <>
+        <div className="video-level" key={`video-${this.props.rootStore.videoStore.source}`}>
+          { this.props.menuStore.error ? <div className="error-message">Error: { this.props.menuStore.error }</div> : null }
+          <SidePanel/>
+          <Video key={`video-${this.props.videoStore.videoKey}`}/>
+        </div>
+        <Timeline key={`timeline-${this.props.videoStore.versionHash}`}/>
+      </>
+    );
+  }
+
   render() {
     if(window.self === window.top) {
       // Not in Core frame - Redirect
@@ -25,24 +39,19 @@ class App extends React.Component {
       return;
     }
 
-    if (!this.props.root.client) { return null; }
+    if(!this.props.rootStore.client) { return null; }
 
     return (
       <div
         tabIndex={0}
-        onKeyDown={this.props.keyboardControls.HandleModifiers}
-        onKeyUp={this.props.keyboardControls.HandleModifiers}
-        onKeyPress={this.props.keyboardControls.HandleInput}
+        onKeyDown={this.props.keyboardControlsStore.HandleModifiers}
+        onKeyUp={this.props.keyboardControlsStore.HandleModifiers}
+        onKeyPress={this.props.keyboardControlsStore.HandleInput}
         className="video-editor"
       >
         <Header/>
         <Menu/>
-        <div className="video-level" key={`video-${this.props.root.videoStore.source}`}>
-          { this.props.menu.error ? <div className="error-message">Error: { this.props.menu.error }</div> : null }
-          <SidePanel/>
-          <Video key={`video-${this.props.video.videoKey}`}/>
-        </div>
-        <Timeline key={`timeline-${this.props.video.versionHash}`}/>
+        { this.props.rootStore.view === "main" ? this.MainView() : <ClipView /> }
       </div>
     );
   }

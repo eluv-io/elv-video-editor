@@ -8,6 +8,7 @@ import TrackStore from "./Tracks";
 import VideoStore from "./Video";
 
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
+import ClipStore from "./Clip";
 
 // Force strict mode so mutations are only allowed within actions.
 configure({
@@ -17,6 +18,8 @@ configure({
 class RootStore {
   @observable client;
 
+  @observable view = "clip";
+
   constructor() {
     this.editStore = new EditStore(this);
     this.entryStore = new EntryStore(this);
@@ -25,6 +28,8 @@ class RootStore {
     this.overlayStore = new OverlayStore(this);
     this.trackStore = new TrackStore(this);
     this.videoStore = new VideoStore(this);
+    this.clipVideoStore = new VideoStore(this);
+    this.clipStore = new ClipStore(this);
 
     this.InitializeClient();
   }
@@ -38,6 +43,11 @@ class RootStore {
       this.editStore
     ]
       .forEach(store => store.Reset());
+  }
+
+  @action
+  SetView(view) {
+    this.view = view;
   }
 
   @action
@@ -79,13 +89,15 @@ class RootStore {
   }
 }
 
-const rootStore = new RootStore();
+const root = new RootStore();
 
-export const root = rootStore;
-export const edit = rootStore.editStore;
-export const entry = rootStore.entryStore;
-export const keyboardControls = rootStore.keyboardControlStore;
-export const menu = rootStore.menuStore;
-export const overlay = rootStore.overlayStore;
-export const tracks = rootStore.trackStore;
-export const video = rootStore.videoStore;
+export const rootStore = root;
+export const editStore = rootStore.editStore;
+export const entryStore = rootStore.entryStore;
+export const keyboardControlsStore = rootStore.keyboardControlStore;
+export const menuStore = rootStore.menuStore;
+export const overlayStore = rootStore.overlayStore;
+export const tracksStore = rootStore.trackStore;
+export const videoStore = rootStore.videoStore;
+export const clipVideoStore = rootStore.clipVideoStore;
+export const clipStore = rootStore.clipStore;

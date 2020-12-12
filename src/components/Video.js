@@ -4,11 +4,13 @@ import HLSPlayer from "hls.js";
 import VideoControls from "./VideoControls";
 import LoadingElement from "elv-components-js/src/components/LoadingElement";
 import Overlay from "./Overlay";
-import {ResizableBox} from "react-resizable";
 import {StopScroll} from "../utils/Utils";
+import {Clip, Scale} from "./controls/Controls";
+import PreviewReel from "./PreviewReel";
 
-@inject("tracks")
-@inject("video")
+@inject("tracksStore")
+@inject("videoStore")
+@inject("clipVideoStore")
 @observer
 class Video extends React.Component {
   constructor(props) {
@@ -23,15 +25,14 @@ class Video extends React.Component {
     this.InitializeVideo = this.InitializeVideo.bind(this);
   }
 
-  componentWillMount() {
-    // ResizableBox requires pixels for initial dimensions, but we want percentage of viewport
-    this.initialHeight = 0.4 * document.body.getBoundingClientRect().height;
-  }
-
   componentWillUnmount() {
     if(this.state.player) {
       this.state.player.destroy();
     }
+  }
+
+  Store() {
+    return this.props.clip ? this.props.clipVideoStore : this.props.videoStore;
   }
 
   InitializeVideo(video) {
@@ -52,10 +53,10 @@ class Video extends React.Component {
       video
     });
 
-    player.loadSource(this.props.video.source);
+    player.loadSource(this.Store().source);
     player.attachMedia(video);
 
-    this.props.video.Initialize(video, player);
+    this.Store().Initialize(video, player);
   }
 
   Overlay() {
@@ -65,15 +66,10 @@ class Video extends React.Component {
   }
 
   Video() {
-    if(!this.props.video.source) { return null; }
+    if(!this.Store().source) { return null; }
 
     return (
-      <ResizableBox
-        className="video-container"
-        height={this.initialHeight}
-        width={Infinity}
-        handle={<div className={`resize-handle ${this.props.video.fullScreen ? "hidden" : ""}`}/>}
-      >
+      <div className="video-container">
         { this.Overlay() }
         <video
           crossOrigin="anonymous"
@@ -82,17 +78,30 @@ class Video extends React.Component {
           autoPlay={false}
           controls={false}
           preload="auto"
-          onWheel={({deltaY}) => this.props.video.ScrollVolume(deltaY)}
+          onWheel={({deltaY}) => this.Store().ScrollVolume(deltaY)}
         />
-      </ResizableBox>
+      </div>
+    );
+  }
+
+  PreviewReel() {
+    if(!this.props.previewReel) { return null; }
+
+    return (
+      <PreviewReel
+        className="video-preview-reel"
+        minFrame={this.Store().scaleMinFrame}
+        maxFrame={this.Store().scaleMaxFrame}
+        RetrievePreview={() => "https://i.imgflip.com/oigoe.jpg"}
+      />
     );
   }
 
   render() {
-    const videoLoading = this.props.video.loading;
-    const controlsLoading = this.props.video.source && !this.props.video.initialized;
+    const videoLoading = this.Store().loading;
+    const controlsLoading = videoLoading || (this.Store().source && !this.Store().initialized);
 
-    if(!this.props.video.isVideo) {
+    if(!this.Store().isVideo) {
       return (
         <div tabIndex={0} className="video-component" />
       );
@@ -104,7 +113,10 @@ class Video extends React.Component {
           { this.Video() }
         </LoadingElement>
         <LoadingElement loading={controlsLoading} loadingClassname="video-controls-loading">
-          <VideoControls />
+          { this.PreviewReel() }
+          { this.props.seekBar && !this.Store().fullScreen ? <Clip clip={this.props.clip} sliderMarks={this.props.sliderMarks} /> : null }
+          { this.props.seekBar && !this.Store().fullScreen ? <Scale clip={this.props.clip} sliderMarks={this.props.sliderMarks} /> : null }
+          <VideoControls clip={this.props.clip} />
         </LoadingElement>
       </div>
     );

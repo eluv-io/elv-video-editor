@@ -506,8 +506,8 @@ class Tracks {
   AddClipTrack() {
     const clip = this.Cue({
       entryType: "clip",
-      startTime: this.rootStore.videoStore.clipStartTime,
-      endTime: this.rootStore.videoStore.clipEndTime,
+      startTime: this.rootStore.videoStore.primaryContentStartTime,
+      endTime: this.rootStore.videoStore.primaryContentEndTime,
       text: "Primary Content",
       entry: {}
     });

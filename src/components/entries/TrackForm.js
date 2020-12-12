@@ -5,7 +5,7 @@ import {onEnterPressed} from "elv-components-js";
 import {inject, observer} from "mobx-react";
 import {Confirm} from "elv-components-js";
 
-@inject("tracks")
+@inject("tracksStore")
 @observer
 class TrackForm extends React.Component {
   constructor(props) {
@@ -28,7 +28,7 @@ class TrackForm extends React.Component {
   }
 
   HandleSubmit() {
-    this.props.tracks.EditTrack({
+    this.props.tracksStore.EditTrack({
       trackId: this.props.track.trackId,
       label: this.state.trackLabel,
       key: this.state.trackKey
@@ -39,7 +39,7 @@ class TrackForm extends React.Component {
     await Confirm({
       message: "Are you sure you want to remove this track?",
       onConfirm: async () => {
-        this.props.tracks.RemoveTrack(this.props.track.trackId);
+        this.props.tracksStore.RemoveTrack(this.props.track.trackId);
       }
     });
   }
@@ -69,7 +69,7 @@ class TrackForm extends React.Component {
           />
         </div>
         <div className="entry-actions-container">
-          <button className="cancel-button" onClick={this.props.tracks.ClearEditing}>
+          <button className="cancel-button" onClick={this.props.tracksStore.ClearEditing}>
             Cancel
           </button>
           <button className={submittable ? "" : "invalid"} onClick={this.HandleSubmit}>

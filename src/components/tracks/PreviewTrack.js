@@ -3,8 +3,8 @@ import {inject, observer} from "mobx-react";
 import ResizeObserver from "resize-observer-polyfill";
 import {StopScroll} from "../../utils/Utils";
 
-@inject("video")
-@inject("tracks")
+@inject("videoStore")
+@inject("tracksStore")
 @observer
 class PreviewTrack extends React.Component {
   constructor(props) {
@@ -42,17 +42,17 @@ class PreviewTrack extends React.Component {
 
   Previews() {
     const previews = this.state.previews;
-    const interval = (this.props.video.scaleMaxTime - this.props.video.scaleMinTime) / previews;
-    const startTime = this.props.video.scaleMinTime + interval * 0.5;
+    const interval = (this.props.videoStore.scaleMaxTime - this.props.videoStore.scaleMinTime) / previews;
+    const startTime = this.props.videoStore.scaleMinTime + interval * 0.5;
 
     return [...(Array(previews).keys())].map(i => {
       const time = startTime + interval * i;
-      const frame = this.props.video.TimeToFrame(time);
+      const frame = this.props.videoStore.TimeToFrame(time);
 
       return (
         <div className="preview-frame" key={`preview-frame-${frame}`}>
           <img
-            src={this.props.video.VideoFrame(frame)}
+            src={this.props.videoStore.VideoFrame(frame)}
           />
         </div>
       );
@@ -63,7 +63,7 @@ class PreviewTrack extends React.Component {
     return (
       <div
         ref={this.WatchResize}
-        onWheel={({deltaY, clientX, shiftKey}) => shiftKey && this.props.video.ScrollScale(this.ClientXToCanvasPosition(clientX), deltaY)}
+        onWheel={({deltaY, clientX, shiftKey}) => shiftKey && this.props.videoStore.ScrollScale(this.ClientXToCanvasPosition(clientX), deltaY)}
         className="track-container preview-track-container"
       >
         { this.Previews() }

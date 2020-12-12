@@ -8,8 +8,8 @@ import {BackButton} from "./Components";
 import PageBack from "../static/icons/Backward.svg";
 import PageForward from "../static/icons/Forward.svg";
 
-@inject("menu")
-@inject("video")
+@inject("menuStore")
+@inject("videoStore")
 @observer
 class Menu extends React.Component {
   constructor(props) {
@@ -30,29 +30,29 @@ class Menu extends React.Component {
   }
 
   async SelectLibrary(libraryId) {
-    this.props.menu.SetLibraryId(libraryId);
+    this.props.menuStore.SetLibraryId(libraryId);
   }
 
   async SelectObject(libraryId, objectId) {
     try {
-      this.props.menu.SetLibraryId(libraryId);
-      this.props.menu.SetObjectId(objectId);
+      this.props.menuStore.SetLibraryId(libraryId);
+      this.props.menuStore.SetObjectId(objectId);
 
-      this.props.menu.ToggleMenu(false);
+      this.props.menuStore.ToggleMenu(false);
 
-      await this.props.menu.SelectVideo({libraryId, objectId});
+      await this.props.menuStore.SelectVideo({libraryId, objectId});
     } catch(error) {
-      this.props.menu.ClearObjectId();
+      this.props.menuStore.ClearObjectId();
     }
   }
 
   SelectedObject() {
-    const object = this.props.menu.selectedObject;
+    const object = this.props.menuStore.selectedObject;
 
-    const videoTags = this.props.video.videoTags.length === 0 ? null : (
+    const videoTags = this.props.videoStore.videoTags.length === 0 ? null : (
       <React.Fragment>
         <label>Video Tags</label>
-        <span className="wrap">{this.props.video.videoTags.join(", ")}</span>
+        <span className="wrap">{this.props.videoStore.videoTags.join(", ")}</span>
       </React.Fragment>
     );
 
@@ -64,7 +64,7 @@ class Menu extends React.Component {
             <div className="menu-header">
               <BackButton
                 onClick={() => {
-                  this.props.menu.ClearObjectId();
+                  this.props.menuStore.ClearObjectId();
                 }}
               />
               <h4>{object.name}</h4>
@@ -91,15 +91,15 @@ class Menu extends React.Component {
   }
 
   Objects() {
-    const libraryId = this.props.menu.libraryId;
-    const library = this.props.menu.libraries[libraryId];
+    const libraryId = this.props.menuStore.libraryId;
+    const library = this.props.menuStore.libraries[libraryId];
 
     return (
       <div className="menu-entries">
         <div className="menu-header">
           <BackButton
             onClick={() => {
-              this.props.menu.ClearLibraryId();
+              this.props.menuStore.ClearLibraryId();
               this.setState({
                 page: 1,
                 filter: "",
@@ -156,9 +156,9 @@ class Menu extends React.Component {
           />
         </div>
         <AsyncComponent
-          key={`objects-container-${this.state.filter}-${this.state.page}-${this.props.menu.showVideoOnly}`}
+          key={`objects-container-${this.state.filter}-${this.state.page}-${this.props.menuStore.showVideoOnly}`}
           Load={async () => {
-            const paging = await this.props.menu.ListObjects({
+            const paging = await this.props.menuStore.ListObjects({
               libraryId,
               page: this.state.page,
               perPage: this.state.perPage,
@@ -171,11 +171,11 @@ class Menu extends React.Component {
           }}
         >
           {
-            (this.props.menu.objects[libraryId] || []).length === 0 ?
+            (this.props.menuStore.objects[libraryId] || []).length === 0 ?
               <div className="menu-empty">No Content Available</div> :
               <ul>
                 {
-                  (this.props.menu.objects[libraryId] || [])
+                  (this.props.menuStore.objects[libraryId] || [])
                     .sort((a, b) => a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1)
                     .map(object => {
                       const onClick = () => this.SelectObject(libraryId, object.objectId);
@@ -200,14 +200,14 @@ class Menu extends React.Component {
   }
 
   Libraries() {
-    const libraries = Object.values(this.props.menu.libraries)
+    const libraries = Object.values(this.props.menuStore.libraries)
       .sort((a, b) => a.name.toLowerCase() > b.name.toLowerCase() ? 1 : -1);
 
     return (
       <div className="menu-entries">
         <div className="menu-header">
           <BackButton
-            onClick={() => this.props.menu.ToggleMenu(false)}
+            onClick={() => this.props.menuStore.ToggleMenu(false)}
           />
           <h4>Content Libraries</h4>
         </div>
@@ -217,7 +217,7 @@ class Menu extends React.Component {
             value={this.state.contentId}
             onChange={event => this.setState({contentId: event.target.value})}
             onKeyPress={onEnterPressed(async () => {
-              await this.props.menu.LookupContent(this.state.contentId);
+              await this.props.menuStore.LookupContent(this.state.contentId);
 
               this.setState({contentId: ""});
             })}
@@ -225,7 +225,7 @@ class Menu extends React.Component {
         </div>
         <AsyncComponent
           key="libraries-container"
-          Load={this.props.menu.ListLibraries}
+          Load={this.props.menuStore.ListLibraries}
         >
           {
             libraries.length === 0 ?
@@ -255,9 +255,9 @@ class Menu extends React.Component {
   }
 
   Navigation() {
-    if(this.props.menu.objectId) {
+    if(this.props.menuStore.objectId) {
       return this.SelectedObject();
-    } else if(this.props.menu.libraryId) {
+    } else if(this.props.menuStore.libraryId) {
       return this.Objects();
     } else {
       return this.Libraries();
@@ -265,7 +265,7 @@ class Menu extends React.Component {
   }
 
   render() {
-    if(!this.props.menu.showMenu) { return null; }
+    if(!this.props.menuStore.showMenu) { return null; }
 
     return (
       <div className="menu-container">

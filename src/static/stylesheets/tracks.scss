@@ -3,6 +3,8 @@ $audio-track-height: 5rem;
 $preview-track-height: 5rem;
 
 .timeline {
+  max-height: calc(50vh - 55px);
+  overflow-y: auto;
   padding-bottom: $elv-spacing-m;
 }
 
