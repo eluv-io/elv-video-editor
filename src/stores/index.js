@@ -37,10 +37,12 @@ class RootStore {
   Reset() {
     [
       this.videoStore,
+      this.clipVideoStore,
       this.entryStore,
       this.overlayStore,
       this.trackStore,
-      this.editStore
+      this.editStore,
+      this.clipStore
     ]
       .forEach(store => store.Reset());
   }

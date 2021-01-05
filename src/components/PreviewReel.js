@@ -66,6 +66,7 @@ class PreviewReel extends React.Component {
           className="preview-reel-image-container"
         >
           <ImageIcon
+            draggable={false}
             icon={this.props.RetrievePreview(startFrame) || ClipIcon}
             alternateIcon={ClipIcon}
             className="preview-reel-image"

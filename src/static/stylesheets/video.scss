@@ -5,7 +5,6 @@
   max-height: 100%;
   width: 100%;
 
-  .video-seek,
   .video-scale,
   .video-clip-range {
     padding: 0 $elv-spacing-m $elv-spacing-xs;
@@ -43,7 +42,6 @@
   height: 300px;
 }
 
-.video-seek,
 .video-scale {
   .-elv-slider {
     background-color: $color-rail-background;
@@ -81,9 +79,14 @@
     background-color: $color-accent-highlight;
     z-index: 200;
   }
+
+  &.clip-video-clip-range {
+    .-elv-slider-active {
+      background: linear-gradient(180deg, darken($color-accent, 3%), lighten($color-accent, 5%));
+    }
+  }
 }
 
-.video-seek,
 .video-clip-range {
   .video-seek-handle {
     background-color: transparent;
@@ -170,16 +173,21 @@
 
     &.video-control-save-frame {
       svg {
-        fill: transparent;
-        stroke: $color-foreground;
         stroke-width: 1.5px;
       }
     }
 
+    &.video-control-save-frame,
     &.video-control-clip {
       svg {
         fill: transparent;
         stroke: $color-foreground;
+      }
+
+      &:hover {
+        svg {
+          stroke: $color-accent;
+        }
       }
     }
   }

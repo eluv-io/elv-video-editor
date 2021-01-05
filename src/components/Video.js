@@ -5,12 +5,13 @@ import VideoControls from "./VideoControls";
 import LoadingElement from "elv-components-js/src/components/LoadingElement";
 import Overlay from "./Overlay";
 import {StopScroll} from "../utils/Utils";
-import {Clip, Scale} from "./controls/Controls";
+import {ClipSeek, Scale} from "./controls/Controls";
 import PreviewReel from "./PreviewReel";
 
 @inject("tracksStore")
 @inject("videoStore")
 @inject("clipVideoStore")
+@inject("clipStore")
 @observer
 class Video extends React.Component {
   constructor(props) {
@@ -60,7 +61,7 @@ class Video extends React.Component {
   }
 
   Overlay() {
-    if(!this.state.video) { return; }
+    if(!this.state.video || !this.props.overlay) { return; }
 
     return <Overlay element={this.state.video} />;
   }
@@ -72,6 +73,12 @@ class Video extends React.Component {
       <div className="video-container">
         { this.Overlay() }
         <video
+          draggable={this.props.clippable}
+          onDragStart={this.props.clippable ?
+            () => this.props.clipStore.HoldClip({start: this.Store().clipInFrame, end: this.Store().clipOutFrame}) :
+            undefined
+          }
+          onDragEnd={() => setTimeout(this.props.clipStore.ReleaseClip, 100)}
           crossOrigin="anonymous"
           ref={this.InitializeVideo}
           muted={true}
@@ -114,7 +121,7 @@ class Video extends React.Component {
         </LoadingElement>
         <LoadingElement loading={controlsLoading} loadingClassname="video-controls-loading">
           { this.PreviewReel() }
-          { this.props.seekBar && !this.Store().fullScreen ? <Clip clip={this.props.clip} sliderMarks={this.props.sliderMarks} /> : null }
+          { this.props.seekBar && !this.Store().fullScreen ? <ClipSeek clip={this.props.clip} sliderMarks={this.props.sliderMarks} /> : null }
           { this.props.seekBar && !this.Store().fullScreen ? <Scale clip={this.props.clip} sliderMarks={this.props.sliderMarks} /> : null }
           <VideoControls clip={this.props.clip} />
         </LoadingElement>

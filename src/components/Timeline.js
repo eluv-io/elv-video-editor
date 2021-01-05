@@ -5,7 +5,7 @@ import AudioTrack from "./tracks/AudioTrack";
 import PreviewTrack from "./tracks/PreviewTrack";
 import {IconButton, onEnterPressed, ToolTip} from "elv-components-js";
 import ResizeObserver from "resize-observer-polyfill";
-import {Clip, Scale} from "./controls/Controls";
+import {ClipSeek, Scale} from "./controls/Controls";
 import {Checkbox} from "./Components";
 import LayerIcon from "../static/icons/Layers.svg";
 
@@ -44,8 +44,6 @@ class Timeline extends React.Component {
   WatchResize(element) {
     if(element) {
       this.resizeObserver = new ResizeObserver((entries) => {
-        this.props.videoStore.SetMarks();
-
         const container = entries[0];
         const trackLanes = entries[0].target.getElementsByClassName("track-lane-content");
 
@@ -297,16 +295,16 @@ class Timeline extends React.Component {
     return (
       <>
         {this.TrackLane({
-          trackId: -1,
-          label: <span className="mono">{`${this.props.videoStore.scaleMinSMPTE} - ${this.props.videoStore.scaleMaxSMPTE}`}</span>,
-          content: <Clip />,
-          className: "video-scale-lane"
-        })}
-        {this.TrackLane({
           trackId: -2,
           label: <span className="mono">{`${this.props.videoStore.frame} :: ${this.props.videoStore.smpte}`}</span>,
           content: <Scale />,
           className: "video-seek-lane"
+        })}
+        {this.TrackLane({
+          trackId: -1,
+          label: <span className="mono">{`${this.props.videoStore.scaleMinSMPTE} - ${this.props.videoStore.scaleMaxSMPTE}`}</span>,
+          content: <ClipSeek />,
+          className: "video-scale-lane"
         })}
         <div className="timeline">
           { this.Tracks() }

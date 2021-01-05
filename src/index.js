@@ -25,7 +25,7 @@ class App extends React.Component {
         <div className="video-level" key={`video-${this.props.rootStore.videoStore.source}`}>
           { this.props.menuStore.error ? <div className="error-message">Error: { this.props.menuStore.error }</div> : null }
           <SidePanel/>
-          <Video key={`video-${this.props.videoStore.videoKey}`}/>
+          <Video key={`video-${this.props.videoStore.videoKey}`} overlay />
         </div>
         <Timeline key={`timeline-${this.props.videoStore.versionHash}`}/>
       </>
@@ -44,9 +44,8 @@ class App extends React.Component {
     return (
       <div
         tabIndex={0}
-        onKeyDown={this.props.keyboardControlsStore.HandleModifiers}
+        onKeyDown={this.props.keyboardControlsStore.HandleInput}
         onKeyUp={this.props.keyboardControlsStore.HandleModifiers}
-        onKeyPress={this.props.keyboardControlsStore.HandleInput}
         className="video-editor"
       >
         <Header/>

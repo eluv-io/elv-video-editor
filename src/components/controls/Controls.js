@@ -8,6 +8,7 @@ import Fraction from "fraction.js/fraction";
 
 import ClipStartIcon from "../../static/icons/chevron-left.svg";
 import ClipEndIcon from "../../static/icons/chevron-right.svg";
+import ClipIcon from "../../static/icons/scissors.svg";
 import SaveImageIcon from "../../static/icons/Image.svg";
 import PauseButton from "../../static/icons/Pause.svg";
 import PlayButton from "../../static/icons/Play.svg";
@@ -29,7 +30,7 @@ let SaveFrame = (props) => {
       <IconButton
         aria-label="Save Current Frame"
         icon={SaveImageIcon}
-        className={"video-control-save-frame"}
+        className={"video-control-button video-control-save-frame"}
         onClick={store.SaveFrame}
       />
     </ToolTip>
@@ -131,7 +132,7 @@ let PlayPause = (props) => {
   return (
     <ToolTip content={label}>
       <IconButton
-        className="video-control-play-pause"
+        className="video-control-button video-control-play-pause"
         label={label}
         icon={store.playing ? PauseButton : PlayButton}
         onClick={store.PlayPause}
@@ -148,6 +149,7 @@ let FullscreenToggle = (props) => {
   return (
     <ToolTip content={<span>{label}</span>}>
       <IconButton
+        className="video-control-button"
         label={label}
         icon={store.fullScreen ? MinimizeIcon : MaximizeIcon}
         onClick={store.ToggleFullscreen}
@@ -172,7 +174,7 @@ let Volume = (props) => {
         <IconButton
           icon={icon}
           onClick={() => store.SetMuted(!store.muted)}
-          className="video-volume-icon"
+          className="video-control-button video-volume-icon"
         />
       </ToolTip>
       <Slider
@@ -193,6 +195,7 @@ let FrameControl = (props) => {
   return (
     <ToolTip content={props.label}>
       <IconButton
+        className="video-control-button"
         label={props.label}
         icon={props.icon}
         onClick={() => {
@@ -203,63 +206,81 @@ let FrameControl = (props) => {
   );
 };
 
-let Seek = (props) => {
+// Make this a class so we can keep local state to debounce update
+// mobx 5 doesn't support functional components + hooks
+@inject("videoStore")
+@inject("clipVideoStore")
+class Scale extends React.Component {
+  constructor(props) {
+    super(props);
+
+    const store = Store(props);
+
+    this.state = {
+      min: store.scaleMin,
+      max: store.scaleMax
+    };
+  }
+
+  render() {
+    const store = Store(this.props);
+
+    return (
+      <Range
+        key="video-scale"
+        min={0}
+        max={100}
+        handleControlOnly
+        marks={this.props.sliderMarks || store.sliderMarks}
+        markTextEvery={store.majorMarksEvery}
+        showMarks
+        handles={[
+          {
+            position: this.state.min,
+            style: "circle"
+          },
+          {
+            position: store.seek,
+            disabled: true,
+            className: "video-seek-handle",
+            style: "line"
+          },
+          {
+            position: this.state.max,
+            style: "circle"
+          }
+        ]}
+        renderToolTip={value => <span>{store.ProgressToSMPTE(value)}</span>}
+        onChange={([scaleMin, seek, scaleMax]) => {
+          this.setState({
+            min: scaleMin,
+            max: scaleMax
+          });
+
+          store.DebounceControl({
+            name: "scale",
+            delay: 250,
+            Action: () => {
+              store.SetScale(this.state.min, seek, this.state.max);
+            }
+          });
+        }}
+        className="video-scale"
+      />
+    );
+  }
+}
+
+let ClipSeek = (props) => {
   const store = Store(props);
 
-  return (
-    <Slider
-      key="video-progress"
-      min={store.scaleMin}
-      max={store.scaleMax}
-      value={store.seek}
-      handleClassName="video-seek-handle"
-      renderToolTip={value => <span>{store.ProgressToSMPTE(value)}</span>}
-      onChange={(value) => store.SeekPercentage(Fraction(value).div(100))}
-      className="video-seek"
-    />
-  );
-};
+  let handles = [{
+    position: store.seek,
+    toolTip: `Playhead - ${store.FrameToSMPTE(store.frame)}`,
+    className: "seek-handle",
+  }];
 
-let Scale = (props) => {
-  const store = Store(props);
-
-  return (
-    <Range
-      key="video-scale"
-      min={0}
-      max={100}
-      handleControlOnly
-      marks={props.sliderMarks || store.sliderMarks}
-      markTextEvery={store.majorMarksEvery}
-      showMarks
-      handles={[
-        {
-          position: store.scaleMin,
-          style: "circle"
-        },
-        {
-          position: store.seek,
-          disabled: true,
-          className: "video-seek-handle",
-          style: "line"
-        },
-        {
-          position: store.scaleMax,
-          style: "circle"
-        }
-      ]}
-      renderToolTip={value => <span>{store.ProgressToSMPTE(value)}</span>}
-      onChange={([scaleMin, seek, scaleMax]) => store.SetScale(scaleMin, seek, scaleMax)}
-      className="video-scale"
-    />
-  );
-};
-
-let Clip = (props) => {
-  const store = Store(props);
-
-  let handles = [];
-  if(typeof store.clipInFrame !== "undefined" || store.clipOutFrame) {
+  if(!props.clip) {
     handles = [
       {
         position: store.FrameToProgress(store.clipInFrame || 0),
@@ -269,7 +290,7 @@ let Clip = (props) => {
       },
       {
         position: store.seek,
-        toolTip: `Seek - ${store.FrameToSMPTE(store.frame)}`,
+        toolTip: `Playhead - ${store.FrameToSMPTE(store.frame)}`,
         className: "seek-handle",
       },
       {
@@ -283,7 +304,7 @@ let Clip = (props) => {
 
   return (
     <Range
-      key={`video-clip-range-${store.scaleMin}-${store.scaleMax}`}
+      key={`video-seek-clip-range-${store.scaleMin}-${store.scaleMax}`}
       min={store.scaleMin}
       max={store.scaleMax}
       showMarks
@@ -292,11 +313,16 @@ let Clip = (props) => {
       markTextEvery={store.majorMarksEvery}
       handles={handles}
       renderToolTip={value => <span>{ store.ProgressToSMPTE(value) }</span>}
-      onChange={([clipIn, seek, clipOut]) => {
-        store.SetClipMark({inProgress: clipIn, outProgress: clipOut});
-        store.SeekPercentage(Fraction(seek).div(100));
+      onChange={(values) => {
+        if(!props.clip) {
+          const [inProgress, seek, outProgress] = values;
+          store.SetClipMark({inProgress, outProgress});
+          store.SeekPercentage(Fraction(seek).div(100));
+        } else {
+          store.SeekPercentage(values / 100);
+        }
       }}
-      className="video-clip-range"
+      className={`video-clip-range ${props.clip ? "clip-video-clip-range" : ""}`}
     />
   );
 };
@@ -307,7 +333,7 @@ let ClipIn = (props) => {
   return (
     <ToolTip content="Mark In">
       <IconButton
-        className="video-control-clip"
+        className="video-control-button video-control-clip"
         icon={ClipStartIcon}
         onClick={() => store.SetClipMark({inFrame: store.frame})}
       />
@@ -321,7 +347,7 @@ let ClipOut = (props) => {
   return (
     <ToolTip content="Mark Out">
       <IconButton
-        className="video-control-clip"
+        className="video-control-button video-control-clip"
         icon={ClipEndIcon}
         onClick={() => store.SetClipMark({outFrame: store.frame})}
       />
@@ -329,23 +355,38 @@ let ClipOut = (props) => {
   );
 };
 
-Clip = inject("videoStore")(inject("clipVideoStore")(observer(Clip)));
-ClipIn = inject("videoStore")(inject("clipVideoStore")(observer(ClipIn)));
-ClipOut = inject("videoStore")(inject("clipVideoStore")(observer(ClipOut)));
-DropFrame = inject("videoStore")(inject("clipVideoStore")(observer(DropFrame)));
-FrameControl = inject("videoStore")(inject("clipVideoStore")(observer(FrameControl)));
-FrameRate = inject("videoStore")(inject("clipVideoStore")(observer(FrameRate)));
-FullscreenToggle = inject("videoStore")(inject("clipVideoStore")(observer(FullscreenToggle)));
-PlaybackLevel = inject("videoStore")(inject("clipVideoStore")(observer(PlaybackLevel)));
-PlaybackRate = inject("videoStore")(inject("clipVideoStore")(observer(PlaybackRate)));
-PlayPause = inject("videoStore")(inject("clipVideoStore")(observer(PlayPause)));
-SaveFrame = inject("videoStore")(inject("clipVideoStore")(observer(SaveFrame)));
-Scale = inject("videoStore")(inject("clipVideoStore")(observer(Scale)));
-Seek = inject("videoStore")(inject("clipVideoStore")(observer(Seek)));
-Volume = inject("videoStore")(inject("clipVideoStore")(observer(Volume)));
+let SaveClip = (props) => {
+  return (
+    <ToolTip content="Save Clip">
+      <IconButton
+        className="video-control-button video-control-clip"
+        icon={ClipIcon}
+        onClick={() => props.clipStore.SaveClip({start: props.videoStore.clipInFrame, end: props.videoStore.clipOutFrame})}
+      />
+    </ToolTip>
+  );
+};
+
+const Inject = (Component) =>
+  inject("videoStore")(inject("clipVideoStore")(observer(Component)));
+
+ClipSeek = Inject(ClipSeek);
+ClipIn = Inject(ClipIn);
+ClipOut = Inject(ClipOut);
+DropFrame = Inject(DropFrame);
+FrameControl = Inject(FrameControl);
+FrameRate = Inject(FrameRate);
+FullscreenToggle = Inject(FullscreenToggle);
+PlaybackLevel = Inject(PlaybackLevel);
+PlaybackRate = Inject(PlaybackRate);
+PlayPause = Inject(PlayPause);
+SaveFrame = Inject(SaveFrame);
+Volume = Inject(Volume);
+
+SaveClip = inject("clipStore")(Inject(SaveClip));
 
 export {
-  Clip,
+  ClipSeek,
   ClipIn,
   ClipOut,
   DropFrame,
@@ -355,8 +396,8 @@ export {
   PlaybackLevel,
   PlaybackRate,
   PlayPause,
+  SaveClip,
   SaveFrame,
   Scale,
-  Seek,
   Volume
 };

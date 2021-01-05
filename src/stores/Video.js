@@ -766,13 +766,6 @@ class VideoStore {
   }
 
   @action.bound
-  SetMarks() {
-    const width = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
-
-    this.sliderMarks = Math.floor(width / 175);
-  }
-
-  @action.bound
   SaveFrame() {
     if(!this.video) { return; }
 

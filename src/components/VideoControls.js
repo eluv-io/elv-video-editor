@@ -1,16 +1,16 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
 import {
-  Clip,
   ClipIn,
   ClipOut,
+  ClipSeek,
   DropFrame,
   FrameControl,
   FrameRate,
   FullscreenToggle,
   PlaybackLevel,
   PlaybackRate,
-  PlayPause,
+  PlayPause, SaveClip,
   SaveFrame,
   Scale,
   Volume
@@ -31,7 +31,7 @@ class VideoControls extends React.Component {
   Seek() {
     if(!this.Store().fullScreen) { return null; }
 
-    return <Clip clip={this.props.clip} />;
+    return <ClipSeek clip={this.props.clip} />;
   }
 
   Scale() {
@@ -45,8 +45,9 @@ class VideoControls extends React.Component {
       <div className="video-controls">
         <div className="controls left-controls">
           <div className="top-controls">
-            <ClipIn />
-            <ClipOut />
+            <ClipIn clip={this.props.clip} />
+            <ClipOut clip={this.props.clip} />
+            <SaveClip clip={this.props.clip} />
           </div>
           <div className="bottom-controls">
             <PlaybackRate clip={this.props.clip} />

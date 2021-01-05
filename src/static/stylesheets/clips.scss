@@ -4,8 +4,8 @@
   flex-direction: column;
 
   .video-level {
-    max-height: 50vh;
-    min-height: 50vh;
+    max-height: 45vh;
+    min-height: 45vh;
   }
 }
 
@@ -27,33 +27,27 @@
 .lower-level {
   display: flex;
   flex: 1 1 auto;
-  max-height: calc(50vh - 55px);
+  max-height: calc(55vh - 60px);
 }
 
 .clip-bin-container {
   max-height: 100%;
-  padding: $elv-spacing-s $elv-spacing-xs;
-  width: 500px;
-
-  .resize-handle {
-    cursor: e-resize;
-    height: 100%;
-    right: 0;
-    top: 0;
-    width: 0;
-  }
+  max-width: 300px !important;
+  width: 250px;
 }
 
 .clip-bin {
+  background-color: $color-background;
   height: 100%;
   max-height: 100%;
   overflow-y: auto;
-  padding: 0 $elv-spacing-xs;
+  padding: $elv-spacing-xs $elv-spacing-xs;
   width: 100%;
 }
 
 .clip {
   border: 2px solid $color-border;
+  cursor: pointer;
   display: flex;
   flex-direction: column;
   margin-bottom: $elv-spacing-xs;
@@ -78,19 +72,40 @@
 }
 
 .clip-info {
+  align-items: center;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   padding: $elv-spacing-xs 0;
 }
 
-.clip-time {
+.clip-label {
+  @include elv-ellipsis;
   align-items: center;
   display: flex;
-  font-size: 0.9rem;
+  justify-content: center;
+  padding: 0 $elv-spacing-xs;
+  position: relative;
+  width: 100%;
+
+  &.clip-smpte-label {
+    color: $elv-color-text-light;
+    font-size: $elv-font-s;
+  }
+
+  .clip-label-edit {
+    height: $elv-spacing-s;
+    position: absolute;
+    right: $elv-spacing-xs;
+    width: $elv-spacing-s;
+  }
+
+  input {
+    color: $elv-color-text-black;
+  }
 }
 
 .clip-timeline-container {
-  background-color: $color-background;
   border-left: 2px solid $color-border-dark;
   display: flex;
   flex-direction: column;
@@ -100,15 +115,21 @@
 }
 
 .clip-timeline {
+  align-items: center;
+  background-color: $color-background-black;
+  border: 2px solid $color-border-dark;
+  border-bottom: 1px solid $color-border-dark;
   display: flex;
   flex: 1 1 auto;
   overflow: hidden;
+
   position: relative;
 }
 
 .clip-timeline-clip {
-  background-color: $color-background-active;
-  border-radius: 2px;
+  background-color: $color-background;
+  border: 2px solid $color-border;
+  cursor: pointer;
   position: absolute;
 
   .clip-info {
@@ -126,12 +147,61 @@
   }
 }
 
+.clip,
+.clip-timeline-clip {
+  //@include elv-no-select;
+
+  &.selected {
+    border: 2px solid $color-accent;
+
+    .clip-info {
+      background-color: $color-background-active;
+    }
+  }
+}
+
+.clip-timeline-seek {
+  .clip-timeline-seek-handle {
+    color: $color-accent-highlight;
+    margin-left: -7px;
+    padding: 3px 0 0 0 ;
+  }
+}
+
 .clip-timeline-scale {
   .-elv-slider-overlay {
-    outline: 1px solid $color-border-dark;
+    border: 1px solid $color-border-dark;
+    outline: 0;
   }
 
   .video-seek-handle {
     color: $color-accent;
   }
+}
+
+.drop-hint {
+  @include elv-no-select;
+  align-items: center;
+  color: $color-background-active;
+  display: flex;
+  font-size: 2rem;
+  height: 100%;
+  justify-content: center;
+  letter-spacing: 5px;
+  text-align: center;
+  text-transform: uppercase;
+  width: 100%;
+}
+
+.playhead-indicator,
+.drop-indicator {
+  background-color: $color-foreground;
+  height: 100%;
+  margin: $elv-spacing-xxs 0;
+  width: 3px;
+  z-index: 100;
+}
+
+.playhead-indicator {
+  background-color: $color-accent-dark;
 }
