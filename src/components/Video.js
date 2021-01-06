@@ -123,7 +123,7 @@ class Video extends React.Component {
           { this.PreviewReel() }
           { this.props.seekBar && !this.Store().fullScreen ? <ClipSeek clip={this.props.clip} sliderMarks={this.props.sliderMarks} /> : null }
           { this.props.seekBar && !this.Store().fullScreen ? <Scale clip={this.props.clip} sliderMarks={this.props.sliderMarks} /> : null }
-          <VideoControls clip={this.props.clip} />
+          <VideoControls clip={this.props.clip} clippable={this.props.clippable} />
         </LoadingElement>
       </div>
     );

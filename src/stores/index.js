@@ -18,7 +18,7 @@ configure({
 class RootStore {
   @observable client;
 
-  @observable view = "clip";
+  @observable view = "main";
 
   constructor() {
     this.editStore = new EditStore(this);

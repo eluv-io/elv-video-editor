@@ -12,6 +12,7 @@ import Timeline from "./components/Timeline";
 import Menu from "./components/Menu";
 import SidePanel from "./components/SidePanel";
 import ClipView from "./components/clips/ClipView";
+import AssetsView from "./components/assets/AssetsView";
 
 @inject("rootStore")
 @inject("videoStore")
@@ -41,6 +42,21 @@ class App extends React.Component {
 
     if(!this.props.rootStore.client) { return null; }
 
+    let view;
+    switch(this.props.rootStore.view) {
+      case "main":
+        view = this.MainView();
+        break;
+      case "clip":
+        view = <ClipView />;
+        break;
+      case "assets":
+        view = <AssetsView />;
+        break;
+      default:
+        throw Error("Invalid view: " + this.props.rootStore.view);
+    }
+
     return (
       <div
         tabIndex={0}
@@ -50,7 +66,7 @@ class App extends React.Component {
       >
         <Header/>
         <Menu/>
-        { this.props.rootStore.view === "main" ? this.MainView() : <ClipView /> }
+        { view }
       </div>
     );
   }

@@ -85,7 +85,8 @@ class MenuStore {
           "offerings",
           "video_tags",
           "files",
-          "mime_types"
+          "mime_types",
+          "assets"
         ]
       });
 

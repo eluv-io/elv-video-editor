@@ -47,7 +47,7 @@ class VideoControls extends React.Component {
           <div className="top-controls">
             <ClipIn clip={this.props.clip} />
             <ClipOut clip={this.props.clip} />
-            <SaveClip clip={this.props.clip} />
+            { this.props.clippable ? <SaveClip clip={this.props.clip} /> : null }
           </div>
           <div className="bottom-controls">
             <PlaybackRate clip={this.props.clip} />

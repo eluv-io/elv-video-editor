@@ -8,6 +8,7 @@ import Upload from "./controls/Upload";
 
 import TagIcon from "../static/icons/tag.svg";
 import ClipIcon from "../static/icons/scissors.svg";
+import AssetsIcon from "../static/icons/file.svg";
 
 @inject("rootStore")
 @inject("menuStore")
@@ -29,18 +30,25 @@ class Header extends React.Component {
           </h1>
         </div>
         <div className="header-center mode-selection">
-          <ToolTip content="Tag Mode">
+          <ToolTip content="Tag">
             <IconButton
               className={this.props.rootStore.view === "main" ? "active" : ""}
               icon={TagIcon}
               onClick={() => this.props.rootStore.SetView("main")}
             />
           </ToolTip>
-          <ToolTip content="Clip Mode">
+          <ToolTip content="Clip">
             <IconButton
               className={this.props.rootStore.view === "clip" ? "active" : ""}
               icon={ClipIcon}
               onClick={() => this.props.rootStore.SetView("clip")}
+            />
+          </ToolTip>
+          <ToolTip content="Assets">
+            <IconButton
+              className={this.props.rootStore.view === "assets" ? "active" : ""}
+              icon={AssetsIcon}
+              onClick={() => this.props.rootStore.SetView("assets")}
             />
           </ToolTip>
         </div>

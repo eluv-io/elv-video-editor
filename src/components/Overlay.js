@@ -102,6 +102,20 @@ class Overlay extends React.Component {
   }
 
   Entries() {
+    // Retrieve entries from the asset
+    if(this.props.asset) {
+      let entries = [];
+      Object.keys(this.props.asset.image_tags || {}).forEach(category => {
+        if(!this.props.asset.image_tags[category].tags) { return; }
+
+        entries = entries.concat(
+          this.props.asset.image_tags[category].tags.map(tags => ({...tags, color: {r: 0, g: 255, b: 0}}))
+        );
+      });
+
+      return entries.filter(entry => !!entry.box);
+    }
+
     if(this.props.videoStore.frame === 0) { return []; }
 
     // Get the entries for the current frame, injecting the overlay track label into each entry
@@ -258,7 +272,7 @@ class Overlay extends React.Component {
   }
 
   render() {
-    if(!this.props.overlayStore.overlayEnabled) { return null; }
+    if(!this.props.asset && !this.props.overlayStore.overlayEnabled) { return null; }
 
     return (
       <div className="overlay-container" style={{width: `${this.state.videoWidth}px`}}>
@@ -280,6 +294,7 @@ class Overlay extends React.Component {
 
 Overlay.propTypes = {
   element: PropTypes.object.isRequired,
+  asset: PropTypes.object
 };
 
 export default Overlay;

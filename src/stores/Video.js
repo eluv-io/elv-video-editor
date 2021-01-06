@@ -28,6 +28,8 @@ class VideoStore {
 
   @observable source;
   @observable baseVideoFrameUrl = undefined;
+  @observable baseFileUrl = undefined;
+  @observable baseAssetUrl = undefined;
   @observable previewSupported = false;
 
   @observable dropFrame = false;
@@ -116,6 +118,8 @@ class VideoStore {
 
     this.source = undefined;
     this.baseVideoFrameUrl = undefined;
+    this.baseFileUrl = undefined;
+    this.baseAssetUrl = undefined;
     this.previewSupported = false;
 
     this.dropFrame = false;
@@ -155,12 +159,18 @@ class VideoStore {
     try {
       this.name = videoObject.name;
       this.versionHash = videoObject.versionHash;
-      this.metadata = videoObject.metadata;
+
+      this.baseAssetUrl = yield this.rootStore.client.LinkUrl({
+        versionHash: this.versionHash,
+        linkPath: "/assets"
+      });
+
       this.baseFileUrl = yield this.rootStore.client.FileUrl({
         versionHash: this.versionHash,
         filePath: "/"
       });
 
+      this.metadata = videoObject.metadata;
       this.isVideo = videoObject.isVideo;
 
       if(!this.isVideo) {
@@ -756,6 +766,18 @@ class VideoStore {
         videoContainer.msRequestFullscreen();
       }
     }
+  }
+
+  @action.bound
+  AssetLink(assetKey, height) {
+    const uri = URI(this.baseAssetUrl);
+    uri.path(UrlJoin(uri.path(), assetKey, "file").replace("//", "/"));
+
+    if(height) {
+      uri.addQuery({height});
+    }
+
+    return uri.toString();
   }
 
   @action.bound

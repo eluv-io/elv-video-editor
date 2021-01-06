@@ -4,7 +4,6 @@ $preview-track-height: 5rem;
 
 .timeline {
   max-height: calc(50vh - 55px);
-  overflow-y: auto;
   padding-bottom: $elv-spacing-m;
 }
 
@@ -58,7 +57,7 @@ $preview-track-height: 5rem;
   border: 1px solid $color-border;
   border-bottom: 0;
   flex-grow: 1;
-  margin-right: $elv-spacing-m;
+  margin-right: $elv-spacing-s;
 }
 
 .video-seek-lane,

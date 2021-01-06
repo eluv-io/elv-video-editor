@@ -53,6 +53,20 @@
 }
 
 .video-clip-range {
+  .video-seek-handle {
+    background-color: transparent;
+    color: $color-accent;
+  }
+
+  .-elv-slider {
+    border: 0;
+    outline: 0;
+  }
+
+  .-elv-slider-active {
+    background: linear-gradient(180deg, darken($color-accent-seek-inactive, 3%), lighten($color-accent-seek-inactive, 5%));
+  }
+
   .-elv-slider-handle-active {
     background-color: transparent;
   }
@@ -84,22 +98,6 @@
     .-elv-slider-active {
       background: linear-gradient(180deg, darken($color-accent, 3%), lighten($color-accent, 5%));
     }
-  }
-}
-
-.video-clip-range {
-  .video-seek-handle {
-    background-color: transparent;
-    color: $color-accent;
-  }
-
-  .-elv-slider {
-    border: 0;
-    outline: 0;
-  }
-
-  .-elv-slider-active {
-    background: linear-gradient(180deg, darken($color-accent-seek-inactive, 3%), lighten($color-accent-seek-inactive, 5%));
   }
 }
 
