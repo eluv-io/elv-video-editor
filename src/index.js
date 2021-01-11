@@ -12,7 +12,7 @@ import Timeline from "./components/Timeline";
 import Menu from "./components/Menu";
 import SidePanel from "./components/SidePanel";
 import ClipView from "./components/clips/ClipView";
-import AssetsView from "./components/assets/AssetsView";
+import AssetsList from "./components/assets/AssetsList";
 
 @inject("rootStore")
 @inject("videoStore")
@@ -51,7 +51,7 @@ class App extends React.Component {
         view = <ClipView />;
         break;
       case "assets":
-        view = <AssetsView />;
+        view = <AssetsList />;
         break;
       default:
         throw Error("Invalid view: " + this.props.rootStore.view);

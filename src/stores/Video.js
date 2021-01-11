@@ -27,9 +27,9 @@ class VideoStore {
   @observable currentLevel;
 
   @observable source;
+  @observable baseUrl = undefined;
   @observable baseVideoFrameUrl = undefined;
   @observable baseFileUrl = undefined;
-  @observable baseAssetUrl = undefined;
   @observable previewSupported = false;
 
   @observable dropFrame = false;
@@ -119,7 +119,7 @@ class VideoStore {
     this.source = undefined;
     this.baseVideoFrameUrl = undefined;
     this.baseFileUrl = undefined;
-    this.baseAssetUrl = undefined;
+    this.baseUrl = undefined;
     this.previewSupported = false;
 
     this.dropFrame = false;
@@ -160,9 +160,8 @@ class VideoStore {
       this.name = videoObject.name;
       this.versionHash = videoObject.versionHash;
 
-      this.baseAssetUrl = yield this.rootStore.client.LinkUrl({
-        versionHash: this.versionHash,
-        linkPath: "/assets"
+      this.baseUrl = yield this.rootStore.client.FabricUrl({
+        versionHash: this.versionHash
       });
 
       this.baseFileUrl = yield this.rootStore.client.FileUrl({
@@ -770,8 +769,10 @@ class VideoStore {
 
   @action.bound
   AssetLink(assetKey, height) {
-    const uri = URI(this.baseAssetUrl);
-    uri.path(UrlJoin(uri.path(), assetKey, "file").replace("//", "/"));
+    const filePath = this.metadata.assets[assetKey].file["/"].split("/files/").slice(1).join("/");
+
+    const uri = URI(this.baseUrl);
+    uri.path(UrlJoin(uri.path(), "rep", "thumbnail", "files", filePath));
 
     if(height) {
       uri.addQuery({height});

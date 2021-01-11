@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import {inject, observer} from "mobx-react";
 import {reaction} from "mobx";
-import ToolTip from "elv-components-js/src/components/Tooltip";
+import {ToolTip} from "elv-components-js";
 import ResizeObserver from "resize-observer-polyfill";
 
 const frameSpread = 10;
@@ -77,7 +77,8 @@ class Overlay extends React.Component {
             frame: this.props.videoStore.frame,
             videoWidth: this.state.videoWidth,
             videoHeight: this.state.videoHeight,
-            enabledTracks: JSON.stringify(this.props.overlayStore.enabledOverlayTracks)
+            enabledTracks: JSON.stringify(this.props.overlayStore.enabledOverlayTracks),
+            highlightEntry: JSON.stringify(this.props.highlightEntry || "")
           });
         },
         () => this.Draw(),
@@ -101,19 +102,37 @@ class Overlay extends React.Component {
     this.setState({context: canvas.getContext("2d")});
   }
 
+  AssetEntries() {
+    let entries = [];
+    Object.keys(this.props.asset.image_tags || {}).forEach(category => {
+      if(!this.props.asset.image_tags[category].tags) { return; }
+
+      const trackInfo = this.props.overlayStore.TrackInfo(category);
+      entries = entries.concat(
+        this.props.asset.image_tags[category].tags.map(tags =>
+          ({
+            ...tags,
+            trackLabel: trackInfo.label,
+            color: trackInfo.color
+          })
+        )
+      );
+    });
+
+    if(this.props.highlightEntry) {
+      entries.push({
+        ...this.props.highlightEntry,
+        color: { r: 255, g: 255, b: 255}
+      });
+    }
+
+    return entries.filter(entry => !!entry.box);
+  }
+
   Entries() {
     // Retrieve entries from the asset
     if(this.props.asset) {
-      let entries = [];
-      Object.keys(this.props.asset.image_tags || {}).forEach(category => {
-        if(!this.props.asset.image_tags[category].tags) { return; }
-
-        entries = entries.concat(
-          this.props.asset.image_tags[category].tags.map(tags => ({...tags, color: {r: 0, g: 255, b: 0}}))
-        );
-      });
-
-      return entries.filter(entry => !!entry.box);
+      return this.AssetEntries();
     }
 
     if(this.props.videoStore.frame === 0) { return []; }
@@ -294,7 +313,8 @@ class Overlay extends React.Component {
 
 Overlay.propTypes = {
   element: PropTypes.object.isRequired,
-  asset: PropTypes.object
+  asset: PropTypes.object,
+  highlightEntry: PropTypes.object
 };
 
 export default Overlay;
