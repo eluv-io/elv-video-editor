@@ -52,6 +52,7 @@ class ControlStore {
   @action.bound
   HandleModifiers(event) {
     const down = event.type.toLowerCase() === "keydown";
+
     switch(event.key.toLowerCase()) {
       case "control":
         this.modifiers.control = down;
@@ -66,15 +67,6 @@ class ControlStore {
         this.modifiers.meta = down;
         break;
     }
-
-    if(!down) { return; }
-
-    // Handle events only available on keydown - arrow keys and control / shift modified keys
-    const isArrowKey = ["arrowleft", "arrowright", "arrowup", "arrowdown"].includes(event.key.toLowerCase());
-
-    if(this.modifiers.control || this.modifiers.shift || isArrowKey) {
-      this.HandleInput(event);
-    }
   }
 
   @action.bound
@@ -83,6 +75,12 @@ class ControlStore {
     if(document.activeElement && document.activeElement.tagName.toLowerCase() === "input") {
       return;
     }
+
+    event.preventDefault();
+
+    this.HandleModifiers(event);
+
+    if(event.type.toLowerCase() !== "keydown") { return; }
 
     const actionMap = this.controlMap[event.key] || {};
 
@@ -157,17 +155,34 @@ class ControlStore {
 
   @action.bound
   SetVolume(volume) {
-    this.rootStore.videoStore.SetVolume(volume * this.rootStore.videoStore.scale);
+    this.rootStore.videoStore.SetVolume(volume * 100);
   }
 
   @action.bound
   ChangeVolume(delta) {
-    this.rootStore.videoStore.ChangeVolume(delta * this.rootStore.videoStore.scale);
+    this.rootStore.videoStore.ChangeVolume(delta * 100);
   }
 
   @action.bound
   ToggleTrackByIndex(index) {
     this.rootStore.trackStore.ToggleTrackByIndex(parseInt(index) - 1);
+  }
+
+  @action.bound
+  DeleteClip() {
+    if(!this.rootStore.clipStore.selectedClipId) { return; }
+
+    this.rootStore.clipStore.DeleteClip(this.rootStore.clipStore.selectedClipId);
+  }
+
+  @action.bound
+  SetMarkIn() {
+    this.rootStore.videoStore.SetClipMark({inFrame: this.rootStore.videoStore.frame});
+  }
+
+  @action.bound
+  SetMarkOut() {
+    this.rootStore.videoStore.SetClipMark({outFrame: this.rootStore.videoStore.frame});
   }
 
   // Control definitions
@@ -350,6 +365,35 @@ class ControlStore {
           action: {
             description: "Adjust timeline scale",
             action: () => {}
+          }
+        }
+      ]
+    ],
+    "Clips": [
+      [
+        ["Delete", "Backspace"],
+        {
+          action: {
+            description: "Delete currently selected clip",
+            action: () => this.DeleteClip()
+          }
+        },
+      ],
+      [
+        ["{"],
+        {
+          action: {
+            description: "Set Mark In to current playhead position",
+            action: () => this.SetMarkIn()
+          }
+        }
+      ],
+      [
+        ["}"],
+        {
+          action: {
+            description: "Set Mark Out to current playhead position",
+            action: () => this.SetMarkOut()
           }
         }
       ]

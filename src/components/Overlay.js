@@ -2,15 +2,15 @@ import React from "react";
 import PropTypes from "prop-types";
 import {inject, observer} from "mobx-react";
 import {reaction} from "mobx";
-import ToolTip from "elv-components-js/src/components/Tooltip";
+import {ToolTip} from "elv-components-js";
 import ResizeObserver from "resize-observer-polyfill";
 
 const frameSpread = 10;
 
-@inject("video")
-@inject("overlay")
-@inject("tracks")
-@inject("entry")
+@inject("videoStore")
+@inject("overlayStore")
+@inject("tracksStore")
+@inject("entryStore")
 @observer
 class Overlay extends React.Component {
   constructor(props) {
@@ -73,11 +73,12 @@ class Overlay extends React.Component {
       DisposeDrawReaction: reaction(
         () => {
           return ({
-            enabled: this.props.overlay.overlayEnabled,
-            frame: this.props.video.frame,
+            enabled: this.props.overlayStore.overlayEnabled,
+            frame: this.props.videoStore.frame,
             videoWidth: this.state.videoWidth,
             videoHeight: this.state.videoHeight,
-            enabledTracks: JSON.stringify(this.props.overlay.enabledOverlayTracks)
+            enabledTracks: JSON.stringify(this.props.overlayStore.enabledOverlayTracks),
+            highlightEntry: JSON.stringify(this.props.highlightEntry || "")
           });
         },
         () => this.Draw(),
@@ -101,13 +102,45 @@ class Overlay extends React.Component {
     this.setState({context: canvas.getContext("2d")});
   }
 
+  AssetEntries() {
+    let entries = [];
+    Object.keys(this.props.asset.image_tags || {}).forEach(category => {
+      if(!this.props.asset.image_tags[category].tags) { return; }
+
+      const trackInfo = this.props.overlayStore.TrackInfo(category);
+      entries = entries.concat(
+        this.props.asset.image_tags[category].tags.map(tags =>
+          ({
+            ...tags,
+            trackLabel: trackInfo.label,
+            color: trackInfo.color
+          })
+        )
+      );
+    });
+
+    if(this.props.highlightEntry) {
+      entries.push({
+        ...this.props.highlightEntry,
+        color: { r: 255, g: 255, b: 255}
+      });
+    }
+
+    return entries.filter(entry => !!entry.box);
+  }
+
   Entries() {
-    if(this.props.video.frame === 0) { return []; }
+    // Retrieve entries from the asset
+    if(this.props.asset) {
+      return this.AssetEntries();
+    }
+
+    if(this.props.videoStore.frame === 0) { return []; }
 
     // Get the entries for the current frame, injecting the overlay track label into each entry
     let frame;
-    for(let i = this.props.video.frame; i > Math.max(0, this.props.video.frame - frameSpread); i--) {
-      frame = this.props.overlay.overlayTrack[i.toString()];
+    for(let i = this.props.videoStore.frame; i > Math.max(0, this.props.videoStore.frame - frameSpread); i--) {
+      frame = this.props.overlayStore.overlayTrack[i.toString()];
 
       if(frame) {
         break;
@@ -117,10 +150,10 @@ class Overlay extends React.Component {
     if(!frame) { return []; }
 
     let entries = [];
-    this.props.tracks.tracks
+    this.props.tracksStore.tracks
       .filter(track => track.trackType === "metadata")
       .forEach(track => {
-        if(!this.props.overlay.enabledOverlayTracks[track.key]) { return; }
+        if(!this.props.overlayStore.enabledOverlayTracks[track.key]) { return; }
 
         if(!frame[track.key] || typeof frame[track.key] !== "object") { return; }
 
@@ -258,7 +291,7 @@ class Overlay extends React.Component {
   }
 
   render() {
-    if(!this.props.overlay.overlayEnabled) { return null; }
+    if(!this.props.asset && !this.props.overlayStore.overlayEnabled) { return null; }
 
     return (
       <div className="overlay-container" style={{width: `${this.state.videoWidth}px`}}>
@@ -280,6 +313,8 @@ class Overlay extends React.Component {
 
 Overlay.propTypes = {
   element: PropTypes.object.isRequired,
+  asset: PropTypes.object,
+  highlightEntry: PropTypes.object
 };
 
 export default Overlay;

@@ -7,7 +7,7 @@
   "homepage": "https://github.com/eluv-io/elv-video-editor",
   "scripts": {
     "bump-version": "npm --git-tag-version --no-commit-hooks version patch",
-    "serve": "webpack-dev-server --hot --port 8083",
+    "serve": "webpack-dev-server --host 0.0.0.0 --hot --port 8083",
     "build": "rm -rf dist/* && NODE_ENV=production node ./node_modules/webpack-cli/bin/cli.js -p --progress --colors --devtool none",
     "add-build": "git add dist",
     "lint": "npm run fix-scss ; npm run lint-scss ; npm run fix-js",
@@ -19,9 +19,7 @@
   },
   "pre-commit": {
     "run": [
-      "lint",
-      "build",
-      "add-build"
+      "lint"
     ]
   },
   "dependencies": {
@@ -47,6 +45,7 @@
     "react-router": "^4.3.1",
     "react-router-dom": "^4.3.1",
     "resize-observer-polyfill": "^1.5.1",
+    "tiff.js": "^1.0.0",
     "urijs": "^1.19.1",
     "url-join": "^4.0.0",
     "vtt.js": "^0.13.0"

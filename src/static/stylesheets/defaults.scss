@@ -30,6 +30,9 @@ body,
 .app,
 .video-editor {
   background-color: $color-background;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   min-height: 100%;
 }
 
@@ -52,6 +55,7 @@ body,
 .app,
 .video-editor {
   flex-grow: 1;
+  max-height: 100vh;
 }
 
 .video-editor,
@@ -63,6 +67,7 @@ body,
 
 .mono {
   font-family: monospace;
+  font-weight: bolder;
 }
 
 .hidden {
@@ -89,7 +94,7 @@ body,
     color: $color-text;
     font-size: $elv-font-s;
     margin: 0;
-    padding: 0;
+    padding: $elv-spacing-xs;
 
     span {
       margin: 0;
@@ -365,5 +370,23 @@ button {
         }
       }
     }
+  }
+}
+
+.preview-reel {
+  display: flex;
+  height: 3rem;
+  overflow: hidden;
+
+  .preview-reel-image {
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  .-elv-icon {
+    background-color: $color-background-black;
   }
 }

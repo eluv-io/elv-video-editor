@@ -32,6 +32,7 @@ class Tracks {
   entries = {};
   intervalTrees = {};
 
+  @observable initialized = false;
   @observable tracks = [];
   @observable audioTracks = [];
   @observable selectedTrack;
@@ -66,6 +67,7 @@ class Tracks {
     this.selectedTrack = undefined;
     this.editingTrack = false;
     this.audioLoading = false;
+    this.initialized = false;
   }
 
   /* HLS Playlist Parsing */
@@ -506,8 +508,8 @@ class Tracks {
   AddClipTrack() {
     const clip = this.Cue({
       entryType: "clip",
-      startTime: this.rootStore.videoStore.clipStartTime,
-      endTime: this.rootStore.videoStore.clipEndTime,
+      startTime: this.rootStore.videoStore.primaryContentStartTime,
+      endTime: this.rootStore.videoStore.primaryContentEndTime,
       text: "Primary Content",
       entry: {}
     });
@@ -527,6 +529,10 @@ class Tracks {
 
   @action.bound
   InitializeTracks = flow(function * () {
+    if(this.initialized) { return; }
+
+    this.initialized = true;
+
     this.AddClipTrack();
     yield this.AddSubtitleTracks();
     yield this.AddMetadataTracks();

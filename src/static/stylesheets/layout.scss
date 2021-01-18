@@ -6,10 +6,11 @@ header {
 
 .menu-container {
   background-color: $color-background;
-  box-shadow: 3px -3px 8px $elv-color-black;
+  box-shadow: 0 0 10px $elv-color-black;
   height: calc(100% - #{$header-height});
   max-height: calc(100% - #{$header-height});
   position: absolute;
+  top: $header-height;
   width: 600px;
   z-index: 1000;
 }
@@ -17,7 +18,9 @@ header {
 .video-level {
   display: flex;
   height: 50vh;
+  min-height: 50vh;
   position: relative;
+  width: 100%;
 }
 
 .side-panel {
@@ -45,11 +48,4 @@ header {
 
 .video-component {
   background-color: $color-background-black;
-
-  .resize-handle {
-    bottom: -6px;
-    cursor: s-resize;
-    height: 0;
-    width: 100%;
-  }
 }

@@ -130,6 +130,10 @@ class FrameAccurateVideo {
     return Fraction(frame).div(this.frameRate).valueOf();
   }
 
+  FrameToSMPTE(frame) {
+    return this.SMPTE(frame);
+  }
+
   ProgressToTime(progress) {
     const duration = this.video.duration || 0;
 
@@ -193,7 +197,7 @@ class FrameAccurateVideo {
   }
 
   SMPTE(f) {
-    let frame = (f ? Fraction(f) : Fraction(this.Frame())).floor();
+    let frame = (typeof f !== "undefined" ? Fraction(f) : Fraction(this.Frame())).floor();
     const frameRate = this.frameRate.round();
 
     if(this.dropFrame) {

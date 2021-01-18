@@ -3,7 +3,7 @@ import {observer, inject} from "mobx-react";
 import {BrowseWidget, Form, IconButton, Modal, Tabs, ToolTip} from "elv-components-js";
 import UploadIcon from "../../static/icons/Upload.svg";
 
-@inject("video")
+@inject("videoStore")
 @observer
 class UploadModal extends React.Component {
   constructor(props) {
@@ -28,9 +28,9 @@ class UploadModal extends React.Component {
           key="metadata-browse-remote"
           remote={true}
           header="Select Metadata Tag Files"
-          fileMetadata={this.props.video.metadata.files || {}}
-          mimeTypes={this.props.video.metadata.mime_types || {}}
-          baseFileUrl={this.props.video.baseFileUrl}
+          fileMetadata={this.props.videoStore.metadata.files || {}}
+          mimeTypes={this.props.videoStore.metadata.mime_types || {}}
+          baseFileUrl={this.props.videoStore.baseFileUrl}
           extensions={["json"]}
           multiple={true}
           onChange={filePaths => this.setState({metadataFilesRemote: filePaths})}
@@ -83,9 +83,9 @@ class UploadModal extends React.Component {
           key="overlay-browse-remote"
           remote={true}
           header="Select Overlay Tags File(s)"
-          fileMetadata={this.props.video.metadata.files || {}}
-          mimeTypes={this.props.video.metadata.mime_types || {}}
-          baseFileUrl={this.props.video.baseFileUrl}
+          fileMetadata={this.props.videoStore.metadata.files || {}}
+          mimeTypes={this.props.videoStore.metadata.mime_types || {}}
+          baseFileUrl={this.props.videoStore.baseFileUrl}
           extensions={["json"]}
           multiple={true}
           onChange={filePaths => this.setState({overlayFilesRemote: filePaths})}
@@ -148,7 +148,7 @@ class UploadModal extends React.Component {
   }
 }
 
-@inject("edit")
+@inject("editStore")
 @observer
 class Upload extends React.Component {
   constructor(props) {
@@ -168,7 +168,7 @@ class Upload extends React.Component {
     this.setState({uploading: true});
 
     try {
-      await this.props.edit.UploadMetadataTags({
+      await this.props.editStore.UploadMetadataTags({
         metadataFiles,
         metadataFilesRemote,
         overlayFiles,
@@ -207,7 +207,7 @@ class Upload extends React.Component {
           <IconButton
             onClick={this.ActivateModal}
             icon={UploadIcon}
-            className={`header-icon upload-icon ${this.props.edit.uploadFailed ? "upload-failed" : ""}`}
+            className={`header-icon upload-icon ${this.props.editStore.uploadFailed ? "upload-failed" : ""}`}
           />
         </ToolTip>
         { this.state.modal }

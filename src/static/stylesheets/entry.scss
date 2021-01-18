@@ -195,17 +195,21 @@
   }
 
   .time-input {
+    align-items: center;
     display: flex;
     margin-bottom: $elv-spacing-xxs;
 
     .-elv-icon-button {
       background-color: transparent;
       flex: 1 1 0;
-      margin: 0;
-      width: auto;
+      height: $elv-spacing-s;
+      margin: 0 0 0 $elv-spacing-xxs;
+      width: $elv-spacing-s;
 
-      svg {
-        padding: $elv-spacing-xxs;
+      &:hover {
+        svg {
+          stroke: $color-foreground;
+        }
       }
     }
 
@@ -239,8 +243,17 @@
 .entry-details,
 .entry-form {
   label {
+    align-items: center;
     color: $elv-color-text-lighter;
+    display: flex;
     text-align: left;
+  }
+
+  .entry-text {
+    label {
+      align-items: flex-start;
+      margin-top: $elv-spacing-ss;
+    }
   }
 
   input {
@@ -248,7 +261,6 @@
     border: $color-border;
     color: $color-text;
     font-size: $elv-font-m;
-    margin-bottom: $elv-spacing-xxs;
     max-width: 100%;
     min-width: 0;
     width: 100%;
@@ -301,13 +313,25 @@
     border: 0;
     display: flex;
     flex-grow: 1;
+    justify-content: flex-end;
     padding: 0;
 
     button {
-      flex: 1 1;
+      height: $elv-spacing-l;
       margin-right: $elv-spacing-xs;
       max-width: 40%;
       padding: $elv-spacing-mxs;
+      width: $elv-spacing-l;
+
+      svg {
+        stroke-width: 2px;
+      }
+
+      &:hover {
+        svg {
+          stroke: $color-foreground;
+        }
+      }
 
       &:last-child {
         margin-right: 0;
@@ -318,5 +342,29 @@
       flex-grow: 0;
       margin-right: 2rem;
     }
+  }
+}
+
+.smpte-input {
+  display: flex;
+
+  &.error {
+    input {
+      border: 1px solid $elv-color-mediumred;
+    }
+  }
+
+  input {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  .colon {
+    align-items: center;
+    color: $color-text-dark;
+    display: flex;
+    font-size: $elv-font-l;
+    font-weight: bolder;
+    padding: 0 $elv-spacing-xxs;
   }
 }

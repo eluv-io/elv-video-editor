@@ -14,7 +14,7 @@ const ControlMap = {
   "ArrowDown": "↓"
 };
 
-@inject("keyboardControls")
+@inject("keyboardControlsStore")
 @observer
 class KeyboardControlsModal extends React.Component {
   FormatControls(controls, modifier) {
@@ -88,8 +88,8 @@ class KeyboardControlsModal extends React.Component {
   }
 
   render() {
-    const sections = Object.keys(this.props.keyboardControls.controls).map(section =>
-      this.ControlSection(section, this.props.keyboardControls.controls[section])
+    const sections = Object.keys(this.props.keyboardControlsStore.controls).map(section =>
+      this.ControlSection(section, this.props.keyboardControlsStore.controls[section])
     );
 
     return (

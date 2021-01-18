@@ -5,10 +5,15 @@
   max-height: 100%;
   width: 100%;
 
-  .video-seek,
-  .video-scale {
-    margin-bottom: $elv-spacing-xs;
-    padding: 0 $elv-spacing-m;
+  .video-scale,
+  .video-clip-range {
+    padding: 0 $elv-spacing-m $elv-spacing-xs;
+  }
+
+  .video-preview-reel {
+    border-radius: 2px;
+    height: 4rem;
+    margin: $elv-spacing-xs $elv-spacing-m;
   }
 }
 
@@ -37,7 +42,6 @@
   height: 300px;
 }
 
-.video-seek,
 .video-scale {
   .-elv-slider {
     background-color: $color-rail-background;
@@ -46,37 +50,62 @@
   .-elv-slider-active {
     background-color: $color-rail;
   }
-
-  .-elv-slider-overlay {
-    outline: 1px solid $color-border;
-  }
 }
 
-.video-seek {
+.video-clip-range {
   .video-seek-handle {
     background-color: transparent;
+    color: $color-accent;
   }
 
   .-elv-slider {
-    background: linear-gradient(180deg, darken($color-accent-seek-inactive, 3%), lighten($color-accent-seek-inactive, 5%));
     border: 0;
     outline: 0;
   }
 
   .-elv-slider-active {
-    background: linear-gradient(90deg, darken($color-accent, 15%), lighten($color-accent, 15%));
+    background: linear-gradient(180deg, darken($color-accent-seek-inactive, 3%), lighten($color-accent-seek-inactive, 5%));
   }
 
-  .-elv-slider-marks-container {
-    .-elv-slider-mark-notch {
-      background-color: transparent;
+  .-elv-slider-handle-active {
+    background-color: transparent;
+  }
+
+  .clip-in-handle,
+  .clip-out-handle {
+    background-color: transparent;
+    border: 3px solid $color-accent;
+    opacity: 0.6;
+  }
+
+  .clip-in-handle {
+    border-right: 0;
+    padding-right: $elv-spacing-xs;
+  }
+
+  .clip-out-handle {
+    border-left: 0;
+    margin-left: -10px;
+    padding-left: $elv-spacing-xs;
+  }
+
+  .seek-handle {
+    background-color: $color-accent-highlight;
+    z-index: 200;
+  }
+
+  &.clip-video-clip-range {
+    .-elv-slider-active {
+      background: linear-gradient(180deg, darken($color-accent, 3%), lighten($color-accent, 5%));
     }
   }
 }
 
-.video-scale {
+.video-scale,
+.video-clip-range {
   .video-seek-handle {
     background-color: $color-accent;
+    z-index: 0;
   }
 }
 
@@ -86,7 +115,7 @@
   color: $elv-color-text-lightest;
   display: flex;
   font-size: $elv-font-m;
-  font-weight: lighter;
+  font-weight: bold;
   justify-content: center;
 }
 
@@ -114,9 +143,9 @@
   button {
     align-items: center;
     display: flex;
-    height: $elv-font-xxl;
+    height: $elv-spacing-m;
     justify-content: center;
-    width: 50px;
+    width: $elv-spacing-l;
 
     svg {
       color: $color-foreground;
@@ -142,9 +171,25 @@
 
     &.video-control-save-frame {
       svg {
+        stroke-width: 1.5px;
+      }
+    }
+
+    &.video-control-save-frame,
+    &.video-control-clip {
+      height: $elv-spacing-m;
+      width: $elv-spacing-m;
+
+      svg {
         fill: transparent;
         stroke: $color-foreground;
-        stroke-width: 1.5px;
+        stroke-width: 1px;
+      }
+
+      &:hover {
+        svg {
+          stroke: $color-accent;
+        }
       }
     }
   }
@@ -167,18 +212,40 @@
 
   .left-controls,
   .right-controls {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .bottom-controls,
+  .top-controls {
     align-items: center;
     display: flex;
+    flex: 1 1 auto;
     height: auto;
-    padding: 0 $elv-spacing-s;
+    max-width: 100%;
+  }
+
+  .left-controls {
+    margin-left: $elv-spacing-s;
+
+    .top-controls {
+      justify-content: flex-end;
+    }
   }
 
   .right-controls {
-    justify-content: flex-end;
-  }
+    align-items: flex-end;
+    display: flex;
+    margin-right: $elv-spacing-s;
 
-  .center-top-controls {
-    padding-top: $elv-spacing-xxs;
+    button {
+      margin-left: $elv-spacing-xs;
+    }
+
+    .top-controls {
+      justify-content: flex-start;
+    }
   }
 
   .center-bottom-controls {

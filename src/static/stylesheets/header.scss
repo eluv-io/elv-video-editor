@@ -15,6 +15,43 @@ header {
     padding: 0 $elv-spacing-m;
   }
 
+  .mode-selection {
+    display: flex;
+    flex: 1 1 auto;
+    height: 90%;
+    padding: 0 $elv-spacing-s;
+
+    button {
+      align-items: center;
+      border: 2px solid $color-background;
+      display: flex;
+      height: 100%;
+      justify-content: center;
+      width: 5rem;
+
+      svg {
+        height: $elv-spacing-m;
+        width: $elv-spacing-m;
+      }
+
+      &.active {
+        background-color: $color-background-active;
+
+        svg {
+          stroke: $color-accent;
+        }
+      }
+
+      &:hover {
+        background-color: $color-background-active;
+      }
+
+      &:focus {
+        outline: 0;
+      }
+    }
+  }
+
   .menu-button {
     height: 100%;
     margin-right: $elv-spacing-xs;

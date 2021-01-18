@@ -1,9 +1,11 @@
 import {observable, action, flow} from "mobx";
+import {FormatName} from "elv-components-js";
 
 class OverlayStore {
   @observable trackMap = {};
   @observable overlayEnabled = false;
   @observable enabledOverlayTracks = {};
+  @observable trackInfo = {};
 
   constructor(rootStore) {
     this.rootStore = rootStore;
@@ -12,6 +14,26 @@ class OverlayStore {
   Reset() {
     this.overlayTrack = undefined;
     this.overlayEnabled = false;
+  }
+
+  @action.bound
+  TrackInfo(trackKey) {
+    if(!this.trackInfo[trackKey]) {
+      const track = this.rootStore.trackStore.tracks
+        .filter(track => track.trackType === "metadata")
+        .find(track => track.key === trackKey);
+
+      if(track) {
+        this.trackInfo[trackKey] = {label: track.label, color: track.color};
+      } else {
+        this.trackInfo[trackKey] = {
+          label: FormatName(trackKey),
+          color: this.rootStore.trackStore.NextColor()
+        };
+      }
+    }
+
+    return this.trackInfo[trackKey];
   }
 
   @action.bound
