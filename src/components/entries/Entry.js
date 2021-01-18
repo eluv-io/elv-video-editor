@@ -6,23 +6,26 @@ import {Confirm, IconButton, ToolTip} from "elv-components-js";
 import PlayIcon from "../../static/icons/Play.svg";
 import EditIcon from "../../static/icons/Edit.svg";
 import DeleteIcon from "../../static/icons/trash.svg";
+import DownloadIcon from "../../static/icons/download.svg";
 
 const DownloadButton = ({Download}) => {
   const [progress, setProgress] = useState({bytesFinished: 0, bytesTotal: 1});
   const [downloading, setDownloading] = useState(false);
 
-  if(!downloading) {
+  if(!downloading || progress.bytesFinished >= progress.bytesTotal) {
     return (
       <ToolTip content="Download">
-        <button
+        <IconButton
+          icon={DownloadIcon}
           tabIndex={0}
           onClick={() => {
+            setProgress({bytesFinished: 0, bytesTotal: 1});
             setDownloading(true);
             Download({callback: setProgress});
           }}
         >
           Download
-        </button>
+        </IconButton>
       </ToolTip>
     );
   } else {
