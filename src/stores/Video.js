@@ -472,6 +472,13 @@ class VideoStore {
   }
 
   @action.bound
+  SMPTEToTime(smpte) {
+    if(!this.videoHandler) { return 0; }
+
+    return this.videoHandler.SMPTEToTime(smpte);
+  }
+
+  @action.bound
   ProgressToTime(seek) {
     if(!this.videoHandler) { return 0; }
 

@@ -22,6 +22,16 @@ $grid-icon-width: 15rem;
   display: grid;
   grid-gap: $elv-spacing-xs;
   grid-template-columns: repeat(auto-fill, minmax($grid-icon-width, 1fr));
+
+  &.empty {
+    align-items: center;
+    display: flex;
+    font-size: $elv-font-xl;
+    height: 100%;
+    justify-content: center;
+    min-height: 50vh;
+    width: 100%;
+  }
 }
 
 .asset-entry {

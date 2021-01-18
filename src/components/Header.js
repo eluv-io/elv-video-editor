@@ -7,7 +7,7 @@ import Save from "./controls/Save";
 import Upload from "./controls/Upload";
 
 import TagIcon from "../static/icons/tag.svg";
-import ClipIcon from "../static/icons/scissors.svg";
+//import ClipIcon from "../static/icons/scissors.svg";
 import AssetsIcon from "../static/icons/file.svg";
 
 @inject("rootStore")
@@ -15,6 +15,15 @@ import AssetsIcon from "../static/icons/file.svg";
 @inject("videoStore")
 @observer
 class Header extends React.Component {
+  /*
+      <ToolTip content="Clip">
+        <IconButton
+          className={this.props.rootStore.view === "clip" ? "active" : ""}
+          icon={ClipIcon}
+          onClick={() => this.props.rootStore.SetView("clip")}
+        />
+      </ToolTip>
+   */
   render() {
     return (
       <header>
@@ -35,13 +44,6 @@ class Header extends React.Component {
               className={this.props.rootStore.view === "main" ? "active" : ""}
               icon={TagIcon}
               onClick={() => this.props.rootStore.SetView("main")}
-            />
-          </ToolTip>
-          <ToolTip content="Clip">
-            <IconButton
-              className={this.props.rootStore.view === "clip" ? "active" : ""}
-              icon={ClipIcon}
-              onClick={() => this.props.rootStore.SetView("clip")}
             />
           </ToolTip>
           <ToolTip content="Assets">

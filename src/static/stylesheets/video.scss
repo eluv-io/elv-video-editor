@@ -177,9 +177,13 @@
 
     &.video-control-save-frame,
     &.video-control-clip {
+      height: $elv-spacing-m;
+      width: $elv-spacing-m;
+
       svg {
         fill: transparent;
         stroke: $color-foreground;
+        stroke-width: 1px;
       }
 
       &:hover {

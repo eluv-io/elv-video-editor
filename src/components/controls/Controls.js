@@ -6,8 +6,8 @@ import {IconButton, Range, Slider, ToolTip} from "elv-components-js";
 import {FrameRates} from "../../utils/FrameAccurateVideo";
 import Fraction from "fraction.js/fraction";
 
-import ClipStartIcon from "../../static/icons/chevron-left.svg";
-import ClipEndIcon from "../../static/icons/chevron-right.svg";
+import ClipStartIcon from "../../static/icons/marker-in.svg";
+import ClipEndIcon from "../../static/icons/marker-out.svg";
 import ClipIcon from "../../static/icons/scissors.svg";
 import SaveImageIcon from "../../static/icons/Image.svg";
 import PauseButton from "../../static/icons/Pause.svg";

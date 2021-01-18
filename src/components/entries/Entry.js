@@ -1,7 +1,11 @@
 import React, {useState} from "react";
 import {inject, observer} from "mobx-react";
 import {BackButton} from "../Components";
-import {Confirm} from "elv-components-js";
+import {Confirm, IconButton, ToolTip} from "elv-components-js";
+
+import PlayIcon from "../../static/icons/Play.svg";
+import EditIcon from "../../static/icons/Edit.svg";
+import DeleteIcon from "../../static/icons/trash.svg";
 
 const DownloadButton = ({Download}) => {
   const [progress, setProgress] = useState({bytesFinished: 0, bytesTotal: 1});
@@ -9,15 +13,17 @@ const DownloadButton = ({Download}) => {
 
   if(!downloading) {
     return (
-      <button
-        tabIndex={0}
-        onClick={() => {
-          setDownloading(true);
-          Download({callback: setProgress});
-        }}
-      >
-        Download
-      </button>
+      <ToolTip content="Download">
+        <button
+          tabIndex={0}
+          onClick={() => {
+            setDownloading(true);
+            Download({callback: setProgress});
+          }}
+        >
+          Download
+        </button>
+      </ToolTip>
     );
   } else {
     return (
@@ -55,27 +61,36 @@ class Entry extends React.Component {
       <div className="entry-actions-container">
         <BackButton onClick={this.props.entryStore.ClearSelectedEntry}/>
         <div className="entry-actions">
-          <button
-            hidden={!playable}
-            tabIndex={0}
-            onClick={this.props.entryStore.PlayCurrentEntry}
-          >
-            Play
-          </button>
-          <button
-            hidden={!editable}
-            tabIndex={0}
-            onClick={() => this.props.entryStore.SetEditing(entry.entryId)}
-          >
-            Edit
-          </button>
-          <button
-            hidden={!editable}
-            tabIndex={0}
-            onClick={this.HandleDelete}
-          >
-            Remove
-          </button>
+          <ToolTip content="Play Tag">
+            <IconButton
+              icon={PlayIcon}
+              hidden={!playable}
+              tabIndex={0}
+              onClick={this.props.entryStore.PlayCurrentEntry}
+            >
+              Play
+            </IconButton>
+          </ToolTip>
+          <ToolTip content="Edit Tag">
+            <IconButton
+              icon={EditIcon}
+              hidden={!editable}
+              tabIndex={0}
+              onClick={() => this.props.entryStore.SetEditing(entry.entryId)}
+            >
+              Edit
+            </IconButton>
+          </ToolTip>
+          <ToolTip content="Remove Tag">
+            <IconButton
+              icon={DeleteIcon}
+              hidden={!editable}
+              tabIndex={0}
+              onClick={this.HandleDelete}
+            >
+              Remove
+            </IconButton>
+          </ToolTip>
           {
             downloadable ?
               <DownloadButton key={`download-${entry.entryId}`} Download={({callback}) => this.props.entryStore.DownloadSegment(entry.entryId, callback)} /> :
@@ -106,10 +121,13 @@ class Entry extends React.Component {
         { this.EntryContent(cue)}
 
         <label>Start Time</label>
-        <span>{`${cue.startTime} (${this.props.entryStore.TimeToSMPTE(entry.startTime)})`}</span>
+        <span>{ this.props.entryStore.TimeToSMPTE(entry.startTime) }</span>
 
         <label>End Time</label>
-        <span>{`${cue.endTime} (${this.props.entryStore.TimeToSMPTE(entry.endTime)})`}</span>
+        <span>{ this.props.entryStore.TimeToSMPTE(entry.endTime) }</span>
+
+        <label>Duration</label>
+        <span>{ this.props.entryStore.TimeToSMPTE(entry.endTime - entry.startTime) }</span>
 
         <label>Align</label>
         <span>{cue.align}</span>
@@ -148,10 +166,13 @@ class Entry extends React.Component {
         { this.EntryContent(entry)}
 
         <label>Start Time</label>
-        <span>{`${entry.startTime} (${this.props.entryStore.TimeToSMPTE(entry.startTime)})`}</span>
+        <span>{ this.props.entryStore.TimeToSMPTE(entry.startTime) }</span>
 
         <label>End Time</label>
-        <span>{`${entry.endTime} (${this.props.entryStore.TimeToSMPTE(entry.endTime)})`}</span>
+        <span>{ this.props.entryStore.TimeToSMPTE(entry.endTime) }</span>
+
+        <label>Duration</label>
+        <span>{ this.props.entryStore.TimeToSMPTE(entry.endTime - entry.startTime) }</span>
       </div>
     );
   }

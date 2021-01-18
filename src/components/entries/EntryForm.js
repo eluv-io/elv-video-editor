@@ -1,9 +1,111 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
-import {Input} from "../../utils/Utils";
-import {Confirm, IconButton, LabelledField, onEnterPressed} from "elv-components-js";
-import ClockIcon from "../../static/icons/Clock.svg";
+import {Confirm, IconButton, LabelledField, onEnterPressed, ToolTip} from "elv-components-js";
 import ListField from "../../utils/ListField";
+
+import ClockIcon from "../../static/icons/Clock.svg";
+import MarkInIcon from "../../static/icons/marker-in.svg";
+import MarkOutIcon from "../../static/icons/marker-out.svg";
+
+@inject("videoStore")
+@observer
+class SMPTEInput extends React.Component {
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      h: "00", m: "00", s: "00", f: "00",
+      error: false
+    };
+  }
+
+  componentDidMount() {
+    this.Initialize();
+  }
+
+  componentDidUpdate(prevProps) {
+    if(prevProps.value !== this.props.value) {
+      this.Initialize();
+    }
+  }
+
+  Initialize() {
+    const [h, m, s, f] = this.props.videoStore.TimeToSMPTE(this.props.value).split(/[:;]/);
+
+    this.setState({h, m, s, f});
+  }
+
+  SMTPE() {
+    let smpte = `${this.state.h}:${this.state.m}:${this.state.s}`;
+    smpte += this.props.videoStore.dropFrame ? `;${this.state.f}` : `:${this.state.f}`;
+    return smpte;
+  }
+
+  Format() {
+    try {
+      const time = this.props.videoStore.SMPTEToTime(this.SMTPE()) + 0.01 / this.props.videoStore.frameRate;
+      const [h, m, s, f] = this.props.videoStore.TimeToSMPTE(time).split(/[:;]/);
+
+      this.setState({h, m, s, f});
+
+      this.props.onChange(time);
+    // eslint-disable-next-line no-empty
+    } catch(error) {}
+  }
+
+  Update(key, value, format=false) {
+    value = value.replace(/[^0-9]/, "");
+
+    this.setState({
+      [key]: value
+    }, () => {
+
+      try {
+        this.props.videoStore.SMPTEToTime(this.SMTPE());
+        this.setState({error: false});
+
+        if(format) {
+          this.Format();
+        }
+      } catch(error) {
+        this.setState({error: true});
+      }
+    });
+  }
+
+  Input(name) {
+    return (
+      <input
+        required
+        value={this.state[name]}
+        maxLength={2}
+        onChange={event => this.Update(name, event.target.value)} onBlur={() => this.Format()}
+        onKeyPress={onEnterPressed(() => this.Format())}
+        onKeyDown={event => {
+          if(event.key.toLowerCase() === "arrowdown") {
+            this.Update(name, Math.max(0, parseInt(this.state[name]) - 1).toString(), true);
+          } else if(event.key.toLowerCase() === "arrowup") {
+            this.Update(name, (parseInt(this.state[name]) + 1).toString(), true);
+          }
+        }}
+      />
+    );
+  }
+
+  render() {
+    return (
+      <div className={`smpte-input ${this.state.error || this.props.error ? "error" : ""}`}>
+        { this.Input("h") }
+        <span className="colon">:</span>
+        { this.Input("m") }
+        <span className="colon">:</span>
+        { this.Input("s") }
+        <span className="colon">{ this.props.videoStore.dropFrame ? ";" : ":" }</span>
+        { this.Input("f") }
+      </div>
+    );
+  }
+}
 
 @inject("videoStore")
 @inject("entryStore")
@@ -36,11 +138,11 @@ class EntryForm extends React.Component {
     this.HandleCancel = this.HandleCancel.bind(this);
   }
 
-  HandleTimeChange(event) {
+  HandleTimeChange(name, value) {
     const Valid = time => time >= 0 && time <= this.props.videoStore.duration + 1;
 
     this.setState({
-      [event.target.name]: parseFloat(event.target.value)
+      [name]: parseFloat(value)
     }, () => {
       // Update time validity
       if(this.state.startTime >= this.state.endTime) {
@@ -87,14 +189,15 @@ class EntryForm extends React.Component {
 
   CurrentTimeButton(name) {
     return (
-      <IconButton
-        icon={ClockIcon}
-        label="Set to current video time"
-        onClick={() => {
-          const time = this.props.videoStore.FrameToTime(this.props.videoStore.frame);
-          this.HandleTimeChange({target: {name, value: time}});
-        }}
-      />
+      <ToolTip content="Set to current video time">
+        <IconButton
+          icon={ClockIcon}
+          onClick={() => {
+            const time = this.props.videoStore.FrameToTime(this.props.videoStore.frame);
+            this.HandleTimeChange(name, time);
+          }}
+        />
+      </ToolTip>
     );
   }
 
@@ -105,6 +208,7 @@ class EntryForm extends React.Component {
       <div className="entry-form">
         <div className="entry-form-content">
           <ListField
+            className="entry-text"
             name="Text"
             label="Text"
             values={this.state.textList}
@@ -113,35 +217,41 @@ class EntryForm extends React.Component {
 
           <LabelledField label="Start Time">
             <div className="time-input">
-              <Input
-                type="number"
-                step={0.000001}
-                name="startTime"
+              <SMPTEInput
                 value={this.state.startTime}
-                onChange={this.HandleTimeChange}
-                onKeyPress={onEnterPressed(this.HandleSubmit)}
-                required
-                className={this.state.startTimeValid ? "" : "invalid"}
+                onChange={value => this.HandleTimeChange("startTime", value)}
+                error={!this.state.startTimeValid}
               />
-              <div className="entry-form-smpte-time">{ this.props.videoStore.TimeToSMPTE(this.state.startTime) }</div>
               { this.CurrentTimeButton("startTime") }
+              <ToolTip content="Set to mark in">
+                <IconButton
+                  icon={MarkInIcon}
+                  onClick={() => {
+                    const time = this.props.videoStore.FrameToTime(this.props.videoStore.clipInFrame);
+                    this.HandleTimeChange("startTime", time);
+                  }}
+                />
+              </ToolTip>
             </div>
           </LabelledField>
 
           <LabelledField label="End Time">
             <div className="time-input">
-              <Input
-                type="number"
-                step={0.000001}
-                name="endTime"
+              <SMPTEInput
                 value={this.state.endTime}
-                onChange={this.HandleTimeChange}
-                onKeyPress={onEnterPressed(this.HandleSubmit)}
-                required
-                className={this.state.endTimeValid ? "" : "invalid"}
+                onChange={value => this.HandleTimeChange("endTime", value)}
+                error={!this.state.endTimeValid}
               />
-              <div className="entry-form-smpte-time">{ this.props.videoStore.TimeToSMPTE(this.state.endTime) }</div>
               { this.CurrentTimeButton("endTime") }
+              <ToolTip content="Set to mark out">
+                <IconButton
+                  icon={MarkOutIcon}
+                  onClick={() => {
+                    const time = this.props.videoStore.FrameToTime(this.props.videoStore.clipOutFrame);
+                    this.HandleTimeChange("endTime", time);
+                  }}
+                />
+              </ToolTip>
             </div>
           </LabelledField>
         </div>

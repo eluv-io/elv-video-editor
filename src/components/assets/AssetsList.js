@@ -1,6 +1,6 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
-import {IconButton, ImageIcon} from "elv-components-js";
+import {IconButton, ImageIcon, ToolTip} from "elv-components-js";
 import Asset from "./Asset";
 import {BackButton} from "../Components";
 
@@ -70,7 +70,7 @@ class AssetsList extends React.Component {
 
     if(!assets || assets.length === 0) {
       return (
-        <div>
+        <div className="assets-list empty">
           No Assets
         </div>
       );
@@ -118,22 +118,25 @@ class AssetsList extends React.Component {
 
     return (
       <div className="asset-sort-filter">
-        <IconButton
-          icon={PictureIcon}
-          title="Show only image assets"
-          className={`asset-filter-button asset-image-only ${this.state.imageOnly ? "active" : ""}`}
-          onClick={() => this.setState({imageOnly: !this.state.imageOnly})}
-        />
-        <IconButton
-          icon={TagIcon}
-          title="Show only tagged assets"
-          className={`asset-filter-button asset-tagged-only ${this.state.taggedOnly ? "active" : ""}`}
-          onClick={() => this.setState({taggedOnly: !this.state.taggedOnly})}
-        />
+        <ToolTip content="Show only image assets">
+          <IconButton
+            icon={PictureIcon}
+            className={`asset-filter-button asset-image-only ${this.state.imageOnly ? "active" : ""}`}
+            onClick={() => this.setState({imageOnly: !this.state.imageOnly})}
+          />
+        </ToolTip>
+        <ToolTip content="Show only tagged assets">
+          <IconButton
+            icon={TagIcon}
+            className={`asset-filter-button asset-tagged-only ${this.state.taggedOnly ? "active" : ""}`}
+            onClick={() => this.setState({taggedOnly: !this.state.taggedOnly})}
+          />
+        </ToolTip>
         <div className="asset-filter">
           <input
             className="asset-filter-input"
             value={this.state.filter}
+            placeholder="Filter assets..."
             onChange={event => this.setState({filter: event.target.value})}
           />
           <IconButton
@@ -147,10 +150,6 @@ class AssetsList extends React.Component {
   }
 
   render() {
-    if(!this.props.videoStore.metadata || !this.props.videoStore.metadata.assets) {
-      return null;
-    }
-
     const selectedAsset = this.state.selectedAsset ? this.props.videoStore.metadata.assets[this.state.selectedAsset] : undefined;
 
     return (
