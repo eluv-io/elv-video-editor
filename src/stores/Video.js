@@ -568,7 +568,8 @@ class VideoStore {
     if(this.segmentEnd && this.frame >= this.segmentEnd - 3) {
       this.video.pause();
       this.Seek(this.segmentEnd - 1);
-      this.segmentEnd = undefined;
+
+      this.EndSegment();
     }
   }
 
@@ -653,21 +654,29 @@ class VideoStore {
   }
 
   @action.bound
-  PlaySegment(startFrame, endFrame) {
+  PlaySegment(startFrame, endFrame, activeTrack) {
     this.Seek(startFrame);
+    this.activeTrack = activeTrack;
     this.segmentEnd = endFrame;
     this.video.play();
+    this.rootStore.overlayStore.SetActiveTrack(activeTrack);
+  }
+
+  EndSegment() {
+    this.segmentEnd = undefined;
+    this.activeTrack = undefined;
+    this.rootStore.overlayStore.SetActiveTrack(undefined);
   }
 
   @action.bound
   Seek(frame, clearSegment=true) {
-    if(clearSegment) { this.segmentEnd = undefined; }
+    if(clearSegment) { this.EndSegment(); }
     this.videoHandler.Seek(frame);
   }
 
   @action.bound
   SeekPercentage(percent, clearSegment=true) {
-    if(clearSegment) { this.segmentEnd = undefined; }
+    if(clearSegment) { this.EndSegment(); }
     this.videoHandler.SeekPercentage(percent);
   }
 

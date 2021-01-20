@@ -73,11 +73,12 @@ class Overlay extends React.Component {
       DisposeDrawReaction: reaction(
         () => {
           return ({
+            activeTrack: this.props.overlayStore.activeTrack,
             enabled: this.props.overlayStore.overlayEnabled,
             frame: this.props.videoStore.frame,
             videoWidth: this.state.videoWidth,
             videoHeight: this.state.videoHeight,
-            enabledTracks: JSON.stringify(this.props.overlayStore.enabledOverlayTracks),
+            enabledTracks: JSON.stringify(this.props.overlayStore.visibleOverlayTracks),
             highlightEntry: JSON.stringify(this.props.highlightEntry || "")
           });
         },
@@ -153,7 +154,7 @@ class Overlay extends React.Component {
     this.props.tracksStore.tracks
       .filter(track => track.trackType === "metadata")
       .forEach(track => {
-        if(!this.props.overlayStore.enabledOverlayTracks[track.key]) { return; }
+        if(!this.props.overlayStore.visibleOverlayTracks[track.key]) { return; }
 
         if(!frame[track.key] || typeof frame[track.key] !== "object") { return; }
 

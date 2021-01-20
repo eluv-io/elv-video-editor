@@ -1,4 +1,4 @@
-import {observable, action, flow} from "mobx";
+import {observable, action, computed, flow} from "mobx";
 import {FormatName} from "elv-components-js";
 
 class OverlayStore {
@@ -6,6 +6,13 @@ class OverlayStore {
   @observable overlayEnabled = false;
   @observable enabledOverlayTracks = {};
   @observable trackInfo = {};
+  @observable activeTrack;
+
+  @computed get visibleOverlayTracks() {
+    return this.activeTrack ?
+      { [this.activeTrack]: true} :
+      this.enabledOverlayTracks;
+  }
 
   constructor(rootStore) {
     this.rootStore = rootStore;
@@ -14,6 +21,11 @@ class OverlayStore {
   Reset() {
     this.overlayTrack = undefined;
     this.overlayEnabled = false;
+  }
+
+  @action.bound
+  SetActiveTrack(track) {
+    this.activeTrack = track;
   }
 
   @action.bound

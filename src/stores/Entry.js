@@ -66,12 +66,7 @@ class EntryStore {
   PlayCurrentEntry() {
     if(!this.selectedEntry) { return; }
 
-    const entry = this.SelectedEntry();
-
-    this.rootStore.videoStore.PlaySegment(
-      this.rootStore.videoStore.TimeToFrame(entry.startTime),
-      this.rootStore.videoStore.TimeToFrame(entry.endTime)
-    );
+    this.PlayEntry(this.SelectedEntry());
   }
 
   @action.bound
@@ -80,7 +75,8 @@ class EntryStore {
 
     this.rootStore.videoStore.PlaySegment(
       this.rootStore.videoStore.TimeToFrame(entry.startTime),
-      this.rootStore.videoStore.TimeToFrame(entry.endTime)
+      this.rootStore.videoStore.TimeToFrame(entry.endTime),
+      this.rootStore.trackStore.SelectedTrack().key
     );
   }
 

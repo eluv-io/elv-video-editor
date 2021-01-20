@@ -563,6 +563,8 @@ class Tracks {
   @action.bound
   ClearSelectedTrack() {
     this.SetSelectedTrack(undefined);
+
+    this.rootStore.videoStore.EndSegment();
   }
 
   @action.bound

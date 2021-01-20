@@ -199,19 +199,21 @@ $preview-track-height: 5rem;
   top: $elv-spacing-xs;
   z-index: 100;
 
-  svg {
-    stroke: $elv-color-lightgray;
-  }
-
   &:hover {
     svg {
       stroke: $elv-color-white;
     }
   }
 
+  &.overlay-toggle-enabled {
+    svg {
+      stroke: $elv-color-lightgray;
+    }
+  }
+
   &.overlay-toggle-disabled {
     svg {
-      stroke: $elv-color-mediumgray;
+      stroke: $elv-color-darkgray;
     }
   }
 }
