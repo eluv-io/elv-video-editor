@@ -112,7 +112,8 @@ $grid-icon-width: 15rem;
   }
 }
 
-.asset-sort-filter {
+.asset-sort-filter,
+.asset-page-buttons {
   align-items: center;
   display: flex;
   height: 2rem;
@@ -128,6 +129,20 @@ $grid-icon-width: 15rem;
     &.active,
     &:hover {
       background-color: $color-background-active;
+    }
+  }
+}
+
+.asset-page-buttons {
+  button {
+    width: 5rem;
+
+    &:disabled {
+      border: 1px solid $color-border-dark;
+
+      &:hover {
+        background-color: $color-background;
+      }
     }
   }
 }

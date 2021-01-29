@@ -62,7 +62,7 @@ class AssetsList extends React.Component {
       );
     }
 
-    return assets;
+    return assets.sort((a, b) => a.title < b.title ? -1 : 1);
   }
 
   AssetsList() {
@@ -79,42 +79,40 @@ class AssetsList extends React.Component {
     return (
       <div className="assets-list">
         {
-          assets
-            .sort((a, b) => a.title < b.title ? -1 : 1)
-            .map((asset, i) => {
-              const hasTags = asset.image_tags && Object.keys(asset.image_tags || {}).length > 0 &&
-                Object.keys(asset.image_tags).find(category => (asset.image_tags[category] || {}).tags);
+          assets.map((asset, i) => {
+            const hasTags = asset.image_tags && Object.keys(asset.image_tags || {}).length > 0 &&
+              Object.keys(asset.image_tags).find(category => (asset.image_tags[category] || {}).tags);
 
-              return (
-                <div
-                  className="asset-entry"
-                  key={`asset-${i}`}
-                  onClick={() =>
-                    this.setState({
-                      selectedAsset: asset.assetKey,
-                      scrollY: window.scrollY
-                    })
-                  }
-                >
-                  <ImageIcon
-                    className="asset-icon"
-                    icon={this.AssetIcon(asset.assetKey, asset)}
-                    alternateIcon={FileIcon}
-                  />
-                  <div className="asset-title">
-                    { asset.title || asset.attachment_file_name }
-                    { hasTags ? <ImageIcon className="tag-icon" icon={TagIcon} /> : null }
-                  </div>
+            return (
+              <div
+                className="asset-entry"
+                key={`asset-${i}`}
+                onClick={() =>
+                  this.setState({
+                    selectedAsset: i,
+                    scrollY: window.scrollY
+                  })
+                }
+              >
+                <ImageIcon
+                  className="asset-icon"
+                  icon={this.AssetIcon(asset.assetKey, asset)}
+                  alternateIcon={FileIcon}
+                />
+                <div className="asset-title">
+                  { asset.title || asset.attachment_file_name }
+                  { hasTags ? <ImageIcon className="tag-icon" icon={TagIcon} /> : null }
                 </div>
-              );
-            })
+              </div>
+            );
+          })
         }
       </div>
     );
   }
 
   SortFilter() {
-    if(this.state.selectedAsset) { return null; }
+    if(typeof this.state.selectedAsset !== "undefined") { return null; }
 
     return (
       <div className="asset-sort-filter">
@@ -149,8 +147,32 @@ class AssetsList extends React.Component {
     );
   }
 
+  PageButtons() {
+    if(typeof this.state.selectedAsset === "undefined") { return null; }
+
+    const assets = this.FilteredAssets();
+    return (
+      <div className="asset-page-buttons">
+        <button
+          disabled={this.state.selectedAsset <= 0}
+          onClick={() => this.setState({selectedAsset: this.state.selectedAsset - 1})}
+        >
+          Previous
+        </button>
+        <button
+          disabled={this.state.selectedAsset >= assets.length - 1}
+          onClick={() => this.setState({selectedAsset: this.state.selectedAsset + 1})}
+        >
+          Next
+        </button>
+      </div>
+    );
+  }
+
   render() {
-    const selectedAsset = this.state.selectedAsset ? this.props.videoStore.metadata.assets[this.state.selectedAsset] : undefined;
+    const selectedAsset = typeof this.state.selectedAsset === "undefined" ?
+      undefined :
+      this.FilteredAssets()[this.state.selectedAsset];
 
     return (
       <div className="assets-page">
@@ -168,10 +190,11 @@ class AssetsList extends React.Component {
           Assets
           { selectedAsset ? ` - ${selectedAsset.title || selectedAsset.attachment_file_name}` : "" }
           { this.SortFilter() }
+          { this.PageButtons() }
         </h2>
         {
           selectedAsset ?
-            <Asset assetKey={this.state.selectedAsset} /> :
+            <Asset assetKey={selectedAsset.assetKey} key={`asset-${selectedAsset.assetKey}`} /> :
             this.AssetsList()
         }
       </div>
