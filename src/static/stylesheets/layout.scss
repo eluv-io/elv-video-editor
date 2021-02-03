@@ -2,6 +2,7 @@ $header-height: 55px;
 
 header {
   height: $header-height;
+  min-height: 55px;
 }
 
 .menu-container {

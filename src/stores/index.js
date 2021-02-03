@@ -32,6 +32,8 @@ class RootStore {
     this.clipStore = new ClipStore(this);
 
     this.InitializeClient();
+
+    window.rootStore = this;
   }
 
   Reset() {
