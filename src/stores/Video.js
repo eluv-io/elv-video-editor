@@ -68,8 +68,13 @@ class VideoStore {
   @computed get scaleMaxFrame() { return this.duration ? this.ProgressToFrame(this.scaleMax) : 0; }
 
   // Pass dropFrame parameter so SMPTE strings are redrawn on dropframe display change
-  @computed get scaleMinSMPTE() { return this.duration ? this.ProgressToSMPTE(this.scaleMin, this.dropFrame) : ""; }
-  @computed get scaleMaxSMPTE() { return this.duration ? this.ProgressToSMPTE(this.scaleMax, this.dropFrame) : ""; }
+  @computed get scaleMinSMPTE() { return this.duration ? this.ProgressToSMPTE(this.scaleMin) : ""; }
+  @computed get scaleMaxSMPTE() {
+    if(!this.duration) { return ""; }
+
+    let frame = this.TimeToFrame(this.ProgressToTime(this.scaleMax), true);
+    return this.FrameToSMPTE(frame - 1, this.dropFrame);
+  }
 
   DebounceControl({name, delay, Action}) {
     if(this[`${name}LastFired`] && Date.now() - this[`${name}LastFired`] < delay) {
@@ -507,10 +512,10 @@ class VideoStore {
   }
 
   @action.bound
-  TimeToFrame(time) {
+  TimeToFrame(time, round=false) {
     if(!this.videoHandler) { return 0; }
 
-    return this.videoHandler.TimeToFrame(time);
+    return this.videoHandler.TimeToFrame(time, round);
   }
 
   @action.bound

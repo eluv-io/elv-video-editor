@@ -146,8 +146,14 @@ class FrameAccurateVideo {
     return this.TimeToSMPTE(Fraction(progress).mul(duration));
   }
 
-  TimeToFrame(time) {
-    return Fraction(time || 0).mul(this.frameRate).floor().valueOf();
+  TimeToFrame(time, round=false) {
+    const frame = Fraction(time || 0).mul(this.frameRate);
+
+    if(round) {
+      return frame.round().valueOf();
+    } else {
+      return frame.floor().valueOf();
+    }
   }
 
   TimeToSMPTE(time) {
