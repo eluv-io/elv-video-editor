@@ -448,6 +448,14 @@ class Tracks {
   AddMetadataTracks() {
     const metadataTracks = this.AddTracksFromTags(this.rootStore.videoStore.tags.metadata_tags);
     metadataTracks.map(track => {
+      if(!track.label || !track.entries) {
+        // eslint-disable-next-line no-console
+        console.error("Invalid track:", track.key);
+        // eslint-disable-next-line no-console
+        console.error(toJS(this.rootStore.videoStore.tags.metadata_tags[track.key]));
+        return;
+      }
+
       this.totalEntries += Object.keys(track.entries).length;
 
       this.AddTrack({
