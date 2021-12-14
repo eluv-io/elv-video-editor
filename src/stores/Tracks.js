@@ -76,6 +76,7 @@ class Tracks {
     return this.rootStore.videoStore.source.split("?")[0].replace("playlist.m3u8", "");
   }
 
+  // TODO: Try switching to hls-parser
   async ParsedHLSPlaylist(playlistUrl) {
     if(!playlistUrl) { playlistUrl = this.rootStore.videoStore.source; }
 
@@ -422,49 +423,63 @@ class Tracks {
   }
 
   AddSubtitleTracks = flow(function * () {
-    const subtitleTracks = yield this.SubtitleTracksFromHLSPlaylist();
+    try {
+      const subtitleTracks = yield this.SubtitleTracksFromHLSPlaylist();
 
-    // Initialize video WebVTT tracks by fetching and parsing the VTT file
-    subtitleTracks.map(track => {
-      try {
-        const entries = this.ParseVTTTrack(track);
+      // Initialize video WebVTT tracks by fetching and parsing the VTT file
+      subtitleTracks.map(track => {
+        try {
+          const entries = this.ParseVTTTrack(track);
 
-        this.totalEntries += Object.keys(entries).length;
+          this.totalEntries += Object.keys(entries).length;
 
-        this.AddTrack({
-          ...track,
-          type: "vtt",
-          entries
-        });
-      } catch(error) {
-        // eslint-disable-next-line no-console
-        console.error("Error parsing VTT track:");
-        // eslint-disable-next-line no-console
-        console.error(error);
-      }
-    });
+          this.AddTrack({
+            ...track,
+            type: "vtt",
+            entries
+          });
+        } catch(error) {
+          // eslint-disable-next-line no-console
+          console.error("Error parsing VTT track:");
+          // eslint-disable-next-line no-console
+          console.error(error);
+        }
+      });
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to load subtitle tracks:");
+      // eslint-disable-next-line no-console
+      console.error(error);
+    }
   });
 
   AddMetadataTracks() {
-    const metadataTracks = this.AddTracksFromTags(this.rootStore.videoStore.tags.metadata_tags);
-    metadataTracks.map(track => {
-      if(!track.label || !track.entries) {
-        // eslint-disable-next-line no-console
-        console.error("Invalid track:", track.key);
-        // eslint-disable-next-line no-console
-        console.error(toJS(this.rootStore.videoStore.tags.metadata_tags[track.key]));
-        return;
-      }
+    try {
+      const metadataTracks = this.AddTracksFromTags(this.rootStore.videoStore.tags.metadata_tags);
+      metadataTracks.map(track => {
+        if(!track.label || !track.entries) {
+          // eslint-disable-next-line no-console
+          console.error("Invalid track:", track.key);
+          // eslint-disable-next-line no-console
+          console.error(toJS(this.rootStore.videoStore.tags.metadata_tags[track.key]));
+          return;
+        }
 
-      this.totalEntries += Object.keys(track.entries).length;
+        this.totalEntries += Object.keys(track.entries).length;
 
-      this.AddTrack({
-        label: track.label,
-        key: track.key,
-        type: "metadata",
-        entries: track.entries
+        this.AddTrack({
+          label: track.label,
+          key: track.key,
+          type: "metadata",
+          entries: track.entries
+        });
       });
-    });
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to load metadata tracks:");
+      // eslint-disable-next-line no-console
+      console.error(error);
+    }
   }
 
   AddSegmentTracks() {
