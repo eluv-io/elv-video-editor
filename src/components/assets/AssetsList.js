@@ -5,7 +5,7 @@ import Asset from "./Asset";
 import {BackButton} from "../Components";
 
 import FileIcon from "../../static/icons/file.svg";
-import PictureIcon from "../../static/icons/image.svg";
+import PictureIcon from "../../static/icons/picture.svg";
 import TagIcon from "../../static/icons/tag.svg";
 import XIcon from "../../static/icons/X.svg";
 
