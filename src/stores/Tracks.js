@@ -164,7 +164,7 @@ class Tracks {
     });
 
     this.entries[trackId] = entries;
-    this.intervalTrees[trackId] = this.CreateTrackIntervalTree(entries);
+    this.intervalTrees[trackId] = this.CreateTrackIntervalTree(entries, label);
 
     return trackId;
   }
@@ -414,10 +414,19 @@ class Tracks {
     return cues;
   }
 
-  CreateTrackIntervalTree(entries) {
+  CreateTrackIntervalTree(entries, label) {
     const intervalTree = new IntervalTree();
 
-    Object.values(entries).forEach(entry => intervalTree.insert(entry.startTime, entry.endTime, entry.entryId));
+    Object.values(entries).forEach(entry => {
+      try {
+        intervalTree.insert(entry.startTime, entry.endTime, entry.entryId);
+      } catch(error) {
+        // eslint-disable-next-line no-console
+        console.warn(`Invalid entry in track '${label}'`);
+        // eslint-disable-next-line no-console
+        console.warn(JSON.stringify(entry, null, 2));
+      }
+    });
 
     return intervalTree;
   }
@@ -650,7 +659,7 @@ class Tracks {
   ModifyTrack(f) {
     const track = this.SelectedTrack();
     f(track);
-    this.intervalTrees[track.trackId] = this.CreateTrackIntervalTree(this.entries[track.trackId]);
+    this.intervalTrees[track.trackId] = this.CreateTrackIntervalTree(this.entries[track.trackId], track.label);
     track.version += 1;
   }
 
