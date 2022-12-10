@@ -8,7 +8,7 @@
   "scripts": {
     "bump-version": "npm --git-tag-version --no-commit-hooks version patch",
     "serve": "webpack-dev-server --host 0.0.0.0 --hot --port 8083",
-    "build": "rm -rf dist/* && NODE_ENV=production node ./node_modules/webpack-cli/bin/cli.js -p --progress --colors --devtool none",
+    "build": "rm -rf dist/* && NODE_ENV=production node ./node_modules/webpack-cli/bin/cli.js --devtool none",
     "add-build": "git add dist",
     "lint": "npm run fix-scss ; npm run lint-scss ; npm run fix-js",
     "lint-show": "npm run lint-scss ; npm run lint-js",
@@ -16,11 +16,6 @@
     "lint-scss": "./node_modules/sass-lint/bin/sass-lint.js -c .scss-lint.yml -v -q",
     "fix-js": "npm run lint-js -- --fix",
     "fix-scss": "./node_modules/sass-lint-auto-fix/dist/index.js"
-  },
-  "pre-commit": {
-    "run": [
-      "lint"
-    ]
   },
   "dependencies": {
     "@babel/polyfill": "^7.4.3",
