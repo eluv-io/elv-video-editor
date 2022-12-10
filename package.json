@@ -8,7 +8,7 @@
   "scripts": {
     "bump-version": "npm --git-tag-version --no-commit-hooks version patch",
     "serve": "webpack-dev-server --host 0.0.0.0 --hot --port 8083",
-    "build": "rm -rf dist/* && NODE_ENV=production node ./node_modules/webpack-cli/bin/cli.js --devtool none",
+    "build": "rm -rf dist/* && NODE_ENV=production node ./node_modules/webpack-cli/bin/cli.js -p --devtool eval-source-map",
     "add-build": "git add dist",
     "lint": "npm run fix-scss ; npm run lint-scss ; npm run fix-js",
     "lint-show": "npm run lint-scss ; npm run lint-js",
@@ -31,7 +31,6 @@
     "mobx": "^5.9.4",
     "mobx-react": "^5.4.3",
     "node-interval-tree": "^1.3.3",
-    "pre-commit": "^1.2.2",
     "prop-types": "^15.7.2",
     "rc-slider": "^8.6.9",
     "react": "^16.8.6",
