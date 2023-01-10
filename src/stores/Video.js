@@ -180,12 +180,25 @@ class VideoStore {
       if(!this.isVideo) {
         this.initialized = true;
       } else {
-        const playoutOptions = yield this.rootStore.client.PlayoutOptions({
-          versionHash: videoObject.versionHash,
-          protocols: ["hls"],
-          drms: ["clear", "aes-128"],
-          hlsjsProfile: false
-        });
+        let playoutOptions;
+
+        const SetPlayoutOptions = async ({offering = "default"}) => {
+          playoutOptions = await this.rootStore.client.PlayoutOptions({
+            versionHash: videoObject.versionHash,
+            protocols: ["hls"],
+            drms: ["clear", "aes-128"],
+            hlsjsProfile: false,
+            offering
+          });
+        };
+
+        yield SetPlayoutOptions({});
+
+        if(
+          !(playoutOptions["hls"].playoutMethods.clear || playoutOptions["hls"].playoutMethods["aes-128"])
+        ) {
+          yield SetPlayoutOptions({offering: "default_clear"});
+        }
 
         // Specify playout for full, untrimmed content
         const playoutMethods = playoutOptions["hls"].playoutMethods;
