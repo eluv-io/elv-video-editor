@@ -202,11 +202,12 @@ class MenuStore {
     try {
       const client = this.rootStore.client;
 
-      let libraryId, objectId, accessType;
+      let libraryId, objectId, accessType, versionHash;
       if(contentId.startsWith("ilib")) {
         libraryId = contentId;
         accessType = "library";
       } else if(contentId.startsWith("hq__")) {
+        versionHash = contentId;
         objectId = client.utils.DecodeVersionHash(contentId).objectId;
       } else if(contentId.startsWith("iq__")) {
         objectId = contentId;
@@ -241,7 +242,7 @@ class MenuStore {
 
           this.ToggleMenu(false);
 
-          yield this.SelectVideo({libraryId, objectId});
+          yield this.SelectVideo({libraryId, objectId, versionHash});
           break;
         default:
           // eslint-disable-next-line no-console
