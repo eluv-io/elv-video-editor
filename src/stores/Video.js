@@ -158,6 +158,39 @@ class VideoStore {
   }
 
   @action.bound
+  GetOfferingKey = flow(function * () {
+    try {
+      const offerings = yield this.rootStore.client.ContentObjectMetadata({
+        libraryId: yield this.rootStore.client.ContentObjectLibraryId({versionHash: this.versionHash}),
+        objectId: this.rootStore.client.utils.DecodeVersionHash(this.versionHash).objectId,
+        metadataSubtree: "offerings",
+        select: [
+          "/*/playout/playout_formats"
+        ]
+      });
+
+      let offering;
+      Object.keys(offerings).some(offeringName => {
+        const playoutFormats = offerings[offeringName].playout.playout_formats;
+        const isHlsClear = Object.values(playoutFormats).some(playoutFormat => playoutFormat.drm === null && playoutFormat.protocol.type === "ProtoHls");
+
+        if(isHlsClear) {
+          offering = offeringName;
+        }
+
+        return isHlsClear;
+      });
+
+      if(!offering) { throw Error("No offerings with HLS clear playout found."); }
+
+      return offering;
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error("Unable to retrieve offerings.", error);
+    }
+  });
+
+  @action.bound
   SetVideo = flow(function * (videoObject) {
     this.loading = true;
 
@@ -180,25 +213,13 @@ class VideoStore {
       if(!this.isVideo) {
         this.initialized = true;
       } else {
-        let playoutOptions;
-
-        const SetPlayoutOptions = async ({offering = "default"}) => {
-          playoutOptions = await this.rootStore.client.PlayoutOptions({
-            versionHash: videoObject.versionHash,
-            protocols: ["hls"],
-            drms: ["clear", "aes-128"],
-            hlsjsProfile: false,
-            offering
-          });
-        };
-
-        yield SetPlayoutOptions({});
-
-        if(
-          !(playoutOptions["hls"].playoutMethods.clear || playoutOptions["hls"].playoutMethods["aes-128"])
-        ) {
-          yield SetPlayoutOptions({offering: "default_clear"});
-        }
+        const playoutOptions = yield this.rootStore.client.PlayoutOptions({
+          versionHash: videoObject.versionHash,
+          protocols: ["hls"],
+          drms: ["clear", "aes-128"],
+          hlsjsProfile: false,
+          offering: yield this.GetOfferingKey()
+        });
 
         // Specify playout for full, untrimmed content
         const playoutMethods = playoutOptions["hls"].playoutMethods;
