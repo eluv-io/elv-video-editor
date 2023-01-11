@@ -170,7 +170,7 @@ class VideoStore {
       });
 
       let offering;
-      Object.keys(offerings).some(offeringName => {
+      Object.keys(offerings).sort().some(offeringName => {
         const playoutFormats = offerings[offeringName].playout.playout_formats;
         const isHlsClear = Object.values(playoutFormats).some(playoutFormat => playoutFormat.drm === null && playoutFormat.protocol.type === "ProtoHls");
 
