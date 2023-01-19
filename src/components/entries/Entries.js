@@ -32,10 +32,11 @@ class EntryList extends React.Component {
     const initialElementIndex = entries
       .findIndex(entry => entry.endTime > this.props.videoStore.currentTime);
 
-    if(initialElementIndex >= 0) {
+    if(initialElementIndex > 0) {
       const initialElementEntryId = entries[initialElementIndex].entryId;
       const end = 100 * (Math.floor(initialElementIndex / 100) + 1);
       const start = end - 100;
+
       this.setState({
         initialElementEntryId,
         entryStart: start,
