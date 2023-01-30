@@ -7,7 +7,6 @@ import Save from "./controls/Save";
 import Upload from "./controls/Upload";
 
 import TagIcon from "../static/icons/tag.svg";
-//import ClipIcon from "../static/icons/scissors.svg";
 import AssetsIcon from "../static/icons/file.svg";
 
 @inject("rootStore")
@@ -24,6 +23,35 @@ class Header extends React.Component {
         />
       </ToolTip>
    */
+
+  OfferingSection = () => {
+    if(!this.props.rootStore.offerings || Object.keys(this.props.rootStore.offerings).length === 0) { return null; }
+
+    return (
+      <div className="offering-section">
+        <label htmlFor="offering" className="offering-label">Offering</label>
+        <select
+          id="offering"
+          className="offering-dropdown"
+          onChange={(event) => {
+            this.props.rootStore.SetOffering(event.target.value);
+            this.props.videoStore.SetVideo(this.props.menuStore.selectedObject);
+          }}
+        >
+          {
+            Object.keys(this.props.rootStore.offerings || {}).map(offeringName => (
+              <option
+                value={offeringName}
+                key={`offering-${offeringName}`}
+                disabled={!this.props.rootStore.offerings[offeringName].isHlsClear}
+              >{offeringName}</option>
+            ))
+          }
+        </select>
+      </div>
+    );
+  }
+
   render() {
     return (
       <header>
@@ -55,6 +83,7 @@ class Header extends React.Component {
           </ToolTip>
         </div>
         <div className="header-right">
+          { this.OfferingSection() }
           <Upload />
           <Save />
           <KeyboardControls />

@@ -17,8 +17,9 @@ configure({
 
 class RootStore {
   @observable client;
-
   @observable view = "main";
+  @observable offerings;
+  @observable selectedOffering;
 
   constructor() {
     this.editStore = new EditStore(this);
@@ -56,40 +57,79 @@ class RootStore {
 
   @action
   async InitializeClient() {
-    // Contained in IFrame
-    const client = new FrameClient({
-      target: window.parent,
-      timeout: 30
+    try {
+      // Contained in IFrame
+      const client = new FrameClient({
+        target: window.parent,
+        timeout: 30
+      });
+
+      client.SendMessage({options: {operation: "HideHeader"}, noResponse: true});
+
+      runInAction(() => this.client = client);
+      const appPath = window.location.hash
+        .replace(/^\/*#?\/*/, "")
+        .split("/");
+
+      if(appPath.length >= 1 && appPath[0].startsWith("hq__")){
+        // Version Hash
+
+        const versionHash = appPath[0];
+        const libraryId = await client.ContentObjectLibraryId({versionHash});
+        const { objectId } = client.utils.DecodeVersionHash(versionHash);
+
+        this.menuStore.SetLibraryId(libraryId);
+        this.menuStore.SetObjectId(objectId);
+        this.menuStore.SelectVideo({libraryId, objectId, versionHash});
+        this.menuStore.ToggleMenu(false);
+      } else if(appPath.length >= 2 && appPath[0].startsWith("ilib") && appPath[1].startsWith("iq__")) {
+        // libraryId + objectId
+        const libraryId = appPath[0];
+        const objectId = appPath[1];
+
+        this.menuStore.SetLibraryId(libraryId);
+        this.menuStore.SetObjectId(objectId);
+        this.menuStore.SelectVideo({libraryId, objectId});
+        this.menuStore.ToggleMenu(false);
+      }
+    } finally {
+      this.SetOfferings();
+    }
+  }
+
+  @action
+  async SetOfferings() {
+    const offerings = await this.client.ContentObjectMetadata({
+      libraryId: this.menuStore.libraryId,
+      objectId: this.menuStore.objectId,
+      metadataSubtree: "offerings",
+      select: [
+        "/*/playout/playout_formats"
+      ]
+    }) || {};
+
+    Object.keys(offerings).forEach(offeringName => {
+      const playoutFormats = offerings[offeringName].playout.playout_formats || {};
+      const isHlsClear = Object.values(playoutFormats).some(playoutFormat => playoutFormat.drm === null && playoutFormat.protocol.type === "ProtoHls");
+
+      offerings[offeringName].isHlsClear = isHlsClear;
     });
 
-    client.SendMessage({options: {operation: "HideHeader"}, noResponse: true});
+    runInAction(() => this.offerings = offerings);
 
-    runInAction(() => this.client = client);
-    const appPath = window.location.hash
-      .replace(/^\/*#?\/*/, "")
-      .split("/");
+    const firstHlsClearOffering = Object.keys(offerings).sort().find(offeringName => offerings[offeringName].isHlsClear);
 
-    if(appPath.length >= 1 && appPath[0].startsWith("hq__")){
-      // Version Hash
+    // Set initial offering
+    this.SetOffering(firstHlsClearOffering);
+  }
 
-      const versionHash = appPath[0];
-      const libraryId = await client.ContentObjectLibraryId({versionHash});
-      const { objectId } = client.utils.DecodeVersionHash(versionHash);
-
-      this.menuStore.SetLibraryId(libraryId);
-      this.menuStore.SetObjectId(objectId);
-      this.menuStore.SelectVideo({libraryId, objectId, versionHash});
-      this.menuStore.ToggleMenu(false);
-    } else if(appPath.length >= 2 && appPath[0].startsWith("ilib") && appPath[1].startsWith("iq__")) {
-      // libraryId + objectId
-      const libraryId = appPath[0];
-      const objectId = appPath[1];
-
-      this.menuStore.SetLibraryId(libraryId);
-      this.menuStore.SetObjectId(objectId);
-      this.menuStore.SelectVideo({libraryId, objectId});
-      this.menuStore.ToggleMenu(false);
+  @action
+  SetOffering(offering) {
+    if(!Object.keys(this.offerings || {}).includes(offering)) {
+      throw Error(`Invalid offering ${offering}`);
     }
+
+    this.selectedOffering = offering;
   }
 }
 
