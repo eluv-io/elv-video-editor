@@ -223,11 +223,12 @@ class VideoStore {
             offering: this.rootStore.selectedOffering
           });
         } catch(error) {
-          console.error(error);
+          console.error("No playout options available", error);
+          throw error;
         }
 
         // Specify playout for full, untrimmed content
-        const playoutMethods = playoutOptions["hls"].playoutMethods;
+        const playoutMethods = playoutOptions && playoutOptions["hls"].playoutMethods;
         const source = URI(
           (playoutMethods.clear || playoutMethods["aes-128"]).playoutUrl
         )

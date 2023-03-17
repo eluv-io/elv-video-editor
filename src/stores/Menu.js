@@ -58,6 +58,8 @@ class MenuStore {
         libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
       }
 
+      this.rootStore.SetOfferings();
+
       if(window.self !== window.top) {
         this.rootStore.client.SendMessage({
           options: {
