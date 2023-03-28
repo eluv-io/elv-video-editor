@@ -1,7 +1,6 @@
 import {observable, action, flow, computed} from "mobx";
 import FrameAccurateVideo, {FrameRateDenominator, FrameRateNumerator, FrameRates} from "../utils/FrameAccurateVideo";
 import UrlJoin from "url-join";
-import URI from "urijs";
 import HLS from "hls.js";
 import {DownloadFromUrl} from "../utils/Utils";
 
@@ -213,12 +212,9 @@ class VideoStore {
 
         this.drm = playoutMethods.clear ? "clear" : "aes-128";
 
-        const source = URI(
-          (playoutMethods.clear || playoutMethods["aes-128"]).playoutUrl
-        )
-          .addSearch("ignore_trimming", true)
-          .addSearch("player_profile", "hls-js-2441")
-          .toString();
+        const source = new URL((playoutMethods.clear || playoutMethods["aes-128"]).playoutUrl);
+        source.searchParams.set("ignore_trimming", true);
+        source.searchParams.set("player_profile", "hls-js-2441");
 
         this.baseVideoFrameUrl = yield this.rootStore.client.Rep({
           versionHash: videoObject.versionHash,
@@ -227,7 +223,9 @@ class VideoStore {
 
         try {
           // Query preview API to check support
-          const response = yield fetch(URI(this.baseVideoFrameUrl).addSearch("frame", 0).toString());
+          const frameUrl = new URL(this.baseVideoFrameUrl);
+          frameUrl.searchParams.set("frame", 0);
+          const response = yield fetch(frameUrl.toString());
           if(response.ok) {
             this.previewSupported = true;
           } else {
@@ -239,7 +237,7 @@ class VideoStore {
           console.error("Preview not supported for this content");
         }
 
-        this.source = source;
+        this.source = source.toString();
 
         try {
           this.primaryContentStartTime = 0;
@@ -815,21 +813,21 @@ class VideoStore {
   AssetLink(assetKey, height) {
     const filePath = this.metadata.assets[assetKey].file["/"].split("/files/").slice(1).join("/");
 
-    const uri = URI(this.baseUrl);
-    uri.path(UrlJoin(uri.path(), "rep", "thumbnail", "files", filePath));
+    const url = new URL(this.baseUrl);
+    url.pathname = UrlJoin(url.pathname, "rep", "thumbnail", "files", filePath);
 
     if(height) {
-      uri.addQuery({height});
+      url.searchParams.set("height", height);
     }
 
-    return uri.toString();
+    return url.toString();
   }
 
   @action.bound
   VideoFrame(frame) {
-    return URI(this.baseVideoFrameUrl)
-      .addSearch("frame", frame)
-      .toString();
+    const url = new URL(this.baseVideoFrameUrl);
+    url.searchParams.set("frame", frame);
+    return url.toString();
   }
 
   @action.bound

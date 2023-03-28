@@ -95,9 +95,12 @@ module.exports = {
         options: {
           presets: ["@babel/preset-env", "@babel/preset-react", "babel-preset-mobx"],
           plugins: [
+            ["@babel/plugin-proposal-decorators", { "version": "legacy" }],
             require("@babel/plugin-proposal-object-rest-spread"),
             require("@babel/plugin-transform-regenerator"),
-            require("@babel/plugin-transform-runtime")
+            require("@babel/plugin-transform-runtime"),
+            ["@babel/plugin-proposal-private-methods", { loose: true }],
+            ["@babel/plugin-proposal-private-property-in-object", { "loose": true }]
           ]
         }
       },
