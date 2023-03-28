@@ -89,7 +89,7 @@ let Offering = (props) => {
   );
 
   return (
-    <ToolTip content={<span>Select Offering</span>}>
+    <ToolTip content={<span>Offering</span>}>
       <select
         aria-label="Offering"
         value={store.offeringKey}
