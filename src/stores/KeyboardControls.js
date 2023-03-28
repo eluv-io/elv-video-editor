@@ -76,28 +76,32 @@ class ControlStore {
       return;
     }
 
-    event.preventDefault();
-
     this.HandleModifiers(event);
 
     if(event.type.toLowerCase() !== "keydown") { return; }
 
     const actionMap = this.controlMap[event.key] || {};
 
+    const shift = this.modifiers.shift;
+    const alt = this.modifiers.alt;
+    const ctrl = this.modifiers.control;
+    const meta = this.modifiers.meta;
+
     let action;
-    if(!action && this.modifiers.shift) {
+    if(!action && shift && !alt && !ctrl && !meta) {
       action = actionMap.shiftAction;
     }
 
-    if(!action && this.modifiers.alt) {
+    if(!action && alt && !shift && !ctrl && !meta) {
       action = actionMap.altAction;
     }
 
-    if(!action && this.modifiers.control) {
+    if(!action && ctrl && !shift && !alt && !meta) {
       action = actionMap.controlAction;
     }
 
-    if(!action) {
+    // Shift allowed because it may be needed to produce certain characters
+    if(!action && !alt && !ctrl && !meta) {
       action = actionMap.action;
     }
 
@@ -166,6 +170,11 @@ class ControlStore {
   @action.bound
   ToggleTrackByIndex(index) {
     this.rootStore.trackStore.ToggleTrackByIndex(parseInt(index) - 1);
+  }
+
+  @action.bound
+  PlayClip() {
+    this.rootStore.videoStore.PlaySegment(this.rootStore.videoStore.clipInFrame, this.rootStore.videoStore.clipOutFrame);
   }
 
   @action.bound
@@ -371,6 +380,16 @@ class ControlStore {
     ],
     "Clips": [
       [
+        ["\\"],
+        {
+          action: {
+            description: "Play currently selected clip from the beginning",
+            action: () => this.PlayClip()
+          }
+        },
+      ],
+      /*
+      [
         ["Delete", "Backspace"],
         {
           action: {
@@ -379,6 +398,8 @@ class ControlStore {
           }
         },
       ],
+
+       */
       [
         ["{"],
         {

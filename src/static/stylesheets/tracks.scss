@@ -20,7 +20,6 @@ $preview-track-height: 5rem;
   pointer-events: none;
   position: absolute;
   width: 4px;
-  z-index: 100;
 
   .track-time-handle {
     border-radius: 100%;
@@ -176,6 +175,7 @@ $preview-track-height: 5rem;
 }
 
 .track-label-clickable {
+  background-color: $color-background;
   cursor: pointer;
 
   &:hover {

@@ -96,7 +96,7 @@ class MenuStore {
         versionHash,
         name: metadata.public && metadata.public.name || metadata.name || versionHash,
         metadata,
-        //isVideo: metadata.offerings && metadata.offerings.default && metadata.offerings.default.ready
+        //isVideo: metadata.offerings && metadata.offerings[this.rootStore.videoStore.offeringKey]?.ready
         isVideo: true
       };
 

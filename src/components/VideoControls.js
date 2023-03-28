@@ -11,8 +11,8 @@ import {
   PlaybackLevel,
   PlaybackRate,
   PlayPause, SaveClip,
-  SaveFrame,
-  Scale,
+  SaveFrame, SaveVideo,
+  Scale, Offering,
   Volume
 } from "./controls/Controls";
 import FrameForward from "../static/icons/Forward.svg";
@@ -53,6 +53,7 @@ class VideoControls extends React.Component {
             <PlaybackRate clip={this.props.clip} />
             <FrameRate clip={this.props.clip} />
             <DropFrame clip={this.props.clip} />
+            <Offering />
             <PlaybackLevel clip={this.props.clip} />
           </div>
         </div>
@@ -74,6 +75,7 @@ class VideoControls extends React.Component {
           <div className="bottom-controls">
             <Volume clip={this.props.clip} />
             <FullscreenToggle clip={this.props.clip} />
+            <SaveVideo />
             <SaveFrame clip={this.props.clip} />
           </div>
         </div>

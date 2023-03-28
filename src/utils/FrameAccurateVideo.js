@@ -244,7 +244,7 @@ class FrameAccurateVideo {
   }
 
   TotalFrames() {
-    return Fraction(this.video.duration || 0).mul(this.frameRate).valueOf();
+    return Math.floor(Fraction(this.video.duration || 0).mul(this.frameRate).valueOf());
   }
 
   /* Controls */

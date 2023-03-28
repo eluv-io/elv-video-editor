@@ -311,8 +311,8 @@ class Track extends React.Component {
     return (
       <ToolTip content={this.ToolTipContent()}>
         <div
-          ref={StopScroll({shift: true})}
-          onWheel={({deltaY, clientX, shiftKey}) => shiftKey && this.props.videoStore.ScrollScale(this.ClientXToCanvasPosition(clientX), deltaY)}
+          ref={StopScroll({})}
+          onWheel={({deltaY, clientX}) => this.props.videoStore.ScrollScale(this.ClientXToCanvasPosition(clientX), deltaY)}
           className="track-container"
         >
           { this.Canvas() }

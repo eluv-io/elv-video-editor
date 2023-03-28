@@ -17,6 +17,9 @@ class VideoStore {
   @observable name;
   @observable videoTags = [];
 
+  @observable availableOfferings = {};
+  @observable offeringKey = "default";
+
   @observable loading = false;
   @observable initialized = false;
   @observable isVideo = false;
@@ -31,6 +34,7 @@ class VideoStore {
   @observable baseVideoFrameUrl = undefined;
   @observable baseFileUrl = undefined;
   @observable previewSupported = false;
+  @observable downloadUrl;
 
   @observable dropFrame = false;
   @observable frameRateKey = "NTSC";
@@ -120,6 +124,8 @@ class VideoStore {
     this.tags = {};
     this.name = "";
     this.videoTags = [];
+    this.offeringKey = "default";
+    this.availableOfferings = {};
 
     this.source = undefined;
     this.baseVideoFrameUrl = undefined;
@@ -158,43 +164,18 @@ class VideoStore {
   }
 
   @action.bound
-  GetOfferingKey = flow(function * () {
-    try {
-      const offerings = yield this.rootStore.client.ContentObjectMetadata({
-        libraryId: yield this.rootStore.client.ContentObjectLibraryId({versionHash: this.versionHash}),
-        objectId: this.rootStore.client.utils.DecodeVersionHash(this.versionHash).objectId,
-        metadataSubtree: "offerings",
-        select: [
-          "/*/playout/playout_formats"
-        ]
-      });
-
-      let offering;
-      Object.keys(offerings).sort().some(offeringName => {
-        const playoutFormats = offerings[offeringName].playout.playout_formats;
-        const isHlsClear = Object.values(playoutFormats).some(playoutFormat => playoutFormat.drm === null && playoutFormat.protocol.type === "ProtoHls");
-
-        if(isHlsClear) {
-          offering = offeringName;
-        }
-
-        return isHlsClear;
-      });
-
-      if(!offering) { throw Error("No offerings with HLS clear playout found."); }
-
-      return offering;
-    } catch(error) {
-      // eslint-disable-next-line no-console
-      console.error("Unable to retrieve offerings.", error);
-    }
+  SetOffering = flow(function * (offeringKey) {
+    this.Reset();
+    yield this.SetVideo(this.videoObject, offeringKey);
   });
 
   @action.bound
-  SetVideo = flow(function * (videoObject) {
+  SetVideo = flow(function * (videoObject, offeringKey) {
     this.loading = true;
 
     try {
+      this.videoObject = videoObject;
+
       this.name = videoObject.name;
       this.versionHash = videoObject.versionHash;
 
@@ -213,16 +194,25 @@ class VideoStore {
       if(!this.isVideo) {
         this.initialized = true;
       } else {
+        this.availableOfferings = yield this.rootStore.client.AvailableOfferings({
+          versionHash: videoObject.versionHash
+        });
+
+        this.offeringKey = offeringKey || (this.availableOfferings.default ? "default" : Object.keys(this.availableOfferings)[0]);
+
         const playoutOptions = yield this.rootStore.client.PlayoutOptions({
           versionHash: videoObject.versionHash,
           protocols: ["hls"],
           drms: ["clear", "aes-128"],
           hlsjsProfile: false,
-          offering: yield this.GetOfferingKey()
+          offering: this.offeringKey
         });
 
         // Specify playout for full, untrimmed content
         const playoutMethods = playoutOptions["hls"].playoutMethods;
+
+        this.drm = playoutMethods.clear ? "clear" : "aes-128";
+
         const source = URI(
           (playoutMethods.clear || playoutMethods["aes-128"]).playoutUrl
         )
@@ -232,7 +222,7 @@ class VideoStore {
 
         this.baseVideoFrameUrl = yield this.rootStore.client.Rep({
           versionHash: videoObject.versionHash,
-          rep: UrlJoin("playout", "default", "frames.png")
+          rep: UrlJoin("playout", this.offeringKey, "frames.png")
         });
 
         try {
@@ -254,8 +244,7 @@ class VideoStore {
         try {
           this.primaryContentStartTime = 0;
 
-          const offering = this.metadata.offerings.default;
-
+          const offering = this.metadata.offerings[this.offeringKey];
           const offeringOptions = offering.media_struct.streams || {};
 
           let rate;
@@ -623,7 +612,7 @@ class VideoStore {
 
   @action.bound
   SetPlaybackLevel(level) {
-    this.player.levelController.manualLevel = level;
+    this.player.nextLevel = parseInt(level);
     this.player.streamController.immediateLevelSwitch();
   }
 
@@ -674,7 +663,7 @@ class VideoStore {
     const minProportion = position;
     const maxProportion = 1 - position;
 
-    deltaY *= 100 * -0.003;
+    deltaY *= 100 * -0.0003;
 
     deltaMin = deltaY * minProportion;
     deltaMax = deltaY * maxProportion;
@@ -751,7 +740,7 @@ class VideoStore {
     const volume = this.muted ? 0 : this.volume;
 
     this.SetVolume(
-      Math.max(0, Math.min(100, volume - (deltaY * 100 * 0.01)))
+      Math.max(0, Math.min(100, volume - (deltaY * 100 * 0.001)))
     );
   }
 
@@ -856,6 +845,47 @@ class VideoStore {
       const filename = `${this.name}_${this.smpte.replace(":", "-")}.png`;
       DownloadFromUrl(downloadUrl, filename);
     });
+  }
+
+  @action.bound
+  async SaveVideo() {
+    const currentLevel = this.levels[this.currentLevel];
+    const offering = this.metadata.offerings[this.offeringKey];
+    const playoutKey = Object.keys(offering.playout.streams.video.representations)
+      .find(key => {
+        const playout = offering.playout.streams.video.representations[key];
+
+        return (
+          playout.height.toString() === currentLevel.height.toString() &&
+          playout.width.toString() === currentLevel.width.toString() &&
+          playout.bit_rate.toString() === currentLevel.bitrate.toString()
+        );
+      });
+
+    const filename = `${this.name} (${currentLevel.width}x${currentLevel.height}) (${this.FrameToSMPTE(this.clipInFrame).replaceAll(":", "-")} - ${this.FrameToSMPTE(this.clipOutFrame).replaceAll(":", "-")}).mp4`;
+
+    let queryParams = {
+      "header-x_set_content_disposition": `attachment;filename=${filename};`
+    };
+
+    if(this.clipInFrame > 0) {
+      queryParams.clip_start = this.FrameToTime(this.clipInFrame);
+    }
+
+    if(this.videoHandler.TotalFrames() > this.clipOutFrame + 1) {
+      queryParams.clip_end = this.FrameToTime(this.clipOutFrame + 1);
+    }
+
+    const downloadUrl = await this.rootStore.client.Rep({
+      versionHash: this.versionHash,
+      rep: UrlJoin("media_download", this.offering, playoutKey),
+      queryParams
+    });
+
+    DownloadFromUrl(
+      downloadUrl,
+      filename
+    );
   }
 }
 

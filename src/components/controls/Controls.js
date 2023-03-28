@@ -17,6 +17,7 @@ import MinimizeIcon from "../../static/icons/Minimize.svg";
 import VolumeOff from "../../static/icons/VolumeOff.svg";
 import VolumeLow from "../../static/icons/VolumeLow.svg";
 import VolumeHigh from "../../static/icons/VolumeHigh.svg";
+import DownloadIcon from "../../static/icons/download.svg";
 
 import {StopScroll} from "../../utils/Utils";
 
@@ -36,6 +37,25 @@ let SaveFrame = (props) => {
     </ToolTip>
   );
 };
+
+let SaveVideo = observer((props) => {
+  const downloadable = props.videoStore.drm === "clear";
+  const tooltip = downloadable ?
+    "Download Clip at Current Resolution" :
+    "This offering contains DRM. Switch to an offering without DRM to download clips.";
+
+  return (
+    <ToolTip content={<span>{tooltip}</span>}>
+      <IconButton
+        aria-label="Save Video Clip at Current Resolution"
+        icon={DownloadIcon}
+        className={"video-control-button video-control-save-frame"}
+        onClick={props.videoStore.SaveVideo}
+        disabled={!downloadable}
+      />
+    </ToolTip>
+  );
+});
 
 let PlaybackLevel = (props) => {
   const store = Store(props);
@@ -57,6 +77,30 @@ let PlaybackLevel = (props) => {
             </option>
           );
         })}
+      </select>
+    </ToolTip>
+  );
+};
+
+let Offering = (props) => {
+  const store = props.videoStore;
+  let offerings = Object.keys(store.availableOfferings).map(offeringKey =>
+    [offeringKey, store.availableOfferings[offeringKey].display_name || offeringKey]
+  );
+
+  return (
+    <ToolTip content={<span>Select Offering</span>}>
+      <select
+        aria-label="Offering"
+        value={store.offeringKey}
+        className={"offering-selection"}
+        onChange={event => store.SetOffering(event.target.value)}
+      >
+        {offerings.map(([offeringKey, label]) =>
+          <option key={`offering-${offeringKey}`} value={offeringKey}>
+            { label === "default" ? "Default Offering" : label }
+          </option>
+        )}
       </select>
     </ToolTip>
   );
@@ -210,18 +254,8 @@ let FrameControl = (props) => {
 // mobx 5 doesn't support functional components + hooks
 @inject("videoStore")
 @inject("clipVideoStore")
+@observer
 class Scale extends React.Component {
-  constructor(props) {
-    super(props);
-
-    const store = Store(props);
-
-    this.state = {
-      min: store.scaleMin,
-      max: store.scaleMax
-    };
-  }
-
   render() {
     const store = Store(this.props);
 
@@ -230,14 +264,14 @@ class Scale extends React.Component {
         key="video-scale"
         min={0}
         max={100}
-        handleControlOnly
         marks={this.props.sliderMarks || store.sliderMarks}
         markTextEvery={store.majorMarksEvery}
         showMarks
         handles={[
           {
-            position: this.state.min,
-            style: "circle"
+            position: store.scaleMin,
+            style: "circle",
+            toolTip: "Scale Minimum"
           },
           {
             position: store.seek,
@@ -246,22 +280,30 @@ class Scale extends React.Component {
             style: "line"
           },
           {
-            position: this.state.max,
-            style: "circle"
+            position: store.scaleMax,
+            style: "circle",
+            toolTip: "Scale Maximum"
           }
         ]}
         renderToolTip={value => <span>{store.ProgressToSMPTE(value)}</span>}
         onChange={([scaleMin, seek, scaleMax]) => {
-          this.setState({
-            min: scaleMin,
-            max: scaleMax
-          });
+          if(scaleMax - scaleMin < 1) {
+            if(scaleMin !== store.scaleMin) {
+              // Min changed
+              scaleMin = Math.max(0, scaleMax - 1);
+              scaleMax = Math.min(100, scaleMin + 1);
+            } else {
+              // Max changed
+              scaleMax = Math.min(100, scaleMin + 1);
+              scaleMin = Math.max(0, scaleMin);
+            }
+          }
 
           store.DebounceControl({
             name: "scale",
-            delay: 250,
+            delay: 25,
             Action: () => {
-              store.SetScale(this.state.min, seek, this.state.max);
+              store.SetScale(scaleMin, seek, scaleMax);
             }
           });
         }}
@@ -381,6 +423,8 @@ PlaybackLevel = Inject(PlaybackLevel);
 PlaybackRate = Inject(PlaybackRate);
 PlayPause = Inject(PlayPause);
 SaveFrame = Inject(SaveFrame);
+SaveVideo = Inject(SaveVideo);
+Offering = Inject(Offering);
 Volume = Inject(Volume);
 
 SaveClip = inject("clipStore")(Inject(SaveClip));
@@ -398,6 +442,8 @@ export {
   PlayPause,
   SaveClip,
   SaveFrame,
+  SaveVideo,
   Scale,
+  Offering,
   Volume
 };

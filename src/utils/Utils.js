@@ -16,10 +16,12 @@ export const StopScroll = ({shift=false}={}) => {
   };
 };
 
-export const DownloadFromUrl = (url, filename) => {
+export const DownloadFromUrl = (url, filename, options={}) => {
   let element = document.createElement("a");
   element.href = url;
   element.download = filename;
+
+  Object.keys(options).forEach(key => element[key] = options[key]);
 
   element.style.display = "none";
   document.body.appendChild(element);

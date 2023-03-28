@@ -44,7 +44,8 @@ class Video extends React.Component {
 
     const config = {
       nudgeOffset: 0.2,
-      nudgeMaxRetry: 30
+      nudgeMaxRetry: 30,
+      autoLevelEnabled: false
     };
 
     const player = new HLSPlayer(config);

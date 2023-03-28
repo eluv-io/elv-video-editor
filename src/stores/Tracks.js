@@ -1,5 +1,5 @@
 import {observable, action, flow, toJS} from "mobx";
-import {WebVTT} from "vtt.js";
+import {WebVTT} from "../vendor/vtt.js/lib/index";
 import Id from "../utils/Id";
 import IntervalTree from "node-interval-tree";
 import {Parser as HLSParser} from "m3u8-parser";
@@ -495,7 +495,7 @@ class Tracks {
     if(!this.rootStore.videoStore.isVideo || !this.rootStore.videoStore.metadata.offerings) { return; }
 
     try {
-      const streams = this.rootStore.videoStore.metadata.offerings.default.media_struct.streams;
+      const streams = this.rootStore.videoStore.metadata.offerings[this.rootStore.videoStore.offeringKey].media_struct.streams;
 
       ["video", "audio"].forEach(stream => {
         if(!streams[stream]) {

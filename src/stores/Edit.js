@@ -93,7 +93,7 @@ class EditStore {
       const endFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(endTime);
       const endTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(endFrame);
 
-      const offering = this.rootStore.videoStore.metadata.offerings.default;
+      const offering = this.rootStore.videoStore.metadata.offerings[this.rootStore.videoStore.offeringKey];
 
       const metadataChanged = Object.keys(updatedMetadata).length > 0 || keysToDelete.length > 0;
       const clipChanged = offering.entry_point_rat !== startTimeRat || offering.exit_point_rat !== endTimeRat;
@@ -144,11 +144,12 @@ class EditStore {
       }
 
       if(clipChanged) {
+        const offering = this.rootStore.videoStore.offeringKey;
         yield client.ReplaceMetadata({
           libraryId,
           objectId,
           writeToken: write_token,
-          metadataSubtree: "offerings/default/entry_point_rat",
+          metadataSubtree: `offerings/${offering}/entry_point_rat`,
           metadata: startTimeRat
         });
 
@@ -156,7 +157,7 @@ class EditStore {
           libraryId,
           objectId,
           writeToken: write_token,
-          metadataSubtree: "offerings/default/exit_point_rat",
+          metadataSubtree: `offerings/${offering}/exit_point_rat`,
           metadata: endTimeRat
         });
       }
