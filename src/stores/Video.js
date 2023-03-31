@@ -490,11 +490,22 @@ class VideoStore {
       outFrame = this.ProgressToFrame(outProgress);
     }
 
+    const inFrameChanged = inFrame !== this.clipInFrame;
+    const outFrameChanged = outFrame !== this.clipOutFrame;
+
+    const totalFrames = this.videoHandler.TotalFrames();
+
     if(typeof inFrame !== "undefined") { this.clipInFrame = Math.max(0, inFrame); }
-    if(outFrame) { this.clipOutFrame = Math.min(outFrame, this.videoHandler.TotalFrames() - 1); }
+    if(outFrame) { this.clipOutFrame = Math.min(outFrame, totalFrames - 1); }
 
     if(!this.clipInFrame) { this.clipInFrame = 0; }
-    if(!this.clipOutFrame) { this.clipOutFrame = this.videoHandler.TotalFrames() - 1; }
+    if(!this.clipOutFrame) { this.clipOutFrame = totalFrames - 1; }
+
+    if(inFrameChanged && inFrame >= this.clipOutFrame) {
+      this.clipOutFrame = Math.min(totalFrames - 1, this.clipInFrame + (totalFrames * 0.05));
+    } else if(outFrameChanged && outFrame <= this.clipInFrame) {
+      this.clipInFrame = Math.max(0, this.clipOutFrame - (totalFrames * 0.05));
+    }
   }
 
   @action.bound

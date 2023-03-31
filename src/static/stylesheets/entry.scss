@@ -34,11 +34,11 @@
   }
 
   .entries-filter {
+    border-bottom: 1px solid $elv-color-darkergray;
+    box-shadow: 0 0 5px $elv-color-darkergray;
     position: sticky;
     top: 0;
     z-index: 10;
-    border-bottom: 1px solid $elv-color-darkergray;
-    box-shadow: 0 0 5px $elv-color-darkergray;
 
     input {
       background-color: $elv-color-black;
