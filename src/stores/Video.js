@@ -888,7 +888,8 @@ class VideoStore {
     const downloadUrl = await this.rootStore.client.Rep({
       versionHash: this.versionHash,
       rep: UrlJoin("media_download", this.offeringKey, playoutKey),
-      queryParams
+      queryParams,
+      channelAuth: true
     });
 
     DownloadFromUrl(
