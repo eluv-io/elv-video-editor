@@ -219,6 +219,8 @@ class VideoStore {
           }
         }
 
+        if(!offerings) { throw Error("No offerings with HLS clear or aes-128 playout found."); }
+
         this.availableOfferings = offerings;
 
         const playoutOptions = offeringPlayoutOptions[this.offeringKey];
