@@ -17,7 +17,7 @@ class VideoStore {
   @observable videoTags = [];
 
   @observable availableOfferings = {};
-  @observable offeringKey = "default";
+  @observable offeringKey;
 
   @observable loading = false;
   @observable initialized = false;
@@ -123,7 +123,7 @@ class VideoStore {
     this.tags = {};
     this.name = "";
     this.videoTags = [];
-    this.offeringKey = "default";
+    this.offeringKey;
     this.availableOfferings = {};
 
     this.source = undefined;
@@ -193,19 +193,35 @@ class VideoStore {
       if(!this.isVideo) {
         this.initialized = true;
       } else {
-        this.availableOfferings = yield this.rootStore.client.AvailableOfferings({
+        const offerings = yield this.rootStore.client.AvailableOfferings({
           versionHash: videoObject.versionHash
-        });
+        }) || {};
+        const offeringPlayoutOptions = {};
+        const browserSupportedDrms = (yield this.rootStore.client.AvailableDRMs() || []).filter(drm => ["clear", "aes-128"].includes(drm));
 
-        this.offeringKey = offeringKey || (this.availableOfferings.default ? "default" : Object.keys(this.availableOfferings)[0]);
+        for(let offering of Object.keys(offerings).sort()) {
+          offeringPlayoutOptions[offering] = yield this.rootStore.client.PlayoutOptions({
+            versionHash: videoObject.versionHash,
+            protocols: ["hls"],
+            drms: browserSupportedDrms,
+            hlsjsProfile: false,
+            offering
+          });
 
-        const playoutOptions = yield this.rootStore.client.PlayoutOptions({
-          versionHash: videoObject.versionHash,
-          protocols: ["hls"],
-          drms: ["clear", "aes-128"],
-          hlsjsProfile: false,
-          offering: this.offeringKey
-        });
+          const methods = offeringPlayoutOptions[offering].hls.playoutMethods;
+
+          if(!(methods["aes-128"] || methods["clear"])) {
+            offerings[offering].disabled = true;
+          } else {
+            if(!this.offeringKey) {
+              this.offeringKey = offering;
+            }
+          }
+        }
+
+        this.availableOfferings = offerings;
+
+        const playoutOptions = offeringPlayoutOptions[this.offeringKey];
 
         // Specify playout for full, untrimmed content
         const playoutMethods = playoutOptions["hls"].playoutMethods;
