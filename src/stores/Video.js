@@ -17,7 +17,7 @@ class VideoStore {
   @observable videoTags = [];
 
   @observable availableOfferings = {};
-  @observable offeringKey;
+  @observable offeringKey = "default";
 
   @observable loading = false;
   @observable initialized = false;
@@ -123,7 +123,7 @@ class VideoStore {
     this.tags = {};
     this.name = "";
     this.videoTags = [];
-    this.offeringKey;
+    this.offeringKey = "default";
     this.availableOfferings = {};
 
     this.source = undefined;
@@ -193,37 +193,27 @@ class VideoStore {
       if(!this.isVideo) {
         this.initialized = true;
       } else {
-        const offerings = yield this.rootStore.client.AvailableOfferings({
+        this.availableOfferings = yield this.rootStore.client.AvailableOfferings({
           versionHash: videoObject.versionHash
-        }) || {};
+        });
         const offeringPlayoutOptions = {};
         const browserSupportedDrms = (yield this.rootStore.client.AvailableDRMs() || []).filter(drm => ["clear", "aes-128"].includes(drm));
 
-        for(let offering of Object.keys(offerings).sort()) {
-          offeringPlayoutOptions[offering] = yield this.rootStore.client.PlayoutOptions({
-            versionHash: videoObject.versionHash,
-            protocols: ["hls"],
-            drms: browserSupportedDrms,
-            hlsjsProfile: false,
-            offering
-          });
+        let playoutOptions = yield this.rootStore.client.PlayoutOptions({
+          versionHash: videoObject.versionHash,
+          protocols: ["hls"],
+          drms: browserSupportedDrms,
+          hlsjsProfile: false,
+          offering: this.offeringKey
+        });
 
-          const methods = offeringPlayoutOptions[offering].hls.playoutMethods;
+        if(!playoutOptions || !playoutOptions["hls"] || !(playoutOptions["hls"].playoutMethods.clear || playoutOptions["hls"].playoutMethods["aes-128"])) {
+          console.error(`HLS Clear and AES-128 not supported by ${this.offeringKey} offering.`);
 
-          if(!(methods["aes-128"] || methods["clear"])) {
-            offerings[offering].disabled = true;
-          } else {
-            if(!this.offeringKey) {
-              this.offeringKey = offering;
-            }
-          }
+          const response = yield this.SetSupportedOffering({versionHash: videoObject.versionHash, browserSupportedDrms});
+          this.offeringKey = response.offeringKey;
+          playoutOptions = response.playoutOptions;
         }
-
-        if(!offerings) { throw Error("No offerings with HLS clear or aes-128 playout found."); }
-
-        this.availableOfferings = offerings;
-
-        const playoutOptions = offeringPlayoutOptions[this.offeringKey];
 
         // Specify playout for full, untrimmed content
         const playoutMethods = playoutOptions["hls"].playoutMethods;
@@ -358,6 +348,42 @@ class VideoStore {
     } finally {
       this.loading = false;
     }
+  });
+
+  SetSupportedOffering = flow(function * ({versionHash, browserSupportedDrms}) {
+    let setNewOffering = false;
+    const offeringPlayoutOptions = {};
+    let offeringKey;
+
+    for(let offering of Object.keys(this.availableOfferings).sort()) {
+      offeringPlayoutOptions[offering] = yield this.rootStore.client.PlayoutOptions({
+        versionHash,
+        protocols: ["hls"],
+        drms: browserSupportedDrms,
+        hlsjsProfile: false,
+        offering
+      });
+
+      const playoutMethods = offeringPlayoutOptions[offering].hls.playoutMethods;
+
+      if(!(playoutMethods["aes-128"] || playoutMethods["clear"])) {
+        this.availableOfferings[offering].disabled = true;
+      } else {
+        if(!setNewOffering) {
+          offeringKey = offering;
+          setNewOffering = true;
+        }
+      }
+    }
+
+    const hasHlsOfferings = Object.values(this.availableOfferings).some(offering => !offering.disabled);
+
+    if(!hasHlsOfferings) { throw Error("No offerings with HLS Clear or AES-128 playout found."); }
+
+    return {
+      playoutOptions: offeringPlayoutOptions[offeringKey],
+      offeringKey
+    };
   });
 
   ReloadMetadata = flow(function * () {
