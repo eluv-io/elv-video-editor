@@ -210,7 +210,7 @@ class VideoStore {
         if(!playoutOptions || !playoutOptions["hls"] || !(playoutOptions["hls"].playoutMethods.clear || playoutOptions["hls"].playoutMethods["aes-128"])) {
           console.error(`HLS Clear and AES-128 not supported by ${this.offeringKey} offering.`);
 
-          const response = yield this.SetSupportedOffering({versionHash: videoObject.versionHash, browserSupportedDrms});
+          const response = yield this.GetSupportedOffering({versionHash: videoObject.versionHash, browserSupportedDrms});
           this.offeringKey = response.offeringKey;
           playoutOptions = response.playoutOptions;
         }
@@ -350,7 +350,7 @@ class VideoStore {
     }
   });
 
-  SetSupportedOffering = flow(function * ({versionHash, browserSupportedDrms}) {
+  GetSupportedOffering = flow(function * ({versionHash, browserSupportedDrms}) {
     let setNewOffering = false;
     const offeringPlayoutOptions = {};
     let offeringKey;
