@@ -185,7 +185,7 @@ class MenuStore {
         return {
           objectId: latestVersion.id,
           versionHash: latestVersion.hash,
-          name: latestVersion.meta.public && latestVersion.meta.public.name || latestVersion.meta.name || latestVersion.id,
+          name: latestVersion.meta && latestVersion.meta.public && latestVersion.meta.public.name || latestVersion.meta && latestVersion.meta.name || latestVersion.id,
           metadata: latestVersion.meta
         };
       })
