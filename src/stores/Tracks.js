@@ -113,6 +113,7 @@ class Tracks {
         }));
 
         return {
+          label: audioName,
           initSegmentUrl: initSegmentUrl,
           segments: audioSegmentUrls
         };
@@ -257,7 +258,7 @@ class Tracks {
 
           this.audioTracks.push({
             trackId,
-            label: "Audio",
+            label: track.label || "Audio",
             trackType: "audio",
             entries: [],
             max: 0,

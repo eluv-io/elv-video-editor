@@ -196,16 +196,24 @@ class VideoStore {
         this.availableOfferings = yield this.rootStore.client.AvailableOfferings({
           versionHash: videoObject.versionHash
         });
+        const offeringPlayoutOptions = {};
+        const browserSupportedDrms = (yield this.rootStore.client.AvailableDRMs() || []).filter(drm => ["clear", "aes-128"].includes(drm));
 
-        this.offeringKey = offeringKey || (this.availableOfferings.default ? "default" : Object.keys(this.availableOfferings)[0]);
-
-        const playoutOptions = yield this.rootStore.client.PlayoutOptions({
+        let playoutOptions = yield this.rootStore.client.PlayoutOptions({
           versionHash: videoObject.versionHash,
           protocols: ["hls"],
-          drms: ["clear", "aes-128"],
+          drms: browserSupportedDrms,
           hlsjsProfile: false,
           offering: this.offeringKey
         });
+
+        if(!playoutOptions || !playoutOptions["hls"] || !(playoutOptions["hls"].playoutMethods.clear || playoutOptions["hls"].playoutMethods["aes-128"])) {
+          console.error(`HLS Clear and AES-128 not supported by ${this.offeringKey} offering.`);
+
+          const response = yield this.GetSupportedOffering({versionHash: videoObject.versionHash, browserSupportedDrms});
+          this.offeringKey = response.offeringKey;
+          playoutOptions = response.playoutOptions;
+        }
 
         // Specify playout for full, untrimmed content
         const playoutMethods = playoutOptions["hls"].playoutMethods;
@@ -340,6 +348,42 @@ class VideoStore {
     } finally {
       this.loading = false;
     }
+  });
+
+  GetSupportedOffering = flow(function * ({versionHash, browserSupportedDrms}) {
+    let setNewOffering = false;
+    const offeringPlayoutOptions = {};
+    let offeringKey;
+
+    for(let offering of Object.keys(this.availableOfferings).sort()) {
+      offeringPlayoutOptions[offering] = yield this.rootStore.client.PlayoutOptions({
+        versionHash,
+        protocols: ["hls"],
+        drms: browserSupportedDrms,
+        hlsjsProfile: false,
+        offering
+      });
+
+      const playoutMethods = offeringPlayoutOptions[offering].hls.playoutMethods;
+
+      if(!(playoutMethods["aes-128"] || playoutMethods["clear"])) {
+        this.availableOfferings[offering].disabled = true;
+      } else {
+        if(!setNewOffering) {
+          offeringKey = offering;
+          setNewOffering = true;
+        }
+      }
+    }
+
+    const hasHlsOfferings = Object.values(this.availableOfferings).some(offering => !offering.disabled);
+
+    if(!hasHlsOfferings) { throw Error("No offerings with HLS Clear or AES-128 playout found."); }
+
+    return {
+      playoutOptions: offeringPlayoutOptions[offeringKey],
+      offeringKey
+    };
   });
 
   ReloadMetadata = flow(function * () {
