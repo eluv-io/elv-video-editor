@@ -165,6 +165,7 @@ class VideoStore {
   @action.bound
   SetOffering = flow(function * (offeringKey) {
     this.Reset();
+    this.offeringKey = offeringKey;
     yield this.SetVideo(this.videoObject, offeringKey);
   });
 
