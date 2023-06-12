@@ -1,6 +1,7 @@
 import {action, flow, observable, toJS} from "mobx";
 import {diff} from "deep-object-diff";
 import {SortEntries} from "../utils/Utils";
+import {FrameRates} from "../utils/FrameAccurateVideo";
 
 class EditStore {
   @observable saving = false;
@@ -88,12 +89,16 @@ class EditStore {
 
       // Start/end time clip
       const {startTime, endTime} = this.rootStore.trackStore.ClipInfo();
+      const frameRate = FrameRates[this.rootStore.videoStore.frameRateKey].valueOf();
+      const offering = this.rootStore.videoStore.metadata.offerings[this.rootStore.videoStore.offeringKey];
+      // Re-add frame that was removed during load
+      const endTimePlusFrame = Number((endTime + (1 / frameRate)).toFixed(3));
+      const endTimeToConvert = (endTimePlusFrame > this.rootStore.videoStore.duration) ? endTime : endTimePlusFrame;
+
       const startFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(startTime);
       const startTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(startFrame);
-      const endFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(endTime);
+      const endFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(endTimeToConvert);
       const endTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(endFrame);
-
-      const offering = this.rootStore.videoStore.metadata.offerings[this.rootStore.videoStore.offeringKey];
 
       const metadataChanged = Object.keys(updatedMetadata).length > 0 || keysToDelete.length > 0;
       const clipChanged = offering.entry_point_rat !== startTimeRat || offering.exit_point_rat !== endTimeRat;
