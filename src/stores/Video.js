@@ -160,6 +160,7 @@ class VideoStore {
     this.clipOutFrame = undefined;
 
     this.rootStore.entryStore.ClearEntries();
+    this.rootStore.trackStore.Reset();
   }
 
   @action.bound
@@ -200,13 +201,20 @@ class VideoStore {
         const offeringPlayoutOptions = {};
         const browserSupportedDrms = (yield this.rootStore.client.AvailableDRMs() || []).filter(drm => ["clear", "aes-128"].includes(drm));
 
-        let playoutOptions = yield this.rootStore.client.PlayoutOptions({
-          versionHash: videoObject.versionHash,
-          protocols: ["hls"],
-          drms: browserSupportedDrms,
-          hlsjsProfile: false,
-          offering: this.offeringKey
-        });
+        let playoutOptions;
+        try {
+          playoutOptions = yield this.rootStore.client.PlayoutOptions({
+            versionHash: videoObject.versionHash,
+            protocols: ["hls"],
+            drms: browserSupportedDrms,
+            hlsjsProfile: false,
+            offering: this.offeringKey
+          });
+        } catch(error) {
+          // eslint-disable-next-line no-console
+          console.error(error);
+          this.rootStore.menuStore.SetErrorMessage(`Unable to load playout options for ${this.offeringKey}`);
+        }
 
         if(!playoutOptions || !playoutOptions["hls"] || !(playoutOptions["hls"].playoutMethods.clear || playoutOptions["hls"].playoutMethods["aes-128"])) {
           console.error(`HLS Clear and AES-128 not supported by ${this.offeringKey} offering.`);
@@ -273,7 +281,7 @@ class VideoStore {
           if(offering.exit_point_rat) {
             // End time is end of specified frame
             const frameRate = FrameRates[this.frameRateKey].valueOf();
-            this.primaryContentEndTime = Number((FrameAccurateVideo.ParseRat(offering.exit_point_rat) - (1 / frameRate)).toFixed(3));
+            this.primaryContentEndTime = Number((FrameAccurateVideo.ParseRat(offering.exit_point_rat)).toFixed(3));
           }
         } catch(error) {
           // eslint-disable-next-line no-console
