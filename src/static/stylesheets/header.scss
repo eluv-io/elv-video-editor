@@ -133,3 +133,59 @@ header {
     text-align: center;
   }
 }
+
+.save-modal-container {
+  form.-elv-form {
+    width: 850px;
+  }
+
+  .confirm-message,
+  .radio-label {
+    margin: 1rem 0;
+    line-height: 1.5;
+  }
+
+  .radio-item {
+    margin-left: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  section {
+    margin-bottom: 1.5rem;
+  }
+
+  header {
+    font-weight: 700;
+  }
+
+  header,
+  .table-row {
+    display: flex;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    align-items: center;
+  }
+
+  .table-col {
+    flex: 1;
+
+    &.flex-2 {
+      flex: 2;
+      flex-basis: 1rem;
+    }
+  }
+
+  .additional-offerings-table {
+    header {
+      background-color: $elv-color-bg-dark;
+    }
+
+    .table-row:nth-child(odd) {
+      background-color: rgba($color-background-modal, 0.6)
+    }
+
+    .table-row:nth-child(even) {
+      background-color: rgba($color-background-modal, 0.1);
+    }
+  }
+}

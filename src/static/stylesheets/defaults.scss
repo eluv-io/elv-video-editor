@@ -176,10 +176,25 @@ button {
 .checkbox {
   background-color: $elv-color-black;
   border-radius: 3px;
-  height: $elv-font-xxs;
   outline: 1px solid $color-border;
-  position: relative;
-  width: $elv-font-xxs;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &-xs {
+    height: $elv-font-xxs;
+    width: $elv-font-xxs;
+  }
+
+  &-sm {
+    height: $elv-font-xs;
+    width: $elv-font-xs;
+  }
+
+  &-md {
+    height: 14px;
+    width: 14px;
+  }
 
   &.checked {
     &::after {
@@ -187,9 +202,55 @@ button {
       content: "✓";
       font-size: $elv-font-m;
       font-weight: 600;
-      left: 0;
       position: absolute;
-      top: -0.3rem;
+    }
+  }
+}
+
+.radio-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  .label-disabled {
+    opacity: 0.5;
+  }
+}
+
+button.radio-button {
+  all: unset;
+  background-color: $elv-color-black;
+  border-radius: 100%;
+  height: $elv-font-m;
+  width: $elv-font-m;
+
+  &:hover {
+    background-color: $elv-color-black;
+  }
+
+  &:disabled {
+    pointer-events: none;
+  }
+}
+
+.radio {
+  align-items: center;
+  border-radius: 50%;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  outline: 1px solid $color-border;
+  position: relative;
+  width: 100%;
+
+  &.checked {
+    &::after {
+      content: "";
+      display: block;
+      width: 8px;
+      height: 8px;
+      background-color: $elv-color-white;
+      border-radius: 50%;
     }
   }
 }

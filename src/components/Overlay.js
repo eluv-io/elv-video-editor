@@ -13,6 +13,8 @@ const frameSpread = 10;
 @inject("entryStore")
 @observer
 class Overlay extends React.Component {
+  _isMounted = false;
+
   constructor(props) {
     super(props);
 
@@ -56,10 +58,12 @@ class Overlay extends React.Component {
           height = width / videoAspectRatio;
         }
 
-        this.setState({
-          videoHeight: height,
-          videoWidth: width
-        });
+        if(this._isMounted) {
+          this.setState({
+            videoHeight: height,
+            videoWidth: width
+          });
+        }
       }, debounceInterval);
 
       this.lastUpdate = performance.now();
@@ -69,6 +73,7 @@ class Overlay extends React.Component {
   }
 
   componentDidMount() {
+    this._isMounted = true;
     this.setState({
       DisposeDrawReaction: reaction(
         () => {
@@ -92,6 +97,7 @@ class Overlay extends React.Component {
   }
 
   componentWillUnmount() {
+    this._isMounted = false;
     if(this.state.DisposeDrawReaction) {
       this.state.DisposeDrawReaction();
     }

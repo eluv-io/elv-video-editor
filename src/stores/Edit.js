@@ -1,10 +1,12 @@
 import {action, flow, observable, toJS} from "mobx";
 import {diff} from "deep-object-diff";
 import {SortEntries} from "../utils/Utils";
+import FrameAccurateVideo from "../utils/FrameAccurateVideo";
 
 class EditStore {
   @observable saving = false;
   @observable saveFailed = false;
+  @observable clipChangeOfferings = {};
 
   constructor(rootStore) {
     this.rootStore = rootStore;
@@ -86,17 +88,13 @@ class EditStore {
       const keysToDelete = Object.keys(metadata)
         .filter(key => !keys.includes(key));
 
-      // Start/end time clip
-      const {startTime, endTime} = this.rootStore.trackStore.ClipInfo();
-      const startFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(startTime);
-      const startTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(startFrame);
-      const endFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(endTime);
-      const endTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(endFrame);
-
-      const offering = this.rootStore.videoStore.metadata.offerings[this.rootStore.videoStore.offeringKey];
+      const {
+        clipChanged,
+        startTimeRat,
+        endTimeRat
+      } = this.DetermineTrimChange();
 
       const metadataChanged = Object.keys(updatedMetadata).length > 0 || keysToDelete.length > 0;
-      const clipChanged = offering.entry_point_rat !== startTimeRat || offering.exit_point_rat !== endTimeRat;
 
       // No difference between current tags and saved tags, or clip timing
       if(!metadataChanged && !clipChanged) {
@@ -144,22 +142,28 @@ class EditStore {
       }
 
       if(clipChanged) {
-        const offering = this.rootStore.videoStore.offeringKey;
-        yield client.ReplaceMetadata({
-          libraryId,
-          objectId,
-          writeToken: write_token,
-          metadataSubtree: `offerings/${offering}/entry_point_rat`,
-          metadata: startTimeRat
-        });
+        const filteredOfferings = Object.keys(this.clipChangeOfferings || {}).filter(offeringKey => this.clipChangeOfferings[offeringKey]);
+        const currentOffering = [this.rootStore.videoStore.offeringKey];
+        const offeringsToUpdate = filteredOfferings.length > 0 ? filteredOfferings.concat(currentOffering) : currentOffering;
 
-        yield client.ReplaceMetadata({
-          libraryId,
-          objectId,
-          writeToken: write_token,
-          metadataSubtree: `offerings/${offering}/exit_point_rat`,
-          metadata: endTimeRat
-        });
+        for(let i = 0; i < offeringsToUpdate.length; i++) {
+          const offering = offeringsToUpdate[i];
+          yield client.ReplaceMetadata({
+            libraryId,
+            objectId,
+            writeToken: write_token,
+            metadataSubtree: `offerings/${offering}/entry_point_rat`,
+            metadata: startTimeRat
+          });
+
+          yield client.ReplaceMetadata({
+            libraryId,
+            objectId,
+            writeToken: write_token,
+            metadataSubtree: `offerings/${offering}/exit_point_rat`,
+            metadata: endTimeRat
+          });
+        }
       }
 
       const {hash} = yield client.FinalizeContentObject({
@@ -182,6 +186,35 @@ class EditStore {
 
     this.saving = false;
   });
+
+  DetermineTrimChange = () => {
+    // Start/end time clip
+    const {startTime, endTime} = this.rootStore.trackStore.ClipInfo();
+
+    const startFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(startTime);
+    const startTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(startFrame);
+    const endFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(endTime);
+    const endTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(endFrame);
+
+    const offering = this.rootStore.videoStore.metadata.offerings[this.rootStore.videoStore.offeringKey];
+
+    const clipChanged = offering.entry_point_rat !== startTimeRat || offering.exit_point_rat !== endTimeRat;
+
+    return {
+      clipChanged,
+      endTimeRat,
+      startTimeRat,
+      entryRevised: this.rootStore.videoStore.TimeToSMPTE(FrameAccurateVideo.ParseRat(startTimeRat)),
+      exitRevised: this.rootStore.videoStore.TimeToSMPTE(FrameAccurateVideo.ParseRat(endTimeRat)),
+      durationUntrimmed: this.rootStore.videoStore.scaleMaxSMPTE,
+      durationTrimmed: this.rootStore.videoStore.TimeToSMPTE(FrameAccurateVideo.ParseRat(endTimeRat) - FrameAccurateVideo.ParseRat(startTimeRat))
+    };
+  };
+
+  @action.bound
+  SetClipChangeOfferings = ({key, value}) => {
+    this.clipChangeOfferings[key] = value;
+  };
 
   @action.bound
   UploadMetadataTags = flow(function * ({metadataFiles, metadataFilesRemote, overlayFiles=[], overlayFilesRemote=[]}) {
