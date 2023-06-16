@@ -36,10 +36,10 @@ const TrimForm = observer(({
   );
 });
 
-const AdditionalOfferings = observer(() => {
-  const additionalOfferings = Object.keys(videoStore.availableOfferings || {}).filter(offeringKey => offeringKey !== videoStore.offeringKey);
+const OfferingsTable = observer(() => {
+  const offerings = Object.keys(videoStore.availableOfferings || {});
 
-  if(additionalOfferings.length === 0) { return null; }
+  if(offerings.length === 0) { return null; }
 
   return (
     <>
@@ -53,7 +53,7 @@ const AdditionalOfferings = observer(() => {
           <div className="table-col">Duration (Trimmed)</div>
         </header>
         {
-          additionalOfferings.map(offeringKey => {
+          offerings.map(offeringKey => {
             const {exit, entry, durationTrimmed} = videoStore.availableOfferings[offeringKey];
 
             return (
@@ -85,7 +85,6 @@ const AdditionalOfferings = observer(() => {
 const TrimOptions = () => {
   const [trimOption, setTrimOption] = useState("CURRENT");
   const clipChanged = editStore.DetermineTrimChange().clipChanged;
-  const additionalOfferings = Object.keys(videoStore.availableOfferings || {}).filter(offeringKey => offeringKey !== videoStore.offeringKey);
 
   if(!clipChanged) { return null; }
 
@@ -111,13 +110,11 @@ const TrimOptions = () => {
           value="MULTIPLE"
           checked={trimOption === "MULTIPLE"}
           onChange={(value) => setTrimOption(value)}
-          disabled={additionalOfferings.length === 0}
-          toolTip={additionalOfferings.length === 0 ? "No additional offerings found" : undefined}
         />
       </div>
       {
         trimOption === "MULTIPLE" &&
-        <AdditionalOfferings />
+        <OfferingsTable />
       }
     </>
   );

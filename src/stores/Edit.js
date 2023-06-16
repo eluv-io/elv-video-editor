@@ -143,8 +143,7 @@ class EditStore {
 
       if(clipChanged) {
         const filteredOfferings = Object.keys(this.clipChangeOfferings || {}).filter(offeringKey => this.clipChangeOfferings[offeringKey]);
-        const currentOffering = [this.rootStore.videoStore.offeringKey];
-        const offeringsToUpdate = filteredOfferings.length > 0 ? filteredOfferings.concat(currentOffering) : currentOffering;
+        const offeringsToUpdate = filteredOfferings.length > 0 ? filteredOfferings : [this.rootStore.videoStore.offeringKey];
 
         for(let i = 0; i < offeringsToUpdate.length; i++) {
           const offering = offeringsToUpdate[i];
