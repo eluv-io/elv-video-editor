@@ -180,6 +180,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 
   &-xs {
     height: $elv-font-xxs;
