@@ -31,7 +31,6 @@ class Save extends React.Component {
           show={this.state.showModal}
           HandleSubmit={() => {
             this.props.editStore.Save();
-            this.setState({showModal: false});
           }}
           HandleClose={() => this.setState({showModal: false})}
         />

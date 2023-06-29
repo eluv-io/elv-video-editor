@@ -1,7 +1,7 @@
-import React, {useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {Form, Modal} from "elv-components-js";
 import {Checkbox, Radio} from "../Components";
-import {observer} from "mobx-react";
+import {Observer, observer} from "mobx-react";
 import {videoStore, editStore} from "../../stores";
 
 const TrimForm = observer(({
@@ -36,41 +36,59 @@ const TrimForm = observer(({
   );
 });
 
-const OfferingsTable = observer(() => {
+const OfferingsTable = (() => {
   const offerings = Object.keys(videoStore.availableOfferings || {});
+  const [allSelected, setAllSelected] = useState(false);
+
+  const firstUpdate = useRef(true);
+
+  useEffect(() => {
+    editStore.SetClipChangeOfferings([
+      {key: videoStore.offeringKey, value: true}
+    ]);
+  }, []);
+
+  useEffect(() => {
+    if(firstUpdate.current) {
+      firstUpdate.current = false;
+      return;
+    }
+
+    editStore.SetClipChangeOfferings(offerings.map(offeringKey => {
+      return {
+        key: offeringKey,
+        value: !!allSelected
+      };
+    }));
+  }, [allSelected]);
 
   if(offerings.length === 0) { return null; }
 
   return (
-    <>
-      <section className="additional-offerings-table">
-        <header className="table-row">
-          <div className="table-col">
-            <Checkbox
-              id="includeAll"
-              size="md"
-              title="Select"
-              value={
-                JSON.stringify(editStore.clipChangeOfferings || {}) === JSON.stringify(offerings.reduce((a, v) => ({ ...a, [v]: true}), {}) || {})
-              }
-              onChange={(value) => {
-                editStore.SetClipChangeOfferings(offerings.map(offeringKey => {
-                  return {
-                    key: offeringKey,
-                    value
-                  };
-                }));
-              }}
-            />
-          </div>
-          <div className="table-col">Offering Key</div>
-          <div className="table-col">Duration (Untrimmed)</div>
-          <div className="table-col">Current Entry</div>
-          <div className="table-col">Current Exit</div>
-          <div className="table-col">Duration (Trimmed)</div>
-        </header>
+    <section className="additional-offerings-table">
+      <header className="table-row">
+        <div className="table-col">
+          <Checkbox
+            id="includeAll"
+            size="md"
+            title="Select"
+            value={
+              allSelected
+            }
+            onChange={(value) => {
+              setAllSelected(value);
+            }}
+          />
+        </div>
+        <div className="table-col">Offering Key</div>
+        <div className="table-col">Duration (Untrimmed)</div>
+        <div className="table-col">Current Entry</div>
+        <div className="table-col">Current Exit</div>
+        <div className="table-col">Duration (Trimmed)</div>
+      </header>
+      <Observer>
         {
-          offerings.map(offeringKey => {
+          () => offerings.sort().map(offeringKey => {
             const {exit, entry, durationTrimmed} = videoStore.availableOfferings[offeringKey];
 
             return (
@@ -95,8 +113,8 @@ const OfferingsTable = observer(() => {
             );
           })
         }
-      </section>
-    </>
+      </Observer>
+    </section>
   );
 });
 
@@ -118,7 +136,12 @@ const TrimOptions = () => {
           label="Save to Current Offering"
           value="CURRENT"
           checked={trimOption === "CURRENT"}
-          onChange={(value) => setTrimOption(value)}
+          onChange={(value) => {
+            editStore.SetClipChangeOfferings([
+              {key: videoStore.offeringKey, value: true}
+            ]);
+            setTrimOption(value);
+          }}
         />
       </div>
       <div className="radio-item">
@@ -148,6 +171,7 @@ const SaveModal = ({show=false, HandleClose, HandleSubmit}) => {
         OnSubmit={HandleSubmit}
         submitText="Save"
         OnCancel={HandleClose}
+        OnComplete={HandleClose}
       >
         <TrimOptions />
         <div className="confirm-message">Are you sure you want to save your changes?</div>
