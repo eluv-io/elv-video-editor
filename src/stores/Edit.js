@@ -211,8 +211,10 @@ class EditStore {
   };
 
   @action.bound
-  SetClipChangeOfferings = ({key, value}) => {
-    this.clipChangeOfferings[key] = value;
+  SetClipChangeOfferings = (offeringPairs=[]) => {
+    offeringPairs.forEach(({key, value}) => {
+      this.clipChangeOfferings[key] = value;
+    });
   };
 
   @action.bound

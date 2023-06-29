@@ -45,7 +45,24 @@ const OfferingsTable = observer(() => {
     <>
       <section className="additional-offerings-table">
         <header className="table-row">
-          <div className="table-col">Include</div>
+          <div className="table-col">
+            <Checkbox
+              id="includeAll"
+              size="md"
+              title="Select"
+              value={
+                JSON.stringify(editStore.clipChangeOfferings || {}) === JSON.stringify(offerings.reduce((a, v) => ({ ...a, [v]: true}), {}) || {})
+              }
+              onChange={(value) => {
+                editStore.SetClipChangeOfferings(offerings.map(offeringKey => {
+                  return {
+                    key: offeringKey,
+                    value
+                  };
+                }));
+              }}
+            />
+          </div>
           <div className="table-col">Offering Key</div>
           <div className="table-col">Duration (Untrimmed)</div>
           <div className="table-col">Current Entry</div>
@@ -63,9 +80,10 @@ const OfferingsTable = observer(() => {
                     id="trimPoints"
                     value={editStore.clipChangeOfferings[offeringKey]}
                     onChange={(value) => {
-                      editStore.SetClipChangeOfferings({key: offeringKey, value});
+                      editStore.SetClipChangeOfferings([{key: offeringKey, value}]);
                     }}
                     size="md"
+                    title="Select"
                   />
                 </div>
                 <div className="table-col">{offeringKey}</div>

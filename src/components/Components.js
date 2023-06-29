@@ -13,7 +13,7 @@ export const BackButton = ({onClick, className=""}) => {
   );
 };
 
-export const Checkbox = ({value, onChange, toolTip, className="", size="xs"}) => {
+export const Checkbox = ({value, onChange, toolTip, className="", size="xs", title=""}) => {
   const checkbox = (
     <div className={`checkbox-container ${className || ""}`}>
       <div
@@ -21,6 +21,7 @@ export const Checkbox = ({value, onChange, toolTip, className="", size="xs"}) =>
           event.stopPropagation();
           onChange(!value);
         }}
+        title={title}
         className={`checkbox ${value ? "checked" : ""} checkbox-${size}`}
       />
     </div>
