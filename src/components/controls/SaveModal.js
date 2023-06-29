@@ -37,7 +37,7 @@ const TrimForm = observer(({
 });
 
 const OfferingsTable = (() => {
-  const offerings = Object.keys(videoStore.availableOfferings || {});
+  const offerings = Object.keys(videoStore.availableOfferings || {}).sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: "base"}));
   const [allSelected, setAllSelected] = useState(false);
 
   const firstUpdate = useRef(true);
@@ -88,7 +88,7 @@ const OfferingsTable = (() => {
       </header>
       <Observer>
         {
-          () => offerings.sort().map(offeringKey => {
+          () => offerings.map(offeringKey => {
             const {exit, entry, durationTrimmed} = videoStore.availableOfferings[offeringKey];
 
             return (
