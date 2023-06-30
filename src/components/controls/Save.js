@@ -29,8 +29,8 @@ class Save extends React.Component {
         </ToolTip>
         <SaveModal
           show={this.state.showModal}
-          HandleSubmit={() => {
-            this.props.editStore.Save();
+          HandleSubmit={(trimOfferings) => {
+            this.props.editStore.Save({trimOfferings});
           }}
           HandleClose={() => this.setState({showModal: false})}
         />

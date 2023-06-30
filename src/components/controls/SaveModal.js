@@ -36,16 +36,17 @@ const TrimForm = observer(({
   );
 });
 
-const OfferingsTable = (() => {
+const OfferingsTable = (({trimOfferings, setTrimOfferings}) => {
   const offerings = Object.keys(videoStore.availableOfferings || {}).sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: "base"}));
   const [allSelected, setAllSelected] = useState(false);
 
   const firstUpdate = useRef(true);
 
   useEffect(() => {
-    editStore.SetClipChangeOfferings([
-      {key: videoStore.offeringKey, value: true}
-    ]);
+    setTrimOfferings({
+      ...trimOfferings,
+      ...{[videoStore.offeringKey]: true}
+    });
   }, []);
 
   useEffect(() => {
@@ -54,12 +55,12 @@ const OfferingsTable = (() => {
       return;
     }
 
-    editStore.SetClipChangeOfferings(offerings.map(offeringKey => {
-      return {
-        key: offeringKey,
-        value: !!allSelected
-      };
-    }));
+    const clipOfferings = {};
+
+    offerings.map(offeringKey => {
+      clipOfferings[offeringKey] = !!allSelected;
+    });
+    setTrimOfferings(clipOfferings);
   }, [allSelected]);
 
   if(offerings.length === 0) { return null; }
@@ -77,6 +78,12 @@ const OfferingsTable = (() => {
             }
             onChange={(value) => {
               setAllSelected(value);
+
+              const clipOfferings = {};
+              offerings.map(offeringKey => {
+                clipOfferings[offeringKey] = !!allSelected;
+              });
+              setTrimOfferings(clipOfferings);
             }}
           />
         </div>
@@ -96,9 +103,12 @@ const OfferingsTable = (() => {
                 <div className="table-col">
                   <Checkbox
                     id="trimPoints"
-                    value={editStore.clipChangeOfferings[offeringKey]}
+                    value={trimOfferings[offeringKey]}
                     onChange={(value) => {
-                      editStore.SetClipChangeOfferings([{key: offeringKey, value}]);
+                      setTrimOfferings({
+                        ...trimOfferings,
+                        ...{[offeringKey]: value}
+                      });
                     }}
                     size="md"
                     title="Select"
@@ -118,8 +128,12 @@ const OfferingsTable = (() => {
   );
 });
 
-const TrimOptions = () => {
-  const [trimOption, setTrimOption] = useState("CURRENT");
+const TrimOptions = ({
+  trimOfferings,
+  setTrimOfferings,
+  trimOption,
+  setTrimOption
+}) => {
   const clipChanged = editStore.DetermineTrimChange().clipChanged;
 
   if(!clipChanged) { return null; }
@@ -137,9 +151,6 @@ const TrimOptions = () => {
           value="CURRENT"
           checked={trimOption === "CURRENT"}
           onChange={(value) => {
-            editStore.SetClipChangeOfferings([
-              {key: videoStore.offeringKey, value: true}
-            ]);
             setTrimOption(value);
           }}
         />
@@ -155,25 +166,38 @@ const TrimOptions = () => {
       </div>
       {
         trimOption === "MULTIPLE" &&
-        <OfferingsTable />
+        <OfferingsTable trimOfferings={trimOfferings} setTrimOfferings={setTrimOfferings} />
       }
     </>
   );
 };
 
 const SaveModal = ({show=false, HandleClose, HandleSubmit}) => {
+  const [trimOfferings, setTrimOfferings] = useState({});
+  const [trimOption, setTrimOption] = useState("CURRENT");
+
   if(!show) { return null; }
 
   return (
     <Modal className="save-modal-container">
       <Form
         legend="Confirm"
-        OnSubmit={HandleSubmit}
+        OnSubmit={() => {
+          const checkedOfferings = Object.keys(trimOfferings || {}).filter(offeringKey => !!trimOfferings[offeringKey]);
+          const trimOfferingKeys = trimOption === "CURRENT" ? [videoStore.offeringKey] : (checkedOfferings.length > 0 ? checkedOfferings : [videoStore.offeringKey]);
+
+          HandleSubmit(trimOfferingKeys);
+        }}
         submitText="Save"
         OnCancel={HandleClose}
         OnComplete={HandleClose}
       >
-        <TrimOptions />
+        <TrimOptions
+          trimOfferings={trimOfferings}
+          setTrimOfferings={setTrimOfferings}
+          trimOption={trimOption}
+          setTrimOption={setTrimOption}
+        />
         <div className="confirm-message">Are you sure you want to save your changes?</div>
       </Form>
     </Modal>

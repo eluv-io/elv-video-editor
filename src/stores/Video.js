@@ -199,23 +199,7 @@ class VideoStore {
           versionHash: videoObject.versionHash
         });
 
-        Object.keys(this.availableOfferings || {}).map(offeringKey => {
-          const entryPointRat = this.metadata.offerings[offeringKey].entry_point_rat;
-          const exitPointRat = this.metadata.offerings[offeringKey].exit_point_rat;
-          let entryPoint = null, exitPoint = null;
-
-          if(entryPointRat) {
-            entryPoint = FrameAccurateVideo.ParseRat(entryPointRat);
-          }
-
-          if(exitPointRat) {
-            exitPoint = FrameAccurateVideo.ParseRat(exitPointRat);
-          }
-
-          this.availableOfferings[offeringKey].entry = entryPoint;
-          this.availableOfferings[offeringKey].exit = exitPoint;
-          this.availableOfferings[offeringKey].durationTrimmed = (entryPoint === null || exitPoint === null) ? null : (exitPoint - entryPoint);
-        });
+        this.SetOfferingClipDetails();
 
         const offeringPlayoutOptions = {};
         const browserSupportedDrms = (yield this.rootStore.client.AvailableDRMs() || []).filter(drm => ["clear", "aes-128"].includes(drm));
@@ -413,6 +397,27 @@ class VideoStore {
       offeringKey
     };
   });
+
+  @action.bound
+  SetOfferingClipDetails = () => {
+    Object.keys(this.metadata.offerings || {}).map(offeringKey => {
+      const entryPointRat = this.metadata.offerings[offeringKey].entry_point_rat;
+      const exitPointRat = this.metadata.offerings[offeringKey].exit_point_rat;
+      let entryPoint = null, exitPoint = null;
+
+      if(entryPointRat) {
+        entryPoint = FrameAccurateVideo.ParseRat(entryPointRat);
+      }
+
+      if(exitPointRat) {
+        exitPoint = FrameAccurateVideo.ParseRat(exitPointRat);
+      }
+
+      this.availableOfferings[offeringKey].entry = entryPoint;
+      this.availableOfferings[offeringKey].exit = exitPoint;
+      this.availableOfferings[offeringKey].durationTrimmed = (entryPoint === null || exitPoint === null) ? null : (exitPoint - entryPoint);
+    });
+  };
 
   ReloadMetadata = flow(function * () {
     const versionHash = this.rootStore.menuStore.selectedObject.versionHash;

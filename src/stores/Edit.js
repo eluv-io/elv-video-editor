@@ -6,7 +6,6 @@ import FrameAccurateVideo from "../utils/FrameAccurateVideo";
 class EditStore {
   @observable saving = false;
   @observable saveFailed = false;
-  @observable clipChangeOfferings = {};
 
   constructor(rootStore) {
     this.rootStore = rootStore;
@@ -17,7 +16,7 @@ class EditStore {
   }
 
   @action.bound
-  Save = flow(function * () {
+  Save = flow(function * ({trimOfferings}) {
     if(this.saving || this.rootStore.videoStore.loading) { return; }
 
     this.saving = true;
@@ -142,11 +141,8 @@ class EditStore {
       }
 
       if(clipChanged) {
-        const filteredOfferings = Object.keys(this.clipChangeOfferings || {}).filter(offeringKey => this.clipChangeOfferings[offeringKey]);
-        const offeringsToUpdate = filteredOfferings.length > 0 ? filteredOfferings : [this.rootStore.videoStore.offeringKey];
-
-        for(let i = 0; i < offeringsToUpdate.length; i++) {
-          const offering = offeringsToUpdate[i];
+        for(let i = 0; i < trimOfferings.length; i++) {
+          const offering = (trimOfferings || [this.rootStore.videoStore.offeringKey])[i];
           yield client.ReplaceMetadata({
             libraryId,
             objectId,
@@ -175,6 +171,7 @@ class EditStore {
       this.rootStore.menuStore.UpdateVersionHash(hash);
 
       yield this.rootStore.videoStore.ReloadMetadata();
+      this.rootStore.videoStore.SetOfferingClipDetails();
 
       this.saveFailed = false;
     } catch(error) {
@@ -208,13 +205,6 @@ class EditStore {
       durationUntrimmed: this.rootStore.videoStore.scaleMaxSMPTE,
       durationTrimmed: this.rootStore.videoStore.TimeToSMPTE(FrameAccurateVideo.ParseRat(endTimeRat) - FrameAccurateVideo.ParseRat(startTimeRat))
     };
-  };
-
-  @action.bound
-  SetClipChangeOfferings = (offeringPairs=[]) => {
-    offeringPairs.forEach(({key, value}) => {
-      this.clipChangeOfferings[key] = value;
-    });
   };
 
   @action.bound
