@@ -171,7 +171,7 @@ class VideoStore {
   });
 
   @action.bound
-  SetVideo = flow(function * (videoObject, offeringKey) {
+  SetVideo = flow(function * (videoObject) {
     this.loading = true;
 
     try {
@@ -198,6 +198,9 @@ class VideoStore {
         this.availableOfferings = yield this.rootStore.client.AvailableOfferings({
           versionHash: videoObject.versionHash
         });
+
+        this.SetOfferingClipDetails();
+
         const offeringPlayoutOptions = {};
         const browserSupportedDrms = (yield this.rootStore.client.AvailableDRMs() || []).filter(drm => ["clear", "aes-128"].includes(drm));
 
@@ -395,6 +398,27 @@ class VideoStore {
     };
   });
 
+  @action.bound
+  SetOfferingClipDetails = () => {
+    Object.keys(this.metadata.offerings || {}).map(offeringKey => {
+      const entryPointRat = this.metadata.offerings[offeringKey].entry_point_rat;
+      const exitPointRat = this.metadata.offerings[offeringKey].exit_point_rat;
+      let entryPoint = null, exitPoint = null;
+
+      if(entryPointRat) {
+        entryPoint = FrameAccurateVideo.ParseRat(entryPointRat);
+      }
+
+      if(exitPointRat) {
+        exitPoint = FrameAccurateVideo.ParseRat(exitPointRat);
+      }
+
+      this.availableOfferings[offeringKey].entry = entryPoint;
+      this.availableOfferings[offeringKey].exit = exitPoint;
+      this.availableOfferings[offeringKey].durationTrimmed = (entryPoint === null || exitPoint === null) ? null : (exitPoint - entryPoint);
+    });
+  };
+
   ReloadMetadata = flow(function * () {
     const versionHash = this.rootStore.menuStore.selectedObject.versionHash;
 
@@ -409,6 +433,10 @@ class VideoStore {
         "mime_types"
       ]
     });
+
+    if(this.videoObject) {
+      this.videoObject.metadata = this.metadata;
+    }
   });
 
   @action.bound

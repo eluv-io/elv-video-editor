@@ -84,9 +84,11 @@ let PlaybackLevel = (props) => {
 
 let Offering = (props) => {
   const store = props.videoStore;
-  let offerings = Object.keys(store.availableOfferings).map(offeringKey =>
-    [offeringKey, store.availableOfferings[offeringKey].display_name || offeringKey, store.availableOfferings[offeringKey].disabled || false]
-  );
+  let offerings = Object.keys(store.availableOfferings)
+    .sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: "base"}))
+    .map(offeringKey =>
+      [offeringKey, store.availableOfferings[offeringKey].display_name || offeringKey, store.availableOfferings[offeringKey].disabled || false]
+    );
 
   return (
     <ToolTip content={<span>Offering</span>}>
