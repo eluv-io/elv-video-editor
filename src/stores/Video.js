@@ -220,6 +220,7 @@ class VideoStore {
         }
 
         if(!playoutOptions || !playoutOptions["hls"] || !(playoutOptions["hls"].playoutMethods.clear || playoutOptions["hls"].playoutMethods["aes-128"])) {
+          // eslint-disable-next-line no-console
           console.error(`HLS Clear and AES-128 not supported by ${this.offeringKey} offering.`);
 
           const response = yield this.GetSupportedOffering({versionHash: videoObject.versionHash, browserSupportedDrms});
@@ -977,6 +978,16 @@ class VideoStore {
       downloadUrl,
       filename
     );
+  }
+
+  @action.bound
+  async GenerateEmbedUrl() {
+    return await this.rootStore.client.EmbedUrl({
+      objectId: this.rootStore.menuStore.objectId,
+      options: {
+        offerings: [this.offeringKey]
+      }
+    });
   }
 }
 

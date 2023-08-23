@@ -2,7 +2,8 @@
 
 import React from "react";
 import {inject, observer} from "mobx-react";
-import {IconButton, Range, Slider, ToolTip} from "elv-components-js";
+import {IconButton, ImageIcon, LoadingElement, Modal, Range, Slider, ToolTip} from "elv-components-js";
+import {Copy} from "elv-components-js";
 import {FrameRates} from "../../utils/FrameAccurateVideo";
 import Fraction from "fraction.js/fraction";
 
@@ -18,6 +19,8 @@ import VolumeOff from "../../static/icons/VolumeOff.svg";
 import VolumeLow from "../../static/icons/VolumeLow.svg";
 import VolumeHigh from "../../static/icons/VolumeHigh.svg";
 import DownloadIcon from "../../static/icons/download.svg";
+import CloseIcon from "../../static/icons/X.svg";
+import CopyIcon from "../../static/icons/copy.svg";
 
 import {StopScroll} from "../../utils/Utils";
 
@@ -252,6 +255,69 @@ let FrameControl = (props) => {
   );
 };
 
+@inject("videoStore")
+@observer
+class EmbedUrl extends React.Component {
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      showModal: false,
+      url: "",
+      loadingUrl: false
+    };
+  }
+
+  render() {
+    return (
+      <>
+        <ToolTip content={this.props.label}>
+          <IconButton
+            className="video-link-icon"
+            label={this.props.label}
+            icon={this.props.icon}
+            onClick={async () => {
+              const url = await this.props.videoStore.GenerateEmbedUrl();
+              this.setState({showModal: true});
+              this.setState({url});
+            }}
+          />
+        </ToolTip>
+        {
+          this.state.showModal &&
+          <Modal
+            className="embed-url-modal"
+            closable={true}
+            OnClickOutside={() => this.setState({showModal: false})}
+          >
+            {
+              <LoadingElement loading={this.state.loadingUrl}>
+                <div className="header">Copy Embeddable URL</div>
+                <IconButton
+                  icon={CloseIcon}
+                  onClick={() => this.setState({showModal: false})}
+                  label="Close Modal"
+                  className="close-button"
+                />
+                <div className="embed-link-container">
+                  <div className="embed-link" role="textbox" aria-label="Copy to Clipboard">
+                    <span>
+                      <code>{ this.state.url }</code>
+                    </span>
+                  </div>
+                  <Copy copy={this.state.url} className="copy-button">
+                    <ImageIcon className="copy-icon" icon={CopyIcon} />
+                  </Copy>
+                </div>
+              </LoadingElement>
+            }
+          </Modal>
+        }
+      </>
+    );
+  }
+}
+
 // Make this a class so we can keep local state to debounce update
 // mobx 5 doesn't support functional components + hooks
 @inject("videoStore")
@@ -436,6 +502,7 @@ export {
   ClipIn,
   ClipOut,
   DropFrame,
+  EmbedUrl,
   FrameControl,
   FrameRate,
   FullscreenToggle,

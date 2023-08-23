@@ -268,6 +268,26 @@
     }
   }
 
+  .video-link-icon {
+    height: $elv-font-xl;
+
+    svg {
+      fill: none;
+
+      &:hover {
+        fill: none;
+
+        path {
+          color: $color-accent;
+        }
+      }
+
+      path {
+        color: $color-foreground;
+      }
+    }
+  }
+
   .video-volume-controls {
     align-items: center;
     display: flex;
@@ -311,5 +331,90 @@ select {
 
   &.offering-selection {
     width: 10rem;
+  }
+}
+
+.embed-url-modal {
+  padding: 0 1rem;
+
+  .-elv-modal-content {
+    position: relative;
+    width: 700px;
+  }
+
+  .header {
+    border-bottom: 1px solid $color-border;
+    font-weight: 500;
+    padding: 0.5rem 0;
+    width: 100%;
+  }
+
+  .close-button {
+    height: 1.2rem;
+    position: absolute;
+    right: $elv-spacing-xxs;
+    top: $elv-spacing-xs;
+
+    svg {
+      fill: transparent;
+      stroke: $elv-color-lightgray;
+      stroke-width: 1px;
+    }
+
+    &:hover {
+      svg {
+        fill: transparent;
+        stroke: $elv-color-white;
+      }
+    }
+  }
+
+  .embed-link-container {
+    align-items: center;
+    display: flex;
+    height: 45px;
+    margin: 2rem 0;
+    overflow-x: auto;
+    padding-left: 1rem;
+
+    .copy-button {
+      align-items: center;
+      display: flex;
+      flex: 0 0 50px;
+      height: 100%;
+      justify-content: center;
+      margin: 0;
+
+      &:focus {
+        outline: none;
+      }
+
+      &:hover {
+        fill: none;
+      }
+
+      svg {
+        height: 1.25rem;
+        width: 1.25rem;
+
+        &:hover {
+          rect,
+          path {
+            color: $color-accent;
+          }
+        }
+      }
+    }
+  }
+
+  .embed-link {
+    height: 100%;
+    overflow-x: auto;
+
+    code {
+      font-size: $elv-font-s;
+      font-weight: 400;
+      white-space: pre;
+    }
   }
 }
