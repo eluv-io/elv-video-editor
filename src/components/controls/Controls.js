@@ -301,9 +301,7 @@ class EmbedUrl extends React.Component {
                 />
                 <div className="embed-link-container">
                   <div className="embed-link" role="textbox" aria-label="Copy to Clipboard">
-                    <span>
-                      <code>{ this.state.url }</code>
-                    </span>
+                    <code>{ this.state.url }</code>
                   </div>
                   <Copy copy={this.state.url} className="copy-button">
                     <ImageIcon className="copy-icon" icon={CopyIcon} />

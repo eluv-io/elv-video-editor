@@ -372,10 +372,9 @@ select {
   .embed-link-container {
     align-items: center;
     display: flex;
-    height: 45px;
     margin: 2rem 0;
-    overflow-x: auto;
     padding-left: 1rem;
+    width: 100%;
 
     .copy-button {
       align-items: center;
@@ -409,12 +408,13 @@ select {
 
   .embed-link {
     height: 100%;
-    overflow-x: auto;
+    white-space: pre-wrap;
+    flex-grow: 1;
+    word-break: break-word;
 
     code {
       font-size: $elv-font-s;
       font-weight: 400;
-      white-space: pre;
     }
   }
 }
