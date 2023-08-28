@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@babel/polyfill": "^7.4.3",
-    "@eluvio/elv-client-js": "https://github.com/eluv-io/elv-client-js.git#embed-url-fix",
+    "@eluvio/elv-client-js": "^4.0.47",
     "babel-preset-mobx": "^2.0.0",
     "dash-js": "^1.3.5",
     "dashjs": "^2.9.3",
