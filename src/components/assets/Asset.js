@@ -1,6 +1,7 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
 import Overlay from "../Overlay";
+import MimeTypes from "mime-types";
 
 import {FormatName, ToolTip} from "elv-components-js";
 
@@ -18,9 +19,10 @@ class Asset extends React.Component {
   }
 
   AssetImage(assetKey, asset) {
+    const filename = ((asset.file || {})["/"] || assetKey).split("/").slice(-1)[0] || "";
     if(!(
-      (asset.attachment_content_type || "").toLowerCase().startsWith("image") ||
-      (asset.title || "").toLowerCase().endsWith(".dng")
+      (asset.attachment_content_type || MimeTypes.lookup(filename) || "").toLowerCase().startsWith("image") ||
+      filename.toLowerCase().endsWith(".dng")
     )) {
       return null;
     }
@@ -31,7 +33,7 @@ class Asset extends React.Component {
       <img
         className="asset-image"
         src={url}
-        alt={asset.title || asset.attachment_file_name}
+        alt={asset.title || asset.attachment_file_name || assetKey}
         ref={element => {
           if(!element || this.state.imageElement) { return; }
 
@@ -106,7 +108,7 @@ class Asset extends React.Component {
   }
 
   render() {
-    const asset = this.props.videoStore.metadata.assets[this.props.assetKey];
+    let asset = this.props.videoStore.metadata.assets[this.props.assetKey];
 
     return (
       <div className="asset-info">

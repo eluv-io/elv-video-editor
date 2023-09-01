@@ -3,6 +3,7 @@ import {inject, observer} from "mobx-react";
 import {IconButton, ImageIcon, ToolTip} from "elv-components-js";
 import Asset from "./Asset";
 import {BackButton} from "../Components";
+import MimeTypes from "mime-types";
 
 import FileIcon from "../../static/icons/file.svg";
 import PictureIcon from "../../static/icons/picture.svg";
@@ -25,7 +26,14 @@ class AssetsList extends React.Component {
 
   AssetIcon(assetKey, asset) {
     let icon = FileIcon;
-    if((asset.attachment_content_type || "").toLowerCase().startsWith("image")) {
+    let contentType =
+      asset.attachment_content_type ||
+      MimeTypes.lookup(asset.filename) || "";
+
+    if(
+      contentType.toLowerCase().startsWith("image") ||
+      asset.filename.toLowerCase().endsWith(".dng")
+    ) {
       icon = this.props.videoStore.AssetLink(assetKey, 200);
     }
 
@@ -34,7 +42,12 @@ class AssetsList extends React.Component {
 
   FilteredAssets() {
     let assets = Object.keys(this.props.videoStore.metadata.assets || {})
-      .map(assetKey => ({...this.props.videoStore.metadata.assets[assetKey], assetKey}));
+      .map(assetKey => ({
+        ...this.props.videoStore.metadata.assets[assetKey],
+        title: this.props.videoStore.metadata.assets[assetKey].title || assetKey,
+        assetKey,
+        filename: ((this.props.videoStore.metadata.assets[assetKey].file || {})["/"] || assetKey).split("/").slice(-1)[0] || ""
+      }));
 
     if(this.state.imageOnly) {
       assets = assets.filter(asset => (asset.attachment_content_type || "").toLowerCase().startsWith("image"));
@@ -188,7 +201,7 @@ class AssetsList extends React.Component {
             null
           }
           Assets
-          { selectedAsset ? ` - ${selectedAsset.title || selectedAsset.attachment_file_name}` : "" }
+          { selectedAsset ? ` - ${selectedAsset.title || selectedAsset.attachment_file_name || selectedAsset.assetKey}` : "" }
           { this.SortFilter() }
           { this.PageButtons() }
         </h2>
