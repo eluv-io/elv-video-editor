@@ -30,6 +30,7 @@ class VideoStore {
 
   @observable source;
   @observable baseUrl = undefined;
+  @observable baseStateChannelUrl = undefined;
   @observable baseVideoFrameUrl = undefined;
   @observable baseFileUrl = undefined;
   @observable previewSupported = false;
@@ -182,6 +183,11 @@ class VideoStore {
 
       this.baseUrl = yield this.rootStore.client.FabricUrl({
         versionHash: this.versionHash
+      });
+
+      this.baseStateChannelUrl = yield this.rootStore.client.FabricUrl({
+        versionHash: this.versionHash,
+        channelAuth: true
       });
 
       this.baseFileUrl = yield this.rootStore.client.FileUrl({
@@ -905,7 +911,7 @@ class VideoStore {
   AssetLink(assetKey, height) {
     const filePath = this.metadata.assets[assetKey].file["/"].split("/files/").slice(1).join("/");
 
-    const url = new URL(this.baseUrl);
+    const url = new URL(this.baseStateChannelUrl);
     url.pathname = UrlJoin(url.pathname, "rep", "thumbnail", "files", filePath);
 
     if(height) {
