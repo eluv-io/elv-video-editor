@@ -13,12 +13,14 @@ import {
   PlayPause, SaveClip,
   SaveFrame, SaveVideo,
   Scale, Offering,
-  Volume
+  Volume,
+  EmbedUrl
 } from "./controls/Controls";
 import FrameForward from "../static/icons/Forward.svg";
 import SecondForward from "../static/icons/DoubleForward.svg";
 import FrameBackward from "../static/icons/Backward.svg";
 import SecondBackward from "../static/icons/DoubleBackward.svg";
+import LinkIcon from "../static/icons/link.svg";
 
 @inject("videoStore")
 @inject("clipVideoStore")
@@ -38,6 +40,10 @@ class VideoControls extends React.Component {
     if(!this.Store().fullScreen) { return null; }
 
     return <Scale clip={this.props.clip} />;
+  }
+
+  EmbedUrlButton() {
+    return <EmbedUrl label="Embeddable URL" icon={LinkIcon} />;
   }
 
   Controls() {
@@ -75,6 +81,7 @@ class VideoControls extends React.Component {
           <div className="bottom-controls">
             <Volume clip={this.props.clip} />
             <FullscreenToggle clip={this.props.clip} />
+            { this.EmbedUrlButton() }
             <SaveVideo />
             <SaveFrame clip={this.props.clip} />
           </div>

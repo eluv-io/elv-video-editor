@@ -129,6 +129,22 @@ button {
   &.primary {
     background-color: $elv-color-mediumblue;
   }
+
+  &.radio-button {
+    all: unset;
+    background-color: $elv-color-black;
+    border-radius: 100%;
+    height: $elv-font-m;
+    width: $elv-font-m;
+
+    &:hover {
+      background-color: $elv-color-black;
+    }
+
+    &:disabled {
+      pointer-events: none;
+    }
+  }
 }
 
 .-elv-async-component,
@@ -174,12 +190,12 @@ button {
 }
 
 .checkbox {
+  align-items: center;
   background-color: $elv-color-black;
   border-radius: 3px;
-  outline: 1px solid $color-border;
   display: flex;
-  align-items: center;
   justify-content: center;
+  outline: 1px solid $color-border;
   position: relative;
 
   &-xs {
@@ -209,28 +225,12 @@ button {
 }
 
 .radio-container {
-  display: flex;
   align-items: center;
-  gap: 0.5rem;
+  display: flex;
+  gap: 0.5rem; // sass-lint:disable-line no-misspelled-properties
 
   .label-disabled {
     opacity: 0.5;
-  }
-}
-
-button.radio-button {
-  all: unset;
-  background-color: $elv-color-black;
-  border-radius: 100%;
-  height: $elv-font-m;
-  width: $elv-font-m;
-
-  &:hover {
-    background-color: $elv-color-black;
-  }
-
-  &:disabled {
-    pointer-events: none;
   }
 }
 
@@ -246,12 +246,12 @@ button.radio-button {
 
   &.checked {
     &::after {
-      content: "";
-      display: block;
-      width: 8px;
-      height: 8px;
       background-color: $elv-color-white;
       border-radius: 50%;
+      content: "";
+      display: block;
+      height: 8px;
+      width: 8px;
     }
   }
 }
