@@ -105,7 +105,7 @@ class EntryList extends React.Component {
         tabIndex={0}
         onClick={onClick}
         onKeyPress={onEnterPressed(onClick)}
-        onMouseEnter={() => this.props.entryStore.SetHoverEntries([entry.entryId], entry.startTime)}
+        onMouseEnter={() => this.props.entryStore.SetHoverEntries([entry.entryId], this.props.track.trackId, entry.startTime)}
         onMouseLeave={() => this.props.entryStore.ClearHoverEntries()}
         className={`entry ${active ? "entry-active" : ""} ${hover ? "entry-hover" : ""}`}
         key={`entry-${entry.entryId}`}

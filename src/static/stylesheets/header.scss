@@ -141,13 +141,13 @@ header {
 
   .confirm-message,
   .radio-label {
-    margin: 1rem 0;
     line-height: 1.5;
+    margin: 1rem 0;
   }
 
   .radio-item {
-    margin-left: 1rem;
     margin-bottom: 1rem;
+    margin-left: 1rem;
   }
 
   section {
@@ -160,10 +160,10 @@ header {
 
   header,
   .table-row {
+    align-items: center;
     display: flex;
     gap: 1rem;
     padding: 0.5rem 1rem;
-    align-items: center;
   }
 
   .table-col {

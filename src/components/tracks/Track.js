@@ -228,6 +228,10 @@ class Track extends React.Component {
     const entries = this.props.entryStore.hoverEntries.map(entryId => {
       const entry = this.props.tracksStore.TrackEntries(this.props.track.trackId)[entryId];
 
+      if(!entry) {
+        return null;
+      }
+
       if(filter && !formatString(entry.textList.join(" ")).includes(filter)) {
         return null;
       }

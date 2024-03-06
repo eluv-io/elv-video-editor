@@ -174,12 +174,12 @@ button {
 }
 
 .checkbox {
+  align-items: center;
   background-color: $elv-color-black;
   border-radius: 3px;
-  outline: 1px solid $color-border;
   display: flex;
-  align-items: center;
   justify-content: center;
+  outline: 1px solid $color-border;
   position: relative;
 
   &-xs {
@@ -209,8 +209,8 @@ button {
 }
 
 .radio-container {
-  display: flex;
   align-items: center;
+  display: flex;
   gap: 0.5rem;
 
   .label-disabled {
@@ -246,12 +246,12 @@ button.radio-button {
 
   &.checked {
     &::after {
-      content: "";
-      display: block;
-      width: 8px;
-      height: 8px;
       background-color: $elv-color-white;
       border-radius: 50%;
+      content: "";
+      display: block;
+      height: 8px;
+      width: 8px;
     }
   }
 }
