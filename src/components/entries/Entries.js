@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useEffect, useState} from "react";
 import PropTypes from "prop-types";
 import {inject, observer} from "mobx-react";
 import EntryDetails from "./Entry";
@@ -10,6 +10,32 @@ import TrackForm from "./TrackForm";
 
 import PlayIcon from "../../static/icons/Play.svg";
 import EditIcon from "../../static/icons/Edit.svg";
+import {entryStore} from "../../stores";
+
+let filterTimeout;
+const FilterInput = ({appliedFilter}) => {
+  const [filter, setFilter] = useState(appliedFilter);
+
+  useEffect(() => {
+    setFilter(appliedFilter);
+  }, [appliedFilter]);
+
+  return (
+    <div className="entries-filter">
+      <Input
+        value={filter}
+        placeholder={"Filter..."}
+        onChange={event => {
+          const value = event.target.value;
+
+          setFilter(value);
+          clearTimeout(filterTimeout);
+          filterTimeout = setTimeout(() => entryStore.SetFilter(value), 500);
+        }}
+      />
+    </div>
+  );
+};
 
 @inject("videoStore")
 @inject("tracksStore")
@@ -43,20 +69,6 @@ class EntryList extends React.Component {
         entryEnd: end
       });
     }
-  }
-
-  Filter() {
-    if(this.props.entryStore.selectedEntry) { return null; }
-
-    return (
-      <div className="entries-filter">
-        <Input
-          value={this.props.entryStore.filter}
-          placeholder={"Filter..."}
-          onChange={event => this.props.entryStore.SetFilter(event.target.value)}
-        />
-      </div>
-    );
   }
 
   FilteredEntries() {
@@ -123,7 +135,7 @@ class EntryList extends React.Component {
   }
 
   render() {
-    const entries = this.FilteredEntries();
+    let entries = this.FilteredEntries();
     const activeEntryIds = this.props.tracksStore.TrackEntryIntervalTree(this.props.track.trackId).search(
       this.props.videoStore.currentTime,
       this.props.videoStore.currentTime
@@ -141,35 +153,40 @@ class EntryList extends React.Component {
       );
     }
 
-    let loadPreviousButton;
-    if(this.state.entryStart > 0) {
-      loadPreviousButton = (
-        <div className="entry">
-          <div className="load-entries-button" onClick={() => this.setState({entryStart: Math.max(0, this.state.entryStart - 100)})}>
-            Load Previous...
+    let loadPreviousButton, loadNextButton;
+    if(!this.props.entryStore.filter) {
+      if(this.state.entryStart > 0) {
+        loadPreviousButton = (
+          <div className="entry">
+            <div className="load-entries-button" onClick={() => this.setState({entryStart: Math.max(0, this.state.entryStart - 100)})}>
+              Load Previous...
+            </div>
           </div>
-        </div>
-      );
-    }
+        );
+      }
 
-    let loadNextButton;
-    if(entries.length > this.state.entryEnd) {
-      loadNextButton = (
-        <div className="entry">
-          <div className="load-entries-button" onClick={() => this.setState({entryEnd: this.state.entryEnd + 100})}>
-            Load More...
+      if(entries.length > this.state.entryEnd) {
+        loadNextButton = (
+          <div className="entry">
+            <div className="load-entries-button" onClick={() => this.setState({entryEnd: this.state.entryEnd + 100})}>
+              Load More...
+            </div>
           </div>
-        </div>
-      );
+        );
+      }
+
+      entries = entries.slice(this.state.entryStart, this.state.entryEnd);
     }
 
     return (
       <div className="entries">
-        { this.Filter() }
+        {
+          this.props.entryStore.selectedEntry ? null :
+            <FilterInput appliedFilter={this.props.entryStore.filter} />
+        }
         { actions }
         { loadPreviousButton }
         { entries
-          .slice(this.state.entryStart, this.state.entryEnd)
           .map(entry =>
             this.Entry(
               entry,
