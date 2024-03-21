@@ -79,6 +79,9 @@ class MenuStore {
       const metadata = yield this.rootStore.client.ContentObjectMetadata({
         objectId,
         versionHash,
+        resolveLinks: true,
+        resolveIgnoreErrors: true,
+        linkDepthLimit: 1,
         select: [
           "public/name",
           "public/description",
