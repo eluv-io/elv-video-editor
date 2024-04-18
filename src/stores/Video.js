@@ -1001,7 +1001,7 @@ class VideoStore {
       queryParams.clip_end = this.FrameToTime(this.clipOutFrame + 1);
     }
 
-    queryParams["header-x_set_content_disposition"] = `attachment;filename=${filename};`;
+    queryParams["header-x_set_content_disposition"] = `attachment;filename="${filename}";`;
 
     const downloadUrl = await this.rootStore.client.Rep({
       versionHash: this.versionHash,
@@ -1010,10 +1010,20 @@ class VideoStore {
       channelAuth: true
     });
 
-    DownloadFromUrl(
-      downloadUrl,
-      filename
-    );
+    try {
+      // Check if download URL is valid before downloading
+      const response = await fetch(downloadUrl);
+
+      if(response.ok) {
+        DownloadFromUrl(
+          downloadUrl,
+          filename
+        );
+      }
+    } catch(error) {
+      this.rootStore.menuStore.SetErrorMessage("Unable to download");
+      console.error("Invalid URL or failed to download", error);
+    }
   }
 }
 
