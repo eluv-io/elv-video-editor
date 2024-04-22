@@ -82,6 +82,35 @@ let PlaybackLevel = (props) => {
   );
 };
 
+let AudioTrackSelect = (props) => {
+  const store = Store(props);
+
+  if((store.audioTracks || []).length < 2) {
+    return null;
+  }
+
+  return (
+    <ToolTip content={<span>Audio Track</span>}>
+      <select
+        aria-label="Audio Track"
+        value={store.audioTrack}
+        className={"video-playback-level"}
+        onChange={event => store.SetAudioTrack(event.target.value)}
+      >
+        {Object.keys(store.audioTracks).map(trackIndex => {
+          const track = store.audioTracks[trackIndex];
+
+          return (
+            <option key={`playback-level-${trackIndex}`} value={trackIndex}>
+              { track.name || track.lang  }
+            </option>
+          );
+        })}
+      </select>
+    </ToolTip>
+  );
+};
+
 let Offering = (props) => {
   const store = props.videoStore;
   let offerings = Object.keys(store.availableOfferings)
@@ -422,6 +451,7 @@ FrameControl = Inject(FrameControl);
 FrameRate = Inject(FrameRate);
 FullscreenToggle = Inject(FullscreenToggle);
 PlaybackLevel = Inject(PlaybackLevel);
+AudioTrackSelect = Inject(AudioTrackSelect);
 PlaybackRate = Inject(PlaybackRate);
 PlayPause = Inject(PlayPause);
 SaveFrame = Inject(SaveFrame);
@@ -440,6 +470,7 @@ export {
   FrameRate,
   FullscreenToggle,
   PlaybackLevel,
+  AudioTrackSelect,
   PlaybackRate,
   PlayPause,
   SaveClip,

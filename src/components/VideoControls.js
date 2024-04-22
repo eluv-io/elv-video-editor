@@ -10,10 +10,14 @@ import {
   FullscreenToggle,
   PlaybackLevel,
   PlaybackRate,
-  PlayPause, SaveClip,
-  SaveFrame, SaveVideo,
-  Scale, Offering,
-  Volume
+  PlayPause,
+  SaveClip,
+  SaveFrame,
+  SaveVideo,
+  Scale,
+  Offering,
+  Volume,
+  AudioTrackSelect
 } from "./controls/Controls";
 import FrameForward from "../static/icons/Forward.svg";
 import SecondForward from "../static/icons/DoubleForward.svg";
@@ -49,12 +53,13 @@ class VideoControls extends React.Component {
             <ClipOut clip={this.props.clip} />
             { this.props.clippable ? <SaveClip clip={this.props.clip} /> : null }
           </div>
-          <div className="bottom-controls">
+          <div className="bottom-controls bottom-left-controls">
             <PlaybackRate clip={this.props.clip} />
             <FrameRate clip={this.props.clip} />
             <DropFrame clip={this.props.clip} />
             <Offering />
             <PlaybackLevel clip={this.props.clip} />
+            <AudioTrackSelect clip={this.props.clip} />
           </div>
         </div>
         <div className="controls center-controls">

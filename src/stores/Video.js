@@ -28,6 +28,9 @@ class VideoStore {
   @observable levels = [];
   @observable currentLevel;
 
+  @observable audioTracks = [];
+  @observable currentAudioTrack;
+
   @observable source;
   @observable baseUrl = undefined;
   @observable baseStateChannelUrl = undefined;
@@ -477,6 +480,17 @@ class VideoStore {
       this.currentLevel = this.player.currentLevel;
     }));
 
+    this.player.on(HLS.Events.AUDIO_TRACKS_UPDATED, action(() => {
+      this.audioTracks = this.player.audioTracks;
+      this.currentAudioTrack = this.player.audioTrack;
+    }));
+
+    this.player.on(HLS.Events.AUDIO_TRACK_SWITCHED, action(() => {
+      this.audioTracks = this.player.audioTracks;
+      this.currentAudioTrack = this.player.audioTrack;
+    }));
+
+
     this.player.on(HLS.Events.ERROR, action((event, data) => {
       if(data.fatal || (data.type === "networkError" && parseInt(data.response.code) >= 500)) {
         this.consecutiveSegmentErrors += 1;
@@ -712,6 +726,12 @@ class VideoStore {
   @action.bound
   SetPlaybackLevel(level) {
     this.player.nextLevel = parseInt(level);
+    this.player.streamController.immediateLevelSwitch();
+  }
+
+  @action.bound
+  SetAudioTrack(trackIndex) {
+    this.player.audioTrack = parseInt(trackIndex);
     this.player.streamController.immediateLevelSwitch();
   }
 
