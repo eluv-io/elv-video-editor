@@ -229,6 +229,7 @@ class VideoStore {
         }
 
         if(!playoutOptions || !playoutOptions["hls"] || !(playoutOptions["hls"].playoutMethods.clear || playoutOptions["hls"].playoutMethods["aes-128"])) {
+          // eslint-disable-next-line no-console
           console.error(`HLS Clear and AES-128 not supported by ${this.offeringKey} offering.`);
 
           const response = yield this.GetSupportedOffering({versionHash: videoObject.versionHash, browserSupportedDrms});
@@ -969,6 +970,7 @@ class VideoStore {
   @action.bound
   async SaveVideo() {
     const currentLevel = this.levels[this.currentLevel];
+    const currentAudioTrack = this.audioTracks[this.currentAudioTrack];
     const offering = this.metadata.offerings[this.offeringKey];
     const playoutKey = Object.keys(offering.playout.streams.video.representations)
       .find(key => {
@@ -981,11 +983,15 @@ class VideoStore {
         );
       });
 
-    const filename = `${this.name} (${currentLevel.width}x${currentLevel.height}) (${this.FrameToSMPTE(this.clipInFrame).replaceAll(":", "-")} - ${this.FrameToSMPTE(this.clipOutFrame).replaceAll(":", "-")}).mp4`;
+    let queryParams = {};
 
-    let queryParams = {
-      "header-x_set_content_disposition": `attachment;filename=${filename};`
-    };
+    let audioName;
+    if(this.audioTracks.length > 1) {
+      queryParams.audio = currentAudioTrack.attrs.URI.split("/")[1];
+      audioName = currentAudioTrack.name || currentAudioTrack.lang;
+    }
+
+    const filename = `${this.name} (${currentLevel.width}x${currentLevel.height})${audioName ? ` (${audioName}) ` : ""}(${this.FrameToSMPTE(this.clipInFrame).replaceAll(":", "-")} - ${this.FrameToSMPTE(this.clipOutFrame).replaceAll(":", "-")}).mp4`;
 
     if(this.clipInFrame > 0) {
       queryParams.clip_start = this.FrameToTime(this.clipInFrame);
@@ -994,6 +1000,8 @@ class VideoStore {
     if(this.videoHandler.TotalFrames() > this.clipOutFrame + 1) {
       queryParams.clip_end = this.FrameToTime(this.clipOutFrame + 1);
     }
+
+    queryParams["header-x_set_content_disposition"] = `attachment;filename=${filename};`;
 
     const downloadUrl = await this.rootStore.client.Rep({
       versionHash: this.versionHash,
