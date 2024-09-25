@@ -1,4 +1,4 @@
-import Fraction from "fraction.js/fraction";
+import Fraction from "fraction.js";
 import {Line} from "./Utils";
 
 const mainColor = {

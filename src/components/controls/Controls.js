@@ -4,7 +4,7 @@ import React from "react";
 import {inject, observer} from "mobx-react";
 import {IconButton, Range, Slider, ToolTip} from "elv-components-js";
 import {FrameRates} from "../../utils/FrameAccurateVideo";
-import Fraction from "fraction.js/fraction";
+import Fraction from "fraction.js";
 
 import ClipStartIcon from "../../static/icons/marker-in.svg";
 import ClipEndIcon from "../../static/icons/marker-out.svg";

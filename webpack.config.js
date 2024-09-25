@@ -1,127 +1,188 @@
 const webpack = require("webpack");
 const Path = require("path");
-const autoprefixer = require("autoprefixer");
-const CopyWebpackPlugin = require("copy-webpack-plugin");
 const BundleAnalyzerPlugin = require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const TerserPlugin = require("terser-webpack-plugin");
+const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
+const fs = require("fs");
 
-module.exports = {
-  entry: "./src/index.js",
-  target: "web",
-  output: {
-    path: Path.resolve(__dirname, "dist"),
-    filename: "index.js",
-    chunkFilename: "[name].bundle.js",
-    globalObject: "this"
-  },
-  devServer: {
-    disableHostCheck: true,
-    inline: true,
-    port: 8083,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Content-Type, Accept",
-      "Access-Control-Allow-Methods": "POST"
-    }
-  },
-  resolve: {
-    alias: {
-      configuration: Path.join(__dirname, "configuration.json")
-    }
-  },
-  optimization: {
-    minimizer: [
-      new TerserPlugin({
-        terserOptions: {
-          keep_classnames: true,
-          keep_fnames: true
-        }
-      })
-    ],
-    splitChunks: {
-      chunks: "all"
-    }
-  },
-  node: {
-    fs: "empty"
-  },
-  mode: "development",
-  devtool: "eval-source-map",
-  plugins: [
-    new CopyWebpackPlugin([{
-      from: Path.join(__dirname, "configuration.js"),
-      to: Path.join(__dirname, "dist", "configuration.js")
-    }]),
+module.exports = env => {
+  const isDevelopment = !!env.WEBPACK_SERVE;
+
+  let plugins = [
     new HtmlWebpackPlugin({
-      title: "Eluvio Video Editor",
+      title: "Eluvio Media Wallet",
       template: Path.join(__dirname, "src", "index.html"),
-      inject: "body",
-      cache: false,
       filename: "index.html",
-      favicon: "node_modules/elv-components-js/src/icons/favicon.png"
-    })
-    //, new BundleAnalyzerPlugin()
-  ],
-  module: {
-    rules: [
-      {
-        test: /Worker\.js$/,
-        use: { loader: "worker-loader" }
-      },
-      {
-        test: /\.(css|scss)$/,
-        use: [
-          "style-loader",
-          {
-            loader: "css-loader",
-            options: {
-              importLoaders: 2
-            }
-          },
-          {
-            loader: "postcss-loader",
-            options: {
-              plugins: () => [autoprefixer({})]
-            }
-          },
-          "sass-loader"
-        ]
-      },
-      {
-        test: /\.(js|mjs)$/,
-        exclude: /node_modules\/(?!elv-components-js)/,
-        loader: "babel-loader",
-        options: {
-          presets: ["@babel/preset-env", "@babel/preset-react", "babel-preset-mobx"],
-          plugins: [
-            ["@babel/plugin-proposal-decorators", { "version": "legacy" }],
-            require("@babel/plugin-proposal-object-rest-spread"),
-            require("@babel/plugin-transform-regenerator"),
-            require("@babel/plugin-transform-runtime"),
-            ["@babel/plugin-proposal-private-methods", { loose: true }],
-            ["@babel/plugin-proposal-private-property-in-object", { "loose": true }]
-          ]
-        }
-      },
-      {
-        test: /\.svg$/,
-        loader: "svg-inline-loader"
-      },
-      {
-        test: /\.(gif|png|jpe?g)$/i,
-        use: [
-          "file-loader",
-          {
-            loader: "image-webpack-loader"
-          },
-        ],
-      },
-      {
-        test: /\.(txt|bin|abi)$/i,
-        loader: "raw-loader"
-      }
-    ]
+      favicon: Path.join(__dirname, "src", "static", "icons", "favicon.png"),
+      inject: "body"
+    }),
+    new webpack.ProvidePlugin({
+      process: "process/browser",
+    }),
+  ];
+
+  if(isDevelopment) {
+    plugins.push(new ReactRefreshWebpackPlugin({overlay: false}));
   }
+
+  if(process.env.ANALYZE_BUNDLE) {
+    plugins.push(new BundleAnalyzerPlugin());
+  }
+
+
+  return {
+    entry: "./src/index.js",
+    output: {
+      path: Path.resolve(__dirname, "dist"),
+      publicPath: "/",
+      clean: true,
+      filename: "main.js",
+      chunkFilename: "bundle.[id].[chunkhash].js"
+    },
+    snapshot: {
+      managedPaths: [],
+    },
+    watchOptions: {
+      followSymlinks: true,
+    },
+    devServer: {
+      hot: true,
+      client: {
+        //webSocketURL: "auto://elv-test.io/ws",
+        overlay: false,
+        logging: "verbose"
+      },
+      historyApiFallback: true,
+      allowedHosts: "all",
+      port: 8083,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Content-Type, Accept",
+        "Access-Control-Allow-Methods": "POST"
+      },
+      // This is to allow configuration.js to be accessed
+      static: {
+        directory: Path.resolve(__dirname, "./config"),
+        publicPath: "/"
+      }
+    },
+    resolve: {
+      alias: {
+        configuration: Path.join(__dirname, "configuration.json")
+      }
+    },
+    mode: "development",
+    devtool: "eval-source-map",
+    plugins,
+    externals: {
+      crypto: "crypto"
+    },
+    module: {
+      rules: [
+        {
+          test: /\.(theme|font)\.(css|scss)$/i,
+          type: "asset/source"
+        },
+        {
+          test: /\.(css|scss)$/,
+          exclude: /\.(theme|font)\.(css|scss)$/i,
+          use: [
+            "style-loader",
+            {
+              loader: "css-loader",
+              options: {
+                importLoaders: 2,
+                modules: {
+                  mode: "local",
+                  auto: true,
+                  localIdentName: isDevelopment ?  "[local]--[hash:base64:5]" : "[hash:base64:5]"
+                }
+              }
+            },
+            {
+              loader: "postcss-loader",
+              options: {
+                postcssOptions: {
+                  plugins: {
+                    "postcss-preset-mantine": {},
+                    "postcss-simple-vars": {
+                      variables: {
+                        "mantine-breakpoint-xs": "36em",
+                        "mantine-breakpoint-sm": "48em",
+                        "mantine-breakpoint-md": "62em",
+                        "mantine-breakpoint-lg": "75em",
+                        "mantine-breakpoint-xl": "88em",
+                      },
+                    },
+                  }
+                }
+              }
+            },
+            "sass-loader"
+          ]
+        },
+        {
+          test: /\.(js|mjs|jsx)$/,
+          loader: "babel-loader",
+          options: {
+            plugins: [
+              ["@babel/plugin-proposal-decorators", { "version": "legacy" }],
+              isDevelopment && require.resolve("react-refresh/babel")
+            ].filter(Boolean),
+            presets: [
+              "@babel/preset-env",
+              "@babel/preset-react"
+            ]
+          }
+        },
+        {
+          test: /\.svg$/,
+          loader: "svg-inline-loader"
+        },
+        {
+          test: /\.(gif|png|jpe?g|otf|woff2?|ttf)$/i,
+          include: [Path.resolve(__dirname, "src/static/public")],
+          type: "asset/inline",
+          generator: {
+            filename: "public/[name][ext]"
+          }
+        },
+        {
+          test: /\.(gif|png|jpe?g|otf|woff2?|ttf)$/i,
+          type: "asset/resource",
+        },
+        {
+          test: /\.(txt|bin|abi)$/i,
+          type: "asset/source"
+        },
+        {
+          test: /\.ya?ml$/,
+          use: "yaml-loader"
+        }
+
+        /*
+
+        {
+          test: /\.(js|mjs)$/,
+          exclude: /node_modules\/(?!elv-components-js)/,
+          loader: "babel-loader",
+          options: {
+            presets: ["@babel/preset-env", "@babel/preset-react", "babel-preset-mobx"],
+            plugins: [
+              ["@babel/plugin-proposal-decorators", {"version": "legacy"}],
+              require("@babel/plugin-proposal-object-rest-spread"),
+              require("@babel/plugin-transform-regenerator"),
+              require("@babel/plugin-transform-runtime"),
+              ["@babel/plugin-proposal-private-methods", {loose: true}],
+              ["@babel/plugin-proposal-private-property-in-object", {"loose": true}]
+            ]
+          }
+        },
+
+
+         */
+      ]
+    }
+  };
 };
 

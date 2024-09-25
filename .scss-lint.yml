@@ -1,17 +1,26 @@
 files:
   include: "src/static/stylesheets/*.scss"
   ignore:
-    - "src/static/stylesheets/fonts.scss"
+    - "src/static/stylesheets/loaders.scss"
+    - "src/static/stylesheets/reset.scss"
+    - "src/static/stylesheets/variables.scss"
 rules:
   class-name-format:
   - 2
-  - convention: hyphenatedlowercase
+  - convention: hyphenatedbem
   leading-zero:
   - 0
   nesting-depth:
     - 1
-    -
-      max-depth: 5
+    - max-depth: 5
   quotes:
   - 1
   - style: double
+  no-misspelled-properties:
+    - 1
+    - extra-properties:
+        - "aspect-ratio"
+        - "gap"
+        - "overscroll-behavior"
+        - "overscroll-behavior-y"
+        - "scroll-margin"

@@ -3,9 +3,7 @@ import PropTypes from "prop-types";
 import TrackCanvas from "./TrackCanvas";
 import {inject, observer} from "mobx-react";
 import {reaction, toJS} from "mobx";
-
-import AudioTrackWorker from "../../workers/AudioTrackWorker";
-import Fraction from "fraction.js/fraction";
+import Fraction from "fraction.js";
 import {StopScroll} from "../../utils/Utils";
 
 @inject("videoStore")
@@ -126,7 +124,7 @@ class AudioTrack extends React.Component {
         SetRef={context => {
           this.setState({context});
 
-          const worker = new AudioTrackWorker();
+          const worker = new Worker(new URL("../../workers/AudioTrackWorker.js", import.meta.url));
 
           worker.postMessage({
             operation: "Initialize",

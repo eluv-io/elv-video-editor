@@ -1,3 +1,5 @@
+globalThis.process = {};
+
 import "./static/stylesheets/app.scss";
 
 import React from "react";

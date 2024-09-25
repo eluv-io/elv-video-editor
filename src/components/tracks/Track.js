@@ -6,7 +6,6 @@ import Fraction from "fraction.js";
 import {ToolTip} from "elv-components-js";
 import {reaction, toJS} from "mobx";
 
-import TrackWorker from "../../workers/TrackWorker";
 import {StopScroll} from "../../utils/Utils";
 
 @inject("videoStore")
@@ -271,7 +270,7 @@ class Track extends React.Component {
         SetRef={context => {
           this.setState({context});
 
-          const worker = new TrackWorker();
+          const worker = new Worker(new URL("../../workers/TrackWorker.js", import.meta.url));
 
           worker.postMessage({
             operation: "Initialize",
