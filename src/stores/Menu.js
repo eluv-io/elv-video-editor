@@ -1,49 +1,45 @@
-import {observable, action, flow} from "mobx";
+import {flow, makeAutoObservable} from "mobx";
 import UrlJoin from "url-join";
 
 class MenuStore {
-  @observable libraryId = "";
-  @observable objectId = "";
-  @observable error = "";
+  libraryId = "";
+  objectId = "";
+  error = "";
 
-  @observable showMenu = true;
-  @observable showVideoOnly = true;
+  showMenu = true;
+  showVideoOnly = true;
 
-  @observable libraries = {};
-  @observable objects = {};
+  libraries = {};
+  objects = {};
 
-  @observable selectedObject;
+  selectedObject;
 
   constructor(rootStore) {
+    makeAutoObservable(this);
+
     this.rootStore = rootStore;
   }
 
-  @action.bound
   ToggleMenu(open) {
     this.showMenu = open;
   }
 
-  @action.bound
   UpdateVersionHash(versionHash) {
     this.selectedObject.versionHash = versionHash;
   }
 
-  @action.bound
   ToggleVideoFilter(showVideoOnly) {
     this.showVideoOnly = showVideoOnly;
   }
 
-  @action.bound
   SetErrorMessage(error) {
     this.error = error;
   }
 
-  @action.bound
   ClearErrorMessage() {
     this.error = "";
   }
 
-  @action.bound
   SelectVideo = flow(function * ({libraryId, objectId, versionHash}) {
     try {
       this.rootStore.Reset();
@@ -118,7 +114,6 @@ class MenuStore {
     }
   });
 
-  @action.bound
   ListLibraries = flow(function * () {
     const libraryIds = yield this.rootStore.client.ContentLibraries();
 
@@ -144,7 +139,6 @@ class MenuStore {
     ));
   });
 
-  @action.bound
   ListObjects = flow(function * ({libraryId, page=1, perPage=25, filter="", cacheId=""}) {
     const metadata = yield this.rootStore.client.ContentObjectMetadata({
       libraryId,
@@ -261,22 +255,18 @@ class MenuStore {
     }
   });
 
-  @action.bound
   SetLibraryId(libraryId) {
     this.libraryId = libraryId;
   }
 
-  @action.bound
   ClearLibraryId() {
     this.libraryId = "";
   }
 
-  @action.bound
   SetObjectId(objectId) {
     this.objectId = objectId;
   }
 
-  @action.bound
   ClearObjectId() {
     this.objectId = "";
   }

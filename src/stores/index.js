@@ -1,4 +1,4 @@
-import {configure, observable, action, runInAction} from "mobx";
+import { configure, runInAction, makeAutoObservable } from "mobx";
 import EditStore from "./Edit";
 import EntryStore from "./Entry";
 import KeyboardControlStore from "./KeyboardControls";
@@ -16,11 +16,13 @@ configure({
 });
 
 class RootStore {
-  @observable client;
+  client;
 
-  @observable view = "main";
+  view = "source";
 
   constructor() {
+    makeAutoObservable(this);
+
     this.editStore = new EditStore(this);
     this.entryStore = new EntryStore(this);
     this.keyboardControlStore = new KeyboardControlStore(this);
@@ -49,20 +51,16 @@ class RootStore {
       .forEach(store => store.Reset());
   }
 
-  @action
   SetView(view) {
     this.view = view;
   }
 
-  @action
   async InitializeClient() {
     // Contained in IFrame
     const client = new FrameClient({
       target: window.parent,
       timeout: 30
     });
-
-    client.SendMessage({options: {operation: "HideHeader"}, noResponse: true});
 
     runInAction(() => this.client = client);
     const appPath = window.location.hash

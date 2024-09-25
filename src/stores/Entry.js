@@ -1,21 +1,23 @@
-import {observable, action} from "mobx";
+import { makeAutoObservable } from "mobx";
 import Id from "../utils/Id";
 import {DownloadFromUrl} from "../utils/Utils";
 
 class EntryStore {
-  @observable entries = [];
-  @observable entryTime;
-  @observable selectedEntry;
+  entries = [];
+  entryTime;
+  selectedEntry;
 
-  @observable hoverEntries = [];
-  @observable hoverTrack;
-  @observable hoverTime;
+  hoverEntries = [];
+  hoverTrack;
+  hoverTime;
 
-  @observable filter = "";
+  filter = "";
 
-  @observable editingEntry = false;
+  editingEntry = false;
 
   constructor(rootStore) {
+    makeAutoObservable(this);
+
     this.rootStore = rootStore;
   }
 
@@ -36,17 +38,14 @@ class EntryStore {
     return this.rootStore.videoStore.TimeToSMPTE(time);
   }
 
-  @action.bound
   SetFilter(filter) {
     this.filter = filter;
   }
 
-  @action.bound
   ClearFilter() {
     this.filter = "";
   }
 
-  @action.bound
   FilteredEntries(entries) {
     const formatString = string => (string || "").toString().toLowerCase();
     const filter = formatString(this.rootStore.entryStore.filter);
@@ -62,14 +61,12 @@ class EntryStore {
       .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
   }
 
-  @action.bound
   PlayCurrentEntry() {
     if(!this.selectedEntry) { return; }
 
     this.PlayEntry(this.SelectedEntry());
   }
 
-  @action.bound
   PlayEntry(entry) {
     if(!entry) { return; }
 
@@ -84,14 +81,12 @@ class EntryStore {
     return this.rootStore.trackStore.TrackEntries(this.rootStore.trackStore.SelectedTrack().trackId)[this.selectedEntry];
   }
 
-  @action.bound
   SetSelectedEntry(entryId) {
     this.selectedEntry = entryId;
 
     this.ClearEditing();
   }
 
-  @action.bound
   ClearSelectedEntry() {
     this.selectedEntry = undefined;
 
@@ -107,7 +102,6 @@ class EntryStore {
     return this.entries.map(entryId => entries[entryId]);
   }
 
-  @action.bound
   SetEntries(entries, time) {
     this.ClearSelectedEntry();
 
@@ -119,47 +113,40 @@ class EntryStore {
     }
   }
 
-  @action.bound
   SetHoverEntries(entries, trackId, time) {
     this.hoverEntries = entries || [];
     this.hoverTrack = trackId;
     this.hoverTime = time;
   }
 
-  @action.bound
   ClearHoverEntries() {
     this.hoverEntries = [];
     this.hoverTrack = undefined;
     this.hoverTime = undefined;
   }
 
-  @action.bound
   ClearEntries() {
     this.entries = [];
     this.hoverEntries = [];
     this.selectedEntry = undefined;
   }
 
-  @action.bound
   SetEditing(entryId) {
     this.SetSelectedEntry(entryId);
 
     this.editingEntry = true;
   }
 
-  @action.bound
   ClearEditing() {
     this.editingEntry = false;
   }
 
-  @action.bound
   CreateEntry() {
     const entryId = Id.next();
 
     this.SetEditing(entryId);
   }
 
-  @action.bound
   ModifyEntry({entryId, textList, startTime, endTime}) {
     this.rootStore.trackStore.ModifyTrack(track => {
       const entry = this.rootStore.trackStore.TrackEntries(track.trackId)[entryId];
@@ -182,7 +169,6 @@ class EntryStore {
     this.ClearEditing();
   }
 
-  @action.bound
   RemoveEntry(entryId) {
     if(entryId === this.selectedEntry) {
       this.ClearSelectedEntry();

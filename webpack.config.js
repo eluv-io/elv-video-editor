@@ -15,10 +15,7 @@ module.exports = env => {
       filename: "index.html",
       favicon: Path.join(__dirname, "src", "static", "icons", "favicon.png"),
       inject: "body"
-    }),
-    new webpack.ProvidePlugin({
-      process: "process/browser",
-    }),
+    })
   ];
 
   if(isDevelopment) {
@@ -29,9 +26,8 @@ module.exports = env => {
     plugins.push(new BundleAnalyzerPlugin());
   }
 
-
   return {
-    entry: "./src/index.js",
+    entry: "./src/index.jsx",
     output: {
       path: Path.resolve(__dirname, "dist"),
       publicPath: "/",
@@ -68,8 +64,19 @@ module.exports = env => {
     },
     resolve: {
       alias: {
+        Assets: Path.resolve(__dirname, "src/static"),
+        Components: Path.resolve(__dirname, "src/components"),
+        Routes: Path.resolve(__dirname, "src/routes"),
+        Stores: Path.resolve(__dirname, "src/stores"),
+        Utils: Path.resolve(__dirname, "src/utils"),
+        Workers: Path.resolve(__dirname, "src/Workers"),
         configuration: Path.join(__dirname, "configuration.json")
-      }
+      },
+      fallback: {
+        stream: require.resolve("stream-browserify"),
+        url: require.resolve("url")
+      },
+      extensions: [".js", ".jsx", ".mjs", ".scss", ".png", ".svg"]
     },
     mode: "development",
     devtool: "eval-source-map",
@@ -126,7 +133,6 @@ module.exports = env => {
           loader: "babel-loader",
           options: {
             plugins: [
-              ["@babel/plugin-proposal-decorators", { "version": "legacy" }],
               isDevelopment && require.resolve("react-refresh/babel")
             ].filter(Boolean),
             presets: [

@@ -1,8 +1,8 @@
-import {observable, action} from "mobx";
+import {makeAutoObservable} from "mobx";
 
 class ControlStore {
-  @observable controlMap;
-  @observable modifiers = {
+  controlMap;
+  modifiers = {
     alt: false,
     control: false,
     shift: false,
@@ -10,12 +10,13 @@ class ControlStore {
   };
 
   constructor(rootStore) {
+    makeAutoObservable(this);
+
     this.rootStore = rootStore;
 
     this.InitializeControlMap();
   }
 
-  @action.bound
   InitializeControlMap() {
     const controlMap = {};
 
@@ -49,7 +50,6 @@ class ControlStore {
     this.controlMap = controlMap;
   }
 
-  @action.bound
   HandleModifiers(event) {
     const down = event.type.toLowerCase() === "keydown";
 
@@ -69,7 +69,6 @@ class ControlStore {
     }
   }
 
-  @action.bound
   HandleInput(event) {
     // Disable controls when using input element
     if(document.activeElement && document.activeElement.tagName.toLowerCase() === "input") {
@@ -111,7 +110,6 @@ class ControlStore {
     }
   }
 
-  @action.bound
   Save() {
     this.rootStore.editStore.Save();
   }
@@ -122,81 +120,67 @@ class ControlStore {
   Redo() {
   }
 
-  @action.bound
   SeekFrames({frames, seconds}) {
     this.rootStore.videoStore.SeekFrames({frames, seconds});
   }
 
-  @action.bound
   PlayPause() {
     this.rootStore.videoStore.PlayPause();
   }
 
-  @action.bound
   PlayCurrentEntry() {
     this.rootStore.entryStore.PlayCurrentEntry();
   }
 
-  @action.bound
   SetPlaybackRate(rate) {
     this.rootStore.videoStore.SetPlaybackRate(rate);
   }
 
-  @action.bound
   ChangePlaybackRate(delta) {
     this.rootStore.videoStore.ChangePlaybackRate(delta);
   }
 
-  @action.bound
   ToggleFullscreen() {
     this.rootStore.videoStore.ToggleFullscreen();
   }
 
-  @action.bound
   ToggleMuted() {
     this.rootStore.videoStore.ToggleMuted();
   }
 
-  @action.bound
   SetVolume(volume) {
     this.rootStore.videoStore.SetVolume(volume * 100);
   }
 
-  @action.bound
   ChangeVolume(delta) {
     this.rootStore.videoStore.ChangeVolume(delta * 100);
   }
 
-  @action.bound
   ToggleTrackByIndex(index) {
     this.rootStore.trackStore.ToggleTrackByIndex(parseInt(index) - 1);
   }
 
-  @action.bound
   PlayClip() {
     this.rootStore.videoStore.PlaySegment(this.rootStore.videoStore.clipInFrame, this.rootStore.videoStore.clipOutFrame);
   }
 
-  @action.bound
   DeleteClip() {
     if(!this.rootStore.clipStore.selectedClipId) { return; }
 
     this.rootStore.clipStore.DeleteClip(this.rootStore.clipStore.selectedClipId);
   }
 
-  @action.bound
   SetMarkIn() {
     this.rootStore.videoStore.SetClipMark({inFrame: this.rootStore.videoStore.frame});
   }
 
-  @action.bound
   SetMarkOut() {
     this.rootStore.videoStore.SetClipMark({outFrame: this.rootStore.videoStore.frame});
   }
 
   // Control definitions
 
-  @observable controls = {
+  controls = {
     "Playback": [
       [
         ["p", " "],

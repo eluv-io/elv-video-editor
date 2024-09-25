@@ -1,82 +1,82 @@
-import {observable, action, flow, computed} from "mobx";
+import { action, flow, makeAutoObservable } from "mobx";
 import FrameAccurateVideo, {FrameRateDenominator, FrameRateNumerator, FrameRates} from "../utils/FrameAccurateVideo";
 import UrlJoin from "url-join";
 import HLS from "hls.js";
 import {DownloadFromUrl} from "../utils/Utils";
 
 class VideoStore {
-  @observable videoKey = 0;
+  videoKey = 0;
 
-  @observable primaryContentStartTime = 0;
-  @observable primaryContentEndTime;
+  primaryContentStartTime = 0;
+  primaryContentEndTime;
 
-  @observable versionHash = "";
-  @observable metadata = {};
-  @observable tags = {};
-  @observable name;
-  @observable videoTags = [];
+  versionHash = "";
+  metadata = {};
+  tags = {};
+  name;
+  videoTags = [];
 
-  @observable availableOfferings = {};
-  @observable offeringKey = "default";
+  availableOfferings = {};
+  offeringKey = "default";
 
-  @observable loading = false;
-  @observable initialized = false;
-  @observable isVideo = false;
+  loading = false;
+  initialized = false;
+  isVideo = false;
 
-  @observable consecutiveSegmentErrors = 0;
+  consecutiveSegmentErrors = 0;
 
-  @observable levels = [];
-  @observable currentLevel;
+  levels = [];
+  currentLevel;
 
-  @observable audioTracks = [];
-  @observable currentAudioTrack;
+  audioTracks = [];
+  currentAudioTrack;
 
-  @observable source;
-  @observable baseUrl = undefined;
-  @observable baseStateChannelUrl = undefined;
-  @observable baseVideoFrameUrl = undefined;
-  @observable baseFileUrl = undefined;
-  @observable previewSupported = false;
-  @observable downloadUrl;
+  source;
+  baseUrl = undefined;
+  baseStateChannelUrl = undefined;
+  baseVideoFrameUrl = undefined;
+  baseFileUrl = undefined;
+  previewSupported = false;
+  downloadUrl;
 
-  @observable dropFrame = false;
-  @observable frameRateKey = "NTSC";
-  @observable frameRate = FrameRates.NTSC;
-  @observable frameRateRat = `${FrameRateNumerator["NTSC"]}/${FrameRateDenominator["NTSC"]}`;
-  @observable frameRateSpecified = false;
+  dropFrame = false;
+  frameRateKey = "NTSC";
+  frameRate = FrameRates.NTSC;
+  frameRateRat = `${FrameRateNumerator["NTSC"]}/${FrameRateDenominator["NTSC"]}`;
+  frameRateSpecified = false;
 
-  @observable currentTime = 0;
-  @observable frame = 0;
-  @observable smpte = "00:00:00:00";
+  currentTime = 0;
+  frame = 0;
+  smpte = "00:00:00:00";
 
-  @observable duration;
-  @observable playing = false;
-  @observable playbackRate = 1.0;
-  @observable fullScreen = false;
-  @observable volume = 100;
-  @observable muted = false;
+  duration;
+  playing = false;
+  playbackRate = 1.0;
+  fullScreen = false;
+  volume = 100;
+  muted = false;
 
-  @observable seek = 0;
-  @observable scaleMin = 0;
-  @observable scaleMax = 100;
+  seek = 0;
+  scaleMin = 0;
+  scaleMax = 100;
 
-  @observable segmentEnd = undefined;
+  segmentEnd = undefined;
 
-  @observable sliderMarks = 100;
-  @observable majorMarksEvery = 10;
+  sliderMarks = 100;
+  majorMarksEvery = 10;
 
-  @observable clipInFrame;
-  @observable clipOutFrame;
+  clipInFrame;
+  clipOutFrame;
 
-  @computed get scaleMinTime() { return this.duration ? this.ProgressToTime(this.scaleMin) : 0; }
-  @computed get scaleMaxTime() { return this.duration ? this.ProgressToTime(this.scaleMax) : 0; }
+  get scaleMinTime() { return this.duration ? this.ProgressToTime(this.scaleMin) : 0; }
+  get scaleMaxTime() { return this.duration ? this.ProgressToTime(this.scaleMax) : 0; }
 
-  @computed get scaleMinFrame() { return this.duration ? this.ProgressToFrame(this.scaleMin) : 0; }
-  @computed get scaleMaxFrame() { return this.duration ? this.ProgressToFrame(this.scaleMax) : 0; }
+  get scaleMinFrame() { return this.duration ? this.ProgressToFrame(this.scaleMin) : 0; }
+  get scaleMaxFrame() { return this.duration ? this.ProgressToFrame(this.scaleMax) : 0; }
 
   // Pass dropFrame parameter so SMPTE strings are redrawn on dropframe display change
-  @computed get scaleMinSMPTE() { return this.duration ? this.ProgressToSMPTE(this.scaleMin) : ""; }
-  @computed get scaleMaxSMPTE() {
+  get scaleMinSMPTE() { return this.duration ? this.ProgressToSMPTE(this.scaleMin) : ""; }
+  get scaleMaxSMPTE() {
     if(!this.duration) { return ""; }
 
     let frame = this.TimeToFrame(this.ProgressToTime(this.scaleMax), true);
@@ -99,10 +99,11 @@ class VideoStore {
   }
 
   constructor(rootStore) {
+    makeAutoObservable(this);
+
     this.rootStore = rootStore;
   }
 
-  @action.bound
   Reset() {
     this.loading = true;
     this.initialized = false;
@@ -167,14 +168,12 @@ class VideoStore {
     this.rootStore.trackStore.Reset();
   }
 
-  @action.bound
   SetOffering = flow(function * (offeringKey) {
     this.Reset();
     this.offeringKey = offeringKey;
     yield this.SetVideo(this.videoObject, offeringKey);
   });
 
-  @action.bound
   SetVideo = flow(function * (videoObject) {
     this.loading = true;
 
@@ -408,7 +407,6 @@ class VideoStore {
     };
   });
 
-  @action.bound
   SetOfferingClipDetails = () => {
     Object.keys(this.metadata.offerings || {}).map(offeringKey => {
       const entryPointRat = this.metadata.offerings[offeringKey].entry_point_rat;
@@ -452,7 +450,6 @@ class VideoStore {
     }
   });
 
-  @action.bound
   Initialize(video, player) {
     this.initialized = false;
     this.video = video;
@@ -585,7 +582,6 @@ class VideoStore {
     }
   }
 
-  @action.bound
   SetClipMark({inFrame, outFrame, inProgress, outProgress}) {
     if(typeof inProgress !== "undefined" && inProgress >= 0) {
       inFrame = this.ProgressToFrame(inProgress);
@@ -613,63 +609,54 @@ class VideoStore {
     }
   }
 
-  @action.bound
   SMPTEToTime(smpte) {
     if(!this.videoHandler) { return 0; }
 
     return this.videoHandler.SMPTEToTime(smpte);
   }
 
-  @action.bound
   ProgressToTime(seek) {
     if(!this.videoHandler) { return 0; }
 
     return this.videoHandler.ProgressToTime(seek / 100);
   }
 
-  @action.bound
   ProgressToSMPTE(seek) {
     if(!this.videoHandler) { return; }
 
     return this.videoHandler.ProgressToSMPTE(seek / 100);
   }
 
-  @action.bound
   ProgressToFrame(seek) {
     if(!this.videoHandler) { return; }
 
     return this.TimeToFrame(this.ProgressToTime(seek));
   }
 
-  @action.bound
   TimeToSMPTE(time) {
     if(!this.videoHandler) { return; }
 
     return this.videoHandler.TimeToSMPTE(time);
   }
 
-  @action.bound
   TimeToFrame(time, round=false) {
     if(!this.videoHandler) { return 0; }
 
     return this.videoHandler.TimeToFrame(time, round);
   }
 
-  @action.bound
   TimeToProgress(time) {
     if(!this.videoHandler) { return 0; }
 
     return 100 * time / this.duration;
   }
 
-  @action.bound
   FrameToProgress(frame) {
     if(!this.videoHandler) { return 0; }
 
     return this.TimeToProgress(this.FrameToTime(frame));
   }
 
-  @action.bound
   FrameToTime(frame) {
     if(!this.videoHandler) { return 0; }
 
@@ -677,14 +664,12 @@ class VideoStore {
     return Number((this.videoHandler.FrameToTime(frame) + 0.00051).toFixed(3));
   }
 
-  @action.bound
   FrameToSMPTE(frame) {
     if(!this.videoHandler) { return; }
 
     return this.videoHandler.FrameToSMPTE(frame);
   }
 
-  @action.bound
   Update({frame, smpte, progress}) {
     if(!this.video) { return; }
 
@@ -715,7 +700,6 @@ class VideoStore {
     }
   }
 
-  @action.bound
   PlayPause() {
     if(this.video.paused) {
       this.video.play();
@@ -724,29 +708,24 @@ class VideoStore {
     }
   }
 
-  @action.bound
   SetPlaybackLevel(level) {
     this.player.nextLevel = parseInt(level);
     this.player.streamController.immediateLevelSwitch();
   }
 
-  @action.bound
   SetAudioTrack(trackIndex) {
     this.player.audioTrack = parseInt(trackIndex);
     this.player.streamController.immediateLevelSwitch();
   }
 
-  @action.bound
   SetPlaybackRate(rate) {
     this.video.playbackRate = rate;
   }
 
-  @action.bound
   ChangePlaybackRate(delta) {
     this.video.playbackRate = Math.min(4, Math.max(0.1, this.video.playbackRate + delta));
   }
 
-  @action.bound
   SetFrameRate({rateRat, rateKey}) {
     if(!rateRat && !rateKey) { return; }
 
@@ -766,7 +745,6 @@ class VideoStore {
     }
   }
 
-  @action.bound
   SetDropFrame(dropFrame) {
     this.dropFrame = dropFrame;
     this.videoHandler.dropFrame = this.dropFrame;
@@ -774,7 +752,6 @@ class VideoStore {
     this.videoHandler.Update();
   }
 
-  @action.bound
   ScrollScale(position, deltaY) {
     if(!this.video || !this.video.duration) { return; }
 
@@ -795,13 +772,11 @@ class VideoStore {
     );
   }
 
-  @action.bound
   SetScale(min, seek, max) {
     this.scaleMin = Math.max(0, Math.min(min, max - 5));
     this.scaleMax = Math.min(100, Math.max(max, min + 5));
   }
 
-  @action.bound
   PlaySegment(startFrame, endFrame, activeTrack) {
     this.Seek(startFrame);
     this.activeTrack = activeTrack;
@@ -816,19 +791,16 @@ class VideoStore {
     this.rootStore.overlayStore.SetActiveTrack(undefined);
   }
 
-  @action.bound
   Seek(frame, clearSegment=true) {
     if(clearSegment) { this.EndSegment(); }
     this.videoHandler.Seek(frame);
   }
 
-  @action.bound
   SeekPercentage(percent, clearSegment=true) {
     if(clearSegment) { this.EndSegment(); }
     this.videoHandler.SeekPercentage(percent);
   }
 
-  @action.bound
   SeekFrames({frames=0, seconds=0}) {
     if(this.playing) {
       this.PlayPause();
@@ -855,7 +827,6 @@ class VideoStore {
     this.videoHandler.Seek(targetFrame);
   }
 
-  @action.bound
   ScrollVolume(deltaY) {
     const volume = this.muted ? 0 : this.volume;
 
@@ -864,7 +835,6 @@ class VideoStore {
     );
   }
 
-  @action.bound
   SetVolume(volume) {
     this.video.volume = volume / 100;
 
@@ -875,7 +845,6 @@ class VideoStore {
     }
   }
 
-  @action.bound
   ChangeVolume(delta) {
     this.video.volume = Math.max(0, Math.min(1, this.video.volume + (delta / 100)));
 
@@ -886,7 +855,6 @@ class VideoStore {
     }
   }
 
-  @action.bound
   SetMuted(muted) {
     this.video.muted = muted;
 
@@ -895,7 +863,6 @@ class VideoStore {
     }
   }
 
-  @action.bound
   ToggleMuted() {
     this.video.muted = !this.video.muted;
 
@@ -904,7 +871,6 @@ class VideoStore {
     }
   }
 
-  @action.bound
   ToggleFullscreen() {
     if(this.fullScreen) {
       if (document.exitFullscreen) {
@@ -931,7 +897,6 @@ class VideoStore {
     }
   }
 
-  @action.bound
   AssetLink(assetKey, height) {
     const filePath = this.metadata.assets[assetKey].file["/"].split("/files/").slice(1).join("/");
 
@@ -945,14 +910,12 @@ class VideoStore {
     return url.toString();
   }
 
-  @action.bound
   VideoFrame(frame) {
     const url = new URL(this.baseVideoFrameUrl);
     url.searchParams.set("frame", frame);
     return url.toString();
   }
 
-  @action.bound
   SaveFrame() {
     if(!this.video) { return; }
 
@@ -967,7 +930,6 @@ class VideoStore {
     });
   }
 
-  @action.bound
   async SaveVideo() {
     const currentLevel = this.levels[this.currentLevel];
     const currentAudioTrack = this.audioTracks[this.currentAudioTrack];

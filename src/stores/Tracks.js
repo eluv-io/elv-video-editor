@@ -1,10 +1,9 @@
-import {observable, action, flow, toJS} from "mobx";
+import {flow, makeAutoObservable, toJS} from "mobx";
 import {WebVTT} from "../vendor/vtt.js/lib/index";
 import Id from "../utils/Id";
 import IntervalTree from "node-interval-tree";
 import {Parser as HLSParser} from "m3u8-parser";
 import UrlJoin from "url-join";
-import "elv-components-js/src/utils/LimitedMap";
 
 /*
  * Track Types:
@@ -32,17 +31,19 @@ class Tracks {
   entries = {};
   intervalTrees = {};
 
-  @observable initialized = false;
-  @observable tracks = [];
-  @observable audioTracks = [];
-  @observable selectedTrack;
-  @observable editingTrack = false;
-  @observable audioLoading = false;
-  @observable audioSupported = true;
+  initialized = false;
+  tracks = [];
+  audioTracks = [];
+  selectedTrack;
+  editingTrack = false;
+  audioLoading = false;
+  audioSupported = true;
 
-  @observable totalEntries = 0;
+  totalEntries = 0;
 
   constructor(rootStore) {
+    makeAutoObservable(this);
+
     this.rootStore = rootStore;
     colorIndex = 0;
 
@@ -51,7 +52,6 @@ class Tracks {
 
       // eslint-disable-next-line no-console
       console.error("AudioContext not supported in this browser");
-      return;
     }
   }
 
@@ -170,19 +170,16 @@ class Tracks {
     return trackId;
   }
 
-  @action.bound
   TrackEntries(trackId) {
     return this.entries[trackId];
   }
 
-  @action.bound
   TrackEntryIntervalTree(trackId) {
     return this.intervalTrees[trackId];
   }
 
   /* Audio Tracks */
 
-  @action.bound
   AddAudioSegment = flow(function * (trackId, audioData, duration, number, samplesPerSecond) {
     const source = this.audioContext.createBufferSource();
     yield new Promise(async (resolve, reject) => {
@@ -237,7 +234,6 @@ class Tracks {
     }
   });
 
-  @action.bound
   AddAudioTracks = flow(function * () {
     if(!this.audioContext) {
       this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -272,7 +268,8 @@ class Tracks {
             await (await fetch(track.initSegmentUrl, { headers: {"Content-type": "audio/mp4"}})).arrayBuffer()
           );
 
-          await track.segments.limitedMap(
+          await this.rootStore.client.utils.LimitedMap(
+            track.segments,
             concurrentRequests,
             async segment => {
               // Abort if video has changed
@@ -560,7 +557,6 @@ class Tracks {
     });
   }
 
-  @action.bound
   InitializeTracks = flow(function * () {
     if(this.initialized) { return; }
 
@@ -575,14 +571,12 @@ class Tracks {
 
   /* User Actions */
 
-  @action.bound
   SelectedTrack() {
     if(!this.selectedTrack) { return; }
 
     return this.tracks.find(track => track.trackId === this.selectedTrack);
   }
 
-  @action.bound
   SetSelectedTrack(trackId) {
     if(this.selectedTrack === trackId) { return; }
 
@@ -593,14 +587,12 @@ class Tracks {
     this.ClearEditing();
   }
 
-  @action.bound
   ClearSelectedTrack() {
     this.SetSelectedTrack(undefined);
 
     this.rootStore.videoStore.EndSegment();
   }
 
-  @action.bound
   ToggleTrack(label) {
     const trackInfo = this.tracks.find(track => track.label === label);
 
@@ -610,7 +602,6 @@ class Tracks {
     trackInfo.active = this.rootStore.videoStore.ToggleTrack(label);
   }
 
-  @action.bound
   ToggleTrackByIndex(index) {
     const trackInfo = this.tracks[index];
 
@@ -620,19 +611,16 @@ class Tracks {
     trackInfo.active = this.rootStore.videoStore.ToggleTrack(trackInfo.label);
   }
 
-  @action.bound
   SetEditing(trackId) {
     this.SetSelectedTrack(trackId);
 
     this.editingTrack = true;
   }
 
-  @action.bound
   ClearEditing() {
     this.editingTrack = false;
   }
 
-  @action.bound
   CreateTrack({label, key}) {
     const trackId = this.AddTrack({
       label,
@@ -646,7 +634,6 @@ class Tracks {
     this.SetEditing(trackId);
   }
 
-  @action.bound
   EditTrack({trackId, label, key}) {
     const track = this.tracks.find(track => track.trackId === trackId);
 
@@ -656,7 +643,6 @@ class Tracks {
     this.ClearEditing();
   }
 
-  @action.bound
   ModifyTrack(f) {
     const track = this.SelectedTrack();
     f(track);
@@ -664,14 +650,12 @@ class Tracks {
     track.version += 1;
   }
 
-  @action.bound
   RemoveTrack(trackId) {
     this.ClearSelectedTrack();
 
     this.tracks = this.tracks.filter(track => track.trackId !== trackId);
   }
 
-  @action.bound
   AddEntry({trackId, text, startTime, endTime}) {
     const track = this.tracks.find(track => track.trackId === trackId);
     const cue = this.Cue({entryType: "metadata", text, startTime, endTime});

@@ -1,0 +1,29 @@
+@import "../variables";
+
+.sidebar {
+  background: var(--background-secondary);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 25px 15px;
+  gap: 15px;
+  align-items: center;
+
+  &__button {
+    height: 50px;
+    width: 50px;
+    color: var(--text-disabled);
+    padding: 7px;
+    transition: color 0.25s ease, background 0.25s ease;
+    border-radius: 5px;
+
+    &--active {
+      color: var(--text-secondary);
+      background: var(--background-active);
+    }
+
+    &:hover {
+      color: var(--text-secondary);
+    }
+  }
+}

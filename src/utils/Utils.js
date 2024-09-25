@@ -1,4 +1,15 @@
-import React from "react";
+export const JoinClassNames = (...cs) => cs.join(" ");
+
+export const CreateModuleClassMatcher = (...modules) => {
+  return (...classes) => JoinClassNames(
+    ...(classes.map(c => {
+      const module = modules.find(m => m[c]);
+
+      return module?.[c] || "";
+    }))
+  );
+};
+
 
 // onWheel is a passive event, which prevents disabling page scroll
 // React doesn't support marking callbacks as active, so we can use `ref` to attach the handler directly to the element to prevent scrolling instead
@@ -56,20 +67,6 @@ export const SortEntries = entries => entries.sort((a, b) => {
 
   return a.startTime < b.startTime ? -1 : 1;
 });
-
-export const Input =
-  props => (
-    <input
-      {...props}
-      onKeyPress={event => {
-        event.stopPropagation();
-
-        if(props.onKeyPress) {
-          props.onKeyPress(event);
-        }
-      }}
-    />
-  );
 
 // Traverse through a hashmap without throwing errors on undefined keys
 // If any keys undefined, returns undefined

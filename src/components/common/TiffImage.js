@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import Tiff from "tiff.js";
-import {LoadingElement} from "elv-components-js";
+import {Loader} from "Components/common/Loader";
 
 // Display TIFFs in browser - Not used, but may be useful
 
@@ -55,7 +55,7 @@ const TiffImage = ({url, setRef}) => {
           }
         }}
       />
-      { loading ? <LoadingElement loading /> : null }
+      { loading ? <Loader /> : null }
     </React.Fragment>
   );
 };

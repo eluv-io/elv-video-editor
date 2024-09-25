@@ -1,20 +1,29 @@
-import {observable, action, computed, flow} from "mobx";
-import {FormatName} from "elv-components-js";
+import { flow, makeAutoObservable } from "mobx";
+
+const FormatName = (name) => {
+  return (name || "")
+    .replace("-", " ")
+    .split(/[_, \s]/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
 
 class OverlayStore {
-  @observable trackMap = {};
-  @observable overlayEnabled = false;
-  @observable enabledOverlayTracks = {};
-  @observable trackInfo = {};
-  @observable activeTrack;
+  trackMap = {};
+  overlayEnabled = false;
+  enabledOverlayTracks = {};
+  trackInfo = {};
+  activeTrack;
 
-  @computed get visibleOverlayTracks() {
+  get visibleOverlayTracks() {
     return this.activeTrack ?
       { [this.activeTrack]: true} :
       this.enabledOverlayTracks;
   }
 
   constructor(rootStore) {
+    makeAutoObservable(this);
+
     this.rootStore = rootStore;
   }
 
@@ -23,12 +32,10 @@ class OverlayStore {
     this.overlayEnabled = false;
   }
 
-  @action.bound
   SetActiveTrack(track) {
     this.activeTrack = track;
   }
 
-  @action.bound
   TrackInfo(trackKey) {
     if(!this.trackInfo[trackKey]) {
       const track = this.rootStore.trackStore.tracks
@@ -48,7 +55,6 @@ class OverlayStore {
     return this.trackInfo[trackKey];
   }
 
-  @action.bound
   AddOverlayTracks = flow(function * () {
     try {
       const metadata = this.rootStore.videoStore.metadata;
@@ -99,12 +105,10 @@ class OverlayStore {
     }
   });
 
-  @action.bound
   ToggleOverlay(enabled) {
     this.overlayEnabled = enabled;
   }
 
-  @action.bound
   ToggleOverlayTrack(trackKey, enabled) {
     this. enabledOverlayTracks[trackKey] = enabled;
   }

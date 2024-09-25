@@ -1,13 +1,15 @@
-import {action, flow, observable, toJS} from "mobx";
+import { flow, toJS, makeAutoObservable } from "mobx";
 import {diff} from "deep-object-diff";
 import {SortEntries} from "../utils/Utils";
 import FrameAccurateVideo from "../utils/FrameAccurateVideo";
 
 class EditStore {
-  @observable saving = false;
-  @observable saveFailed = false;
+  saving = false;
+  saveFailed = false;
 
   constructor(rootStore) {
+    makeAutoObservable(this);
+
     this.rootStore = rootStore;
   }
 
@@ -15,7 +17,6 @@ class EditStore {
     this.saving = false;
   }
 
-  @action.bound
   Save = flow(function * ({trimOfferings}) {
     if(this.saving || this.rootStore.videoStore.loading) { return; }
 
@@ -207,7 +208,6 @@ class EditStore {
     };
   };
 
-  @action.bound
   UploadMetadataTags = flow(function * ({metadataFiles, metadataFilesRemote, overlayFiles=[], overlayFilesRemote=[]}) {
     if(this.rootStore.videoStore.loading) {
       return;

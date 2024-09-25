@@ -1,32 +1,34 @@
-import {action, computed, observable} from "mobx";
+import { makeAutoObservable } from "mobx";
 
 class ClipStore {
-  @observable scaleRangeTime = 20 * 60;
+  scaleRangeTime = 20 * 60;
 
-  @observable clipBin = [];
+  clipBin = [];
 
-  @observable timeline = [];
+  timeline = [];
 
-  @observable heldClip;
+  heldClip;
 
-  @observable scaleMin = 0;
-  @observable scaleMax = 75;
+  scaleMin = 0;
+  scaleMax = 75;
 
-  @observable selectedClipId;
+  selectedClipId;
 
-  @computed get selectedClip() {
+  get selectedClip() {
     if(!this.selectedClipId) { return undefined; }
 
     return this.clipBin.find(clip => clip.clipBinId === this.selectedClipId) ||
       this.timeline.find(clip => clip.id === this.selectedClipId);
   }
 
-  @computed get scaleStartTime() { return this.scaleRangeTime * this.scaleMin / 100; }
-  @computed get scaleEndTime() { return this.scaleRangeTime * this.scaleMax / 100; }
-  @computed get scaleStartFrame() { return this.rootStore.videoStore.TimeToFrame(this.scaleStartTime); }
-  @computed get scaleEndFrame() { return this.rootStore.videoStore.TimeToFrame(this.scaleEndTime); }
+  get scaleStartTime() { return this.scaleRangeTime * this.scaleMin / 100; }
+  get scaleEndTime() { return this.scaleRangeTime * this.scaleMax / 100; }
+  get scaleStartFrame() { return this.rootStore.videoStore.TimeToFrame(this.scaleStartTime); }
+  get scaleEndFrame() { return this.rootStore.videoStore.TimeToFrame(this.scaleEndTime); }
 
   constructor(rootStore) {
+    makeAutoObservable(this);
+
     this.rootStore = rootStore;
 
     this.clipLabelId = 1;
@@ -43,17 +45,14 @@ class ClipStore {
     this.clipId = 0;
   }
 
-  @action.bound
   SelectClip(clipId) {
     this.selectedClipId = clipId;
   }
 
-  @action.bound
   ClearSelectedClip() {
     this.selectedClipId = undefined;
   }
 
-  @action.bound
   SaveClip({start, end}) {
     if(this.clipBin.find(clip => clip.start === start && clip.end === end)) {
       return;
@@ -65,17 +64,14 @@ class ClipStore {
     this.SelectClip(id);
   }
 
-  @action.bound
   HoldClip(clip) {
     this.heldClip = clip;
   }
 
-  @action.bound
   ReleaseClip() {
     this.heldClip = undefined;
   }
 
-  @action.bound
   PlaceClip({clip, startPosition}) {
     const clipDuration = clip.end - clip.start;
 
@@ -135,29 +131,24 @@ class ClipStore {
     this.SelectClip(clip.id);
   }
 
-  @action.bound
   UpdateSelectedClipLabel(label) {
     this.selectedClip.label = label;
   }
 
-  @action.bound
   DeleteClip(clipId) {
     this.clipBin = this.clipBin.filter(clip => clip.clipBinId !== clipId);
     this.timeline = this.timeline.filter(clip => clip.id !== clipId);
   }
 
-  @action.bound
   SetScale(min, max) {
     this.scaleMin = Math.max(0, min);
     this.scaleMax = Math.min(100, max);
   }
 
-  @action.bound
   ProgressToSMPTE(seek) {
     return this.rootStore.videoStore.FrameToSMPTE(this.ProgressToFrame(seek));
   }
 
-  @action.bound
   ProgressToFrame(seek) {
     return this.rootStore.videoStore.TimeToFrame(this.scaleRangeTime) * seek / 100;
   }
