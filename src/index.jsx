@@ -2,16 +2,18 @@ import "Assets/stylesheets/reset.scss";
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import "Assets/stylesheets/base.scss";
+import "Assets/stylesheets/modules/common.module.scss";
+
 import MantineTheme from "Assets/MantineTheme";
 
 import React from "react";
 import { createRoot } from "react-dom/client";
-import {inject, observer, Provider} from "mobx-react";
+import {observer} from "mobx-react";
 import {MantineProvider} from "@mantine/core";
 import UrlJoin from "url-join";
 import {rootStore} from "Stores/index";
-import {Loader} from "Components/common/Common";
 import Sidebar from "Components/nav/Sidebar";
+import Browser from "Components/nav/Browser";
 
 const App = observer(() => {
   if(window.self === window.top) {
@@ -27,7 +29,11 @@ const App = observer(() => {
   return (
     <div className="page-container">
       <Sidebar />
-      <Loader />
+      {
+        rootStore.view === "source" ?
+          <Browser /> :
+          null
+      }
     </div>
   );
 });

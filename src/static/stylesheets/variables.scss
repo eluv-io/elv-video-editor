@@ -2,13 +2,18 @@
   --background-primary: #151515;
   --background-secondary: #1b1b1c;
   --background-active: #323233;
-
+  --background-input: #1e1e1e;
   --spinner-color: #FFF;
   --spinner-color-background: red;
   --spinner-width: 5px;
-
-  --text-primary: #ffffff;
+  --text-primary: #fff;
   --text-secondary: #BDBDBD;
   --text-tertiary: #7b7580;
   --text-disabled: #4b494e;
+  --table-border-color: #3B3B3B;
+
+  @keyframes fadein {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
 }

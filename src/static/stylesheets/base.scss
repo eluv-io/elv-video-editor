@@ -1,15 +1,37 @@
 @import "variables";
 
-* {
-  font-family: Inter, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-}
-
 body {
   background: var(--background-primary);
+  color: var(--text-secondary);
+  font-family: Inter, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
 .page-container {
   display: flex;
   min-height: 100vh;
   width: 100%;
+}
+
+input {
+  background: var(--background-input);
+  transition: box-shadow 0.25s ease;
+
+  &::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 5px #7474da;
+    outline:0;
+  }
+}
+
+button {
+  transition: box-shadow 0.25s ease;
+  user-select: none;
+
+  &:focus-visible {
+    box-shadow: 0 0 5px #7474da;
+    outline:0;
+  }
 }

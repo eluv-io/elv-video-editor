@@ -27,7 +27,7 @@ const colors = [
 ];
 let colorIndex = 0;
 
-class Tracks {
+class TrackStore {
   entries = {};
   intervalTrees = {};
 
@@ -182,9 +182,9 @@ class Tracks {
 
   AddAudioSegment = flow(function * (trackId, audioData, duration, number, samplesPerSecond) {
     const source = this.audioContext.createBufferSource();
-    yield new Promise(async (resolve, reject) => {
+    yield new Promise((resolve, reject) => {
       try {
-        await this.audioContext.decodeAudioData(audioData, (buffer) => {
+        this.audioContext.decodeAudioData(audioData, (buffer) => {
           source.buffer = buffer;
           resolve();
         });
@@ -671,4 +671,4 @@ class Tracks {
   }
 }
 
-export default Tracks;
+export default TrackStore;

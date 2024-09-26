@@ -29,3 +29,21 @@
   width: 100%;
 }
 
+.icon-button {
+  align-items: center;
+  color: var(--text-disabled);
+  display: flex;
+  justify-content: center;
+  min-height: 25px;
+  min-width: 25px;
+  padding: 2px;
+  transition: color 0.25s ease, background-color 0.1s ease;
+
+  &:hover,
+  &--active,
+  &:focus-visible {
+    background: var(--background-active);
+    color: var(--text-secondary);
+    transition: color 0.25s ease, background-color 0.3s ease;
+  }
+}

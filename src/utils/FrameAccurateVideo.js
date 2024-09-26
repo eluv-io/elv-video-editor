@@ -43,7 +43,7 @@ class FrameAccurateVideo {
     const frameRateKey = FrameAccurateVideo.FractionToRateKey(`${this.frameRateNumerator}/${this.frameRateDenominator}`);
     this.dropFrame = dropFrame && ["NTSC", "NTSCFilm", "NTSCHD"].includes(frameRateKey);
 
-    if(callback) {
+    if(this.video && callback) {
       this.RegisterCallback();
     }
 

@@ -2,7 +2,7 @@ import CommonStyles from "Assets/stylesheets/modules/common.module.scss";
 
 import React from "react";
 import {CreateModuleClassMatcher, JoinClassNames} from "Utils/Utils";
-import {Group, Tooltip} from "@mantine/core";
+import {Tooltip} from "@mantine/core";
 import SVG from "react-inlinesvg";
 
 const S = CreateModuleClassMatcher(CommonStyles);
@@ -25,18 +25,31 @@ export const Loader = ({className = "", loaderClassName=""}) => {
 
 // Buttons
 
-export const IconButton = ({label, icon, tooltipProps={}, ...props}) => {
+export const IconButton = ({
+  label,
+  icon,
+  active=false,
+  tooltipProps={openDelay: 1000},
+  unstyled=false,
+  children,
+  ...props
+}) => {
   if(props.disabled) {
     props.onClick = undefined;
   }
 
   const button = (
-    <button {...props} aria-label={label}>
+    <button
+      {...props}
+      aria-label={label || ""}
+      className={JoinClassNames(!unstyled && S("icon-button", active ? "icon-button--active" : ""), props.className || "")}
+    >
       {
         typeof icon === "string" ?
           <SVG src={icon} /> :
           icon
       }
+      { children }
     </button>
   );
 
@@ -51,13 +64,7 @@ export const IconButton = ({label, icon, tooltipProps={}, ...props}) => {
       label={label}
       events={{ hover: true, focus: true, touch: false }}
     >
-      {
-        !props.disabled ?
-          button :
-          <Group {...props}>
-            {button}
-          </Group>
-      }
+      { button }
     </Tooltip>
   );
 };

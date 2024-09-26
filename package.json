@@ -10,8 +10,8 @@
     "serve": "webpack-dev-server --hot --port 8090 --host=0.0.0.0 --port 8083",
     "build": "node ./node_modules/webpack-cli/bin/cli.js --mode=production --devtool false",
     "lint": "npm-run-all -s -c lint-js-fix lint-scss-fix",
-    "lint-js": "eslint ./src ./client/src --ext js,jsx --report-unused-disable-directives",
-    "lint-js-fix": "eslint ./src ./client/src --fix --ext js,jsx --report-unused-disable-directives",
+    "lint-js": "eslint ./src --ext js,jsx --report-unused-disable-directives",
+    "lint-js-fix": "eslint ./src --fix --ext js,jsx --report-unused-disable-directives",
     "lint-scss": "npx stylelint \"src/**/*.{css,scss}\"",
     "lint-scss-fix": "npx stylelint \"src/**/*.{css,scss}\" --fix"
   },

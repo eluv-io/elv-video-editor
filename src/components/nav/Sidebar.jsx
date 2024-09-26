@@ -30,10 +30,8 @@ const Sidebar = observer(() => {
             label={label}
             icon={icon}
             onClick={() => rootStore.SetView(key)}
-            tooltipProps={{
-              openDelay: 750
-            }}
-            className={S("sidebar__button", rootStore.view === key ? "sidebar__button--active" : "")}
+            active={rootStore.view === key}
+            className={S("sidebar__button")}
           />
         )
       }

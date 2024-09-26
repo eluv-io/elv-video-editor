@@ -1,4 +1,4 @@
-export const JoinClassNames = (...cs) => cs.join(" ");
+export const JoinClassNames = (...cs) => cs.map(c => c || "").join(" ");
 
 export const CreateModuleClassMatcher = (...modules) => {
   return (...classes) => JoinClassNames(

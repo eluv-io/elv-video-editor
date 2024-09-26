@@ -1,16 +1,12 @@
 import {flow, makeAutoObservable} from "mobx";
 import UrlJoin from "url-join";
 
-class MenuStore {
+class BrowserStore {
   libraryId = "";
   objectId = "";
   error = "";
 
-  showMenu = true;
-  showVideoOnly = true;
-
-  libraries = {};
-  objects = {};
+  libraries = undefined;
 
   selectedObject;
 
@@ -20,16 +16,8 @@ class MenuStore {
     this.rootStore = rootStore;
   }
 
-  ToggleMenu(open) {
-    this.showMenu = open;
-  }
-
   UpdateVersionHash(versionHash) {
     this.selectedObject.versionHash = versionHash;
-  }
-
-  ToggleVideoFilter(showVideoOnly) {
-    this.showVideoOnly = showVideoOnly;
   }
 
   SetErrorMessage(error) {
@@ -42,6 +30,9 @@ class MenuStore {
 
   SelectVideo = flow(function * ({libraryId, objectId, versionHash}) {
     try {
+      this.SetLibraryId(libraryId);
+      this.SetObjectId(objectId);
+
       this.rootStore.Reset();
       this.ClearErrorMessage();
       this.selectedObject = undefined;
@@ -101,64 +92,82 @@ class MenuStore {
 
       this.rootStore.videoStore.SetVideo(this.selectedObject);
       this.rootStore.clipVideoStore.SetVideo(this.selectedObject);
+
+      this.rootStore.SetView("tags");
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error("Failed to load object:");
       // eslint-disable-next-line no-console
       console.error(error);
 
-      this.ClearObjectId();
+      this.SetObjectId("");
       this.SetErrorMessage(error.message || error);
 
       throw error;
     }
   });
 
-  ListLibraries = flow(function * () {
-    const libraryIds = yield this.rootStore.client.ContentLibraries();
+  ListLibraries = flow(function * ({page, perPage, filter=""}) {
+    if(!this.libraries) {
+      const libraryIds = yield this.rootStore.client.ContentLibraries();
 
-    this.libraries = {};
+      const libraries = {};
 
-    (yield Promise.all(
-      libraryIds.map(async libraryId => {
-        try {
-          const metadata = await this.rootStore.client.ContentObjectMetadata({
-            libraryId,
-            objectId: libraryId.replace("ilib", "iq__"),
-            select: ["name", "public/name"]
-          });
+      (yield Promise.all(
+        libraryIds.map(async libraryId => {
+          try {
+            const metadata = (await this.rootStore.client.ContentObjectMetadata({
+              libraryId,
+              objectId: libraryId.replace("ilib", "iq__"),
+              metadataSubtree: "/public",
+              select: ["name", "display_image"]
+            })) || {};
 
-          this.libraries[libraryId] = {
-            libraryId,
-            name: metadata.public && metadata.public.name || metadata.name || libraryId
-          };
-        } catch(error) {
-          return undefined;
-        }
-      })
-    ));
+            libraries[libraryId] = {
+              libraryId,
+              name: metadata.name || libraryId,
+              image: !metadata.display_image ? undefined :
+                await this.rootStore.client.LinkUrl({
+                  libraryId,
+                  objectId: libraryId.replace("ilib", "iq__"),
+                  linkPath: "/public/display_image"
+                }),
+            };
+          } catch(error) {
+            return undefined;
+          }
+        })
+      ));
+
+      this.libraries = libraries;
+    }
+
+    const content = Object.keys(this.libraries)
+      .map(libraryId => ({
+        id: libraryId,
+        name: this.libraries[libraryId].name,
+        image: this.libraries[libraryId].image
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .filter(({name}) => !filter || name.toLowerCase().includes(filter.toLowerCase()));
+
+    return ({
+      content: content.slice((page - 1) * perPage, page * perPage),
+      paging: {
+        page,
+        perPage,
+        pages: Math.ceil(content.length / perPage),
+        total: content.length
+      }
+    });
   });
 
   ListObjects = flow(function * ({libraryId, page=1, perPage=25, filter="", cacheId=""}) {
-    const metadata = yield this.rootStore.client.ContentObjectMetadata({
-      libraryId,
-      objectId: libraryId.replace("ilib", "iq__"),
-      select: ["name", "public/name"]
-    });
-
-    this.libraries[libraryId] = {
-      libraryId,
-      name: metadata.public && metadata.public.name || metadata.name || libraryId
-    };
+    libraryId = libraryId || this.libraryId;
 
     let filters = [];
     if(filter) {
       filters.push({key: "/public/name", type: "cnt", filter});
-    }
-
-    if(this.showVideoOnly) {
-      // Filter no longer works
-      // filters.push({key: "/offerings/default/ready", type: "eq", filter: true});
     }
 
     let { contents, paging } = yield this.rootStore.client.ContentObjects({
@@ -166,6 +175,7 @@ class MenuStore {
       filterOptions: {
         select: [
           "public/name",
+          "public/display_image"
         ],
         filter: filters,
         start: (page-1) * perPage,
@@ -175,20 +185,76 @@ class MenuStore {
       }
     });
 
-    this.objects[libraryId] = (yield Promise.all(
+    contents = yield Promise.all(
       contents.map(async object => {
         const latestVersion = object.versions[0];
 
+        // Try and retrieve video duration
+        let duration, lastModified, forbidden;
+        try {
+          const metadata = await this.rootStore.client.ContentObjectMetadata({
+            versionHash: latestVersion.hash,
+            select: [
+              "commit/timestamp",
+              "offerings/*/media_struct/duration_rat"
+            ]
+          });
+
+          lastModified = metadata?.commit?.timestamp;
+          if(lastModified) {
+            lastModified = new Date(lastModified).toLocaleDateString(navigator.language, {month: "short", day: "numeric", year: "numeric"});
+          }
+
+          const offering = metadata?.offerings?.default ?
+            "default" :
+            Object.keys(metadata?.offerings || {})[0];
+
+          duration = metadata?.offerings?.[offering]?.media_struct?.duration_rat;
+
+          if(duration) {
+            duration = parseInt(duration.split("/")[0]) / parseInt(duration.split("/")[1]);
+
+            let hours = Math.floor(Math.max(0, duration) / 60 / 60) % 24;
+            let minutes = Math.floor(Math.max(0, duration) / 60 % 60);
+            let seconds = Math.ceil(Math.max(duration, 0) % 60);
+
+            duration = [hours, minutes, seconds]
+              .map(t => (!t || isNaN(t) ? "" : t.toString()).padStart(2, "0"))
+              .join(":");
+          }
+        } catch(error) {
+          if(error.status === 403) {
+            forbidden = true;
+          }
+        }
+
         return {
+          id: latestVersion.id,
           objectId: latestVersion.id,
           versionHash: latestVersion.hash,
-          name: latestVersion.meta && latestVersion.meta.public && latestVersion.meta.public.name || latestVersion.meta && latestVersion.meta.name || latestVersion.id,
-          metadata: latestVersion.meta
+          forbidden,
+          lastModified,
+          duration,
+          name: latestVersion?.meta?.public?.name || latestVersion.id,
+          image: !latestVersion?.meta?.public?.display_image ? undefined :
+            await this.rootStore.client.LinkUrl({
+              versionHash: latestVersion.hash,
+              linkPath: "/public/display_image"
+            }),
+          metadata: latestVersion?.meta || {}
         };
       })
-    ));
+    );
 
-    return paging;
+    return {
+      content: contents,
+      paging: {
+        page,
+        pages: paging.pages,
+        perPage,
+        total: paging.items
+      }
+    };
   });
 
   LookupContent = flow(function * (contentId) {
@@ -232,15 +298,10 @@ class MenuStore {
       switch(accessType) {
         case "library":
           this.SetLibraryId(libraryId);
-          break;
+          return true;
         case "object":
-          this.SetLibraryId(libraryId);
-          this.SetObjectId(objectId);
-
-          this.ToggleMenu(false);
-
           yield this.SelectVideo({libraryId, objectId, versionHash});
-          break;
+          return true;
         default:
           // eslint-disable-next-line no-console
           console.error("Invalid content:", contentId, accessType);
@@ -251,7 +312,7 @@ class MenuStore {
       // eslint-disable-next-line no-console
       console.error(error);
 
-      return { error: "Invalid content ID" };
+      return false;
     }
   });
 
@@ -259,17 +320,9 @@ class MenuStore {
     this.libraryId = libraryId;
   }
 
-  ClearLibraryId() {
-    this.libraryId = "";
-  }
-
   SetObjectId(objectId) {
     this.objectId = objectId;
   }
-
-  ClearObjectId() {
-    this.objectId = "";
-  }
 }
 
-export default MenuStore;
+export default BrowserStore;

@@ -1,14 +1,14 @@
 import { configure, runInAction, makeAutoObservable } from "mobx";
-import EditStore from "./Edit";
-import EntryStore from "./Entry";
-import KeyboardControlStore from "./KeyboardControls";
-import MenuStore from "./Menu";
-import OverlayStore from "./Overlay";
-import TrackStore from "./Tracks";
-import VideoStore from "./Video";
+import EditStore from "./EditStore";
+import EntryStore from "./EntryStore";
+import KeyboardControlStore from "./KeyboardControlsStore";
+import BrowserStore from "./BrowserStore";
+import OverlayStore from "./OverlayStore";
+import TrackStore from "./TrackStore";
+import VideoStore from "./VideoStore";
+import ClipStore from "./ClipStore";
 
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
-import ClipStore from "./Clip";
 
 // Force strict mode so mutations are only allowed within actions.
 configure({
@@ -26,7 +26,7 @@ class RootStore {
     this.editStore = new EditStore(this);
     this.entryStore = new EntryStore(this);
     this.keyboardControlStore = new KeyboardControlStore(this);
-    this.menuStore = new MenuStore(this);
+    this.browserStore = new BrowserStore(this);
     this.overlayStore = new OverlayStore(this);
     this.trackStore = new TrackStore(this);
     this.videoStore = new VideoStore(this);
@@ -74,19 +74,17 @@ class RootStore {
       const libraryId = await client.ContentObjectLibraryId({versionHash});
       const { objectId } = client.utils.DecodeVersionHash(versionHash);
 
-      this.menuStore.SetLibraryId(libraryId);
-      this.menuStore.SetObjectId(objectId);
-      this.menuStore.SelectVideo({libraryId, objectId, versionHash});
-      this.menuStore.ToggleMenu(false);
+      this.browserStore.SetLibraryId(libraryId);
+      this.browserStore.SetObjectId(objectId);
+      this.browserStore.SelectVideo({libraryId, objectId, versionHash});
     } else if(appPath.length >= 2 && appPath[0].startsWith("ilib") && appPath[1].startsWith("iq__")) {
       // libraryId + objectId
       const libraryId = appPath[0];
       const objectId = appPath[1];
 
-      this.menuStore.SetLibraryId(libraryId);
-      this.menuStore.SetObjectId(objectId);
-      this.menuStore.SelectVideo({libraryId, objectId});
-      this.menuStore.ToggleMenu(false);
+      this.browserStore.SetLibraryId(libraryId);
+      this.browserStore.SetObjectId(objectId);
+      this.browserStore.SelectVideo({libraryId, objectId});
     }
   }
 }
@@ -97,7 +95,7 @@ export const rootStore = root;
 export const editStore = rootStore.editStore;
 export const entryStore = rootStore.entryStore;
 export const keyboardControlsStore = rootStore.keyboardControlStore;
-export const menuStore = rootStore.menuStore;
+export const browserStore = rootStore.browserStore;
 export const overlayStore = rootStore.overlayStore;
 export const tracksStore = rootStore.trackStore;
 export const videoStore = rootStore.videoStore;
