@@ -1,5 +1,3 @@
-@import "../variables";
-
 .sidebar {
   align-items: center;
   background: var(--background-secondary);
@@ -8,6 +6,7 @@
   gap: 10px;
   min-height: 100vh;
   padding: 25px 15px;
+  width: max-content;
 
   &__button {
     border-radius: 3px;
