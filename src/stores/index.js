@@ -6,7 +6,6 @@ import BrowserStore from "./BrowserStore";
 import OverlayStore from "./OverlayStore";
 import TrackStore from "./TrackStore";
 import VideoStore from "./VideoStore";
-import ClipStore from "./ClipStore";
 
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
 
@@ -17,7 +16,7 @@ configure({
 
 class RootStore {
   client;
-
+  initialized = false;
   view = "source";
 
   constructor() {
@@ -30,8 +29,6 @@ class RootStore {
     this.overlayStore = new OverlayStore(this);
     this.trackStore = new TrackStore(this);
     this.videoStore = new VideoStore(this);
-    this.clipVideoStore = new VideoStore(this);
-    this.clipStore = new ClipStore(this);
 
     this.InitializeClient();
 
@@ -41,12 +38,10 @@ class RootStore {
   Reset() {
     [
       this.videoStore,
-      this.clipVideoStore,
       this.entryStore,
       this.overlayStore,
       this.trackStore,
-      this.editStore,
-      this.clipStore
+      this.editStore
     ]
       .forEach(store => store.Reset());
   }
@@ -76,7 +71,9 @@ class RootStore {
 
       this.browserStore.SetLibraryId(libraryId);
       this.browserStore.SetObjectId(objectId);
-      this.browserStore.SelectVideo({libraryId, objectId, versionHash});
+      await this.browserStore.SelectVideo({libraryId, objectId, versionHash});
+
+      this.view = "tags";
     } else if(appPath.length >= 2 && appPath[0].startsWith("ilib") && appPath[1].startsWith("iq__")) {
       // libraryId + objectId
       const libraryId = appPath[0];
@@ -84,8 +81,11 @@ class RootStore {
 
       this.browserStore.SetLibraryId(libraryId);
       this.browserStore.SetObjectId(objectId);
-      this.browserStore.SelectVideo({libraryId, objectId});
+      await this.browserStore.SelectVideo({libraryId, objectId});
+      this.view = "tags";
     }
+
+    this.initialized = true;
   }
 }
 
@@ -99,5 +99,3 @@ export const browserStore = rootStore.browserStore;
 export const overlayStore = rootStore.overlayStore;
 export const tracksStore = rootStore.trackStore;
 export const videoStore = rootStore.videoStore;
-export const clipVideoStore = rootStore.clipVideoStore;
-export const clipStore = rootStore.clipStore;

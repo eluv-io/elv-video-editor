@@ -6,11 +6,14 @@
   --spinner-color: #FFF;
   --spinner-color-background: red;
   --spinner-width: 5px;
+  --focus-color: #7474da;
   --text-primary: #fff;
   --text-secondary: #BDBDBD;
   --text-tertiary: #7b7580;
   --text-disabled: #4b494e;
   --table-border-color: #3B3B3B;
+  --font-default: inter, system-ui, "Segoe UI", roboto, helvetica, arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-monospace: "Chivo Mono", "Courier New", courier, monospace;
 
   @keyframes fadein {
     from { opacity: 0; }

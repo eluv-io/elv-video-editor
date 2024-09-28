@@ -18,7 +18,6 @@
   "dependencies": {
     "@babel/polyfill": "^7.4.3",
     "@eluvio/elv-client-js": "^4.0.96",
-    "@eluvio/elv-player-js": "^2.0.19",
     "@mantine/core": "^7.13.0",
     "@mantine/dates": "^7.13.0",
     "@mantine/hooks": "^7.13.0",
@@ -26,6 +25,7 @@
     "babel-preset-mobx": "^2.0.0",
     "deep-object-diff": "^1.1.0",
     "fraction.js": "^4.0.12",
+    "hls.js": "^1.5.15",
     "m3u8-parser": "^4.7.0",
     "mime-types": "^2.1.35",
     "mobx": "^6.13.2",

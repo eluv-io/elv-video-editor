@@ -25,6 +25,10 @@
   height: 100%;
   justify-content: center;
   width: 100%;
+
+  &:global {
+    animation: 0.5s fadein ease;
+  }
 }
 
 .icon-button {
@@ -40,8 +44,10 @@
   &:hover,
   &--active,
   &:focus-visible {
-    background: var(--background-active);
-    color: var(--text-secondary);
-    transition: color 0.25s ease, background-color 0.3s ease;
+    &:not(:disabled) {
+      background: var(--background-active);
+      color: var(--text-secondary);
+      transition: color 0.25s ease, background-color 0.3s ease;
+    }
   }
 }

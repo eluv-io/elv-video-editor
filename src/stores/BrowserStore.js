@@ -91,7 +91,6 @@ class BrowserStore {
       };
 
       this.rootStore.videoStore.SetVideo(this.selectedObject);
-      this.rootStore.clipVideoStore.SetVideo(this.selectedObject);
 
       this.rootStore.SetView("tags");
     } catch(error) {

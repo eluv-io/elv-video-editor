@@ -2,7 +2,7 @@ import NavStyles from "Assets/stylesheets/modules/nav.module.scss";
 
 import React from "react";
 import {observer} from "mobx-react";
-import {rootStore} from "Stores";
+import {rootStore, videoStore} from "Stores";
 import {CreateModuleClassMatcher} from "Utils/Utils";
 import {IconButton} from "Components/common/Common";
 
@@ -31,6 +31,7 @@ const Sidebar = observer(() => {
             icon={icon}
             onClick={() => rootStore.SetView(key)}
             active={rootStore.view === key}
+            disabled={key !== "source" && !videoStore.initialized}
             className={S("sidebar__button")}
           />
         )

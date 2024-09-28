@@ -243,7 +243,20 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
 const ObjectBrowser = observer(() => {
   const [filter, setFilter] = useState("");
 
-  const library = browserStore.libraries[browserStore.libraryId];
+  useEffect(() => {
+    // Ensure libraries are loaded
+    browserStore.ListLibraries({});
+  }, []);
+
+  const library = browserStore.libraries?.[browserStore.libraryId];
+
+  if(!library) {
+    return (
+      <div className={S("browser", "browser--object")}>
+        <Loader />
+      </div>
+    );
+  }
 
   return (
     <div className={S("browser", "browser--object")}>

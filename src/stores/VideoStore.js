@@ -50,10 +50,11 @@ class VideoStore {
   smpte = "00:00:00:00";
 
   duration;
+  durationSMPTE;
   playing = false;
   playbackRate = 1.0;
   fullScreen = false;
-  volume = 100;
+  volume = 1;
   muted = false;
 
   seek = 0;
@@ -102,6 +103,8 @@ class VideoStore {
     makeAutoObservable(this);
 
     this.rootStore = rootStore;
+
+    this.Update = this.Update.bind(this);
   }
 
   Reset() {
@@ -150,7 +153,7 @@ class VideoStore {
     this.playing = false;
     this.playbackRate = 1.0;
     this.fullScreen = false;
-    this.volume = 100;
+    this.volume = 1;
     this.muted = false;
 
     this.seek = 0;
@@ -451,6 +454,10 @@ class VideoStore {
   });
 
   Initialize(video, player) {
+    if(this.loading) { return;}
+
+    this.loading = true;
+
     this.initialized = false;
     this.video = video;
     this.player = player;
@@ -515,7 +522,7 @@ class VideoStore {
     this.video.addEventListener("play", action(() => this.playing = true));
     this.video.addEventListener("ratechange", action(() => this.playbackRate = this.video.playbackRate));
     this.video.addEventListener("volumechange", action(() => {
-      this.volume = video.volume * 100;
+      this.volume = video.volume;
       this.muted = video.muted;
     }));
     this.video.addEventListener("click", action(() => {
@@ -525,6 +532,7 @@ class VideoStore {
         clearTimeout(this.click);
         this.click = undefined;
 
+        // TODO: Fullscreen handling
         this.ToggleFullscreen();
       } else {
         // Single click delayed by 200ms
@@ -566,6 +574,8 @@ class VideoStore {
       console.error(video.error);
       this.videoKey = this.videoKey + 1;
     }));
+
+    this.loading = false;
   }
 
   ToggleTrack(label) {
@@ -677,6 +687,7 @@ class VideoStore {
     this.smpte = smpte;
     this.seek = progress * 100;
     this.duration = this.video.duration;
+    this.durationSMPTE = this.videoHandler?.TimeToSMPTE(this.video.duration);
     this.currentTime = this.video.currentTime;
 
     // Ensure min isn't less than seek - may happen if the video isn't buffered
@@ -831,12 +842,12 @@ class VideoStore {
     const volume = this.muted ? 0 : this.volume;
 
     this.SetVolume(
-      Math.max(0, Math.min(100, volume - (deltaY * 100 * 0.001)))
+      Math.max(0, Math.min(100, volume - (deltaY * 0.001)))
     );
   }
 
   SetVolume(volume) {
-    this.video.volume = volume / 100;
+    this.video.volume = Math.max(0, Math.min(1, volume));
 
     if(volume === 0) {
       this.video.muted = true;
@@ -846,7 +857,7 @@ class VideoStore {
   }
 
   ChangeVolume(delta) {
-    this.video.volume = Math.max(0, Math.min(1, this.video.volume + (delta / 100)));
+    this.video.volume = Math.max(0, Math.min(1, this.video.volume + delta));
 
     if(this.video.volume === 0) {
       this.video.muted = true;
@@ -858,7 +869,7 @@ class VideoStore {
   SetMuted(muted) {
     this.video.muted = muted;
 
-    if(this.video.volume === 0) {
+    if(!muted && this.video.volume === 0) {
       this.video.volume = 0.5;
     }
   }
@@ -866,7 +877,7 @@ class VideoStore {
   ToggleMuted() {
     this.video.muted = !this.video.muted;
 
-    if(this.video.volume === 0) {
+    if(!this.video.muted && this.video.volume === 0) {
       this.video.volume = 0.5;
     }
   }

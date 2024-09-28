@@ -15,6 +15,8 @@ import UrlJoin from "url-join";
 import {rootStore} from "Stores/index";
 import Sidebar from "Components/nav/Sidebar";
 import Browser from "Components/nav/Browser";
+import Video from "Components/video/Video";
+import {Loader} from "Components/common/Common";
 
 const App = observer(() => {
   if(window.self === window.top) {
@@ -30,11 +32,15 @@ const App = observer(() => {
   return (
     <div className="page-container">
       <Sidebar />
-      {
-        rootStore.view === "source" ?
-          <Browser /> :
-          null
-      }
+      <div className="content">
+        {
+          !rootStore.initialized ?
+            <Loader />:
+            rootStore.view === "source" ?
+              <Browser /> :
+              <Video />
+        }
+      </div>
     </div>
   );
 });

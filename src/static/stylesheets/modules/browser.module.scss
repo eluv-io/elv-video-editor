@@ -50,12 +50,15 @@
   }
 
   &__row {
-    animation: 0.5s fadein ease;
     border-bottom: 1px solid var(--table-border-color);
     display: grid;
     min-height: 60px;
     padding-inline: 10px;
     transition: color 0.25s ease, background-color 0.1s ease;
+
+    &:global {
+      animation: 0.5s fadein ease;
+    }
 
     &--content {
       &:not(:disabled) {

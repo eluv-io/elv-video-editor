@@ -12,6 +12,10 @@ body {
   width: 100%;
 }
 
+.content {
+  width: 100%;
+}
+
 input {
   background: var(--background-input);
   transition: box-shadow 0.25s ease;
@@ -21,7 +25,7 @@ input {
   }
 
   &:focus-visible {
-    box-shadow: 0 0 5px #7474da;
+    box-shadow: 0 0 5px var(--focus-color);
     outline:0;
   }
 }
@@ -31,7 +35,7 @@ button {
   user-select: none;
 
   &:focus-visible {
-    box-shadow: 0 0 5px #7474da;
+    box-shadow: 0 0 5px var(--focus-color);
     outline:0;
   }
 }
