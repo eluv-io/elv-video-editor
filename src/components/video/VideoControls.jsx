@@ -4,7 +4,8 @@ import React from "react";
 import {observer} from "mobx-react";
 import {videoStore} from "Stores";
 import {CreateModuleClassMatcher, StopScroll} from "Utils/Utils";
-import {IconButton} from "Components/common/Common";
+import {IconButton, SelectInput} from "Components/common/Common";
+import Fraction from "fraction.js";
 import SVG from "react-inlinesvg";
 
 const S = CreateModuleClassMatcher(VideoStyles);
@@ -17,6 +18,86 @@ import PauseIcon from "Assets/icons/Pause";
 import FrameIcon from "Assets/icons/picture";
 import FullscreenIcon from "Assets/icons/Maximize";
 import MinimizeIcon from "Assets/icons/Minimize";
+import {FrameRates} from "Utils/FrameAccurateVideo";
+
+export const QualityControls = observer(() => {
+  const levels = Object.keys(videoStore.levels).map(levelIndex => {
+    const level = videoStore.levels[levelIndex];
+
+    return ({
+      label: `${level.attrs.RESOLUTION} (${(level.bitrate / 1000 / 1000).toFixed(1)}Mbps)`,
+      value: levelIndex?.toString()
+    });
+  });
+
+  return (
+    <SelectInput
+      label="Video Quality"
+      value={videoStore.currentLevel?.toString()}
+      options={levels}
+      onChange={value => value && videoStore.SetPlaybackLevel(value)}
+    />
+  );
+});
+
+export const OfferingControls = observer(() => {
+  let offerings = Object.keys(videoStore.availableOfferings)
+    .sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: "base"}))
+    .map(offeringKey => ({
+      value: offeringKey,
+      label: videoStore.availableOfferings[offeringKey].display_name || offeringKey,
+      disabled: videoStore.availableOfferings[offeringKey].disabled || false
+    }));
+
+
+  return (
+    <SelectInput
+      label="Offering"
+      value={videoStore.offeringKey}
+      options={offerings}
+      onChange={value => value && videoStore.SetOffering(value)}
+    />
+  );
+});
+
+export const DropFrameControls = observer(() => {
+  return (
+    <SelectInput
+      label="Drop Frame Notation"
+      value={videoStore.dropFrame ? "DF" : "NDF"}
+      options={["NDF", "DF"]}
+      onChange={value => videoStore.SetDropFrame(value === "DF")}
+    />
+  );
+});
+
+export const FrameRateControls = observer(() => {
+  return (
+    <SelectInput
+      label="Frame Rate"
+      disabled={videoStore.frameRateSpecified}
+      value={videoStore.frameRateKey}
+      options={Object.keys(FrameRates)}
+      onChange={value => videoStore.SetFrameRate(value)}
+    />
+  );
+});
+
+export const PlaybackRateControl = observer(() => {
+  // 0.1 intervals from 0.1x to 4x
+  const rates = [...Array(40)]
+    .map((_, i) => Fraction(i + 1).div(10).toString())
+    .map(rate => ({label: `${rate}x`, value: rate}));
+
+  return (
+    <SelectInput
+      label="Playback Rate"
+      value={Fraction(videoStore.playbackRate).toString()}
+      options={rates}
+      onChange={value => videoStore.SetPlaybackRate(value)}
+    />
+  );
+});
 
 export const FullscreenButton = observer(() => {
   return (

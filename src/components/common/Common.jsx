@@ -1,9 +1,10 @@
 import CommonStyles from "Assets/stylesheets/modules/common.module.scss";
 
 import React from "react";
-import {CreateModuleClassMatcher, JoinClassNames} from "Utils/Utils";
-import {Tooltip} from "@mantine/core";
+import {CreateModuleClassMatcher, JoinClassNames, TextWidth} from "Utils/Utils";
+import {Select, Tooltip} from "@mantine/core";
 import SVG from "react-inlinesvg";
+import {observer} from "mobx-react";
 
 const S = CreateModuleClassMatcher(CommonStyles);
 
@@ -68,3 +69,36 @@ export const IconButton = ({
     </Tooltip>
   );
 };
+
+export const SelectInput = observer(({label, options=[], autoWidth=true, ...props}) => {
+  let textWidth;
+  if(autoWidth) {
+    const selectedOption = options.find(option =>
+      (typeof option === "object" ? option.value : option)?.toString()  === props?.value?.toString()
+    );
+    textWidth = TextWidth({
+      text: selectedOption?.label || selectedOption || "",
+      fontSize: 16
+    }) + 10;
+  }
+
+  return (
+    <Tooltip label={label} openDelay={1000}>
+      <Select
+        data={options}
+        classNames={{
+          root: S("select"),
+          input: S("select__input"),
+          option: S("select__option")
+        }}
+        leftSectionWidth={0}
+        rightSectionWidth={0}
+        textAlign="center"
+        onChange={value => value && props?.onChange(value)}
+        {...props}
+        w={textWidth || props.width}
+        comboboxProps={{width: "max-content", ...(props.comboboxProps || {})}}
+      />
+    </Tooltip>
+  );
+});

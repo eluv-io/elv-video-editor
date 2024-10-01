@@ -51,3 +51,23 @@
     }
   }
 }
+
+.select {
+  user-select: none!important;
+
+  &__input {
+    background: transparent;
+    border: 0;
+    font-size: 16px;
+    padding: 0;
+    text-align: center;
+    user-select: none!important;
+
+    &:disabled {
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      opacity: 1;
+    }
+  }
+}

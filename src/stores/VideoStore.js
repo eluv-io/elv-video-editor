@@ -52,7 +52,7 @@ class VideoStore {
   duration;
   durationSMPTE;
   playing = false;
-  playbackRate = 1.0;
+  playbackRate = 2.0;
   fullScreen = false;
   volume = 1;
   muted = false;
@@ -210,6 +210,10 @@ class VideoStore {
           versionHash: videoObject.versionHash
         });
 
+        if(this.availableOfferings?.default) {
+          this.availableOfferings.default.display_name = "Default Offering";
+        }
+
         this.SetOfferingClipDetails();
 
         const offeringPlayoutOptions = {};
@@ -227,7 +231,6 @@ class VideoStore {
         } catch(error) {
           // eslint-disable-next-line no-console
           console.error(error);
-          this.rootStore.menuStore.SetErrorMessage(`Unable to load playout options for ${this.offeringKey}`);
         }
 
         if(!playoutOptions || !playoutOptions["hls"] || !(playoutOptions["hls"].playoutMethods.clear || playoutOptions["hls"].playoutMethods["aes-128"])) {

@@ -85,6 +85,7 @@ class BrowserStore {
         objectId: object.id,
         versionHash,
         name: metadata.public && metadata.public.name || metadata.name || versionHash,
+        description: metadata.public && metadata.public.description || metadata.description,
         metadata,
         //isVideo: metadata.offerings && metadata.offerings[this.rootStore.videoStore.offeringKey]?.ready
         isVideo: true

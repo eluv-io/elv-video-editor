@@ -15,8 +15,8 @@ import UrlJoin from "url-join";
 import {rootStore} from "Stores/index";
 import Sidebar from "Components/nav/Sidebar";
 import Browser from "Components/nav/Browser";
-import Video from "Components/video/Video";
 import {Loader} from "Components/common/Common";
+import VideoSection from "Components/video/VideoSection";
 
 const App = observer(() => {
   if(window.self === window.top) {
@@ -38,7 +38,7 @@ const App = observer(() => {
             <Loader />:
             rootStore.view === "source" ?
               <Browser /> :
-              <Video />
+              <VideoSection />
         }
       </div>
     </div>
@@ -48,7 +48,7 @@ const App = observer(() => {
 const root = createRoot(document.getElementById("app"));
 root.render(
   <React.StrictMode>
-    <MantineProvider theme={MantineTheme} defaultColorScheme="dark" withCssVariables>
+    <MantineProvider theme={MantineTheme} defaultColorScheme="dark">
       <App />
     </MantineProvider>
   </React.StrictMode>

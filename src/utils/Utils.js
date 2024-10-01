@@ -1,6 +1,10 @@
+import SharedStyles from "Assets/stylesheets/modules/shared.module.scss";
+
 export const JoinClassNames = (...cs) => cs.map(c => c || "").join(" ");
 
 export const CreateModuleClassMatcher = (...modules) => {
+  modules = [...modules, SharedStyles];
+
   return (...classes) => JoinClassNames(
     ...(classes.map(c => {
       const module = modules.find(m => m[c]);
@@ -8,6 +12,17 @@ export const CreateModuleClassMatcher = (...modules) => {
       return module?.[c] || "";
     }))
   );
+};
+
+export const TextWidth = ({text, fontWeight="normal", fontSize=16}) => {
+  const canvas = window.__textWidthCanvas || (window.__textWidthCanvas = document.createElement("canvas"));
+
+  const context = canvas.getContext("2d");
+
+  const fontFamily = window.getComputedStyle(document.body, null).getPropertyValue("font-family");
+  context.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+
+  return context.measureText(text).width;
 };
 
 
