@@ -47,6 +47,7 @@ class VideoStore {
 
   currentTime = 0;
   frame = 0;
+  totalFrames = 0;
   smpte = "00:00:00:00";
 
   duration;
@@ -148,6 +149,7 @@ class VideoStore {
 
     this.currentTime = 0;
     this.frame = 0;
+    this.totalFrames = 0;
     this.smpte = "00:00:00:00";
 
     this.playing = false;
@@ -521,7 +523,10 @@ class VideoStore {
     }));
 
     // Use video element as source of truth - attach handlers to relevant events to update app state
-    this.video.addEventListener("pause", action(() => this.playing = false));
+    this.video.addEventListener("pause", action(() => {
+      this.playing = false;
+      this.segmentEnd = undefined;
+    }));
     this.video.addEventListener("play", action(() => this.playing = true));
     this.video.addEventListener("ratechange", action(() => this.playbackRate = this.video.playbackRate));
     this.video.addEventListener("volumechange", action(() => {
@@ -628,6 +633,12 @@ class VideoStore {
     return this.videoHandler.SMPTEToTime(smpte);
   }
 
+  SMPTEToFrame(smpte) {
+    if(!this.videoHandler) { return 0; }
+
+    return this.videoHandler.SMPTEToFrame(smpte);
+  }
+
   ProgressToTime(seek) {
     if(!this.videoHandler) { return 0; }
 
@@ -687,6 +698,7 @@ class VideoStore {
     if(!this.video) { return; }
 
     this.frame = Math.floor(frame);
+    this.totalFrames = this.videoHandler?.TotalFrames();
     this.smpte = smpte;
     this.seek = progress * 100;
     this.duration = this.video.duration;

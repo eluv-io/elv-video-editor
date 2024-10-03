@@ -16,9 +16,16 @@ body {
   background: var(--background-primary);
   display: flex;
   flex-direction: column;
-  gap: var(--gutter-size);
-  padding: var(--gutter-size);
+  gap: var(--gutter-size-y) var(--gutter-size-x);
+  padding: var(--gutter-size-y) var(--gutter-size-x);
   width: 100%;
+}
+
+.top {
+  display: flex;
+  gap: var(--gutter-size-x);
+  max-width: calc(100vw - 100px);
+  overflow: hidden;
 }
 
 input {

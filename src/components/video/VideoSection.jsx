@@ -10,9 +10,9 @@ import {
 } from "Components/video/VideoControls";
 import Video from "Components/video/Video";
 import SVG from "react-inlinesvg";
+import {Tooltip} from "@mantine/core";
 
 import DescriptionIcon from "Assets/icons/v2/description";
-import {Tooltip} from "@mantine/core";
 
 const S = CreateModuleClassMatcher(VideoStyles);
 

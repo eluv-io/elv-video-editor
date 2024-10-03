@@ -2,7 +2,7 @@ import CommonStyles from "Assets/stylesheets/modules/common.module.scss";
 
 import React from "react";
 import {CreateModuleClassMatcher, JoinClassNames, TextWidth} from "Utils/Utils";
-import {Select, Tooltip} from "@mantine/core";
+import {Select, TextInput, Tooltip} from "@mantine/core";
 import SVG from "react-inlinesvg";
 import {observer} from "mobx-react";
 
@@ -70,6 +70,31 @@ export const IconButton = ({
   );
 };
 
+export const Input = observer(({label, monospace, ...props}) => {
+  const input = (
+    <TextInput
+      classNames={{
+        root: S("input", monospace ? "monospace" : ""),
+        input: S("input__input")
+      }}
+      textAlign="center"
+      onChange={props.onChange}
+      aria-label={props["aria-label"] || label || ""}
+      {...props}
+    />
+  );
+
+  if(label) {
+    return (
+      <Tooltip label={label} openDelay={1000}>
+        { input }
+      </Tooltip>
+    );
+  }
+
+  return input;
+});
+
 export const SelectInput = observer(({label, options=[], autoWidth=true, ...props}) => {
   let textWidth;
   if(autoWidth) {
@@ -95,6 +120,7 @@ export const SelectInput = observer(({label, options=[], autoWidth=true, ...prop
         rightSectionWidth={0}
         textAlign="center"
         onChange={value => value && props?.onChange(value)}
+        aria-label={props["aria-label"] || label || ""}
         {...props}
         w={textWidth || props.width}
         comboboxProps={{width: "max-content", ...(props.comboboxProps || {})}}

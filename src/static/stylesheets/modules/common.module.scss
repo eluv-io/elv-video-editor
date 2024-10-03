@@ -33,7 +33,7 @@
 
 .icon-button {
   align-items: center;
-  color: var(--text-disabled);
+  color: var(--text-secondary);
   display: flex;
   justify-content: center;
   min-height: 25px;
@@ -51,6 +51,23 @@
     }
   }
 }
+
+.input {
+  &__input {
+    background: var(--background-input);
+    border: 0;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+
+    &:disabled {
+      background: var(--background-input);
+      color: var(--text-secondary);
+      opacity: 1;
+    }
+  }
+}
+
 
 .select {
   user-select: none!important;

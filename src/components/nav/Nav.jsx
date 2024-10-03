@@ -20,9 +20,9 @@ const pages = [
   { label: "Assets", key: "assets", icon: AssetIcon }
 ];
 
-const Sidebar = observer(() => {
+const Nav = observer(() => {
   return (
-    <nav className={S("sidebar")}>
+    <nav className={S("nav")}>
       {
         pages.map(({label, key, icon}) =>
           <IconButton
@@ -32,7 +32,7 @@ const Sidebar = observer(() => {
             onClick={() => rootStore.SetView(key)}
             active={rootStore.view === key}
             disabled={key !== "source" && !videoStore.initialized}
-            className={S("sidebar__button")}
+            className={S("nav__button")}
           />
         )
       }
@@ -40,4 +40,4 @@ const Sidebar = observer(() => {
   );
 });
 
-export default Sidebar;
+export default Nav;

@@ -1,17 +1,18 @@
-.sidebar {
+.nav {
   align-items: center;
   background: var(--background-secondary);
   border-radius: 0 var(--content-border-radius) 0 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  height: calc(100vh - var(--gutter-size));
-  margin-top: var(--gutter-size);
+  height: calc(100vh - var(--gutter-size-y));
+  margin-top: var(--gutter-size-y);
   padding: 25px 15px;
   width: max-content;
 
   &__button {
     border-radius: 3px;
+    color: var(--text-disabled);
     height: 55px;
     padding: 12px;
     width: 55px;

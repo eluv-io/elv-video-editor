@@ -1,5 +1,7 @@
 /* Video Section */
 .video-section {
+  width: 100%;
+
   &__title {
     align-items: center;
     background: var(--background-toolbar);
@@ -9,54 +11,13 @@
   }
 }
 
-.toolbar {
-  align-items: center;
-  background: var(--background-toolbar);
-  display: flex;
-  gap: 10px;
-  height: 45px;
-  padding-inline: var(--content-inline-padding);
-
-  &__description {
-    align-items: center;
-    cursor: pointer;
-    display: flex;
-    flex-shrink: 1;
-    gap: 10px;
-    height: 100%;
-  }
-
-  &__description-text {
-    max-width: 500px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    user-select: none;
-    white-space: nowrap;
-  }
-
-  &__description-icon {
-    flex-grow: 1;
-    flex-shrink: 0;
-  }
-
-  &__spacer {
-    flex-grow: 1;
-  }
-
-  &__controls-group {
-    align-items: center;
-    display: flex;
-    gap: 10px;
-  }
-}
-
 /* Player */
 
 .video-container {
   align-items: center;
   background: var(--background-secondary);
   display: flex;
-  height: 50vh;
+  height: 35vh;
   justify-content: center;
   max-width: calc(100vw - 85px);
   overflow: hidden;

@@ -1,0 +1,25 @@
+.side-panel-section {
+  align-items: center;
+  display: flex;
+  min-width: 15vw;
+  overflow: hidden;
+  position: relative;
+
+  &__handle {
+    cursor: col-resize;
+    height: 100%;
+    position: absolute;
+    right: 0;
+    width: 5px;
+    z-index: 1;
+  }
+
+  &__header{
+    font-size: 24px;
+    font-weight: 600;
+  }
+}
+
+.side-panel {
+  height: 100%;
+}

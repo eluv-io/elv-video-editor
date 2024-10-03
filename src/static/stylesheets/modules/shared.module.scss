@@ -7,3 +7,79 @@
   height: 25px;
   width: 25px;
 }
+
+.monospace {
+  font-family: var(--font-monospace);
+
+  * {
+    font-family: var(--font-monospace);
+  }
+}
+
+.highlight {
+  color: var(--text-highlight);
+}
+
+.toolbar {
+  align-items: center;
+  background: var(--background-toolbar);
+  display: flex;
+  gap: 10px;
+  height: 45px;
+  justify-content: center;
+  padding-inline: var(--content-inline-padding);
+  position: relative;
+
+  &__description {
+    align-items: center;
+    cursor: pointer;
+    display: flex;
+    flex-shrink: 1;
+    gap: 10px;
+    height: 100%;
+  }
+
+  &__description-text {
+    max-width: 500px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  &__description-icon {
+    flex-grow: 1;
+    flex-shrink: 0;
+  }
+
+  &__separator {
+    background: var(--text-disabled);
+    height: 20px;
+    margin-inline: 5px;
+    width: 1px;
+  }
+
+  &__spacer {
+    flex-grow: 1;
+  }
+
+  &__controls-group {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+
+    &.left,
+    &.center,
+    &.right {
+      position: absolute;
+    }
+
+    &.left {
+      left: var(--content-inline-padding);
+    }
+
+    &.right {
+      right: var(--content-inline-padding);
+    }
+  }
+}
