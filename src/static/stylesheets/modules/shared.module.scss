@@ -23,6 +23,8 @@
 .toolbar {
   align-items: center;
   background: var(--background-toolbar);
+  container-name: toolbar;
+  container-type: inline-size;
   display: flex;
   gap: 10px;
   height: 45px;
@@ -34,13 +36,13 @@
     align-items: center;
     cursor: pointer;
     display: flex;
-    flex-shrink: 1;
+    flex: 1 1 0;
     gap: 10px;
     height: 100%;
+    max-width: min(500px, 40%);
   }
 
   &__description-text {
-    max-width: 500px;
     overflow: hidden;
     text-overflow: ellipsis;
     user-select: none;
@@ -81,5 +83,11 @@
     &.right {
       right: var(--content-inline-padding);
     }
+  }
+}
+
+@container toolbar (width < 900px) {
+  .toolbar__description {
+    max-width: 30%;
   }
 }

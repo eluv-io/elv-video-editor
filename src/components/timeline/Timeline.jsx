@@ -89,39 +89,59 @@ const JumpToDisplay = observer(() => {
   );
 });
 
-const VideoSection = observer(() => {
+const TimelineTopBar = observer(() => {
   return (
-    <div className={S("content-block", "timeline-section")}>
-      <div className={S("toolbar")}>
-        <div className={S("toolbar__controls-group", "left")}>
-          <IconButton icon={UndoIcon} label="Undo" onClick={() => {}} />
-          <IconButton icon={RedoIcon} label="Redo" onClick={() => {}} />
-          <div className={S("toolbar__separator")} />
-          <IconButton icon={AddUserIcon} label="Add User" onClick={() => {}} />
-          <IconButton icon={DownloadIcon} label="Save Video at Current Quality" onClick={() => videoStore.SaveVideo()} />
-          <div className={S("toolbar__separator")} />
-          <JumpToDisplay />
-        </div>
-        <div className={S("toolbar__controls-group", "center", "frame-controls")}>
-          <IconButton icon={FrameBack10} label="Back 10 Frames" onClick={() => videoStore.SeekFrames({frames: -10})} />
-          <IconButton icon={FrameBack1} label="Back 1 Frame" onClick={() => videoStore.SeekFrames({frames: -1})} />
-          <FrameDisplay />
-          <IconButton icon={FrameForward1} label="Forward 1 Frame" onClick={() => videoStore.SeekFrames({frames: 1})} />
-          <IconButton icon={FrameForward10} label="Forward 10 Frames" onClick={() => videoStore.SeekFrames({frames: 10})} />
-        </div>
-        <div className={S("toolbar__controls-group", "right")}>
-          <IconButton icon={PlayClipIcon} label="Play Current Selection" className={videoStore.segmentEnd ? S("highlight") : ""} onClick={() => videoStore.PlaySegment(videoStore.clipInFrame, videoStore.clipOutFrame)} />
-          <IconButton icon={AddNewItemIcon} label="Add New Item" onClick={() => {}} />
-          <IconButton icon={SplitIcon} label="Split" onClick={() => {}} />
-          <div className={S("toolbar__separator")} />
-          <IconButton icon={ClipInIcon} label="Set Clip In to Current Frame" onClick={() => videoStore.SetClipMark({inFrame: videoStore.frame})} />
-          <Input label="Clip Start" monospace value={videoStore.FrameToSMPTE(videoStore.clipInFrame)} w={150} />
-          <IconButton icon={ClipOutIcon} label="Set Clip Out to Current Frame" onClick={() => videoStore.SetClipMark({outFrame: videoStore.frame})} />
-          <Input label="Clip End" monospace value={videoStore.FrameToSMPTE(videoStore.clipOutFrame)} w={150} />
-        </div>
+    <div className={S("toolbar", "timeline-section__top-bar")}>
+      <div className={S("toolbar__controls-group", "left")}>
+        <IconButton icon={UndoIcon} label="Undo" onClick={() => {}} />
+        <IconButton icon={RedoIcon} label="Redo" onClick={() => {}} />
+        <div className={S("toolbar__separator")} />
+        <IconButton icon={AddUserIcon} label="Add User" onClick={() => {}} />
+        <IconButton icon={DownloadIcon} label="Save Video at Current Quality" onClick={() => videoStore.SaveVideo()} />
+        <div className={S("toolbar__separator")} />
+        <JumpToDisplay />
+      </div>
+      <div className={S("toolbar__controls-group", "center", "frame-controls")}>
+        <IconButton icon={FrameBack10} label="Back 10 Frames" onClick={() => videoStore.SeekFrames({frames: -10})} />
+        <IconButton icon={FrameBack1} label="Back 1 Frame" onClick={() => videoStore.SeekFrames({frames: -1})} />
+        <FrameDisplay />
+        <IconButton icon={FrameForward1} label="Forward 1 Frame" onClick={() => videoStore.SeekFrames({frames: 1})} />
+        <IconButton icon={FrameForward10} label="Forward 10 Frames" onClick={() => videoStore.SeekFrames({frames: 10})} />
+      </div>
+      <div className={S("toolbar__controls-group", "right")}>
+        <IconButton icon={PlayClipIcon} label="Play Current Selection" className={videoStore.segmentEnd ? S("highlight") : ""} onClick={() => videoStore.PlaySegment(videoStore.clipInFrame, videoStore.clipOutFrame)} />
+        <IconButton icon={AddNewItemIcon} label="Add New Item" onClick={() => {}} />
+        <IconButton icon={SplitIcon} label="Split" onClick={() => {}} />
+        <div className={S("toolbar__separator")} />
+        <IconButton icon={ClipInIcon} label="Set Clip In to Current Frame" onClick={() => videoStore.SetClipMark({inFrame: videoStore.frame})} />
+        <Input label="Clip Start" monospace value={videoStore.FrameToSMPTE(videoStore.clipInFrame) || "00:00:00:00"} w={150} />
+        <IconButton icon={ClipOutIcon} label="Set Clip Out to Current Frame" onClick={() => videoStore.SetClipMark({outFrame: videoStore.frame})} />
+        <Input label="Clip End" monospace value={videoStore.FrameToSMPTE(videoStore.clipOutFrame) || "00:00:00:00"} w={150} />
       </div>
     </div>
   );
 });
 
-export default VideoSection;
+const TimelineBottomBar = observer(() => {
+  return (
+    <div className={S("toolbar", "timeline-section__bottom-bar")}>
+
+    </div>
+  );
+});
+
+const TimelineSection = observer(() => {
+  return (
+    <div className={S("content-block", "timeline-section")}>
+      <TimelineTopBar />
+      <div className={S("timeline-section__content")}>
+        <div className={S("timeline-section__content-test")}>
+          Content
+        </div>
+      </div>
+      <TimelineBottomBar />
+    </div>
+  );
+});
+
+export default TimelineSection;

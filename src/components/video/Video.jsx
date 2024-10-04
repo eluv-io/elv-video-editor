@@ -27,6 +27,8 @@ const Video = observer(() => {
       return;
     }
 
+    video.__containerElement = document.querySelector("#video-container");
+
     setReady(false);
 
     video.addEventListener("canplay", () => setReady(true));
@@ -67,7 +69,7 @@ const Video = observer(() => {
   }, [hlsPlayer]);
 
   return (
-    <div className={S("video-container")}>
+    <div id="video-container" className={S("video-container", videoStore.fullScreen ? "video-container--fullscreen" : "")}>
       <div className={S("video-wrapper")}>
         <video
           key={`video-${videoStore.source}`}

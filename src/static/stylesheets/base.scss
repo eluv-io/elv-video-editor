@@ -17,6 +17,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--gutter-size-y) var(--gutter-size-x);
+  height: calc(100vh - var(--gutter-size-y));
+  max-height: calc(100vh - var(--gutter-size-y));
+  overflow: hidden;
   padding: var(--gutter-size-y) var(--gutter-size-x);
   width: 100%;
 }
@@ -24,8 +27,20 @@ body {
 .top {
   display: flex;
   gap: var(--gutter-size-x);
-  max-width: calc(100vw - 100px);
+  height: 50vh;
   overflow: hidden;
+  position: relative;
+}
+
+.bottom {
+  height: 0;
+  position: relative;
+}
+
+.video-panel,
+.side-panel {
+  height: 100%;
+  position: relative;
 }
 
 input {

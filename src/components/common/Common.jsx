@@ -1,6 +1,6 @@
 import CommonStyles from "Assets/stylesheets/modules/common.module.scss";
 
-import React from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {CreateModuleClassMatcher, JoinClassNames, TextWidth} from "Utils/Utils";
 import {Select, TextInput, Tooltip} from "@mantine/core";
 import SVG from "react-inlinesvg";
@@ -77,7 +77,6 @@ export const Input = observer(({label, monospace, ...props}) => {
         root: S("input", monospace ? "monospace" : ""),
         input: S("input__input")
       }}
-      textAlign="center"
       onChange={props.onChange}
       aria-label={props["aria-label"] || label || ""}
       {...props}
@@ -118,7 +117,6 @@ export const SelectInput = observer(({label, options=[], autoWidth=true, ...prop
         }}
         leftSectionWidth={0}
         rightSectionWidth={0}
-        textAlign="center"
         onChange={value => value && props?.onChange(value)}
         aria-label={props["aria-label"] || label || ""}
         {...props}
@@ -126,5 +124,43 @@ export const SelectInput = observer(({label, options=[], autoWidth=true, ...prop
         comboboxProps={{width: "max-content", ...(props.comboboxProps || {})}}
       />
     </Tooltip>
+  );
+});
+
+export const ResizeHandle = observer(({onMove, variant="both"}) => {
+  const [dragging, setDragging] = useState(false);
+  const handleRef = useRef(null);
+
+  useEffect(() => {
+    if(!dragging) { return; }
+
+    const Move = event => {
+      const handlePosition = handleRef?.current?.getBoundingClientRect();
+
+      if(!handlePosition) { return; }
+
+      onMove({
+        deltaX: event.clientX - (handlePosition.x + handlePosition.width),
+        deltaY: event.clientY - (handlePosition.y - (handlePosition.height / 2))
+      });
+    };
+
+    document.addEventListener("dragover", Move);
+
+    return () => {
+      document.removeEventListener("dragover", Move);
+    };
+  }, [dragging]);
+
+  return (
+    <div className={S("resize-handle", `resize-handle--${variant}`, dragging ? "resize-handle--active" : "")}>
+      <div
+        ref={handleRef}
+        draggable
+        onDragStart={() => setDragging(true)}
+        onDragEnd={() => setDragging(false)}
+        className={S("resize-handle__draggable")}
+      />
+    </div>
   );
 });

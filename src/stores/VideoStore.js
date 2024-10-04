@@ -480,7 +480,7 @@ class VideoStore {
     video.load();
 
     // Attach fullscreen state handling to video container
-    video.parentElement.parentElement.onfullscreenchange = action(() => this.fullScreen = !this.fullScreen);
+    video.__containerElement.onfullscreenchange = action(() => this.fullScreen = !this.fullScreen);
 
     this.volume = video.volume;
     this.muted = video.muted;
@@ -909,7 +909,7 @@ class VideoStore {
         document.msExitFullscreen();
       }
     } else {
-      const videoContainer = this.video.parentElement.parentElement;
+      const videoContainer = this.video.__containerElement;
 
       if (videoContainer.requestFullscreen) {
         videoContainer.requestFullscreen();

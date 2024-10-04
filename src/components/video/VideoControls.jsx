@@ -72,13 +72,15 @@ export const DropFrameControls = observer(() => {
 });
 
 export const FrameRateControls = observer(() => {
+  const RateToString = rate => rate.toString().replace("(", "").replace(")", "");
+
   return (
     <SelectInput
-      label="Frame Rate"
+      label={`Frame Rate: ${videoStore.frameRateKey} (${RateToString(FrameRates[videoStore.frameRateKey])} FPS)`}
       disabled={videoStore.frameRateSpecified}
       value={videoStore.frameRateKey}
       options={Object.keys(FrameRates)}
-      onChange={value => videoStore.SetFrameRate(value)}
+      onChange={value => videoStore.SetFrameRate({rateKey: value})}
     />
   );
 });
@@ -184,6 +186,7 @@ export const VolumeControls = observer(() => {
           step={0.001}
           value={videoStore.muted ? 0 : videoStore.volume}
           onInput={event => videoStore.SetVolume(event.target.value)}
+          onChange={event => videoStore.SetVolume(event.target.value)}
           onKeyDown={VolumeSliderKeydown()}
           className={S("volume-controls__slider-input")}
         />

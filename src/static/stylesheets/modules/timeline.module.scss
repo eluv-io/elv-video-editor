@@ -1,3 +1,24 @@
+.timeline-section {
+  height: 100%;
+  position: relative;
+
+  &__bottom-bar {
+    bottom: 0;
+    position: absolute;
+    width: 100%;
+  }
+
+  &__content {
+    max-height: calc(100% - 90px);
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  &__content-test {
+    height: 200vh;
+  }
+}
+
 .jump-to {
   align-items: center;
   display: flex;
