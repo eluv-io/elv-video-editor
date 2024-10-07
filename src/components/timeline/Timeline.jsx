@@ -1,6 +1,6 @@
 import TimelineStyles from "Assets/stylesheets/modules/timeline.module.scss";
 
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react";
 import {videoStore} from "Stores";
 import {CreateModuleClassMatcher} from "Utils/Utils";
@@ -21,6 +21,8 @@ import AddNewItemIcon from "Assets/icons/v2/add-new-item";
 import SplitIcon from "Assets/icons/v2/split";
 import ClipInIcon from "Assets/icons/v2/clip-start";
 import ClipOutIcon from "Assets/icons/v2/clip-end";
+import MarkedSlider from "Components/common/MarkedSlider";
+import Fraction from "fraction.js";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -130,16 +132,122 @@ const TimelineBottomBar = observer(() => {
   );
 });
 
+const TimelineSeekBar = observer(() => {
+  return (
+     <div className={S("timeline-row", "seek-bar-container")}>
+      <div className={S("timeline-row__label", "seek-bar-container__spacer")} />
+      <MarkedSlider
+        min={videoStore.scaleMin}
+        max={videoStore.scaleMax}
+        handles={[
+          {
+            position: videoStore.seek,
+            toolTip: `Playhead - ${videoStore.FrameToSMPTE(videoStore.frame)}`,
+            className: "seek-handle",
+          }
+        ]}
+        showMarks
+        topMarks
+        nMarks={videoStore.sliderMarks}
+        majorMarksEvery={videoStore.majorMarksEvery}
+        RenderText={value => videoStore.ProgressToSMPTE(value)}
+        onChange={value => {
+          videoStore.SeekPercentage(Fraction(value).div(100));
+        }}
+        className={S("seek-bar")}
+      />
+     </div>
+  );
+});
+
+const TimelinePlayheadIndicator = observer(({timelineRef}) => {
+  const [dimensions, setDimensions] = useState({});
+
+  useEffect(() => {
+    if(!timelineRef?.current) { return; }
+
+    const resizeObserver = new ResizeObserver(() => {
+      const contentBox = document.querySelector(`.${S("timeline-row__content")}`);
+
+      if(!contentBox) { return; }
+
+      // Position is relative to entire timeline
+      // Need to determine the difference between content and timeline to determine label + gap width
+      const contentDimensions = contentBox.getBoundingClientRect();
+      const parentDimensions = contentBox.parentElement.getBoundingClientRect();
+
+      contentDimensions.diff = contentDimensions.left - parentDimensions.left;
+      setDimensions(contentDimensions);
+    });
+
+    resizeObserver.observe(timelineRef.current);
+
+    return () => resizeObserver.disconnect();
+  }, [timelineRef]);
+
+  const seekPercent = (videoStore.seek - videoStore.scaleMin) / videoStore.scaleMax;
+  const position = dimensions.width * seekPercent;
+
+  if(!position) { return null; }
+
+  return (
+    <div
+      style={{left: position + dimensions.diff}}
+      className={S("playhead-indicator")}
+    />
+  );
+});
+
 const TimelineSection = observer(() => {
+  const timelineRef = useRef(null);
   return (
     <div className={S("content-block", "timeline-section")}>
       <TimelineTopBar />
-      <div className={S("timeline-section__content")}>
-        <div className={S("timeline-section__content-test")}>
-          Content
+      <TimelinePlayheadIndicator timelineRef={timelineRef} />
+      <div ref={timelineRef} className={S("timeline-section__content")}>
+        <TimelineSeekBar/>
+        <div className={S("timeline-row")}>
+          <div className={S("timeline-row__label")}>
+            Label
+          </div>
+          <div className={S("timeline-row__content")}>
+            Content
+          </div>
+        </div>
+        <div className={S("timeline-row")}>
+          <div className={S("timeline-row__label")}>
+            Label
+          </div>
+          <div className={S("timeline-row__content")}>
+            Content
+          </div>
+        </div>
+        <div className={S("timeline-row")}>
+          <div className={S("timeline-row__label")}>
+            Label
+          </div>
+          <div className={S("timeline-row__content")}>
+            Content
+          </div>
+        </div>
+        <div className={S("timeline-row")}>
+          <div className={S("timeline-row__label")}>
+            Label
+          </div>
+          <div className={S("timeline-row__content")}>
+            Content
+          </div>
+        </div>
+        <div className={S("timeline-row")}>
+          <div className={S("timeline-row__label")}>
+            Label
+          </div>
+          <div className={S("timeline-row__content")}>
+            Content
+          </div>
         </div>
       </div>
-      <TimelineBottomBar />
+      <TimelineBottomBar/>
     </div>
   );
 });

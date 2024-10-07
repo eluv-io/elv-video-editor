@@ -50,8 +50,9 @@
   }
 
   &__description-icon {
-    flex-grow: 1;
-    flex-shrink: 0;
+    height: 25px;
+    min-width: 25px;
+    width: 25px;
   }
 
   &__separator {
