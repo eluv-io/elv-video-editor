@@ -68,6 +68,11 @@ class VideoStore {
   @observable clipInFrame;
   @observable clipOutFrame;
 
+  @observable downloadJobInfo = {};
+  @observable downloadJobStatus = {};
+  @observable downloadedJobs = {};
+  @observable showDownloadModal = false;
+
   @computed get scaleMinTime() { return this.duration ? this.ProgressToTime(this.scaleMin) : 0; }
   @computed get scaleMaxTime() { return this.duration ? this.ProgressToTime(this.scaleMax) : 0; }
 
@@ -179,6 +184,8 @@ class VideoStore {
     this.loading = true;
 
     try {
+      this.LoadDownloadJobInfo();
+
       this.videoObject = videoObject;
 
       this.name = videoObject.name;
@@ -1022,9 +1029,155 @@ class VideoStore {
       }
     } catch(error) {
       this.rootStore.menuStore.SetErrorMessage("Unable to download");
+      // eslint-disable-next-line no-console
       console.error("Invalid URL or failed to download", error);
     }
   }
+
+  // Video Downloads
+
+  @action.bound
+  ToggleDownloadModal(show) {
+    this.showDownloadModal = show;
+  }
+
+  DownloadJobDefaultFilename({format="mp4", offering="default", clipInFrame, clipOutFrame}) {
+    let filename = this.name;
+
+    if(offering && offering !== "default") {
+      filename = `${filename} (${offering})`;
+    }
+
+    if(clipInFrame || (clipOutFrame && clipOutFrame !== this.videoHandler.TotalFrames() - 1)) {
+      filename = `${filename} (${this.videoHandler.FrameToSMPTE(clipInFrame || 0)} - ${this.videoHandler.FrameToSMPTE(clipOutFrame || this.videoHandler.TotalFrames())})`;
+    }
+
+    return `${filename}.${format === "mp4" ? "mp4" : "mov"}`;
+  }
+
+  async SaveDownloadJobInfo() {
+    await this.rootStore.client.walletClient.SetProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: "download-jobs",
+      value: this.rootStore.client.utils.B64(
+        JSON.stringify(this.downloadJobInfo || {})
+      )
+    });
+  }
+
+  @action.bound
+  LoadDownloadJobInfo = flow(function * () {
+    const response = JSON.parse(
+      this.rootStore.client.utils.FromB64(
+        (yield this.rootStore.client.walletClient.ProfileMetadata({
+          type: "app",
+          appId: "video-editor",
+          mode: "private",
+          key: "download-jobs"
+        })) || ""
+      ) || "{}"
+    );
+
+    let deleted = false;
+    // Remove expired entries
+    Object.keys(response).forEach(key => {
+      if(Date.now() > response[key].expiresAt) {
+        delete response[key];
+        deleted = true;
+      }
+    });
+
+    this.downloadJobInfo = response;
+
+    if(deleted) {
+      console.log("Updating")
+      this.SaveDownloadJobInfo();
+    }
+  });
+
+  StartDownloadJob = flow(function * ({
+    filename,
+    format="mp4",
+    offering="default",
+    clipInFrame,
+    clipOutFrame
+  }) {
+    let params = {
+      format,
+      offering,
+    };
+
+    if(clipInFrame) {
+      params.start_ms = this.videoHandler.DurationToString(this.videoHandler.FrameToTime(clipInFrame), true).replaceAll(" ", "");
+    }
+
+    if(clipOutFrame && clipOutFrame !== this.videoHandler.TotalFrames() - 1) {
+      params.end_ms = this.videoHandler.DurationToString(this.videoHandler.FrameToTime(clipOutFrame), true).replaceAll(" ", "");
+    }
+
+    const response = yield this.rootStore.client.CallBitcodeMethod({
+      versionHash: this.videoObject.versionHash,
+      method: "media/files",
+      constant: false,
+      body: params
+    });
+
+    filename = filename || this.DownloadJobDefaultFilename({format, offering, clipInFrame, clipOutFrame});
+    const expectedExtension = format === "mp4" ? ".mp4" : ".mov";
+    if(!filename.endsWith(expectedExtension)) {
+      filename = `${filename}${expectedExtension}`;
+    }
+
+    this.downloadJobInfo[response.job_id] = {
+      versionHash: this.videoObject.versionHash,
+      filename,
+      format,
+      offering,
+      clipInFrame,
+      clipOutFrame,
+      startedAt: Date.now(),
+      expiresAt: Date.now() + 24 * 60 * 60 * 1000
+    };
+
+    this.SaveDownloadJobInfo();
+
+    return {
+      jobId: response.job_id,
+      status: yield this.DownloadJobStatus({jobId: response.job_id})
+    };
+  });
+
+  @action.bound
+  DownloadJobStatus = flow(function * ({jobId}) {
+    this.downloadJobStatus[jobId] = yield this.rootStore.client.CallBitcodeMethod({
+      versionHash: this.downloadJobInfo[jobId].versionHash,
+      method: UrlJoin("media", "files", jobId),
+      constant: true
+    });
+
+    return this.downloadJobStatus[jobId];
+  });
+
+  SaveDownloadJob = flow(function * ({jobId}) {
+    const jobInfo = this.downloadJobInfo[jobId];
+
+    const downloadUrl = yield this.rootStore.client.FabricUrl({
+      versionHash: jobInfo.versionHash,
+      call: UrlJoin("media", "files", jobId, "download")
+    });
+
+    try {
+      DownloadFromUrl(downloadUrl, jobInfo.filename);
+
+      this.downloadedJobs[jobId] = true;
+    } catch(error) {
+      this.rootStore.menuStore.SetErrorMessage("Unable to download");
+      // eslint-disable-next-line no-console
+      console.error("Invalid URL or failed to download", error);
+    }
+  });
 }
 
 export default VideoStore;

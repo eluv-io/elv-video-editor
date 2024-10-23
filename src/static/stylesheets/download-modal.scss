@@ -1,0 +1,235 @@
+.download-modal {
+  width: 400px;
+  height: max-content;
+
+
+  &__header {
+    display: flex;
+    align-items: center;
+    position: relative;
+    width: 100%;
+    color: $elv-color-gray;
+    font-size: 18px;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    gap: 10px;
+
+    * {
+      color: $elv-color-gray;
+      stroke: $elv-color-gray;
+    }
+
+    svg {
+      height: 25px;
+      width: 25px;
+      min-width: 25px;
+    }
+  }
+
+  &__close {
+    position: absolute;
+    right: 0;
+    height: 25px;
+    width: 25px;
+    border: 0;
+
+    &:hover {
+      background-color: transparent!important;
+    }
+  }
+
+  &__tabs {
+    border-bottom: 1px solid $elv-color-darkergray;
+    display: flex;
+    align-items: center;
+    padding-bottom: 5px;
+    gap: 20px;
+    margin-top: 20px;
+  }
+
+  &__tab {
+    opacity: 0.5;
+    transition: opacity 0.15s ease;
+    border: 0;
+    font-size: 14px;
+    padding: 5px 0;
+
+    &:hover,
+    &--active {
+      opacity: 1;
+      background-color: transparent!important;
+    }
+  }
+
+  &__form {
+    margin: 30px 0 10px;
+    display: grid;
+    gap: 20px;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__label {
+    font-size: 16px;
+  }
+
+  &__input {
+    background: transparent;
+    border: 1px solid $elv-color-darkergray;
+    height: 45px;
+    padding-inline: 10px;
+    font-size: 16px;
+
+    &::placeholder {
+      font-size: 14px;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+
+  &__clip-points {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    justify-content: space-between;
+
+    .download-modal__input {
+      width: 190px;
+    }
+  }
+
+  &__duration {
+    color: $elv-color-gray;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+
+    &--loading {
+      height: 45px;
+    }
+  }
+
+  &__action {
+    width: 150px;
+    height: 45px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 16px;
+    font-weight: 600;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    border-radius: 6px;
+
+    &:hover {
+      background-color: transparent!important;
+    }
+
+    &--primary {
+      background-color: $elv-color-lightgray;
+      color: black;
+
+      &:hover {
+        background-color: $elv-color-lightgray!important;
+      }
+    }
+  }
+
+  &__history {
+    margin-top: 20px;
+    display: grid;
+    max-height: 550px;
+    overflow-y: auto;
+    padding-right: 10px;
+    position: relative;
+  }
+
+  &__history-row {
+    min-height: 35px;
+    display: grid;
+    align-items: center;
+    grid-template-columns: 2fr 1fr;
+    padding: 10px 0;
+
+    &--highlighted {
+      .download-modal__history-row-name {
+        color: #9fbafd;
+      }
+    }
+
+    &--header {
+      font-size: 16px;
+      font-weight: 400;
+      position: sticky;
+      top: 0;
+      background: #131315;
+      z-index: 1;
+      border-bottom: 1px solid $elv-color-darkergray;
+    }
+  }
+
+  &__history-row-name {
+    @include elv-ellipsis;
+    max-width: 200px;
+  }
+
+  &__history-row-duration {
+    opacity: 0.5;
+  }
+
+  &__history-download {
+    border-radius: 6px;
+    width: 100%;
+
+    &:hover {
+      background-color: transparent!important;
+    }
+
+    &:disabled {
+      opacity: 0.5!important;
+      pointer: auto;
+    }
+  }
+
+  &__message {
+    margin: 30px 0 10px;
+    text-align: center;
+  }
+}
+
+progress {
+  width: 100%;
+  border: 0;
+  height: 5px;
+  border-radius: 20px;
+  background-color: #000;
+}
+progress::-webkit-progress-bar {
+  border: 0;
+  height: 5px;
+  border-radius: 20px;
+  background-color: #000;
+}
+progress::-webkit-progress-value {
+  border: 0;
+  height: 5px;
+  border-radius: 20px;
+  background-color: $elv-color-gray;
+}
+progress::-moz-progress-bar {
+  border: 0;
+  height: 5px;
+  border-radius: 20px;
+  background-color: $elv-color-gray;
+}

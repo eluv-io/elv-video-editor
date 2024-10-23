@@ -1,6 +1,7 @@
 import {observable, action} from "mobx";
 
 class ControlStore {
+  @observable enabled = true;
   @observable controlMap;
   @observable modifiers = {
     alt: false,
@@ -13,6 +14,11 @@ class ControlStore {
     this.rootStore = rootStore;
 
     this.InitializeControlMap();
+  }
+
+  @action.bound
+  ToggleKeyboardControls(enabled) {
+    this.enabled = enabled;
   }
 
   @action.bound
@@ -71,6 +77,8 @@ class ControlStore {
 
   @action.bound
   HandleInput(event) {
+    if(!this.enabled) { return; }
+
     // Disable controls when using input element
     if(document.activeElement && document.activeElement.tagName.toLowerCase() === "input") {
       return;

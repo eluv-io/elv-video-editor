@@ -1,4 +1,5 @@
 import Fraction from "fraction.js";
+import {diff} from "deep-object-diff";
 
 export const FrameRateNumerator = {
   NTSC: 30000,
@@ -245,6 +246,37 @@ class FrameAccurateVideo {
 
   TotalFrames() {
     return Math.floor(Fraction(this.video.duration || 0).mul(this.frameRate).valueOf());
+  }
+
+  DurationToString(diffSeconds, includeFractionalSeconds) {
+    let hours = Math.floor(Math.max(0, diffSeconds) / 60 / 60) % 24;
+    let minutes = Math.floor(Math.max(0, diffSeconds) / 60 % 60);
+    let seconds = Math.max(diffSeconds, 0) % 60;
+
+    if(!includeFractionalSeconds) {
+      seconds = Math.ceil(seconds);
+    }
+
+    if(minutes === 60) {
+      hours += 1;
+      minutes = 0;
+    }
+
+    let countdownString = "";
+
+    if(hours > 0) {
+      countdownString += `${hours}h `;
+    }
+
+    if(minutes > 0) {
+      countdownString += `${minutes}m `;
+    }
+
+    if(seconds > 0) {
+      countdownString += ` ${seconds}s`;
+    }
+
+    return countdownString;
   }
 
   /* Controls */

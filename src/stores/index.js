@@ -90,6 +90,13 @@ class RootStore {
       this.menuStore.SelectVideo({libraryId, objectId});
       this.menuStore.ToggleMenu(false);
     }
+
+    // TODO: Remove
+    setTimeout(() => {
+      this.client.SetNodes({
+        fabricURIs: ["https://host-76-74-91-16.contentfabric.io"]
+      })
+    }, 2000);
   }
 }
 
