@@ -1092,7 +1092,7 @@ class VideoStore {
     this.downloadJobInfo = response;
 
     if(deleted) {
-      console.log("Updating")
+      console.log("Updating");
       this.SaveDownloadJobInfo();
     }
   });
@@ -1143,6 +1143,18 @@ class VideoStore {
 
     this.SaveDownloadJobInfo();
 
+    let statusInterval = setInterval(async () => {
+      const status = await this.DownloadJobStatus({jobId: response.job_id}) || {};
+
+      if(status?.status === "completed") {
+        this.SaveDownloadJob({jobId: response.job_id});
+      }
+
+      if(status?.status !== "processing") {
+        clearInterval(statusInterval);
+      }
+    }, 10000);
+
     return {
       jobId: response.job_id,
       status: yield this.DownloadJobStatus({jobId: response.job_id})
@@ -1161,6 +1173,8 @@ class VideoStore {
   });
 
   SaveDownloadJob = flow(function * ({jobId}) {
+    if(this.downloadedJobs[jobId]) { return; }
+
     const jobInfo = this.downloadJobInfo[jobId];
 
     const downloadUrl = yield this.rootStore.client.FabricUrl({

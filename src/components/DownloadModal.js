@@ -77,41 +77,23 @@ const DownloadDetails = ({Submit, Close}) => {
           <option value="prores">ProRes</option>
         </select>
       </div>
-      <div className="download-modal__clip-points">
-        <div className="download-modal__field">
-          <label htmlFor="clipInFrame" className="download-modal__label">
-            Clip Start
-          </label>
-          <input
-            name="clipInFrame"
-            value={videoStore.videoHandler.FrameToSMPTE(options.clipInFrame)}
-            onChange={event => setOptions({...options, clipInFrame: event.target.value})}
-            disabled
-            className="download-modal__input"
-          />
+      <div className="download-modal__clip-info">
+        <div>
+          Clip Start:&nbsp;
+          {videoStore.videoHandler.FrameToSMPTE(options.clipOutFrame)}
         </div>
-        <div className="download-modal__field">
-          <label htmlFor="clipOutFrame" className="download-modal__label">
-            Clip End
-          </label>
-          <input
-            name="clipOutFrame"
-            value={videoStore.videoHandler.FrameToSMPTE(options.clipOutFrame)}
-            onChange={event => setOptions({...options, clipOutFrame: event.target.value})}
-            disabled
-            className="download-modal__input"
-          />
+        <div>
+          Clip End:&nbsp;
+          {videoStore.videoHandler.FrameToSMPTE(options.clipOutFrame)}
         </div>
-      </div>
-      <div className="download-modal__field">
-        <label htmlFor="clipOutFrame" className="download-modal__duration">
+        <div>
           Duration:&nbsp;
-          {
+          ({
             videoStore.videoHandler.DurationToString(
               videoStore.videoHandler.FrameToTime(options.clipOutFrame) - videoStore.videoHandler.FrameToTime(options.clipInFrame)
             )
-          }
-        </label>
+          })
+        </div>
       </div>
       <LoadingElement loading={submitting} loadingClassname="download-modal__actions download-modal__actions--loading">
         <div className="download-modal__actions">

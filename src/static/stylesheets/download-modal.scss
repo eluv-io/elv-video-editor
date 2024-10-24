@@ -1,18 +1,18 @@
 .download-modal {
-  width: 400px;
   height: max-content;
+  width: 400px;
 
 
   &__header {
-    display: flex;
     align-items: center;
-    position: relative;
-    width: 100%;
     color: $elv-color-gray;
+    display: flex;
     font-size: 18px;
     font-weight: 400;
-    letter-spacing: 0.05em;
     gap: 10px;
+    letter-spacing: 0.05em;
+    position: relative;
+    width: 100%;
 
     * {
       color: $elv-color-gray;
@@ -21,50 +21,50 @@
 
     svg {
       height: 25px;
-      width: 25px;
       min-width: 25px;
+      width: 25px;
     }
   }
 
   &__close {
+    border: 0;
+    height: 25px;
     position: absolute;
     right: 0;
-    height: 25px;
     width: 25px;
-    border: 0;
 
     &:hover {
-      background-color: transparent!important;
+      background-color: transparent !important;
     }
   }
 
   &__tabs {
+    align-items: center;
     border-bottom: 1px solid $elv-color-darkergray;
     display: flex;
-    align-items: center;
-    padding-bottom: 5px;
     gap: 20px;
     margin-top: 20px;
+    padding-bottom: 5px;
   }
 
   &__tab {
-    opacity: 0.5;
-    transition: opacity 0.15s ease;
     border: 0;
     font-size: 14px;
+    opacity: 0.5;
     padding: 5px 0;
+    transition: opacity 0.15s ease;
 
     &:hover,
     &--active {
+      background-color: transparent !important;
       opacity: 1;
-      background-color: transparent!important;
     }
   }
 
   &__form {
-    margin: 30px 0 10px;
     display: grid;
     gap: 20px;
+    margin: 30px 0 10px;
   }
 
   &__field {
@@ -80,9 +80,9 @@
   &__input {
     background: transparent;
     border: 1px solid $elv-color-darkergray;
+    font-size: 16px;
     height: 45px;
     padding-inline: 10px;
-    font-size: 16px;
 
     &::placeholder {
       font-size: 14px;
@@ -95,23 +95,28 @@
 
   &__clip-points {
     display: flex;
-    width: 100%;
+    justify-content: space-between;
     max-width: 100%;
     overflow: hidden;
-    justify-content: space-between;
+    width: 100%;
 
     .download-modal__input {
       width: 190px;
     }
   }
 
-  &__duration {
-    color: $elv-color-gray;
+  &__clip-info {
+    display: grid;
+    gap: 10px;
+
+    * {
+      color: $elv-color-mediumgray;
+    }
   }
 
   &__actions {
-    display: flex;
     align-items: center;
+    display: flex;
     gap: 10px;
     justify-content: flex-end;
     margin-top: 20px;
@@ -122,33 +127,33 @@
   }
 
   &__action {
-    width: 150px;
-    height: 45px;
-    display: flex;
-    justify-content: center;
     align-items: center;
+    border-radius: 6px;
+    display: flex;
     font-size: 16px;
     font-weight: 600;
+    height: 45px;
+    justify-content: center;
     transition: background-color 0.15s ease, color 0.15s ease;
-    border-radius: 6px;
+    width: 150px;
 
     &:hover {
-      background-color: transparent!important;
+      background-color: transparent !important;
     }
 
     &--primary {
       background-color: $elv-color-lightgray;
-      color: black;
+      color: #000000;
 
       &:hover {
-        background-color: $elv-color-lightgray!important;
+        background-color: $elv-color-lightgray !important;
       }
     }
   }
 
   &__history {
-    margin-top: 20px;
     display: grid;
+    margin-top: 20px;
     max-height: 550px;
     overflow-y: auto;
     padding-right: 10px;
@@ -156,10 +161,10 @@
   }
 
   &__history-row {
-    min-height: 35px;
-    display: grid;
     align-items: center;
+    display: grid;
     grid-template-columns: 2fr 1fr;
+    min-height: 35px;
     padding: 10px 0;
 
     &--highlighted {
@@ -169,13 +174,13 @@
     }
 
     &--header {
+      background: #131315;
+      border-bottom: 1px solid $elv-color-darkergray;
       font-size: 16px;
       font-weight: 400;
       position: sticky;
       top: 0;
-      background: #131315;
       z-index: 1;
-      border-bottom: 1px solid $elv-color-darkergray;
     }
   }
 
@@ -193,11 +198,11 @@
     width: 100%;
 
     &:hover {
-      background-color: transparent!important;
+      background-color: transparent !important;
     }
 
     &:disabled {
-      opacity: 0.5!important;
+      opacity: 0.5 !important;
       pointer: auto;
     }
   }
@@ -209,27 +214,30 @@
 }
 
 progress {
+  background-color: #000;
+  border: 0;
+  border-radius: 20px;
+  height: 5px;
   width: 100%;
-  border: 0;
-  height: 5px;
-  border-radius: 20px;
-  background-color: #000;
 }
+
 progress::-webkit-progress-bar {
-  border: 0;
-  height: 5px;
-  border-radius: 20px;
   background-color: #000;
+  border: 0;
+  border-radius: 20px;
+  height: 5px;
 }
+
 progress::-webkit-progress-value {
-  border: 0;
-  height: 5px;
-  border-radius: 20px;
   background-color: $elv-color-gray;
+  border: 0;
+  border-radius: 20px;
+  height: 5px;
 }
+
 progress::-moz-progress-bar {
-  border: 0;
-  height: 5px;
-  border-radius: 20px;
   background-color: $elv-color-gray;
+  border: 0;
+  border-radius: 20px;
+  height: 5px;
 }
