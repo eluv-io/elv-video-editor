@@ -41,7 +41,7 @@ let SaveFrame = (props) => {
 
 let SaveVideo = observer(() => {
   return (
-    <ToolTip content={<span>Download Current Clip}</span>}>
+    <ToolTip content={<span>Download Current Clip</span>}>
       <IconButton
         aria-label="Save Video Clip"
         icon={DownloadIcon}

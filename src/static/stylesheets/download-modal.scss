@@ -2,6 +2,11 @@
   height: max-content;
   width: 400px;
 
+  &__error {
+    color: #faa;
+    margin-top: 20px;
+    text-align: center;
+  }
 
   &__header {
     align-items: center;
@@ -143,7 +148,7 @@
 
     &--primary {
       background-color: $elv-color-lightgray;
-      color: #000000;
+      color: #000;
 
       &:hover {
         background-color: $elv-color-lightgray !important;

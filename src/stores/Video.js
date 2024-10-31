@@ -184,8 +184,6 @@ class VideoStore {
     this.loading = true;
 
     try {
-      this.LoadDownloadJobInfo();
-
       this.videoObject = videoObject;
 
       this.name = videoObject.name;
@@ -207,6 +205,8 @@ class VideoStore {
 
       this.metadata = videoObject.metadata;
       this.isVideo = videoObject.isVideo;
+
+      this.LoadDownloadJobInfo();
 
       if(!this.isVideo) {
         this.initialized = true;
@@ -1060,7 +1060,7 @@ class VideoStore {
       type: "app",
       appId: "video-editor",
       mode: "private",
-      key: "download-jobs",
+      key: `download-jobs-${this.videoObject.objectId}`,
       value: this.rootStore.client.utils.B64(
         JSON.stringify(this.downloadJobInfo || {})
       )
@@ -1075,7 +1075,7 @@ class VideoStore {
           type: "app",
           appId: "video-editor",
           mode: "private",
-          key: "download-jobs"
+          key: `download-jobs-${this.videoObject.objectId}`,
         })) || ""
       ) || "{}"
     );
@@ -1092,7 +1092,6 @@ class VideoStore {
     this.downloadJobInfo = response;
 
     if(deleted) {
-      console.log("Updating");
       this.SaveDownloadJobInfo();
     }
   });
@@ -1117,10 +1116,10 @@ class VideoStore {
       params.end_ms = this.videoHandler.DurationToString(this.videoHandler.FrameToTime(clipOutFrame), true).replaceAll(" ", "");
     }
 
-    const response = yield this.rootStore.client.CallBitcodeMethod({
+    const response = yield this.rootStore.client.MakeFileServiceRequest({
       versionHash: this.videoObject.versionHash,
-      method: "media/files",
-      constant: false,
+      path: "/call/media/files",
+      method: "POST",
       body: params
     });
 
@@ -1138,7 +1137,7 @@ class VideoStore {
       clipInFrame,
       clipOutFrame,
       startedAt: Date.now(),
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000
+      expiresAt: Date.now() + 29 * 24 * 60 * 60 * 1000
     };
 
     this.SaveDownloadJobInfo();
@@ -1163,10 +1162,9 @@ class VideoStore {
 
   @action.bound
   DownloadJobStatus = flow(function * ({jobId}) {
-    this.downloadJobStatus[jobId] = yield this.rootStore.client.CallBitcodeMethod({
+    this.downloadJobStatus[jobId] = yield this.rootStore.client.MakeFileServiceRequest({
       versionHash: this.downloadJobInfo[jobId].versionHash,
-      method: UrlJoin("media", "files", jobId),
-      constant: true
+      path: UrlJoin("call", "media", "files", jobId)
     });
 
     return this.downloadJobStatus[jobId];
@@ -1179,7 +1177,8 @@ class VideoStore {
 
     const downloadUrl = yield this.rootStore.client.FabricUrl({
       versionHash: jobInfo.versionHash,
-      call: UrlJoin("media", "files", jobId, "download")
+      call: UrlJoin("media", "files", jobId, "download"),
+      service: "files"
     });
 
     try {

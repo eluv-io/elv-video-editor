@@ -183,7 +183,16 @@ const DownloadHistory = ({highlightedJobId}) => {
       await Promise.all(
         jobs
           .filter(({jobId}) => !videoStore.downloadJobStatus[jobId] || videoStore.downloadJobStatus[jobId]?.status === "processing")
-          .map(async ({jobId}) => await videoStore.DownloadJobStatus({jobId}))
+          .map(async ({jobId}) => {
+            try {
+              await videoStore.DownloadJobStatus({jobId});
+            } catch(error) {
+              // eslint-disable-next-line no-console
+              console.log(`Unable to get status for download job ${jobId}:`);
+              // eslint-disable-next-line no-console
+              console.log(error);
+            }
+          })
       );
 
     };
@@ -224,7 +233,7 @@ const DownloadModal = ({Close}) => {
     } catch(error) {
       // eslint-disable-next-line no-console
       console.log(error);
-      setError(error.toString());
+      setError("Something went wrong, please try again");
     }
   };
 

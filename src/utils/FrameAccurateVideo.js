@@ -276,7 +276,7 @@ class FrameAccurateVideo {
       countdownString += ` ${seconds}s`;
     }
 
-    return countdownString;
+    return countdownString.trim();
   }
 
   /* Controls */
