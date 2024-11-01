@@ -80,7 +80,7 @@ const DownloadDetails = ({Submit, Close}) => {
       <div className="download-modal__clip-info">
         <div>
           Clip Start:&nbsp;
-          {videoStore.videoHandler.FrameToSMPTE(options.clipOutFrame)}
+          {videoStore.videoHandler.FrameToSMPTE(options.clipInFrame)}
         </div>
         <div>
           Clip End:&nbsp;
@@ -136,7 +136,7 @@ const JobStatusTable = observer(({jobs}) => (
             className={`download-modal__history-row ${job.highlighted ? "download-modal__history-row--highlighted" : ""}`}
           >
             <div className="download-modal__history-row-info">
-              <div className="download-modal__history-row-name">
+              <div title={job.filename} className="download-modal__history-row-name">
                 {job.filename}
               </div>
               <div className="download-modal__history-row-duration">
@@ -199,7 +199,7 @@ const DownloadHistory = ({highlightedJobId}) => {
 
     UpdateStatus();
 
-    const statusUpdateInterval = setInterval(UpdateStatus, 2000);
+    const statusUpdateInterval = setInterval(UpdateStatus, 3000);
 
     return () => clearInterval(statusUpdateInterval);
   }, []);
