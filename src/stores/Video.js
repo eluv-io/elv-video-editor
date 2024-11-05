@@ -1176,6 +1176,7 @@ class VideoStore {
     return this.downloadJobStatus[jobId];
   });
 
+  @action.bound
   SaveDownloadJob = flow(function * ({jobId}) {
     if(this.downloadedJobs[jobId]) { return; }
 
@@ -1200,6 +1201,12 @@ class VideoStore {
       console.error("Invalid URL or failed to download", error);
     }
   });
+
+  @action.bound
+  RemoveDownloadJob({jobId}) {
+    delete this.downloadJobInfo[jobId];
+    this.SaveDownloadJobInfo();
+  }
 }
 
 export default VideoStore;

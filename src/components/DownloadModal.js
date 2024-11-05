@@ -1,10 +1,11 @@
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react";
 import {rootStore, videoStore} from "../stores";
-import {ImageIcon, LoadingElement, Modal} from "elv-components-js";
+import {Confirm, ImageIcon, LoadingElement, Modal} from "elv-components-js";
 
 import DownloadIcon from "../static/icons/download.svg";
 import XIcon from "../static/icons/X.svg";
+import RetryIcon from "../static/icons/rotate-ccw.svg";
 
 const DownloadDetails = ({Submit, Close}) => {
   const [submitting, setSubmitting] = useState(false);
@@ -122,51 +123,119 @@ const DownloadDetails = ({Submit, Close}) => {
   );
 };
 
-const JobStatusTable = observer(({jobs}) => (
+const JobActions = observer(({job, setConfirming, Reload}) => {
+  const jobStatus = videoStore.downloadJobStatus[job.jobId];
+
+  if(!jobStatus) {
+    return null;
+  } else if(jobStatus.status === "failed") {
+    return (
+      <div className="download-modal__history-actions">
+        <button
+          title="Retry"
+          onClick={() => {
+            setConfirming(true);
+
+            Confirm({
+              message: "Are you sure you want to retry this download?",
+              onConfirm: () => {
+                const jobInfo = videoStore.downloadJobInfo[job.jobId];
+                videoStore.RemoveDownloadJob({jobId: job.jobId});
+                videoStore.StartDownloadJob({...jobInfo})
+                  .then(() => Reload());
+                setConfirming(false);
+              },
+              onCancel: () => setConfirming(false)
+            });
+          }}
+          className="download-modal__history-button"
+        >
+          <ImageIcon icon={RetryIcon}/>
+        </button>
+        <button
+          title="Remove"
+          onClick={() => {
+            setConfirming(true);
+
+            Confirm({
+              message: "Are you sure you want to remove this download from your history?",
+              onConfirm: () => {
+                videoStore.RemoveDownloadJob({jobId: job.jobId});
+                setConfirming(false);
+              },
+              onCancel: () => setConfirming(false)
+            });
+          }}
+          className="download-modal__history-button"
+        >
+          <ImageIcon icon={XIcon}/>
+        </button>
+      </div>
+    );
+  } else if(jobStatus.status === "completed") {
+    return (
+      <div className="download-modal__history-actions">
+        <button
+          title="Download"
+          disabled={videoStore.downloadedJobs[job.jobId]}
+          onClick={() => videoStore.SaveDownloadJob({jobId: job.jobId})}
+          className="download-modal__history-button"
+        >
+          <ImageIcon icon={DownloadIcon}/>
+        </button>
+        <button
+          title="Remove"
+          onClick={() => {
+            setConfirming(true);
+
+            Confirm({
+              message: "Are you sure you want to remove this download from your history?",
+              onConfirm: () => {
+                videoStore.RemoveDownloadJob({jobId: job.jobId});
+                setConfirming(false);
+              },
+              onCancel: () => setConfirming(false)
+            });
+          }}
+          className="download-modal__history-button"
+        >
+          <ImageIcon icon={XIcon}/>
+        </button>
+      </div>
+    );
+  } else if(jobStatus.status === "processing") {
+    return <progress value={jobStatus.progress} max={100}/>;
+  }
+});
+
+const JobStatusTable = observer(({jobs, setConfirming, Reload}) => (
   <div className="download-modal__history">
-    <div className="download-modal__history-row download-modal__history-row--header">
-      <div>Name</div>
-      <div>Status</div>
-    </div>
     {
-      jobs.map(job => {
-        const jobStatus = videoStore.downloadJobStatus[job.jobId];
-        return (
-          <div
-            key={`row-${job.jobId}`}
-            className={`download-modal__history-row ${job.highlighted ? "download-modal__history-row--highlighted" : ""}`}
-          >
-            <div className="download-modal__history-row-info">
-              <div title={job.filename} className="download-modal__history-row-name">
-                {job.filename}
-              </div>
-              <div className="download-modal__history-row-duration">
-                {job.duration}
-              </div>
+      jobs.map(job =>
+        <div
+          key={`row-${job.jobId}`}
+          className={`download-modal__history-row ${job.highlighted ? "download-modal__history-row--highlighted" : ""}`}
+        >
+          <div className="download-modal__history-row-info">
+            <div title={job.filename} className="download-modal__history-row-name">
+              {job.filename}
             </div>
-            <div>
-              {
-                jobStatus?.status === "completed" ?
-                  <button
-                    disabled={videoStore.downloadedJobs[job.jobId]}
-                    onClick={() => videoStore.SaveDownloadJob({jobId: job.jobId})}
-                    className="download-modal__history-download"
-                  >
-                    { videoStore.downloadedJobs[job.jobId] ? "Downloaded" : "Download" }
-                  </button> :
-                  typeof jobStatus?.progress !== "undefined" ?
-                    <progress value={jobStatus.progress} max={100}/> :
-                    null
-              }
+            <div className="download-modal__history-row-duration">
+              { videoStore.downloadJobStatus[job.jobId]?.status === "failed" ? "Failed" : job.duration }
             </div>
           </div>
-        );
-      })
+          <div className="download-modal__history-status">
+            <JobActions job={job} setConfirming={setConfirming} Reload={Reload} />
+          </div>
+        </div>
+      )
     }
   </div>
 ));
 
-const DownloadHistory = ({highlightedJobId}) => {
+const DownloadHistory = ({highlightedJobId, setConfirming}) => {
+  const [key, setKey] = useState(Math.random());
+
   const jobs = Object.keys(videoStore.downloadJobInfo)
     .map(jobId => ({
       ...videoStore.downloadJobInfo[jobId],
@@ -195,7 +264,6 @@ const DownloadHistory = ({highlightedJobId}) => {
             }
           })
       );
-
     };
 
     UpdateStatus();
@@ -210,7 +278,12 @@ const DownloadHistory = ({highlightedJobId}) => {
       <div className="download-modal__message">
         No Downloaded Clips
       </div> :
-      <JobStatusTable jobs={jobs} />
+      <JobStatusTable
+        key={`job-table-${key}`}
+        jobs={jobs}
+        setConfirming={setConfirming}
+        Reload={() => setKey(Math.random())}
+      />
   );
 };
 
@@ -218,6 +291,7 @@ const DownloadModal = ({Close}) => {
   const [tab, setTab] = useState("details");
   const [jobId, setJobId] = useState(undefined);
   const [error, setError] = useState("");
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     rootStore.keyboardControlStore.ToggleKeyboardControls(false);
@@ -243,7 +317,7 @@ const DownloadModal = ({Close}) => {
   };
 
   return (
-    <Modal closable OnClickOutside={Close}>
+    <Modal closable OnClickOutside={confirming ? () => {} : Close}>
       <div className="download-modal">
         <div className="download-modal__header">
           <ImageIcon icon={DownloadIcon}/>
@@ -275,7 +349,7 @@ const DownloadModal = ({Close}) => {
         {
           tab === "details" ?
             <DownloadDetails Submit={Submit} Close={Close} /> :
-            <DownloadHistory highlightedJobId={jobId} />
+            <DownloadHistory highlightedJobId={jobId} setConfirming={setConfirming} />
         }
       </div>
     </Modal>

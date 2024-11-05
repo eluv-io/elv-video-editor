@@ -1,6 +1,6 @@
 .download-modal {
   height: max-content;
-  width: 400px;
+  width: 450px;
 
   &__error {
     color: #faa;
@@ -167,7 +167,8 @@
   &__history-row {
     align-items: center;
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    gap: 10px;
+    grid-template-columns: 3fr 90px;
     min-height: 35px;
     padding: 10px 0;
 
@@ -189,26 +190,47 @@
   }
 
   &__history-row-name {
-    @include elv-ellipsis;
-    max-width: 200px;
+    max-width: 100%;
   }
 
   &__history-row-duration {
     opacity: 0.5;
   }
 
-  &__history-download {
-    border-radius: 6px;
+  &__history-status {
+    align-items: center;
+    display: flex;
+    height: 100%;
+    justify-content: flex-end;
     width: 100%;
+  }
+
+  &__history-button {
+    border-radius: 6px;
+    height: 30px;
+    padding: 5px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    width: 30px;
 
     &:hover {
-      background-color: transparent !important;
+      background-color: #1a1a1a !important;
     }
 
     &:disabled {
       opacity: 0.5 !important;
       pointer: auto;
     }
+
+    svg {
+      height: 100%;
+      width: 100%;
+    }
+  }
+
+  &__history-actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
   }
 
   &__message {
