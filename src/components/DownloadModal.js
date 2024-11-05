@@ -108,6 +108,7 @@ const DownloadDetails = ({Submit, Close}) => {
               } catch(error) {
                 // eslint-disable-next-line no-console
                 console.log(error);
+              } finally {
                 setSubmitting(false);
               }
             }}
@@ -224,6 +225,10 @@ const DownloadModal = ({Close}) => {
     return () => rootStore.keyboardControlStore.ToggleKeyboardControls(true);
   }, []);
 
+  useEffect(() => {
+    setError("");
+  }, [tab]);
+
   const Submit = async ({format, offering, clipInFrame, clipOutFrame, filename}) => {
     try {
       setJobId(
@@ -261,17 +266,16 @@ const DownloadModal = ({Close}) => {
             History
           </button>
         </div>
-
-        {
-          tab === "details" ?
-            <DownloadDetails Submit={Submit} Close={Close} /> :
-            <DownloadHistory highlightedJobId={jobId} />
-        }
         {
           !error ? null :
             <div className="download-modal__error">
               {error}
             </div>
+        }
+        {
+          tab === "details" ?
+            <DownloadDetails Submit={Submit} Close={Close} /> :
+            <DownloadHistory highlightedJobId={jobId} />
         }
       </div>
     </Modal>

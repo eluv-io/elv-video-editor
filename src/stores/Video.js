@@ -1103,9 +1103,16 @@ class VideoStore {
     clipInFrame,
     clipOutFrame
   }) {
+    filename = filename || this.DownloadJobDefaultFilename({format, offering, clipInFrame, clipOutFrame});
+    const expectedExtension = ".mp4";
+    if(!filename.endsWith(expectedExtension)) {
+      filename = `${filename}${expectedExtension}`;
+    }
+
     let params = {
       format,
       offering,
+      filename
     };
 
     if(clipInFrame) {
@@ -1123,11 +1130,10 @@ class VideoStore {
       body: params
     });
 
-    filename = filename || this.DownloadJobDefaultFilename({format, offering, clipInFrame, clipOutFrame});
-    const expectedExtension = format === "mp4" ? ".mp4" : ".mov";
-    if(!filename.endsWith(expectedExtension)) {
-      filename = `${filename}${expectedExtension}`;
-    }
+    const status = yield this.DownloadJobStatus({
+      jobId: response.job_id,
+      versionHash: this.videoObject.versionHash
+    });
 
     this.downloadJobInfo[response.job_id] = {
       versionHash: this.videoObject.versionHash,
@@ -1156,14 +1162,14 @@ class VideoStore {
 
     return {
       jobId: response.job_id,
-      status: yield this.DownloadJobStatus({jobId: response.job_id})
+      status
     };
   });
 
   @action.bound
-  DownloadJobStatus = flow(function * ({jobId}) {
+  DownloadJobStatus = flow(function * ({jobId, versionHash}) {
     this.downloadJobStatus[jobId] = yield this.rootStore.client.MakeFileServiceRequest({
-      versionHash: this.downloadJobInfo[jobId].versionHash,
+      versionHash: versionHash || this.downloadJobInfo[jobId].versionHash,
       path: UrlJoin("call", "media", "files", jobId)
     });
 
@@ -1178,7 +1184,10 @@ class VideoStore {
     const downloadUrl = yield this.rootStore.client.FabricUrl({
       versionHash: jobInfo.versionHash,
       call: UrlJoin("media", "files", jobId, "download"),
-      service: "files"
+      service: "files",
+      queryParams: {
+        "header-x_set_content_disposition": encodeURIComponent(jobInfo.filename)
+      }
     });
 
     try {
