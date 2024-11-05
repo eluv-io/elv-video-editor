@@ -1186,7 +1186,7 @@ class VideoStore {
       call: UrlJoin("media", "files", jobId, "download"),
       service: "files",
       queryParams: {
-        "header-x_set_content_disposition": encodeURIComponent(`attachment; filename="${jobInfo.filename}"`)
+        "header-x_set_content_disposition": `attachment; filename="${jobInfo.filename}"`
       }
     });
 
