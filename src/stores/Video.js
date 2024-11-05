@@ -1104,7 +1104,7 @@ class VideoStore {
     clipOutFrame
   }) {
     filename = filename || this.DownloadJobDefaultFilename({format, offering, clipInFrame, clipOutFrame});
-    const expectedExtension = ".mp4";
+    const expectedExtension = format === "mp4" ? ".mp4" : ".mov";
     if(!filename.endsWith(expectedExtension)) {
       filename = `${filename}${expectedExtension}`;
     }
@@ -1186,7 +1186,7 @@ class VideoStore {
       call: UrlJoin("media", "files", jobId, "download"),
       service: "files",
       queryParams: {
-        "header-x_set_content_disposition": encodeURIComponent(jobInfo.filename)
+        "header-x_set_content_disposition": encodeURIComponent(`attachment; filename="${jobInfo.filename}"`)
       }
     });
 
