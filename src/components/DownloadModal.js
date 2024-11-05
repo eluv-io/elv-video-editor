@@ -211,24 +211,39 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
 const JobStatusTable = observer(({jobs, setConfirming, Reload}) => (
   <div className="download-modal__history">
     {
-      jobs.map(job =>
-        <div
-          key={`row-${job.jobId}`}
-          className={`download-modal__history-row ${job.highlighted ? "download-modal__history-row--highlighted" : ""}`}
-        >
-          <div className="download-modal__history-row-info">
-            <div title={job.filename} className="download-modal__history-row-name">
-              {job.filename}
+      jobs.map(job => {
+        const jobStatus = videoStore.downloadJobStatus[job.jobId];
+        const downloaded = videoStore.downloadedJobs[job.jobId];
+
+        return (
+          <div
+            key={`row-${job.jobId}`}
+            className={`download-modal__history-row ${job.highlighted ? "download-modal__history-row--highlighted" : ""}`}
+          >
+            <div className="download-modal__history-row-info">
+              <div title={job.filename} className="download-modal__history-row-name">
+                {job.filename}
+              </div>
+              {
+                !jobStatus ? null :
+                  <div className="download-modal__history-row-status">
+                    {
+                      jobStatus?.status === "completed" ?
+                        downloaded ? "Download Initiated. Access from browser download history" : "Available" :
+                        jobStatus?.status === "failed" ? "Failed" : "Generating..."
+                    }
+                  </div>
+              }
+              <div className="download-modal__history-row-duration">
+                {job?.duration}
+              </div>
             </div>
-            <div className="download-modal__history-row-duration">
-              { videoStore.downloadJobStatus[job.jobId]?.status === "failed" ? "Failed" : job.duration }
+            <div className="download-modal__history-status">
+              <JobActions job={job} setConfirming={setConfirming} Reload={Reload}/>
             </div>
           </div>
-          <div className="download-modal__history-status">
-            <JobActions job={job} setConfirming={setConfirming} Reload={Reload} />
-          </div>
-        </div>
-      )
+        );
+      })
     }
   </div>
 ));
@@ -321,7 +336,7 @@ const DownloadModal = ({Close}) => {
       <div className="download-modal">
         <div className="download-modal__header">
           <ImageIcon icon={DownloadIcon}/>
-          Download Clip
+          Generate and Download Clip
           <button onClick={Close} aria-label="Close" className="download-modal__close">
             <ImageIcon icon={XIcon}/>
           </button>

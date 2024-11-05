@@ -193,8 +193,11 @@
     max-width: 100%;
   }
 
-  &__history-row-duration {
+  &__history-row-duration,
+  &__history-row-status {
     opacity: 0.5;
+    margin-top: 2px;
+    font-size: 12px;
   }
 
   &__history-status {
