@@ -1114,77 +1114,90 @@ class VideoStore {
     offering="default",
     representation,
     clipInFrame,
-    clipOutFrame
+    clipOutFrame,
+    encrypt=true
   }) {
-    filename = filename || this.DownloadJobDefaultFilename({format, offering, clipInFrame, clipOutFrame});
-    const expectedExtension = format === "mp4" ? ".mp4" : ".mov";
-    if(!filename.endsWith(expectedExtension)) {
-      filename = `${filename}${expectedExtension}`;
-    }
-
-    let params = {
-      format,
-      offering,
-      filename
-    };
-
-    if(representation) {
-      params.representation = representation;
-    }
-
-    if(clipInFrame) {
-      params.start_ms = this.videoHandler.TimeToString({time: this.videoHandler.FrameToTime(clipInFrame), includeFractionalSeconds: true}).replaceAll(" ", "");
-    }
-
-    if(clipOutFrame && clipOutFrame !== this.videoHandler.TotalFrames() - 1) {
-      params.end_ms = this.videoHandler.TimeToString({time: this.videoHandler.FrameToTime(clipOutFrame), includeFractionalSeconds: true}).replaceAll(" ", "");
-    }
-
-    const response = yield this.rootStore.client.MakeFileServiceRequest({
-      versionHash: this.videoObject.versionHash,
-      path: "/call/media/files",
-      method: "POST",
-      body: params,
-      encryption: "cgck"
-    });
-
-    const status = yield this.DownloadJobStatus({
-      jobId: response.job_id,
-      versionHash: this.videoObject.versionHash
-    });
-
-    // Allow re-downloading if this is the same job as a previous one
-    delete this.downloadedJobs[response.job_id];
-
-    this.downloadJobInfo[response.job_id] = {
-      versionHash: this.videoObject.versionHash,
-      filename,
-      format,
-      offering,
-      clipInFrame,
-      clipOutFrame,
-      startedAt: Date.now(),
-      expiresAt: Date.now() + 29 * 24 * 60 * 60 * 1000
-    };
-
-    this.SaveDownloadJobInfo();
-
-    let statusInterval = setInterval(async () => {
-      const status = await this.DownloadJobStatus({jobId: response.job_id}) || {};
-
-      if(status?.status === "completed") {
-        this.SaveDownloadJob({jobId: response.job_id});
+    try {
+      filename = filename || this.DownloadJobDefaultFilename({format, offering, clipInFrame, clipOutFrame});
+      const expectedExtension = format === "mp4" ? ".mp4" : ".mov";
+      if(!filename.endsWith(expectedExtension)) {
+        filename = `${filename}${expectedExtension}`;
       }
 
-      if(status?.status !== "processing") {
-        clearInterval(statusInterval);
-      }
-    }, 10000);
+      let params = {
+        format,
+        offering,
+        filename
+      };
 
-    return {
-      jobId: response.job_id,
-      status
-    };
+      if(representation) {
+        params.representation = representation;
+      }
+
+      if(clipInFrame) {
+        params.start_ms = this.videoHandler.TimeToString({
+          time: this.videoHandler.FrameToTime(clipInFrame),
+          includeFractionalSeconds: true
+        }).replaceAll(" ", "");
+      }
+
+      if(clipOutFrame && clipOutFrame !== this.videoHandler.TotalFrames() - 1) {
+        params.end_ms = this.videoHandler.TimeToString({
+          time: this.videoHandler.FrameToTime(clipOutFrame),
+          includeFractionalSeconds: true
+        }).replaceAll(" ", "");
+      }
+
+      const response = yield this.rootStore.client.MakeFileServiceRequest({
+        versionHash: this.videoObject.versionHash,
+        path: "/call/media/files",
+        method: "POST",
+        body: params,
+        encryption: encrypt ? "cgck" : undefined
+      });
+
+      const status = yield this.DownloadJobStatus({
+        jobId: response.job_id,
+        versionHash: this.videoObject.versionHash
+      });
+
+      // Allow re-downloading if this is the same job as a previous one
+      delete this.downloadedJobs[response.job_id];
+
+      this.downloadJobInfo[response.job_id] = {
+        versionHash: this.videoObject.versionHash,
+        filename,
+        format,
+        offering,
+        clipInFrame,
+        clipOutFrame,
+        startedAt: Date.now(),
+        expiresAt: Date.now() + 29 * 24 * 60 * 60 * 1000
+      };
+
+      this.SaveDownloadJobInfo();
+
+      this.downloadJobInfo[response.job_id].automaticDownloadInterval = setInterval(async () => {
+        const status = await this.DownloadJobStatus({jobId: response.job_id}) || {};
+
+        if(status?.status === "completed") {
+          this.SaveDownloadJob({jobId: response.job_id});
+        }
+
+        if(status?.status !== "processing") {
+          clearInterval(this.downloadJobInfo?.[response.job_id]?.automaticDownloadInterval);
+        }
+      }, 10000);
+
+      return {
+        jobId: response.job_id,
+        status
+      };
+    } catch(error) {
+      if(encrypt) {
+        return this.StartDownloadJob({...arguments[0], encrypt: false});
+      }
+    }
   });
 
   @action.bound
@@ -1200,6 +1213,8 @@ class VideoStore {
   @action.bound
   SaveDownloadJob = flow(function * ({jobId}) {
     if(this.downloadedJobs[jobId]) { return; }
+
+    clearInterval(this.downloadJobInfo[jobId]?.automaticDownloadInterval);
 
     const jobInfo = this.downloadJobInfo[jobId];
 
@@ -1225,6 +1240,7 @@ class VideoStore {
 
   @action.bound
   RemoveDownloadJob({jobId}) {
+    clearInterval(this.downloadJobInfo[jobId]?.automaticDownloadInterval);
     delete this.downloadJobInfo[jobId];
     this.SaveDownloadJobInfo();
   }

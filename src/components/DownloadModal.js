@@ -245,7 +245,6 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
       <div className="download-modal__history-actions">
         <button
           title="Download"
-          disabled={videoStore.downloadedJobs[job.jobId]}
           onClick={() => videoStore.SaveDownloadJob({jobId: job.jobId})}
           className="download-modal__history-button"
         >
