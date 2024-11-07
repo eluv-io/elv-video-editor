@@ -1144,7 +1144,8 @@ class VideoStore {
       versionHash: this.videoObject.versionHash,
       path: "/call/media/files",
       method: "POST",
-      body: params
+      body: params,
+      encryption: "cgck"
     });
 
     const status = yield this.DownloadJobStatus({
