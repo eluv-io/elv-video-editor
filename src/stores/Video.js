@@ -1049,7 +1049,15 @@ class VideoStore {
     }
 
     if(clipInFrame || (clipOutFrame && clipOutFrame !== this.videoHandler.TotalFrames() - 1)) {
-      filename = `${filename} (${this.videoHandler.FrameToSMPTE(clipInFrame || 0)} - ${this.videoHandler.FrameToSMPTE(clipOutFrame || this.videoHandler.TotalFrames())})`;
+      const startTime = this.videoHandler.TimeToString({
+        time: this.videoHandler.FrameToTime(clipInFrame || 0),
+        showMinutes: true
+      }).replaceAll(" ", "");
+      const endTime = this.videoHandler.TimeToString({
+        time: this.videoHandler.FrameToTime(clipOutFrame || this.videoHandler.TotalFrames()),
+        showMinutes: true
+      }).replaceAll(" ", "");
+      filename = `${filename} (${startTime} - ${endTime})`;
     }
 
     if(representationInfo && !representationInfo.isTopResolution) {
@@ -1125,11 +1133,11 @@ class VideoStore {
     }
 
     if(clipInFrame) {
-      params.start_ms = this.videoHandler.DurationToString(this.videoHandler.FrameToTime(clipInFrame), true).replaceAll(" ", "");
+      params.start_ms = this.videoHandler.TimeToString({time: this.videoHandler.FrameToTime(clipInFrame), includeFractionalSeconds: true}).replaceAll(" ", "");
     }
 
     if(clipOutFrame && clipOutFrame !== this.videoHandler.TotalFrames() - 1) {
-      params.end_ms = this.videoHandler.DurationToString(this.videoHandler.FrameToTime(clipOutFrame), true).replaceAll(" ", "");
+      params.end_ms = this.videoHandler.TimeToString({time: this.videoHandler.FrameToTime(clipOutFrame), includeFractionalSeconds: true}).replaceAll(" ", "");
     }
 
     const response = yield this.rootStore.client.MakeFileServiceRequest({

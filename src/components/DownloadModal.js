@@ -21,15 +21,18 @@ const DownloadDetails = ({Submit, Close}) => {
   });
 
   useEffect(() => {
+    const defaultFilename = videoStore.DownloadJobDefaultFilename({
+      format: options.format,
+      offering: options.offering,
+      representationInfo: representations?.find(rep => rep.key === options.representation),
+      clipInFrame: videoStore.clipInFrame,
+      clipOutFrame: videoStore.clipOutFrame
+    });
     setOptions({
       ...options,
-      defaultFilename: videoStore.DownloadJobDefaultFilename({
-        format: options.format,
-        offering: options.offering,
-        representationInfo: representations?.find(rep => rep.key === options.representation),
-        clipInFrame: videoStore.clipInFrame,
-        clipOutFrame: videoStore.clipOutFrame
-      })
+      defaultFilename,
+      filename: options.filename === options.defaultFilename ?
+        defaultFilename : options.filename
     });
   }, [options.format, options.offering, options.representation, options.clipInFrame, options.clipOutFrame]);
 
@@ -72,9 +75,6 @@ const DownloadDetails = ({Submit, Close}) => {
       representation: repInfo[0]?.key || ""
     });
   }, [options.offering]);
-
-  console.log(representations);
-  console.log(options)
 
   return (
     <div className="download-modal__form">
@@ -158,9 +158,9 @@ const DownloadDetails = ({Submit, Close}) => {
         <div>
           Duration:&nbsp;
           ({
-            videoStore.videoHandler.DurationToString(
-              videoStore.videoHandler.FrameToTime(options.clipOutFrame) - videoStore.videoHandler.FrameToTime(options.clipInFrame)
-            )
+            videoStore.videoHandler.TimeToString({
+              time: videoStore.videoHandler.FrameToTime(options.clipOutFrame) - videoStore.videoHandler.FrameToTime(options.clipInFrame)
+            })
           })
         </div>
       </div>
@@ -324,9 +324,9 @@ const DownloadHistory = ({highlightedJobId, setConfirming}) => {
       ...videoStore.downloadJobInfo[jobId],
       highlighted: jobId === highlightedJobId,
       jobId,
-      duration: videoStore.videoHandler.DurationToString(
-        videoStore.videoHandler.FrameToTime(videoStore.downloadJobInfo[jobId].clipOutFrame) - videoStore.videoHandler.FrameToTime(videoStore.downloadJobInfo[jobId].clipInFrame)
-      )
+      duration: videoStore.videoHandler.TimeToString({
+        time: videoStore.videoHandler.FrameToTime(videoStore.downloadJobInfo[jobId].clipOutFrame) - videoStore.videoHandler.FrameToTime(videoStore.downloadJobInfo[jobId].clipInFrame)
+      })
     }))
     .filter(({versionHash}) => videoStore.versionHash === versionHash)
     .sort((a, b) => a.startedAt > b.startedAt ? -1 : 1);
