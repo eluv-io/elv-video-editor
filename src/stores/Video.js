@@ -1041,7 +1041,7 @@ class VideoStore {
     this.showDownloadModal = show;
   }
 
-  DownloadJobDefaultFilename({format="mp4", offering="default", clipInFrame, clipOutFrame}) {
+  DownloadJobDefaultFilename({format="mp4", offering="default", clipInFrame, clipOutFrame, representationInfo}) {
     let filename = this.name;
 
     if(offering && offering !== "default") {
@@ -1050,6 +1050,10 @@ class VideoStore {
 
     if(clipInFrame || (clipOutFrame && clipOutFrame !== this.videoHandler.TotalFrames() - 1)) {
       filename = `${filename} (${this.videoHandler.FrameToSMPTE(clipInFrame || 0)} - ${this.videoHandler.FrameToSMPTE(clipOutFrame || this.videoHandler.TotalFrames())})`;
+    }
+
+    if(representationInfo && !representationInfo.isTopResolution) {
+      filename = `${filename} (${representationInfo.width}x${representationInfo.height})`;
     }
 
     return `${filename}.${format === "mp4" ? "mp4" : "mov"}`;
@@ -1100,6 +1104,7 @@ class VideoStore {
     filename,
     format="mp4",
     offering="default",
+    representation,
     clipInFrame,
     clipOutFrame
   }) {
@@ -1114,6 +1119,10 @@ class VideoStore {
       offering,
       filename
     };
+
+    if(representation) {
+      params.representation = representation;
+    }
 
     if(clipInFrame) {
       params.start_ms = this.videoHandler.DurationToString(this.videoHandler.FrameToTime(clipInFrame), true).replaceAll(" ", "");

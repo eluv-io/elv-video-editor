@@ -9,11 +9,13 @@ import RetryIcon from "../static/icons/rotate-ccw.svg";
 
 const DownloadDetails = ({Submit, Close}) => {
   const [submitting, setSubmitting] = useState(false);
+  const [representations, setRepresentations] = useState(undefined);
   const [options, setOptions] = useState({
     format: "mp4",
     filename: "",
     defaultFilename: "",
-    offering: videoStore.offering,
+    representation: "",
+    offering: videoStore.offeringKey,
     clipInFrame: videoStore.clipInFrame,
     clipOutFrame: videoStore.clipOutFrame,
   });
@@ -24,11 +26,55 @@ const DownloadDetails = ({Submit, Close}) => {
       defaultFilename: videoStore.DownloadJobDefaultFilename({
         format: options.format,
         offering: options.offering,
+        representationInfo: representations?.find(rep => rep.key === options.representation),
         clipInFrame: videoStore.clipInFrame,
         clipOutFrame: videoStore.clipOutFrame
       })
     });
-  }, [options.format, options.offering, options.clipInFrame, options.clipOutFrame]);
+  }, [options.format, options.offering, options.representation, options.clipInFrame, options.clipOutFrame]);
+
+  useEffect(() => {
+    const repMetadata = videoStore?.metadata?.offerings?.[options.offering]?.playout?.streams?.video?.representations;
+
+    if(!repMetadata) {
+      setRepresentations(undefined);
+    }
+
+    const repInfo = (
+      Object.keys(repMetadata)
+        .map(repKey => {
+          try {
+            const { bit_rate, codec, height, width } = repMetadata[repKey];
+
+            return {
+              key: repKey,
+              resolution: `${width}x${height}`,
+              width,
+              height,
+              codec,
+              bitrate: bit_rate,
+              string: `${width}x${height} (${(parseInt(bit_rate) / 1000 / 1000).toFixed(1)}Mbps)`
+            };
+          } catch(error) {
+            // eslint-disable-next-line no-console
+            console.error(error);
+          }
+        })
+        .filter(rep => rep)
+        .sort((a, b) => a.bitrate > b.bitrate ? -1 : 1)
+    );
+
+    repInfo[0].isTopResolution = true;
+
+    setRepresentations(repInfo);
+    setOptions({
+      ...options,
+      representation: repInfo[0]?.key || ""
+    });
+  }, [options.offering]);
+
+  console.log(representations);
+  console.log(options)
 
   return (
     <div className="download-modal__form">
@@ -58,12 +104,34 @@ const DownloadDetails = ({Submit, Close}) => {
           {
             Object.keys(videoStore.availableOfferings).map(offeringKey =>
               <option key={offeringKey} value={offeringKey}>
-                { offeringKey === "default" ? "Default" : videoStore.availableOfferings[offeringKey].display_name || offeringKey }
+                {offeringKey === "default" ? "Default" : videoStore.availableOfferings[offeringKey].display_name || offeringKey}
               </option>
             )
           }
         </select>
       </div>
+      {
+        !representations ? null :
+          <div className="download-modal__field">
+            <label htmlFor="resolution" className="download-modal__label">
+              Resolution
+            </label>
+            <select
+              name="resolution"
+              value={options.representation}
+              onChange={event => setOptions({...options, representation: event.target.value})}
+              className="download-modal__input"
+            >
+              {
+                representations.map(({string, key}) =>
+                  <option key={key} value={key}>
+                    { string }
+                  </option>
+                )
+              }
+            </select>
+          </div>
+      }
       <div className="download-modal__field">
         <label htmlFor="format" className="download-modal__label">
           Format
@@ -318,10 +386,17 @@ const DownloadModal = ({Close}) => {
     setError("");
   }, [tab]);
 
-  const Submit = async ({format, offering, clipInFrame, clipOutFrame, filename}) => {
+  const Submit = async ({format, offering, clipInFrame, clipOutFrame, filename, defaultFilename, representation}) => {
     try {
       setJobId(
-        (await videoStore.StartDownloadJob({format, offering, clipInFrame, clipOutFrame, filename})).jobId
+        (await videoStore.StartDownloadJob({
+          format,
+          offering,
+          clipInFrame,
+          clipOutFrame,
+          filename: filename || defaultFilename,
+          representation
+        })).jobId
       );
       setTab("history");
     } catch(error) {
