@@ -13,6 +13,8 @@ import Menu from "./components/Menu";
 import SidePanel from "./components/SidePanel";
 import ClipView from "./components/clips/ClipView";
 import AssetsList from "./components/assets/AssetsList";
+import {videoStore} from "./stores";
+import DownloadModal from "./components/DownloadModal";
 
 @inject("rootStore")
 @inject("videoStore")
@@ -67,6 +69,10 @@ class App extends React.Component {
         <Header/>
         <Menu/>
         { view }
+        {
+          !videoStore.showDownloadModal ? null :
+            <DownloadModal Close={() => videoStore.ToggleDownloadModal(false)} />
+        }
       </div>
     );
   }

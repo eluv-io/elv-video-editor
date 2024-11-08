@@ -20,6 +20,7 @@ import VolumeHigh from "../../static/icons/VolumeHigh.svg";
 import DownloadIcon from "../../static/icons/download.svg";
 
 import {StopScroll} from "../../utils/Utils";
+import {videoStore} from "../../stores";
 
 const Store = props => props.clip ? props.clipVideoStore : props.videoStore;
 
@@ -38,20 +39,14 @@ let SaveFrame = (props) => {
   );
 };
 
-let SaveVideo = observer((props) => {
-  const downloadable = props.videoStore.drm === "clear";
-  const tooltip = downloadable ?
-    "Download Clip at Current Resolution" :
-    "This offering contains DRM. Switch to an offering without DRM to download clips.";
-
+let SaveVideo = observer(() => {
   return (
-    <ToolTip content={<span>{tooltip}</span>}>
+    <ToolTip content={<span>Download Current Clip</span>}>
       <IconButton
-        aria-label="Save Video Clip at Current Resolution"
+        aria-label="Save Video Clip"
         icon={DownloadIcon}
         className={"video-control-button video-control-save-frame"}
-        onClick={props.videoStore.SaveVideo}
-        disabled={!downloadable}
+        onClick={() => videoStore.ToggleDownloadModal(true)}
       />
     </ToolTip>
   );

@@ -247,6 +247,37 @@ class FrameAccurateVideo {
     return Math.floor(Fraction(this.video.duration || 0).mul(this.frameRate).valueOf());
   }
 
+  TimeToString({time, includeFractionalSeconds, showHours, showMinutes}) {
+    let hours = Math.floor(Math.max(0, time) / 60 / 60) % 24;
+    let minutes = Math.floor(Math.max(0, time) / 60 % 60);
+    let seconds = Math.max(time, 0) % 60;
+
+    if(!includeFractionalSeconds) {
+      seconds = Math.ceil(seconds);
+    }
+
+    if(minutes === 60) {
+      hours += 1;
+      minutes = 0;
+    }
+
+    let countdownString = "";
+
+    if(hours > 0 || showHours) {
+      countdownString += `${hours}h `;
+    }
+
+    if(minutes > 0 || showMinutes || showHours) {
+      countdownString += `${minutes}m `;
+    }
+
+    if(seconds > 0) {
+      countdownString += ` ${seconds}s`;
+    }
+
+    return countdownString.trim();
+  }
+
   /* Controls */
 
   SeekForward(frames=1) {

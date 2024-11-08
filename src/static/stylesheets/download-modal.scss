@@ -1,0 +1,272 @@
+.download-modal {
+  height: max-content;
+  width: 450px;
+
+  &__error {
+    color: #faa;
+    margin-top: 20px;
+  }
+
+  &__header {
+    align-items: center;
+    color: $elv-color-gray;
+    display: flex;
+    font-size: 18px;
+    font-weight: 400;
+    gap: 10px;
+    letter-spacing: 0.05em;
+    position: relative;
+    width: 100%;
+
+    * {
+      color: $elv-color-gray;
+      stroke: $elv-color-gray;
+    }
+
+    svg {
+      height: 25px;
+      min-width: 25px;
+      width: 25px;
+    }
+  }
+
+  &__close {
+    border: 0;
+    height: 25px;
+    position: absolute;
+    right: 0;
+    width: 25px;
+
+    &:hover {
+      background-color: transparent !important;
+    }
+  }
+
+  &__tabs {
+    align-items: center;
+    border-bottom: 1px solid $elv-color-darkergray;
+    display: flex;
+    gap: 20px;
+    margin-top: 20px;
+    padding-bottom: 5px;
+  }
+
+  &__tab {
+    border: 0;
+    font-size: 14px;
+    opacity: 0.5;
+    padding: 5px 0;
+    transition: opacity 0.15s ease;
+
+    &:hover,
+    &--active {
+      background-color: transparent !important;
+      opacity: 1;
+    }
+  }
+
+  &__form {
+    display: grid;
+    gap: 20px;
+    margin: 30px 0 10px;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__label {
+    font-size: 16px;
+  }
+
+  &__input {
+    background: transparent;
+    border: 1px solid $elv-color-darkergray;
+    font-size: 16px;
+    height: 45px;
+    padding-inline: 10px;
+
+    &::placeholder {
+      font-size: 14px;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+
+  &__clip-points {
+    display: flex;
+    justify-content: space-between;
+    max-width: 100%;
+    overflow: hidden;
+    width: 100%;
+
+    .download-modal__input {
+      width: 190px;
+    }
+  }
+
+  &__clip-info {
+    display: grid;
+    gap: 10px;
+
+    * {
+      color: $elv-color-mediumgray;
+    }
+  }
+
+  &__actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+
+    &--loading {
+      height: 45px;
+    }
+  }
+
+  &__action {
+    align-items: center;
+    border-radius: 6px;
+    display: flex;
+    font-size: 16px;
+    font-weight: 600;
+    height: 45px;
+    justify-content: center;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    width: 150px;
+
+    &:hover {
+      background-color: transparent !important;
+    }
+
+    &--primary {
+      background-color: $elv-color-lightgray;
+      color: #000;
+
+      &:hover {
+        background-color: $elv-color-lightgray !important;
+      }
+    }
+  }
+
+  &__history {
+    display: grid;
+    margin-top: 20px;
+    max-height: 550px;
+    overflow-y: auto;
+    padding-right: 10px;
+    position: relative;
+  }
+
+  &__history-row {
+    align-items: center;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 3fr 90px;
+    min-height: 35px;
+    padding: 10px 0;
+
+    &--highlighted {
+      .download-modal__history-row-name {
+        color: #9fbafd;
+      }
+    }
+
+    &--header {
+      background: #131315;
+      border-bottom: 1px solid $elv-color-darkergray;
+      font-size: 16px;
+      font-weight: 400;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+  }
+
+  &__history-row-name {
+    max-width: 100%;
+  }
+
+  &__history-row-duration,
+  &__history-row-status {
+    font-size: 12px;
+    margin-top: 2px;
+    opacity: 0.5;
+  }
+
+  &__history-status {
+    align-items: center;
+    display: flex;
+    height: 100%;
+    justify-content: flex-end;
+    width: 100%;
+  }
+
+  &__history-button {
+    border-radius: 6px;
+    height: 30px;
+    padding: 5px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    width: 30px;
+
+    &:hover {
+      background-color: #1a1a1a !important;
+    }
+
+    &:disabled {
+      opacity: 0.5 !important;
+      pointer: auto;
+    }
+
+    svg {
+      height: 100%;
+      width: 100%;
+    }
+  }
+
+  &__history-actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+  }
+
+  &__message {
+    margin: 30px 0 10px;
+    text-align: center;
+  }
+}
+
+progress {
+  background-color: #000;
+  border: 0;
+  border-radius: 20px;
+  height: 5px;
+  width: 100%;
+}
+
+progress::-webkit-progress-bar {
+  background-color: #000;
+  border: 0;
+  border-radius: 20px;
+  height: 5px;
+}
+
+progress::-webkit-progress-value {
+  background-color: $elv-color-gray;
+  border: 0;
+  border-radius: 20px;
+  height: 5px;
+}
+
+progress::-moz-progress-bar {
+  background-color: $elv-color-gray;
+  border: 0;
+  border-radius: 20px;
+  height: 5px;
+}

@@ -62,8 +62,6 @@ class RootStore {
       timeout: 30
     });
 
-    client.SendMessage({options: {operation: "HideHeader"}, noResponse: true});
-
     runInAction(() => this.client = client);
     const appPath = window.location.hash
       .replace(/^\/*#?\/*/, "")
