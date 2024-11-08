@@ -1161,9 +1161,6 @@ class VideoStore {
         versionHash: this.videoObject.versionHash
       });
 
-      // Allow re-downloading if this is the same job as a previous one
-      delete this.downloadedJobs[response.job_id];
-
       this.downloadJobInfo[response.job_id] = {
         versionHash: this.videoObject.versionHash,
         filename,
@@ -1212,8 +1209,6 @@ class VideoStore {
 
   @action.bound
   SaveDownloadJob = flow(function * ({jobId}) {
-    if(this.downloadedJobs[jobId]) { return; }
-
     clearInterval(this.downloadJobInfo[jobId]?.automaticDownloadInterval);
 
     const jobInfo = this.downloadJobInfo[jobId];
