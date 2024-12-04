@@ -38,22 +38,25 @@ class Header extends React.Component {
             { this.props.videoStore.name || "Eluvio Video Editor" }
           </h1>
         </div>
-        <div className="header-center mode-selection">
-          <ToolTip content="Tag">
-            <IconButton
-              className={this.props.rootStore.view === "main" ? "active" : ""}
-              icon={TagIcon}
-              onClick={() => this.props.rootStore.SetView("main")}
-            />
-          </ToolTip>
-          <ToolTip content="Assets">
-            <IconButton
-              className={this.props.rootStore.view === "assets" ? "active" : ""}
-              icon={AssetsIcon}
-              onClick={() => this.props.rootStore.SetView("assets")}
-            />
-          </ToolTip>
-        </div>
+        {
+          !this.props.videoStore.isVideo || !this.props.videoStore.hasAssets ? null :
+            <div className="header-center mode-selection">
+              <ToolTip content="Tag">
+                <IconButton
+                  className={this.props.rootStore.view === "main" ? "active" : ""}
+                  icon={TagIcon}
+                  onClick={() => this.props.rootStore.SetView("main")}
+                />
+              </ToolTip>
+              <ToolTip content="Assets">
+                <IconButton
+                  className={this.props.rootStore.view === "assets" ? "active" : ""}
+                  icon={AssetsIcon}
+                  onClick={() => this.props.rootStore.SetView("assets")}
+                />
+              </ToolTip>
+            </div>
+        }
         <div className="header-right">
           <Upload />
           <Save />

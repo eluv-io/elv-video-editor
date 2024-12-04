@@ -11,7 +11,6 @@ import Video from "./components/Video";
 import Timeline from "./components/Timeline";
 import Menu from "./components/Menu";
 import SidePanel from "./components/SidePanel";
-import ClipView from "./components/clips/ClipView";
 import AssetsList from "./components/assets/AssetsList";
 import {videoStore} from "./stores";
 import DownloadModal from "./components/DownloadModal";
@@ -45,18 +44,11 @@ class App extends React.Component {
     if(!this.props.rootStore.client) { return null; }
 
     let view;
-    switch(this.props.rootStore.view) {
-      case "main":
-        view = this.MainView();
-        break;
-      case "clip":
-        view = <ClipView />;
-        break;
-      case "assets":
-        view = <AssetsList />;
-        break;
-      default:
-        throw Error("Invalid view: " + this.props.rootStore.view);
+    if(this.props.rootStore.view === "assets" || !this.props.videoStore.isVideo) {
+      view = this.props.videoStore.loading ? null :
+        <AssetsList />;
+    } else {
+      view = this.MainView();
     }
 
     return (

@@ -9,6 +9,7 @@ import VideoStore from "./Video";
 
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
 import ClipStore from "./Clip";
+import UrlJoin from "url-join";
 
 // Force strict mode so mutations are only allowed within actions.
 configure({
@@ -19,6 +20,7 @@ class RootStore {
   @observable client;
 
   @observable view = "main";
+  @observable selectedAsset = "";
 
   constructor() {
     this.editStore = new EditStore(this);
@@ -52,6 +54,41 @@ class RootStore {
   @action
   SetView(view) {
     this.view = view;
+
+    this.UpdateCoreRoute();
+  }
+
+  @action
+  SetSelectedAsset(asset) {
+    this.selectedAsset = asset;
+
+    this.UpdateCoreRoute();
+  }
+
+  @action
+  UpdateCoreRoute() {
+    if(window.self === window.top) { return; }
+
+    let path = "/";
+    if(this.videoStore.videoObject && window.self !== window.top) {
+      path = UrlJoin(
+        "#",
+        this.videoStore.videoObject.libraryId,
+        this.videoStore.videoObject.objectId,
+        this.view === "assets" ? "assets" : "",
+        this.view === "assets" ? this.selectedAsset || "" : ""
+      );
+    }
+
+    window.location.hash = path;
+
+    this.client.SendMessage({
+      options: {
+        operation: "SetFramePath",
+        path
+      },
+      noResponse: true
+    });
   }
 
   @action
@@ -82,6 +119,8 @@ class RootStore {
       // libraryId + objectId
       const libraryId = appPath[0];
       const objectId = appPath[1];
+      this.view = appPath[2] || "main";
+      this.selectedAsset = appPath[2] === "assets" && appPath[3];
 
       this.menuStore.SetLibraryId(libraryId);
       this.menuStore.SetObjectId(objectId);

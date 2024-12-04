@@ -22,6 +22,7 @@ class VideoStore {
   @observable loading = false;
   @observable initialized = false;
   @observable isVideo = false;
+  @observable hasAssets = false;
 
   @observable consecutiveSegmentErrors = 0;
 
@@ -111,7 +112,8 @@ class VideoStore {
   Reset() {
     this.loading = true;
     this.initialized = false;
-    this.isVideo = false;
+    this.isVideo = true;
+    this.hasAssets = false;
 
     this.video = undefined;
     this.player = undefined;
@@ -186,6 +188,8 @@ class VideoStore {
     try {
       this.videoObject = videoObject;
 
+      this.rootStore.UpdateCoreRoute();
+
       this.name = videoObject.name;
       this.versionHash = videoObject.versionHash;
 
@@ -205,6 +209,7 @@ class VideoStore {
 
       this.metadata = videoObject.metadata;
       this.isVideo = videoObject.isVideo;
+      this.hasAssets = Object.keys((videoObject.metadata || {}).assets || {}).length > 0;
 
       this.LoadDownloadJobInfo();
 
@@ -214,6 +219,14 @@ class VideoStore {
         this.availableOfferings = yield this.rootStore.client.AvailableOfferings({
           versionHash: videoObject.versionHash
         });
+
+        if(this.hasAssets) {
+          this.isVideo = Object.keys(this.availableOfferings).length > 0;
+
+          if(!this.isVideo) {
+            return;
+          }
+        }
 
         this.SetOfferingClipDetails();
 
@@ -406,8 +419,9 @@ class VideoStore {
     }
 
     const hasHlsOfferings = Object.values(this.availableOfferings).some(offering => !offering.disabled);
-
-    if(!hasHlsOfferings) { throw Error("No offerings with HLS Clear or AES-128 playout found."); }
+    if(!hasHlsOfferings) {
+      throw Error("No offerings with HLS Clear or AES-128 playout found.");
+    }
 
     return {
       playoutOptions: offeringPlayoutOptions[offeringKey],

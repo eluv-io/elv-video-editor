@@ -9,6 +9,7 @@ import FileIcon from "../../static/icons/file.svg";
 import PictureIcon from "../../static/icons/picture.svg";
 import TagIcon from "../../static/icons/tag.svg";
 import XIcon from "../../static/icons/X.svg";
+import {rootStore} from "../../stores";
 
 @inject("videoStore")
 @observer
@@ -17,11 +18,19 @@ class AssetsList extends React.Component {
     super(props);
 
     this.state = {
-      selectedAsset: undefined,
+      selectedAsset:
+        rootStore.selectedAsset ?
+          this.Assets()
+            .findIndex(asset => asset.title === rootStore.selectedAsset) :
+          undefined,
       filter: "",
       taggedOnly: false,
       imageOnly: false
     };
+  }
+
+  componentDidUpdate() {
+    rootStore.SetSelectedAsset(this.Assets()[this.state.selectedAsset]?.title);
   }
 
   AssetIcon(assetKey, asset) {
@@ -40,14 +49,18 @@ class AssetsList extends React.Component {
     return icon;
   }
 
-  FilteredAssets() {
-    let assets = Object.keys(this.props.videoStore.metadata.assets || {})
+  Assets() {
+    return Object.keys(this.props.videoStore.metadata.assets || {})
       .map(assetKey => ({
         ...this.props.videoStore.metadata.assets[assetKey],
         title: this.props.videoStore.metadata.assets[assetKey].title || assetKey,
         assetKey,
         filename: ((this.props.videoStore.metadata.assets[assetKey].file || {})["/"] || assetKey).split("/").slice(-1)[0] || ""
       }));
+  }
+
+  FilteredAssets() {
+    let assets = this.Assets();
 
     if(this.state.imageOnly) {
       assets = assets.filter(asset => (asset.attachment_content_type || "").toLowerCase().startsWith("image"));

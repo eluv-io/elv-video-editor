@@ -1,5 +1,4 @@
 import {observable, action, flow} from "mobx";
-import UrlJoin from "url-join";
 
 class MenuStore {
   @observable libraryId = "";
@@ -58,17 +57,7 @@ class MenuStore {
         libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
       }
 
-      if(window.self !== window.top) {
-        this.rootStore.client.SendMessage({
-          options: {
-            operation: "SetFramePath",
-            path: UrlJoin("#", versionHash ? versionHash : UrlJoin(libraryId, objectId))
-          },
-          noResponse: true
-        });
-      }
-
-      window.location.hash = `${UrlJoin("#", versionHash ? versionHash : UrlJoin(libraryId, objectId))}`;
+      this.rootStore.UpdateCoreRoute();
 
       const object = yield this.rootStore.client.ContentObject({libraryId, objectId, versionHash});
 
