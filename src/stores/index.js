@@ -132,7 +132,7 @@ class RootStore {
       this.menuStore.SelectVideo({libraryId, objectId});
     }
 
-    if(params.has("st" || params.has("et"))) {
+    if(params.has("st") || params.has("et")) {
       const start = Date.now();
       const interval = setInterval(() => {
         if(Date.now() - start > 15000) {
