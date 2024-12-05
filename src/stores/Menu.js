@@ -92,8 +92,7 @@ class MenuStore {
         isVideo: true
       };
 
-      this.rootStore.videoStore.SetVideo(this.selectedObject);
-      this.rootStore.clipVideoStore.SetVideo(this.selectedObject);
+      yield this.rootStore.videoStore.SetVideo(this.selectedObject);
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error("Failed to load object:");

@@ -101,8 +101,12 @@ class RootStore {
 
     runInAction(() => this.client = client);
     const appPath = window.location.hash
+      .split("?")[0]
       .replace(/^\/*#?\/*/, "")
       .split("/");
+    const params = new URLSearchParams(
+      `?${window.location.hash.split("?")[1]}`
+    );
 
     if(appPath.length >= 1 && appPath[0].startsWith("hq__")){
       // Version Hash
@@ -113,8 +117,8 @@ class RootStore {
 
       this.menuStore.SetLibraryId(libraryId);
       this.menuStore.SetObjectId(objectId);
-      this.menuStore.SelectVideo({libraryId, objectId, versionHash});
       this.menuStore.ToggleMenu(false);
+      this.menuStore.SelectVideo({libraryId, objectId, versionHash});
     } else if(appPath.length >= 2 && appPath[0].startsWith("ilib") && appPath[1].startsWith("iq__")) {
       // libraryId + objectId
       const libraryId = appPath[0];
@@ -124,8 +128,36 @@ class RootStore {
 
       this.menuStore.SetLibraryId(libraryId);
       this.menuStore.SetObjectId(objectId);
-      this.menuStore.SelectVideo({libraryId, objectId});
       this.menuStore.ToggleMenu(false);
+      this.menuStore.SelectVideo({libraryId, objectId});
+    }
+
+    if(params.has("st" || params.has("et"))) {
+      const start = Date.now();
+      const interval = setInterval(() => {
+        if(Date.now() - start > 15000) {
+          clearInterval(interval);
+        }
+
+        if(!videoStore.initialized) { return; }
+
+        try {
+          videoStore.SetClipMark({
+            inTime: params.get("st"),
+            outTime: params.get("et")
+          });
+
+          videoStore.Seek(videoStore.TimeToFrame(parseFloat(params.get("st"))));
+        } catch(error) {
+          // eslint-disable-next-line no-console
+          console.log("Clip parameters failed:");
+          // eslint-disable-next-line no-console
+          console.log(error);
+        } finally {
+          clearInterval(interval);
+        }
+      }, 500);
+
     }
   }
 }

@@ -607,13 +607,21 @@ class VideoStore {
   }
 
   @action.bound
-  SetClipMark({inFrame, outFrame, inProgress, outProgress}) {
+  SetClipMark({inFrame, outFrame, inProgress, outProgress, inTime, outTime}) {
     if(typeof inProgress !== "undefined" && inProgress >= 0) {
       inFrame = this.ProgressToFrame(inProgress);
     }
 
     if(typeof outProgress !== "undefined" && outProgress <= 100) {
       outFrame = this.ProgressToFrame(outProgress);
+    }
+
+    if(typeof inTime !== "undefined" && parseFloat(inTime) >= 0) {
+      inFrame = this.TimeToFrame(parseFloat(inTime));
+    }
+
+    if(typeof outTime !== "undefined" && parseFloat(outTime) >= 0) {
+      outFrame = this.TimeToFrame(parseFloat(outTime));
     }
 
     const inFrameChanged = inFrame !== this.clipInFrame;
