@@ -2,7 +2,7 @@ import CommonStyles from "Assets/stylesheets/modules/common.module.scss";
 
 import React, {useEffect, useRef, useState} from "react";
 import {CreateModuleClassMatcher, JoinClassNames, TextWidth} from "Utils/Utils";
-import {Select, TextInput, Tooltip} from "@mantine/core";
+import {Select, Switch, TextInput, Tooltip} from "@mantine/core";
 import SVG from "react-inlinesvg";
 import {observer} from "mobx-react";
 
@@ -30,7 +30,7 @@ export const IconButton = ({
   label,
   icon,
   active=false,
-  tooltipProps={openDelay: 1000},
+  tooltipProps={openDelay: 500},
   unstyled=false,
   children,
   ...props
@@ -85,7 +85,7 @@ export const Input = observer(({label, monospace, ...props}) => {
 
   if(label) {
     return (
-      <Tooltip label={label} openDelay={1000}>
+      <Tooltip label={label} openDelay={500}>
         { input }
       </Tooltip>
     );
@@ -107,7 +107,7 @@ export const SelectInput = observer(({label, options=[], autoWidth=true, ...prop
   }
 
   return (
-    <Tooltip label={label} openDelay={1000}>
+    <Tooltip label={label} openDelay={500}>
       <Select
         data={options}
         classNames={{
@@ -124,6 +124,20 @@ export const SelectInput = observer(({label, options=[], autoWidth=true, ...prop
         comboboxProps={{width: "max-content", ...(props.comboboxProps || {})}}
       />
     </Tooltip>
+  );
+});
+
+export const SwitchInput = observer(({...props}) => {
+  return (
+    <Switch
+      {...props}
+      classNames={{
+        root: S("switch"),
+        thumb: S("switch__thumb"),
+        label: S("switch__label"),
+        track: S("switch__track"),
+      }}
+    />
   );
 });
 

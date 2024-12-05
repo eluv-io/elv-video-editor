@@ -4,7 +4,9 @@ import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react";
 import {videoStore} from "Stores";
 import {CreateModuleClassMatcher} from "Utils/Utils";
-import {IconButton, Input} from "Components/common/Common";
+import {IconButton, Input, SwitchInput} from "Components/common/Common";
+import MarkedSlider from "Components/common/MarkedSlider";
+import Fraction from "fraction.js";
 
 import UndoIcon from "Assets/icons/v2/undo";
 import RedoIcon from "Assets/icons/v2/redo";
@@ -21,8 +23,10 @@ import AddNewItemIcon from "Assets/icons/v2/add-new-item";
 import SplitIcon from "Assets/icons/v2/split";
 import ClipInIcon from "Assets/icons/v2/clip-start";
 import ClipOutIcon from "Assets/icons/v2/clip-end";
-import MarkedSlider from "Components/common/MarkedSlider";
-import Fraction from "fraction.js";
+
+import UploadIcon from "Assets/icons/v2/upload";
+import SaveIcon from "Assets/icons/v2/save";
+import KeyboardIcon from "Assets/icons/v2/keyboard";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -127,7 +131,14 @@ const TimelineTopBar = observer(() => {
 const TimelineBottomBar = observer(() => {
   return (
     <div className={S("toolbar", "timeline-section__bottom-bar")}>
-
+      <IconButton icon={UploadIcon} label="Upload" onClick={() => {}}/>
+      <IconButton icon={SaveIcon} label="Save Changes" onClick={() => {}}/>
+      <IconButton icon={KeyboardIcon} label="Keyboard Shortcuts" onClick={() => {}}/>
+      <div className={S("toolbar__separator")}/>
+      <SwitchInput label="Show Tags" />
+      <SwitchInput label="Show Segments" />
+      <SwitchInput label="Show Audio" />
+      <div className={S("toolbar__spacer")}/>
     </div>
   );
 });

@@ -459,8 +459,6 @@ class VideoStore {
   });
 
   Initialize(video, player) {
-    if(this.loading) { return;}
-
     this.loading = true;
 
     this.initialized = false;

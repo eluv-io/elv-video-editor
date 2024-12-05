@@ -7,9 +7,10 @@ export const CreateModuleClassMatcher = (...modules) => {
 
   return (...classes) => JoinClassNames(
     ...(classes.map(c => {
-      const module = modules.find(m => m[c]);
-
-      return module?.[c] || "";
+      return modules
+        .map(m => m?.[c])
+        .filter(c => c)
+        .join(" ");
     }))
   );
 };

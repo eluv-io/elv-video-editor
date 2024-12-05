@@ -66,6 +66,13 @@
     flex-grow: 1;
   }
 
+  &__switches {
+    align-items: center;
+    display: flex;
+    flex-grow: 1;
+    gap: 30px;
+  }
+
   &__controls-group {
     align-items: center;
     display: flex;

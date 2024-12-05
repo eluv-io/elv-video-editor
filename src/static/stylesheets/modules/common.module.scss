@@ -87,6 +87,29 @@
   }
 }
 
+.switch {
+  border: 0;
+
+  * {
+    cursor: pointer;
+    user-select: none;
+  }
+
+  &__thumb {
+    background: var(--text-secondary);
+    border: 0;
+  }
+
+  &__label {
+    padding-left: 7px;
+  }
+
+  &__track {
+    background: var(--background-secondary-color);
+    border: 1px solid var(--text-disabled);
+  }
+}
+
 .resize-handle {
   background: var(--text-tertiary);
   border-radius: 10px 0 0;
