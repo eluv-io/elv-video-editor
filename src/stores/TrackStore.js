@@ -1,6 +1,6 @@
 import {flow, makeAutoObservable, toJS} from "mobx";
-import {WebVTT} from "../vendor/vtt.js/lib/index";
-import Id from "../utils/Id";
+import {WebVTT} from "vtt.js";
+import Id from "@/utils/Id";
 import IntervalTree from "node-interval-tree";
 import {Parser as HLSParser} from "m3u8-parser";
 import UrlJoin from "url-join";

@@ -1,10 +1,10 @@
-import VideoStyles from "Assets/stylesheets/modules/video.module.scss";
+import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
 import React, {useState, useEffect} from "react";
 import {observer} from "mobx-react";
-import {videoStore} from "Stores";
-import {CreateModuleClassMatcher, StopScroll} from "Utils/Utils";
-import {Loader} from "Components/common/Common";
+import {videoStore} from "@/stores";
+import {CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
+import {Loader} from "@/components/common/Common";
 import HLSPlayer from "hls.js";
 import {
   DownloadFrameButton,
@@ -12,7 +12,7 @@ import {
   PlayPauseButton,
   VideoTime,
   VolumeControls
-} from "Components/video/VideoControls";
+} from "@/components/video/VideoControls";
 
 const S = CreateModuleClassMatcher(VideoStyles);
 

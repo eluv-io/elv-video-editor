@@ -1,32 +1,33 @@
-import TimelineStyles from "Assets/stylesheets/modules/timeline.module.scss";
+import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
 
 import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react";
-import {videoStore} from "Stores";
-import {CreateModuleClassMatcher} from "Utils/Utils";
-import {IconButton, Input, SwitchInput} from "Components/common/Common";
-import MarkedSlider from "Components/common/MarkedSlider";
+import {tracksStore, videoStore} from "@/stores";
+import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {IconButton, Input, SwitchInput} from "@/components/common/Common";
+import MarkedSlider from "@/components/common/MarkedSlider";
 import Fraction from "fraction.js";
 
-import UndoIcon from "Assets/icons/v2/undo";
-import RedoIcon from "Assets/icons/v2/redo";
-import AddUserIcon from "Assets/icons/v2/add-user";
-import DownloadIcon from "Assets/icons/v2/download";
+import UndoIcon from "@/assets/icons/v2/undo.svg";
+import RedoIcon from "@/assets/icons/v2/redo.svg";
+import AddUserIcon from "@/assets/icons/v2/add-user.svg";
+import DownloadIcon from "@/assets/icons/v2/download.svg";
 
-import FrameBack10 from "Assets/icons/v2/frame-back-10";
-import FrameBack1 from "Assets/icons/v2/frame-back-1";
-import FrameForward1 from "Assets/icons/v2/frame-forward-1";
-import FrameForward10 from "Assets/icons/v2/frame-forward-10";
+import FrameBack10 from "@/assets/icons/v2/frame-back-10.svg";
+import FrameBack1 from "@/assets/icons/v2/frame-back-1.svg";
+import FrameForward1 from "@/assets/icons/v2/frame-forward-1.svg";
+import FrameForward10 from "@/assets/icons/v2/frame-forward-10.svg";
 
-import PlayClipIcon from "Assets/icons/v2/play-clip";
-import AddNewItemIcon from "Assets/icons/v2/add-new-item";
-import SplitIcon from "Assets/icons/v2/split";
-import ClipInIcon from "Assets/icons/v2/clip-start";
-import ClipOutIcon from "Assets/icons/v2/clip-end";
+import PlayClipIcon from "@/assets/icons/v2/play-clip.svg";
+import AddNewItemIcon from "@/assets/icons/v2/add-new-item.svg";
+import SplitIcon from "@/assets/icons/v2/split.svg";
+import ClipInIcon from "@/assets/icons/v2/clip-start.svg";
+import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
 
-import UploadIcon from "Assets/icons/v2/upload";
-import SaveIcon from "Assets/icons/v2/save";
-import KeyboardIcon from "Assets/icons/v2/keyboard";
+import UploadIcon from "@/assets/icons/v2/upload.svg";
+import SaveIcon from "@/assets/icons/v2/save.svg";
+import KeyboardIcon from "@/assets/icons/v2/keyboard.svg";
+import Track from "@/components/timeline/Track.jsx";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -211,20 +212,32 @@ const TimelinePlayheadIndicator = observer(({timelineRef}) => {
 
 const TimelineSection = observer(() => {
   const timelineRef = useRef(null);
+
+  const metadataTracks = tracksStore.tracks
+    //.filter(track => track.trackType !== "vtt" && track.trackType !== "clip" && track.trackType !== "segments").slice()
+    //.sort((a, b) => (a.label > b.label ? 1 : -1))
+
+  console.log(metadataTracks);
+
   return (
     <div className={S("content-block", "timeline-section")}>
       <TimelineTopBar />
       <TimelinePlayheadIndicator timelineRef={timelineRef} />
       <div ref={timelineRef} className={S("timeline-section__content")}>
         <TimelineSeekBar/>
-        <div className={S("timeline-row")}>
-          <div className={S("timeline-row__label")}>
-            Label
-          </div>
-          <div className={S("timeline-row__content")}>
-            Content
-          </div>
-        </div>
+        {
+          metadataTracks.map((track, i) =>
+            <div key={`track-${track.trackId || i}`} className={S("timeline-row")}>
+              <div className={S("timeline-row__label")}>
+                { track.label }
+              </div>
+              <div className={S("timeline-row__content")}>
+                <Track track={track} />
+              </div>
+            </div>
+          )
+        }
+
         <div className={S("timeline-row")}>
           <div className={S("timeline-row__label")}>
             Label

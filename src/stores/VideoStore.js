@@ -1,8 +1,8 @@
 import { action, flow, makeAutoObservable } from "mobx";
-import FrameAccurateVideo, {FrameRateDenominator, FrameRateNumerator, FrameRates} from "../utils/FrameAccurateVideo";
+import FrameAccurateVideo, {FrameRateDenominator, FrameRateNumerator, FrameRates} from "@/utils/FrameAccurateVideo";
 import UrlJoin from "url-join";
 import HLS from "hls.js";
-import {DownloadFromUrl} from "../utils/Utils";
+import {DownloadFromUrl} from "@/utils/Utils.js";
 
 class VideoStore {
   videoKey = 0;

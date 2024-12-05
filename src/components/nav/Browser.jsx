@@ -1,20 +1,20 @@
-import BrowserStyles from "Assets/stylesheets/modules/browser.module.scss";
+import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 
 import React, {useState, useEffect, useRef} from "react";
 import {observer} from "mobx-react";
-import {browserStore} from "Stores";
-import {CreateModuleClassMatcher} from "Utils/Utils";
-import {IconButton, Loader} from "Components/common/Common";
+import {browserStore} from "@/stores";
+import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {IconButton, Loader} from "@/components/common/Common";
 import SVG from "react-inlinesvg";
 
-import LibraryIcon from "Assets/icons/v2/library";
-import ObjectIcon from "Assets/icons/file";
-import VideoIcon from "Assets/icons/v2/video";
-import BackIcon from "Assets/icons/v2/back";
-import FirstPageIcon from "Assets/icons/DoubleBackward";
-import LastPageIcon from "Assets/icons/DoubleForward";
-import PageForwardIcon from "Assets/icons/Forward";
-import PageBackIcon from "Assets/icons/Backward";
+import LibraryIcon from "@/assets/icons/v2/library.svg";
+import ObjectIcon from "@/assets/icons/file.svg";
+import VideoIcon from "@/assets/icons/v2/video.svg";
+import BackIcon from "@/assets/icons/v2/back.svg";
+import FirstPageIcon from "@/assets/icons/DoubleBackward.svg";
+import LastPageIcon from "@/assets/icons/DoubleForward.svg";
+import PageForwardIcon from "@/assets/icons/Forward.svg";
+import PageBackIcon from "@/assets/icons/Backward.svg";
 
 
 const S = CreateModuleClassMatcher(BrowserStyles);

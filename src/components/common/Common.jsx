@@ -1,7 +1,7 @@
-import CommonStyles from "Assets/stylesheets/modules/common.module.scss";
+import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
 import React, {useEffect, useRef, useState} from "react";
-import {CreateModuleClassMatcher, JoinClassNames, TextWidth} from "Utils/Utils";
+import {CreateModuleClassMatcher, JoinClassNames, TextWidth} from "@/utils/Utils.js";
 import {Select, Switch, TextInput, Tooltip} from "@mantine/core";
 import SVG from "react-inlinesvg";
 import {observer} from "mobx-react";

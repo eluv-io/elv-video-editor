@@ -1,24 +1,24 @@
-import VideoStyles from "Assets/stylesheets/modules/video.module.scss";
+import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
 import React from "react";
 import {observer} from "mobx-react";
-import {videoStore} from "Stores";
-import {CreateModuleClassMatcher, StopScroll} from "Utils/Utils";
-import {IconButton, SelectInput} from "Components/common/Common";
+import {videoStore} from "@/stores";
+import {CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
+import {IconButton, SelectInput} from "@/components/common/Common";
 import Fraction from "fraction.js";
 import SVG from "react-inlinesvg";
 
 const S = CreateModuleClassMatcher(VideoStyles);
 
-import VolumeOffIcon from "Assets/icons/VolumeOff";
-import VolumeLowIcon from "Assets/icons/VolumeLow";
-import VolumeHighIcon from "Assets/icons/VolumeHigh";
-import PlayIcon from "Assets/icons/Play";
-import PauseIcon from "Assets/icons/Pause";
-import FrameIcon from "Assets/icons/picture";
-import FullscreenIcon from "Assets/icons/Maximize";
-import MinimizeIcon from "Assets/icons/Minimize";
-import {FrameRates} from "Utils/FrameAccurateVideo";
+import VolumeOffIcon from "@/assets/icons/VolumeOff.svg";
+import VolumeLowIcon from "@/assets/icons/VolumeLow.svg";
+import VolumeHighIcon from "@/assets/icons/VolumeHigh.svg";
+import PlayIcon from "@/assets/icons/Play.svg";
+import PauseIcon from "@/assets/icons/Pause.svg";
+import FrameIcon from "@/assets/icons/picture.svg";
+import FullscreenIcon from "@/assets/icons/Maximize.svg";
+import MinimizeIcon from "@/assets/icons/Minimize.svg";
+import {FrameRates} from "@/utils/FrameAccurateVideo";
 
 export const QualityControls = observer(() => {
   const levels = Object.keys(videoStore.levels).map(levelIndex => {

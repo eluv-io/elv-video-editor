@@ -1,11 +1,13 @@
 import {observer} from "mobx-react";
 import React, {useEffect, useState} from "react";
-import {rootStore} from "Stores";
-import {Loader, ResizeHandle} from "Components/common/Common";
-import Browser from "Components/nav/Browser";
-import SidePanel from "Components/side_panel/SidePanel";
-import VideoSection from "Components/video/VideoSection";
-import Timeline from "Components/timeline/Timeline";
+import {rootStore} from "@/stores";
+import {Loader, ResizeHandle} from "@/components/common/Common";
+import Browser from "@/components/nav/Browser";
+import SidePanel from "@/components/side_panel/SidePanel";
+import VideoSection from "@/components/video/VideoSection";
+import Timeline from "@/components/timeline/Timeline";
+import UrlJoin from "url-join";
+import Nav from "@/components/nav/Nav.jsx";
 
 const AppContent = observer(() => {
   const [showSidePanel, setShowSidePanel] = useState(true);
@@ -110,4 +112,25 @@ const AppContent = observer(() => {
   );
 });
 
-export default AppContent;
+const App = observer(() => {
+  if(window.self === window.top) {
+    // Not in Core frame - Redirect
+    window.location = UrlJoin(EluvioConfiguration.coreUrl, "/", window.location.hash);
+    return;
+  }
+
+  if(!rootStore.client) {
+    return null;
+  }
+
+  return (
+    <div className="page-container">
+      <Nav />
+      <div className="content">
+        <AppContent />
+      </div>
+    </div>
+  );
+});
+
+export default App;

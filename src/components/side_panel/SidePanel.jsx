@@ -1,8 +1,8 @@
-import SidePanelStyles from "Assets/stylesheets/modules/side-panel.module.scss";
+import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss";
 
 import React from "react";
 import {observer} from "mobx-react";
-import {CreateModuleClassMatcher} from "Utils/Utils";
+import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 

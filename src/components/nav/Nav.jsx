@@ -1,15 +1,15 @@
-import NavStyles from "Assets/stylesheets/modules/nav.module.scss";
+import NavStyles from "@/assets/stylesheets/modules/nav.module.scss";
 
 import React from "react";
 import {observer} from "mobx-react";
-import {rootStore, videoStore} from "Stores";
-import {CreateModuleClassMatcher} from "Utils/Utils";
-import {IconButton} from "Components/common/Common";
+import {rootStore, videoStore} from "@/stores";
+import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {IconButton} from "@/components/common/Common";
 
-import SourceIcon from "Assets/icons/v2/source";
-import TagIcon from "Assets/icons/v2/tag";
-import ClipIcon from "Assets/icons/v2/clip";
-import AssetIcon from "Assets/icons/v2/asset";
+import SourceIcon from "@/assets/icons/v2/source.svg";
+import TagIcon from "@/assets/icons/v2/tag.svg";
+import ClipIcon from "@/assets/icons/v2/clip.svg";
+import AssetIcon from "@/assets/icons/v2/asset.svg";
 
 const S = CreateModuleClassMatcher(NavStyles);
 

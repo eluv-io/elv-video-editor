@@ -1,6 +1,6 @@
 import { makeAutoObservable } from "mobx";
-import Id from "../utils/Id";
-import {DownloadFromUrl} from "../utils/Utils";
+import Id from "@/utils/Id";
+import {DownloadFromUrl} from "@/utils/Utils";
 
 class EntryStore {
   entries = [];

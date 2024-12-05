@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import Tiff from "tiff.js";
-import {Loader} from "Components/common/Loader";
+import {Loader} from "@/components/common/Loader";
 
 // Display TIFFs in browser - Not used, but may be useful
 

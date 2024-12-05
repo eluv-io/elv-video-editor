@@ -1,18 +1,18 @@
-import VideoStyles from "Assets/stylesheets/modules/video.module.scss";
+import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
 import React from "react";
 import {observer} from "mobx-react";
-import {videoStore} from "Stores";
-import {CreateModuleClassMatcher} from "Utils/Utils";
+import {videoStore} from "@/stores";
+import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {
   DropFrameControls, FrameRateControls, OfferingControls,
   PlaybackRateControl, QualityControls,
-} from "Components/video/VideoControls";
-import Video from "Components/video/Video";
+} from "@/components/video/VideoControls";
+import Video from "@/components/video/Video";
 import SVG from "react-inlinesvg";
 import {Tooltip} from "@mantine/core";
 
-import DescriptionIcon from "Assets/icons/v2/description";
+import DescriptionIcon from "@/assets/icons/v2/description.svg";
 
 const S = CreateModuleClassMatcher(VideoStyles);
 

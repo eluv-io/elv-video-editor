@@ -1,7 +1,7 @@
-import CommonStyles from "Assets/stylesheets/modules/common.module.scss";
+import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
 import React, {useCallback, useEffect, useRef, useState} from "react";
-import {CreateModuleClassMatcher, JoinClassNames} from "Utils/Utils";
+import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {observer} from "mobx-react";
 import {Tooltip} from "@mantine/core";
 

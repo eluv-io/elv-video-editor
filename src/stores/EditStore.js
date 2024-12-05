@@ -1,7 +1,7 @@
 import { flow, toJS, makeAutoObservable } from "mobx";
 import {diff} from "deep-object-diff";
-import {SortEntries} from "../utils/Utils";
-import FrameAccurateVideo from "../utils/FrameAccurateVideo";
+import {SortEntries} from "@/utils/Utils";
+import FrameAccurateVideo from "@/utils/FrameAccurateVideo";
 
 class EditStore {
   saving = false;
