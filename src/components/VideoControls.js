@@ -17,7 +17,8 @@ import {
   Scale,
   Offering,
   Volume,
-  AudioTrackSelect
+  AudioTrackSelect,
+  OpenEmbedUrl
 } from "./controls/Controls";
 import FrameForward from "../static/icons/Forward.svg";
 import SecondForward from "../static/icons/DoubleForward.svg";
@@ -82,6 +83,7 @@ class VideoControls extends React.Component {
             <FullscreenToggle clip={this.props.clip} />
             <SaveVideo />
             <SaveFrame clip={this.props.clip} />
+            <OpenEmbedUrl />
           </div>
         </div>
       </div>

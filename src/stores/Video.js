@@ -559,6 +559,8 @@ class VideoStore {
       }
     }));
 
+    this.SetEmbedUrl();
+
     const loadedSource = this.source;
 
     // When sufficiently loaded, update video info and mark video as initialized
@@ -640,6 +642,8 @@ class VideoStore {
     } else if(outFrameChanged && outFrame <= this.clipInFrame) {
       this.clipInFrame = Math.max(0, this.clipOutFrame - (totalFrames * 0.05));
     }
+
+    this.SetEmbedUrl();
   }
 
   @action.bound
@@ -1261,6 +1265,30 @@ class VideoStore {
     delete this.downloadJobInfo[jobId];
     this.SaveDownloadJobInfo();
   }
+
+  SetEmbedUrl = flow(function * () {
+    let options = {
+      autoplay: true,
+    };
+
+    if(this.offeringKey !== "default") {
+      options.offerings = [this.offeringKey];
+    }
+
+    if(this.clipInFrame > 0) {
+      options.clipStart = this.FrameToTime(this.clipInFrame);
+    }
+
+    if(this.videoHandler.TotalFrames() > this.clipOutFrame + 1) {
+      options.clipEnd = this.FrameToTime(this.clipOutFrame + 1);
+    }
+
+    this.embedUrl = yield this.rootStore.client.EmbedUrl({
+      objectId: this.videoObject.objectId,
+      duration: 7 * 24 * 60 * 60 * 1000,
+      options
+    });
+  })
 }
 
 export default VideoStore;

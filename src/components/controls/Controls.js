@@ -18,6 +18,7 @@ import VolumeOff from "../../static/icons/VolumeOff.svg";
 import VolumeLow from "../../static/icons/VolumeLow.svg";
 import VolumeHigh from "../../static/icons/VolumeHigh.svg";
 import DownloadIcon from "../../static/icons/download.svg";
+import EmbedUrlIcon from "../../static/icons/external-link.svg";
 
 import {StopScroll} from "../../utils/Utils";
 import {videoStore} from "../../stores";
@@ -47,6 +48,19 @@ let SaveVideo = observer(() => {
         icon={DownloadIcon}
         className={"video-control-button video-control-save-frame"}
         onClick={() => videoStore.ToggleDownloadModal(true)}
+      />
+    </ToolTip>
+  );
+});
+
+let OpenEmbedUrl = observer(() => {
+  return (
+    <ToolTip content={<span>Open Stream URL for Current Clip</span>}>
+      <IconButton
+        aria-label="Open Stream URL"
+        icon={EmbedUrlIcon}
+        className={"video-control-button video-control-save-frame"}
+        onClick={() => videoStore.embedUrl && window.open(videoStore.embedUrl, "_blank")}
       />
     </ToolTip>
   );
@@ -451,6 +465,7 @@ PlaybackRate = Inject(PlaybackRate);
 PlayPause = Inject(PlayPause);
 SaveFrame = Inject(SaveFrame);
 SaveVideo = Inject(SaveVideo);
+OpenEmbedUrl = Inject(OpenEmbedUrl);
 Offering = Inject(Offering);
 Volume = Inject(Volume);
 
@@ -464,6 +479,7 @@ export {
   FrameControl,
   FrameRate,
   FullscreenToggle,
+  OpenEmbedUrl,
   PlaybackLevel,
   AudioTrackSelect,
   PlaybackRate,
