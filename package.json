@@ -6,11 +6,9 @@
   "license": "MIT",
   "homepage": "https://github.com/eluv-io/elv-video-editor",
   "scripts": {
-    "serve-vite": "rm -rf node_modules/.vite; vite",
-    "build-vite": "rm -rf dist/* ; vite build",
+    "serve": "rm -rf node_modules/.vite; vite",
+    "build": "rm -rf dist/* ; vite build",
     "bump-version": "npm --git-tag-version --no-commit-hooks version patch",
-    "serve": "webpack-dev-server --hot --host=0.0.0.0 --port 8083",
-    "build": "node ./node_modules/webpack-cli/bin/cli.js --mode=production --devtool false",
     "lint": "npm-run-all -s -c lint-js-fix lint-scss-fix",
     "lint-js": "eslint ./src --ext js,jsx --report-unused-disable-directives",
     "lint-js-fix": "eslint ./src --fix --ext js,jsx --report-unused-disable-directives",

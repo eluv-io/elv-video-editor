@@ -3,10 +3,9 @@ import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
 import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react";
 import {tracksStore, videoStore} from "@/stores";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
 import {IconButton, Input, SwitchInput} from "@/components/common/Common";
 import MarkedSlider from "@/components/common/MarkedSlider";
-import Fraction from "fraction.js";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
@@ -121,9 +120,9 @@ const TimelineTopBar = observer(() => {
         <IconButton icon={SplitIcon} label="Split" onClick={() => {}} />
         <div className={S("toolbar__separator")} />
         <IconButton icon={ClipInIcon} label="Set Clip In to Current Frame" onClick={() => videoStore.SetClipMark({inFrame: videoStore.frame})} />
-        <Input label="Clip Start" monospace value={videoStore.FrameToSMPTE(videoStore.clipInFrame) || "00:00:00:00"} w={150} />
+        <Input label="Clip Start" monospace value={videoStore.FrameToSMPTE(videoStore.clipInFrame) || "00:00:00:00"} w={150} onChange={() => {}} />
         <IconButton icon={ClipOutIcon} label="Set Clip Out to Current Frame" onClick={() => videoStore.SetClipMark({outFrame: videoStore.frame})} />
-        <Input label="Clip End" monospace value={videoStore.FrameToSMPTE(videoStore.clipOutFrame) || "00:00:00:00"} w={150} />
+        <Input label="Clip End" monospace value={videoStore.FrameToSMPTE(videoStore.clipOutFrame) || "00:00:00:00"} w={150} onChange={() => {}} />
       </div>
     </div>
   );
@@ -145,8 +144,10 @@ const TimelineBottomBar = observer(() => {
 });
 
 const TimelineSeekBar = observer(() => {
+  if(!videoStore.initialized) { return null; }
+
   return (
-     <div className={S("timeline-row", "seek-bar-container")}>
+     <div className={S("timeline-row", "timeline-row--seek", "seek-bar-container")}>
       <div className={S("timeline-row__label", "seek-bar-container__spacer")} />
       <MarkedSlider
         min={videoStore.scaleMin}
@@ -154,7 +155,6 @@ const TimelineSeekBar = observer(() => {
         handles={[
           {
             position: videoStore.seek,
-            toolTip: `Playhead - ${videoStore.FrameToSMPTE(videoStore.frame)}`,
             className: "seek-handle",
           }
         ]}
@@ -162,10 +162,8 @@ const TimelineSeekBar = observer(() => {
         topMarks
         nMarks={videoStore.sliderMarks}
         majorMarksEvery={videoStore.majorMarksEvery}
-        RenderText={value => videoStore.ProgressToSMPTE(value)}
-        onChange={value => {
-          videoStore.SeekPercentage(Fraction(value).div(100));
-        }}
+        RenderText={progress => videoStore.ProgressToSMPTE(progress)}
+        onChange={progress => videoStore.Seek(videoStore.ProgressToFrame(progress))}
         className={S("seek-bar")}
       />
      </div>
@@ -197,10 +195,10 @@ const TimelinePlayheadIndicator = observer(({timelineRef}) => {
     return () => resizeObserver.disconnect();
   }, [timelineRef]);
 
-  const seekPercent = (videoStore.seek - videoStore.scaleMin) / videoStore.scaleMax;
+  const seekPercent = (videoStore.seek - videoStore.scaleMin) / videoStore.scaleMagnitude;
   const position = dimensions.width * seekPercent;
 
-  if(!position) { return null; }
+  if(!position || position < 0) { return null; }
 
   return (
     <div
@@ -214,16 +212,39 @@ const TimelineSection = observer(() => {
   const timelineRef = useRef(null);
 
   const metadataTracks = tracksStore.tracks
-    //.filter(track => track.trackType !== "vtt" && track.trackType !== "clip" && track.trackType !== "segments").slice()
-    //.sort((a, b) => (a.label > b.label ? 1 : -1))
+    .filter(track => track.trackType !== "vtt" && track.trackType !== "clip" && track.trackType !== "segments").slice()
+    .sort((a, b) => (a.label > b.label ? 1 : -1));
 
-  console.log(metadataTracks);
+  useEffect(() => {
+    if(!timelineRef.current) { return; }
+
+    StopScroll({element: timelineRef.current, control: true});
+  }, [timelineRef?.current]);
 
   return (
     <div className={S("content-block", "timeline-section")}>
       <TimelineTopBar />
       <TimelinePlayheadIndicator timelineRef={timelineRef} />
-      <div ref={timelineRef} className={S("timeline-section__content")}>
+      <div
+        ref={timelineRef}
+        onWheel={event => {
+          if(!event.ctrlKey) { return; }
+
+          event.preventDefault();
+
+          const contentElement = document.querySelector("." + S("timeline-row__content"));
+
+          if(!contentElement) {
+            return;
+          }
+
+          const { left, width } = contentElement.getBoundingClientRect();
+          const position = (event.clientX - left) / width;
+
+          videoStore.ScrollScale(position, event.deltaY);
+        }}
+        className={S("timeline-section__content")}
+      >
         <TimelineSeekBar/>
         {
           metadataTracks.map((track, i) =>
@@ -237,39 +258,6 @@ const TimelineSection = observer(() => {
             </div>
           )
         }
-
-        <div className={S("timeline-row")}>
-          <div className={S("timeline-row__label")}>
-            Label
-          </div>
-          <div className={S("timeline-row__content")}>
-            Content
-          </div>
-        </div>
-        <div className={S("timeline-row")}>
-          <div className={S("timeline-row__label")}>
-            Label
-          </div>
-          <div className={S("timeline-row__content")}>
-            Content
-          </div>
-        </div>
-        <div className={S("timeline-row")}>
-          <div className={S("timeline-row__label")}>
-            Label
-          </div>
-          <div className={S("timeline-row__content")}>
-            Content
-          </div>
-        </div>
-        <div className={S("timeline-row")}>
-          <div className={S("timeline-row__label")}>
-            Label
-          </div>
-          <div className={S("timeline-row__content")}>
-            Content
-          </div>
-        </div>
       </div>
       <TimelineBottomBar/>
     </div>

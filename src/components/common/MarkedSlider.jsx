@@ -29,7 +29,7 @@ const Handle = observer(({
   }
 
   return (
-    <Tooltip label={handle.tooltip}>
+    <Tooltip label={handle.tooltip} disabled={!handle.tooltip}>
       <div
         style={{left: `${PositionToPixels(handle.position)}px`}}
         className={
@@ -166,7 +166,7 @@ const MarkedSlider = observer(({
     });
 
     return handleIndex;
-  });
+  }, [min, max]);
 
   const HandleChange = useCallback((event) => {
     if(!onChange) { return; }
@@ -194,27 +194,27 @@ const MarkedSlider = observer(({
 
       onChange(values);
     }
-  }, [draggingHandleIndex]);
+  }, [draggingHandleIndex, min, max]);
 
   const MouseoverMove = useCallback(event => {
     clearTimeout(tooltipTimeout);
 
     tooltipTimeout = setTimeout(() => setHoverPosition(ClientXToPosition(event.clientX)), 10);
-  }, [widths]);
+  }, [widths, min, max]);
 
   const StartMouseover = useCallback(() => {
     window.addEventListener("mousemove", MouseoverMove);
-  }, []);
+  }, [MouseoverMove]);
 
   const EndMouseover = useCallback(() => {
     window.removeEventListener("mousemove", MouseoverMove);
-  }, []);
+  }, [MouseoverMove]);
 
   const Drag = useCallback((event) => {
     clearTimeout(dragTimeout);
 
     dragTimeout = setTimeout(() => HandleChange(event), 10);
-  }, [draggingHandleIndex]);
+  }, [draggingHandleIndex, HandleChange]);
 
   const EndDrag = useCallback(() => {
     //setDraggingHandleIndex(undefined);
@@ -222,7 +222,7 @@ const MarkedSlider = observer(({
 
     window.removeEventListener("mousemove", Drag);
     window.removeEventListener("mouseup", EndDrag);
-  }, []);
+  }, [Drag]);
 
   const StartDrag = useCallback((event, handleIndex) => {
     event.stopPropagation();
@@ -236,7 +236,7 @@ const MarkedSlider = observer(({
       window.addEventListener("mousemove", Drag);
       window.addEventListener("mouseup", EndDrag);
     }
-  }, []);
+  }, [HandleChange]);
 
   const positions = handles.map(handle => handle.position);
   const minActive = positions.length === 1 ? min : positions[0];
@@ -271,7 +271,7 @@ const MarkedSlider = observer(({
               showNotches={false}
             />
         }
-        <Tooltip.Floating label={RenderText(hoverPosition)} position="top" offset={20} openDelay={500}>
+        <Tooltip.Floating label={RenderText(hoverPosition)} position="top" offset={20} /*openDelay={500}*/ >
           <div
             onMouseDown={handleControlOnly ? undefined : StartDrag}
             onMouseUp={handleControlOnly ? null : EndDrag}

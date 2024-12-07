@@ -111,10 +111,13 @@ export const Line = (imageData, color, x0, y0, x1, y1) => {
   points.map(point => SetPixel(imageData, color, point[0], point[1]));
 };
 
-export const FilledRect = (imageData, color, x, y, width, height) => {
+export const FilledRect = ({imageData, color, borderColor, x, y, width, height}) => {
+  const showBorder = width > 5;
+
   for(let ix = 0; ix <= width; ix++) {
     for(let iy = 0; iy <= height; iy++) {
-      SetPixel(imageData, color, x + ix, y + iy);
+      const isBorder = ix === 0 || ix === width || iy === 0 || iy === height;
+      SetPixel(imageData, showBorder && isBorder ? borderColor || color : color, x + ix, y + iy);
     }
   }
 };

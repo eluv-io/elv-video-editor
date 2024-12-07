@@ -29,18 +29,20 @@ export const TextWidth = ({text, fontWeight="normal", fontSize=16}) => {
 
 // onWheel is a passive event, which prevents disabling page scroll
 // React doesn't support marking callbacks as active, so we can use `ref` to attach the handler directly to the element to prevent scrolling instead
-export const StopScroll = ({shift=false}={}) => {
-  return element => {
-    if(!element) { return; }
+export const StopScroll = ({element, shift=false, control=false}={}) => {
+  if(!element) { return; }
 
-    const Handler = event => {
-      if((!shift && event.shiftKey) || shift && !event.shiftKey) { return; }
-
+  const Handler = event => {
+    if(
+      (shift && event.shiftKey) ||
+      (control && event.ctrlKey) ||
+      (!shift && !control && !event.shiftKey && !event.ctrlKey)
+    ) {
       event.preventDefault();
-    };
-
-    element.addEventListener("wheel", Handler, false);
+    }
   };
+
+  element.addEventListener("wheel", Handler, false);
 };
 
 export const DownloadFromUrl = (url, filename, options={}) => {
@@ -116,3 +118,5 @@ export const SplitArray = (array, n) => {
 
   return arrays;
 };
+
+

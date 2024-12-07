@@ -1,0 +1,53 @@
+.track-container {
+  background-color: var(--background-track);
+  height: 100%;
+  position: relative;
+  width: 100%;
+}
+
+.track {
+  height: 100%;
+  width: 100%;
+  z-index: 1;
+
+  &__canvas {
+    height: 100%;
+    width: 100%;
+    z-index: 2;
+  }
+}
+
+.tooltip-overlay {
+  inset: 0;
+  position: absolute;
+  z-index: 1;
+}
+
+.tooltip {
+  display: grid;
+  gap: 10px;
+
+  &__item {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  &__timestamps {
+    font-family: var(--font-monospace);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  &__content {
+    max-height: 200px;
+    max-width: 500px;
+    overflow: hidden;
+    word-break: break-all;
+
+    pre {
+      max-width: 500px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+  }
+}

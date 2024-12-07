@@ -34,15 +34,25 @@ const Video = observer(() => {
     video.addEventListener("canplay", () => setReady(true));
 
     // Add scroll handler for volume to video element
-    StopScroll()(video);
+    StopScroll({element: video});
 
     const config = {
       nudgeOffset: 0.2,
       nudgeMaxRetry: 30,
-      autoLevelEnabled: false
+      autoLevelEnabled: false,
+      // TODO: Remove
+      maxBufferLength: 2,
+      maxBufferSize: 1 * 1024 * 1024,
+      maxMaxBufferLength: 2,
+      capLevelToPlayerSize: true
     };
 
     const player = new HLSPlayer(config);
+
+    player.on(HLSPlayer.Events.MANIFEST_PARSED, function() {
+      // stop video preloading when the manifest has been parsed
+      player.stopLoad();
+    });
 
     setHLSPlayer(player);
 

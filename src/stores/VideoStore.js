@@ -4,6 +4,9 @@ import UrlJoin from "url-join";
 import HLS from "hls.js";
 import {DownloadFromUrl} from "@/utils/Utils.js";
 
+// How far the scale can be zoomed, as a percentage
+const MIN_SCALE = 0.1;
+
 class VideoStore {
   videoKey = 0;
 
@@ -69,6 +72,8 @@ class VideoStore {
 
   clipInFrame;
   clipOutFrame;
+  
+  get scaleMagnitude() { return this.scaleMax - this.scaleMin; }
 
   get scaleMinTime() { return this.duration ? this.ProgressToTime(this.scaleMin) : 0; }
   get scaleMaxTime() { return this.duration ? this.ProgressToTime(this.scaleMax) : 0; }
@@ -187,6 +192,8 @@ class VideoStore {
 
       this.name = videoObject.name;
       this.versionHash = videoObject.versionHash;
+
+      this.rootStore.trackStore.SeedColorIndex(videoObject.objectId);
 
       this.baseUrl = yield this.rootStore.client.FabricUrl({
         versionHash: this.versionHash
@@ -368,6 +375,8 @@ class VideoStore {
 
           this.videoTags = videoTags;
         }
+
+        this.rootStore.trackStore.InitializeTracks();
       }
     } catch(error) {
       // eslint-disable-next-line no-console
@@ -563,8 +572,6 @@ class VideoStore {
           this.primaryContentEndTime = Number((this.video.duration).toFixed(3));
         }
 
-        this.rootStore.trackStore.InitializeTracks();
-
         this.clipInFrame = 0;
         this.clipOutFrame = this.videoHandler.TotalFrames() - 1;
       }
@@ -711,8 +718,8 @@ class VideoStore {
     if(this.playing && this.seek > this.scaleMax) {
       // If playing has gone beyond the max scale, push the whole scale slider forward by 50%
       const currentRange = this.scaleMax - this.scaleMin;
-      this.scaleMax = Math.min(100, this.scaleMax + currentRange/2);
-      this.scaleMin = this.scaleMax - currentRange;
+      const max = Math.min(100, this.scaleMax + this.scaleMagnitude / 2);
+      this.SetScale(max - currentRange, max);
     }
 
     // Segment play specified - stop when segment ends
@@ -776,29 +783,32 @@ class VideoStore {
     this.videoHandler.Update();
   }
 
-  ScrollScale(position, deltaY) {
+  ScrollScale(position, delta) {
     if(!this.video || !this.video.duration) { return; }
+
+    delta = delta < 0 ? 1.5 : -1.5;
 
     let deltaMin, deltaMax;
 
     const minProportion = position;
     const maxProportion = 1 - position;
 
-    deltaY *= 100 * -0.0003;
-
-    deltaMin = deltaY * minProportion;
-    deltaMax = deltaY * maxProportion;
+    deltaMin = delta * minProportion;
+    deltaMax = delta * maxProportion;
 
     this.SetScale(
       Math.max(0, this.scaleMin + deltaMin),
-      this.seek,
       Math.min(100, this.scaleMax - deltaMax)
     );
   }
 
-  SetScale(min, seek, max) {
-    this.scaleMin = Math.max(0, Math.min(min, max - 5));
-    this.scaleMax = Math.min(100, Math.max(max, min + 5));
+  SetScale(min, max) {
+    if(max < min) {
+      return;
+    }
+
+    this.scaleMin = Math.max(0, Math.min(min, max - MIN_SCALE));
+    this.scaleMax = Math.min(100, Math.max(max, min + MIN_SCALE));
   }
 
   PlaySegment(startFrame, endFrame, activeTrack) {
@@ -838,14 +848,13 @@ class VideoStore {
     const targetFrame = this.frame + frames;
     const targetScale = (targetFrame / this.videoHandler.TotalFrames()) * 100;
     const bump = 100 * 0.015;
-    const scaleWidth = this.scaleMax - this.scaleMin;
 
     if(targetScale <= this.scaleMin) {
-      this.scaleMin = Math.max(0, targetScale - bump);
-      this.scaleMax = this.scaleMin + scaleWidth;
+      const min = Math.max(0, targetScale - bump);
+      this.SetScale(min, min + this.scaleMagnitude);
     } else if(targetScale >= this.scaleMax) {
-      this.scaleMax = Math.min(100, targetScale + bump);
-      this.scaleMin = this.scaleMax - scaleWidth;
+      const max = Math.min(100, targetScale + bump);
+      this.SetScale(max - this.scaleMagnitude, max);
     }
 
     this.videoHandler.Seek(targetFrame);

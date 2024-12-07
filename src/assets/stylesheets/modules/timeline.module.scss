@@ -43,29 +43,41 @@
   display: grid;
   gap: 3px;
   grid-template-columns: 200px 1fr;
-  height: 75px;
+  height: 60px;
   max-width: 100%;
   overflow: hidden;
   width: 100%;
+
+  &--seek {
+    height: 40px;
+
+    .timeline-row__label,
+    .timeline-row__content {
+       height: 40px;
+    }
+  }
 
   &__label {
     align-items: center;
     background: var(--background-toolbar);
     display: flex;
+    font-size: 14px;
+    height: 60px;
     padding-inline: var(--content-inline-padding);
   }
 
   &__content {
     background: var(--background-toolbar);
+    height: 60px;
   }
 }
 
 .seek-bar-container {
   background: var(--background-primary);
   box-shadow: 0 0 10px var(--background-primary);
-  height: max-content;
   position: sticky;
   top: 0;
+  z-index: 1;
 
   &__spacer {
     background: var(--background-primary);

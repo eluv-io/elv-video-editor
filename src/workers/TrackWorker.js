@@ -16,8 +16,9 @@ const activeColor = {
 };
 
 class TrackWorker {
-  constructor({trackId, color, height, width, entries, scale, duration, noActive}) {
+  constructor({trackId, trackLabel, color, height, width, entries, scale, duration, noActive}) {
     this.trackId = trackId;
+    this.trackLabel = trackLabel;
     this.color = color;
     this.entries = entries;
     this.scale = scale;
@@ -52,6 +53,7 @@ class TrackWorker {
     // Filter non visible and non-matching entries
     const formatString = string => (string || "").toString().toLowerCase();
     const filter = formatString(this.filter);
+
     entries = entries.filter(entry =>
       entry.endTime >= startTime.valueOf() &&
       entry.startTime <= endTime.valueOf() &&
@@ -86,14 +88,15 @@ class TrackWorker {
         color = activeColor;
       }
 
-      FilledRect(
+      FilledRect({
         imageData,
         color,
-        startPixel,
-        startY,
-        endPixel - startPixel,
-        entryHeight,
-      );
+        borderColor: {...color, a: color.a + 10},
+        x: startPixel,
+        y: startY,
+        width: endPixel - startPixel,
+        height: entryHeight,
+      });
     });
 
     postMessage({
@@ -114,6 +117,7 @@ self.addEventListener(
 
     switch(data.operation) {
       case "Initialize":
+        delete workers[data.trackId];
         workers[data.trackId] = new TrackWorker(data);
         return;
 

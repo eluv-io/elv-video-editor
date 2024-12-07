@@ -16,15 +16,28 @@ import UrlJoin from "url-join";
  * vtt - VTT Subtitles
  */
 
+const HexToRGB = (hex, a) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16),
+    a
+  } : null;
+};
+
 const colors = [
-  {r: 200, g: 50,  b: 50,  a: 150},
-  {r: 50,  g: 200, b: 50,  a: 150},
-  {r: 50,  g: 50,  b: 200, a: 150},
-  {r: 50,  g: 200, b: 200, a: 150},
-  {r: 200, g: 50,  b: 200, a: 150},
-  {r: 200, g: 200, b: 50,  a: 150},
-  {r: 200, g: 200, b: 200, a: 150}
-];
+  "#19ded3",
+  "#e02b10",
+  "#ffc806",
+  "#f10fbf",
+  "#8a0c0c",
+  "#405ff5",
+  "#be6ef6",
+  "#fb8e3e",
+  "#FFFFFF"
+].map(color => HexToRGB(color, 100));
+
 let colorIndex = 0;
 
 class TrackStore {
@@ -53,6 +66,13 @@ class TrackStore {
       // eslint-disable-next-line no-console
       console.error("AudioContext not supported in this browser");
     }
+  }
+
+  // Randomize start color index based on object ID
+  SeedColorIndex(objectId) {
+    if(!objectId) { return; }
+
+    this.colorIndex = objectId.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % colors.length;
   }
 
   NextColor() {

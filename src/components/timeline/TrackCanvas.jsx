@@ -1,54 +1,44 @@
-import React from "react";
+import React, {useEffect, useRef} from "react";
 import ResizeObserver from "resize-observer-polyfill";
+import {observer} from "mobx-react";
 
-class TrackCanvas extends React.Component {
-  shouldComponentUpdate() {
-    return false;
-  }
+const TrackCanvas = observer(({onResize, setCanvas, containerClassName="", className="", ...props}) => {
+  const ref = useRef();
+  const canvasRef = useRef();
 
-  constructor(props) {
-    super(props);
+  useEffect(() => {
+    if(!ref?.current) { return; }
 
-    this.WatchResize = this.WatchResize.bind(this);
-  }
+    const resizeObserver = new ResizeObserver(entries => {
+      const node = entries[0].target.parentNode;
 
-  componentWillUnmount() {
-    if(this.resizeObserver) {
-      this.resizeObserver.disconnect();
-      this.resizeObserver = undefined;
-    }
-  }
+      onResize && onResize({width: node.offsetWidth, height: node.offsetHeight});
+    });
 
-  // Keep track of track container height and track content width to properly render the time indicator
-  WatchResize(element) {
-    if(element) {
-      this.resizeObserver = new ResizeObserver(entries => {
-        const node = entries[0].target.parentNode;
+    resizeObserver.observe(ref.current);
 
-        this.props.HandleResize({width: node.offsetWidth, height: node.offsetHeight});
-      });
+    return () => {
+      resizeObserver && resizeObserver.disconnect();
+    };
+  }, [ref?.current]);
 
-      this.resizeObserver.observe(element);
-    }
-  }
+  useEffect(() => {
+    if(!canvasRef?.current) { return; }
 
-  render() {
-    const otherProps = {...this.props};
-    delete otherProps.SetRef;
-    delete otherProps.HandleResize;
+    setCanvas && setCanvas(canvasRef.current);
+  }, [canvasRef?.current]);
 
-    return (
-      <div ref={this.WatchResize} className={this.props.className || ""}>
-        <canvas
-          {...otherProps}
-          width="50"
-          height="50"
-          className={this.props.className}
-          ref={canvas => this.props.SetRef(canvas && canvas.getContext("2d"))}
-        />
-      </div>
-    );
-  }
-}
+  return (
+    <div ref={ref} className={containerClassName}>
+      <canvas
+        {...props}
+        width="50"
+        height="50"
+        className={className}
+        ref={canvasRef}
+      />
+    </div>
+  );
+});
 
 export default TrackCanvas;
