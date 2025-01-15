@@ -205,7 +205,7 @@ const TooltipOverlay = observer(({trackId, ...props}) => {
             {`${entryStore.TimeToSMPTE(entry.startTime)} - ${entryStore.TimeToSMPTE(entry.endTime)}`}
           </div>
           <div className={S("tooltip__content")}>
-            {entry.content ? <pre>{JSON.stringify(entry.content, null, 2)}</pre> : entry.textList.join(", ")}
+            {entry.content ? <pre>{JSON.stringify(entry.content, null, 2)}</pre> : <p>{entry.textList.join(", ")}</p>}
           </div>
         </div>
       );

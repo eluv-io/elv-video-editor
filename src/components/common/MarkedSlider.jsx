@@ -4,6 +4,7 @@ import React, {useCallback, useEffect, useRef, useState} from "react";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {observer} from "mobx-react";
 import {Tooltip} from "@mantine/core";
+import {videoStore} from "@/stores/index.js";
 
 const S = CreateModuleClassMatcher(CommonStyles);
 
@@ -109,6 +110,7 @@ const MarkedSlider = observer(({
   majorMarksEvery,
   handles=[],
   onChange,
+  onSlide,
   RenderText,
   showTopMarks=true,
   handleControlOnly=false,
@@ -166,35 +168,33 @@ const MarkedSlider = observer(({
     });
 
     return handleIndex;
-  }, [min, max]);
+  }, [min, max, handles]);
 
-  const HandleChange = useCallback((event) => {
+  const HandleChange = useCallback((event, handleIndex) => {
     if(!onChange) { return; }
+
+    handleIndex = typeof handleIndex !== "undefined" ? handleIndex : draggingHandleIndex;
 
     let value = ClientXToPosition(event.clientX);
     if(handles.length === 1) {
       // Slider - only one handle
       onChange(value);
-    } else if(event.shiftKey) {
+    } else if(event.metaKey) {
       // Dragging whole range
-      if(event.type !== "mousemove") { return; }
+      if(!onSlide || event.type !== "mousemove") { return; }
 
-      const diff = event.movementX * scale / 1000;
-
-      onChange(handles.map(handle =>
-        Math.min(max, Math.max(min, handle.position + diff))
-      ));
+      onSlide(100 * event.movementX / widths.slider);
     } else {
-      if(typeof draggingHandleIndex === "undefined") { return; }
+      if(typeof handleIndex === "undefined") { return; }
       // Range - multiple handles
       // Drag handles
       let values = handles.map(handle => handle.position);
 
-      values[draggingHandleIndex] = value;
+      values[handleIndex] = value;
 
       onChange(values);
     }
-  }, [draggingHandleIndex, min, max]);
+  }, [draggingHandleIndex, handles, min, max]);
 
   const MouseoverMove = useCallback(event => {
     clearTimeout(tooltipTimeout);
@@ -231,7 +231,7 @@ const MarkedSlider = observer(({
       event = {...event};
 
       draggingHandleIndex = (typeof handleIndex === "undefined" ? ClosestHandleIndex(event) : handleIndex);
-      setTimeout(() => HandleChange(event), 100);
+      setTimeout(() => HandleChange(event, draggingHandleIndex), 10);
 
       window.addEventListener("mousemove", Drag);
       window.addEventListener("mouseup", EndDrag);
@@ -276,6 +276,7 @@ const MarkedSlider = observer(({
             onMouseDown={handleControlOnly ? undefined : StartDrag}
             onMouseUp={handleControlOnly ? null : EndDrag}
             onClick={handleControlOnly ? null : HandleChange}
+            role="slider"
             className={S("slider__overlay")}
           >
             <div

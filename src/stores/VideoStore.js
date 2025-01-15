@@ -5,7 +5,7 @@ import HLS from "hls.js";
 import {DownloadFromUrl} from "@/utils/Utils.js";
 
 // How far the scale can be zoomed, as a percentage
-const MIN_SCALE = 0.1;
+const MIN_SCALE = 0.5;
 
 class VideoStore {
   videoKey = 0;
@@ -72,7 +72,7 @@ class VideoStore {
 
   clipInFrame;
   clipOutFrame;
-  
+
   get scaleMagnitude() { return this.scaleMax - this.scaleMin; }
 
   get scaleMinTime() { return this.duration ? this.ProgressToTime(this.scaleMin) : 0; }
@@ -710,17 +710,20 @@ class VideoStore {
     this.durationSMPTE = this.videoHandler?.TimeToSMPTE(this.video.duration);
     this.currentTime = this.video.currentTime;
 
+    /*
     // Ensure min isn't less than seek - may happen if the video isn't buffered
     if(this.seek < this.scaleMin) {
       this.scaleMin = this.seek;
     }
 
+    */
     if(this.playing && this.seek > this.scaleMax) {
       // If playing has gone beyond the max scale, push the whole scale slider forward by 50%
       const currentRange = this.scaleMax - this.scaleMin;
       const max = Math.min(100, this.scaleMax + this.scaleMagnitude / 2);
       this.SetScale(max - currentRange, max);
     }
+
 
     // Segment play specified - stop when segment ends
     if(this.segmentEnd && this.frame >= this.segmentEnd - 3) {
@@ -784,9 +787,17 @@ class VideoStore {
   }
 
   ScrollScale(position, delta) {
-    if(!this.video || !this.video.duration) { return; }
+    if(
+      !this.video ||
+      !this.video.duration ||
+      (this.scaleMax - this.scaleMin < MIN_SCALE * 1.1 && delta < 0)
+    ) { return; }
 
     delta = delta < 0 ? 1.5 : -1.5;
+
+    if(this.scaleMagnitude < 5) {
+      delta *= 0.25;
+    }
 
     let deltaMin, deltaMax;
 
@@ -807,8 +818,31 @@ class VideoStore {
       return;
     }
 
-    this.scaleMin = Math.max(0, Math.min(min, max - MIN_SCALE));
-    this.scaleMax = Math.min(100, Math.max(max, min + MIN_SCALE));
+    const minChanged = min !== this.scaleMin;
+    const maxChanged = max !== this.scaleMax;
+
+    if(minChanged) {
+      // Min changed
+      this.scaleMin = Math.max(0, min);
+      this.scaleMax = max;
+
+      if(this.scaleMax - this.scaleMin < MIN_SCALE) {
+        this.scaleMin = this.scaleMax - MIN_SCALE;
+      }
+    }
+
+    if(maxChanged) {
+      // Max changed
+      this.scaleMax = Math.min(100, max);
+      this.scaleMin = min;
+
+      if(this.scaleMax - this.scaleMin < MIN_SCALE) {
+        this.scaleMax = this.scaleMin + MIN_SCALE;
+      }
+    }
+
+    this.scaleMin = Math.min(100 - MIN_SCALE, Math.max(0, this.scaleMin));
+    this.scaleMax = Math.max(0 + MIN_SCALE, Math.min(100, this.scaleMax));
   }
 
   PlaySegment(startFrame, endFrame, activeTrack) {

@@ -36,7 +36,7 @@ const colors = [
   "#be6ef6",
   "#fb8e3e",
   "#FFFFFF"
-].map(color => HexToRGB(color, 100));
+].map(color => HexToRGB(color, 150));
 
 let colorIndex = 0;
 

@@ -170,6 +170,43 @@ const TimelineSeekBar = observer(() => {
   );
 });
 
+const TimelineScaleBar = observer(() => {
+  if(!videoStore.initialized) { return null; }
+
+  return (
+     <div className={S("timeline-row", "timeline-row--scale", "scale-bar-container")}>
+       <div className={S("timeline-row__label", "scale-bar-container__label")}>
+         <div>{videoStore.ProgressToSMPTE(videoStore.scaleMin)}</div>
+         <div>-</div>
+         <div>{videoStore.ProgressToSMPTE(videoStore.scaleMax)}</div>
+       </div>
+       <MarkedSlider
+         min={0}
+         max={100}
+         showTopMarks={false}
+         handles={[
+           {
+             position: videoStore.scaleMin,
+             className: "seek-handle",
+           },
+           {
+             position: videoStore.scaleMax,
+             className: "seek-handle",
+           },
+         ]}
+         showMarks
+         topMarks
+         nMarks={videoStore.sliderMarks}
+         majorMarksEvery={videoStore.majorMarksEvery}
+         RenderText={progress => videoStore.ProgressToSMPTE(progress)}
+         onChange={values => videoStore.SetScale(values[0], values[1])}
+         onSlide={diff => videoStore.SetScale(videoStore.scaleMin + diff, videoStore.scaleMax + diff)}
+         className={S("scale-bar")}
+      />
+     </div>
+  );
+});
+
 const TimelinePlayheadIndicator = observer(({timelineRef}) => {
   const [dimensions, setDimensions] = useState({});
 
@@ -228,6 +265,7 @@ const TimelineSection = observer(() => {
       <div
         ref={timelineRef}
         onWheel={event => {
+          // Scroll wheel zoom in/out
           if(!event.ctrlKey) { return; }
 
           event.preventDefault();
@@ -258,8 +296,10 @@ const TimelineSection = observer(() => {
             </div>
           )
         }
+        <TimelineScaleBar />
       </div>
-      <TimelineBottomBar/>
+
+      <TimelineBottomBar />
     </div>
   );
 });

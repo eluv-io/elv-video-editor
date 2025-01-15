@@ -36,18 +36,23 @@
     font-family: var(--font-monospace);
     font-size: 12px;
     font-weight: 600;
+    margin-bottom: 5px;
   }
 
   &__content {
     max-height: 200px;
     max-width: 500px;
     overflow: hidden;
-    word-break: break-all;
 
     pre {
       max-width: 500px;
       white-space: pre-wrap;
       word-break: break-all;
+    }
+
+    p {
+      max-width: 500px;
+      white-space: pre-wrap;
     }
   }
 }
