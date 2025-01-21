@@ -5,7 +5,7 @@ import HLS from "hls.js";
 import {DownloadFromUrl} from "@/utils/Utils.js";
 
 // How far the scale can be zoomed, as a percentage
-const MIN_SCALE = 0.5;
+const MIN_SCALE = 0.2;
 
 class VideoStore {
   videoKey = 0;
@@ -193,8 +193,6 @@ class VideoStore {
       this.name = videoObject.name;
       this.versionHash = videoObject.versionHash;
 
-      this.rootStore.trackStore.SeedColorIndex(videoObject.objectId);
-
       this.baseUrl = yield this.rootStore.client.FabricUrl({
         versionHash: this.versionHash
       });
@@ -376,7 +374,7 @@ class VideoStore {
           this.videoTags = videoTags;
         }
 
-        this.rootStore.trackStore.InitializeTracks();
+        yield this.rootStore.trackStore.InitializeTracks();
       }
     } catch(error) {
       // eslint-disable-next-line no-console
@@ -813,10 +811,12 @@ class VideoStore {
     );
   }
 
-  SetScale(min, max) {
+  SetScale(min, max, preserveRange=false) {
     if(max < min) {
       return;
     }
+
+    let initialRange = this.scaleMagnitude;
 
     const minChanged = min !== this.scaleMin;
     const maxChanged = max !== this.scaleMax;
@@ -843,6 +843,14 @@ class VideoStore {
 
     this.scaleMin = Math.min(100 - MIN_SCALE, Math.max(0, this.scaleMin));
     this.scaleMax = Math.max(0 + MIN_SCALE, Math.min(100, this.scaleMax));
+
+    if(preserveRange) {
+      if(this.scaleMin === 0) {
+        this.scaleMax = Math.min(100, this.scaleMin + initialRange);
+      } else if(this.scaleMax === 100) {
+        this.scaleMin = Math.max(0, this.scaleMax - initialRange);
+      }
+    }
   }
 
   PlaySegment(startFrame, endFrame, activeTrack) {

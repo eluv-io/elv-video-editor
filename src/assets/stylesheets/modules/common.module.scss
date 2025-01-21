@@ -172,14 +172,14 @@
   }
 
   &__active-indicator {
-    background-color: var(--text-highlight);
+    background-color: var(--slider-color);
     height: 100%;
     opacity: 0.15;
     position: absolute;
   }
 
   &__handle {
-    background-color: var(--text-highlight);
+    background-color: var(--slider-color);
     height: var(--slider-height);
     position: absolute;
     width: 2px;
@@ -193,6 +193,25 @@
       pointer-events: none;
     }
 
+    &--indicator {
+      --slider-color: var(--slider-indicator-color);
+    }
+
+    &--end,
+    &--start {
+      background: transparent;
+      border: 1px solid var(--slider-indicator-color);
+      border-left: 2px solid var(--slider-indicator-color);
+      border-right: 0;
+      opacity: 0.75;
+      width: 6px;
+    }
+
+    &--end {
+      border-left: 0;
+      border-right: 2px solid var(--slider-indicator-color);
+    }
+
     &--circle {
       align-items: center;
       background: transparent;
@@ -200,7 +219,7 @@
       width: var(--slider-height);
 
       &::after {
-        background: var(--text-highlight);
+        background: var(--slider-color);
         border-radius: 100%;
         content: "";
         height: 10px;

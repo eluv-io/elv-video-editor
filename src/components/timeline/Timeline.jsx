@@ -135,9 +135,21 @@ const TimelineBottomBar = observer(() => {
       <IconButton icon={SaveIcon} label="Save Changes" onClick={() => {}}/>
       <IconButton icon={KeyboardIcon} label="Keyboard Shortcuts" onClick={() => {}}/>
       <div className={S("toolbar__separator")}/>
-      <SwitchInput label="Show Tags" />
-      <SwitchInput label="Show Segments" />
-      <SwitchInput label="Show Audio" />
+      <SwitchInput
+        label="Show Tags"
+        checked={tracksStore.showTags}
+        onChange={event => tracksStore.ToggleTrackType({type: "Tags", visible: event.currentTarget.checked})}
+      />
+      <SwitchInput
+        label="Show Segments"
+        checked={tracksStore.showSegments}
+        onChange={event => tracksStore.ToggleTrackType({type: "Segments", visible: event.currentTarget.checked})}
+      />
+      <SwitchInput
+        label="Show Audio"
+        checked={tracksStore.showAudio}
+        onChange={event => tracksStore.ToggleTrackType({type: "Audio", visible: event.currentTarget.checked})}
+      />
       <div className={S("toolbar__spacer")}/>
     </div>
   );
@@ -146,18 +158,23 @@ const TimelineBottomBar = observer(() => {
 const TimelineSeekBar = observer(() => {
   if(!videoStore.initialized) { return null; }
 
+  let clipIndicators = [];
+  if(videoStore.clipInFrame) {
+    clipIndicators.push({position: 100 * videoStore.clipInFrame / (videoStore.totalFrames || 1), style: "start"});
+  }
+
+  if(videoStore.clipOutFrame < videoStore.totalFrames - 1) {
+    clipIndicators.push({position: 100 * videoStore.clipOutFrame / (videoStore.totalFrames || 1), style: "end"});
+  }
+
   return (
      <div className={S("timeline-row", "timeline-row--seek", "seek-bar-container")}>
       <div className={S("timeline-row__label", "seek-bar-container__spacer")} />
       <MarkedSlider
         min={videoStore.scaleMin}
         max={videoStore.scaleMax}
-        handles={[
-          {
-            position: videoStore.seek,
-            className: "seek-handle",
-          }
-        ]}
+        handles={[{ position: videoStore.seek }]}
+        indicators={clipIndicators}
         showMarks
         topMarks
         nMarks={videoStore.sliderMarks}
@@ -173,6 +190,15 @@ const TimelineSeekBar = observer(() => {
 const TimelineScaleBar = observer(() => {
   if(!videoStore.initialized) { return null; }
 
+  let clipIndicators = [];
+  if(videoStore.clipInFrame) {
+    clipIndicators.push({position: 100 * videoStore.clipInFrame / (videoStore.totalFrames || 1), style: "start"});
+  }
+
+  if(videoStore.clipOutFrame < videoStore.totalFrames - 1) {
+    clipIndicators.push({position: 100 * videoStore.clipOutFrame / (videoStore.totalFrames || 1), style: "end"});
+  }
+
   return (
      <div className={S("timeline-row", "timeline-row--scale", "scale-bar-container")}>
        <div className={S("timeline-row__label", "scale-bar-container__label")}>
@@ -185,14 +211,13 @@ const TimelineScaleBar = observer(() => {
          max={100}
          showTopMarks={false}
          handles={[
-           {
-             position: videoStore.scaleMin,
-             className: "seek-handle",
-           },
-           {
-             position: videoStore.scaleMax,
-             className: "seek-handle",
-           },
+           { position: videoStore.scaleMin },
+           { position: videoStore.scaleMax }
+         ]}
+         handleSeparator={100 * videoStore.currentTime / (videoStore.duration || 1)}
+         indicators={[
+           { position: 100 * videoStore.currentTime / (videoStore.duration || 1) },
+           ...clipIndicators
          ]}
          showMarks
          topMarks
@@ -200,7 +225,7 @@ const TimelineScaleBar = observer(() => {
          majorMarksEvery={videoStore.majorMarksEvery}
          RenderText={progress => videoStore.ProgressToSMPTE(progress)}
          onChange={values => videoStore.SetScale(values[0], values[1])}
-         onSlide={diff => videoStore.SetScale(videoStore.scaleMin + diff, videoStore.scaleMax + diff)}
+         onSlide={diff => videoStore.SetScale(videoStore.scaleMin + diff, videoStore.scaleMax + diff, true)}
          className={S("scale-bar")}
       />
      </div>
@@ -248,14 +273,35 @@ const TimelinePlayheadIndicator = observer(({timelineRef}) => {
 const TimelineSection = observer(() => {
   const timelineRef = useRef(null);
 
-  const metadataTracks = tracksStore.tracks
-    .filter(track => track.trackType !== "vtt" && track.trackType !== "clip" && track.trackType !== "segments").slice()
-    .sort((a, b) => (a.label > b.label ? 1 : -1));
+  let tracks = [];
+  if(tracksStore.showTags) {
+    tracks = tracksStore.tracks
+      .filter(track => track.trackType !== "vtt" && track.trackType !== "clip" && track.trackType !== "segments").slice()
+      .sort((a, b) => (a.label > b.label ? 1 : -1));
+  }
+
+  if(tracksStore.showSegments) {
+    tracks = [
+      ...tracks,
+      ...(
+        tracksStore.tracks
+          .filter(track => track.trackType === "segments").slice()
+          .sort((a, b) => (a.label > b.label ? 1 : -1))
+      )
+    ];
+  }
+
+  if(tracksStore.showAudio) {
+    tracks = [
+      ...tracks,
+      ...tracksStore.audioTracks
+    ];
+  }
 
   useEffect(() => {
     if(!timelineRef.current) { return; }
 
-    StopScroll({element: timelineRef.current, control: true});
+    StopScroll({element: timelineRef.current, control: true, meta: true});
   }, [timelineRef?.current]);
 
   return (
@@ -264,11 +310,20 @@ const TimelineSection = observer(() => {
       <TimelinePlayheadIndicator timelineRef={timelineRef} />
       <div
         ref={timelineRef}
+        onScroll={event => {
+          event.preventDefault();
+          event.stopPropagation();
+        }}
         onWheel={event => {
           // Scroll wheel zoom in/out
-          if(!event.ctrlKey) { return; }
+          if(!event.ctrlKey && !event.metaKey) { return; }
 
           event.preventDefault();
+
+          if(event.metaKey) {
+            videoStore.SetScale(videoStore.scaleMin + event.deltaX * 0.01, videoStore.scaleMax + event.deltaX * 0.01, true);
+            return;
+          }
 
           const contentElement = document.querySelector("." + S("timeline-row__content"));
 
@@ -285,7 +340,7 @@ const TimelineSection = observer(() => {
       >
         <TimelineSeekBar/>
         {
-          metadataTracks.map((track, i) =>
+          tracks.map((track, i) =>
             <div key={`track-${track.trackId || i}`} className={S("timeline-row")}>
               <div className={S("timeline-row__label")}>
                 { track.label }

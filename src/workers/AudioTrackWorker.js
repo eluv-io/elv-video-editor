@@ -9,15 +9,15 @@ const mainColor = {
 };
 
 class AudioTrackWorker {
-  constructor({trackId, height, width, entries, scale, duration, max}) {
+  constructor({trackId, height, width, entries, scale, duration}) {
     this.trackId = trackId;
-    this.entries = entries;
+    this.entries = (entries || []).flat();
     this.scale = scale;
     this.duration = duration;
     this.width = width;
     this.height = height;
     this.filter = "";
-    this.max = max;
+    this.max = 1;
 
     this.selectedEntryId = undefined;
     this.activeEntryIds = [];
@@ -28,7 +28,7 @@ class AudioTrackWorker {
   Draw() {
     if(!this.width || !this.height) { return; }
 
-    let entries = Object.values(this.entries);
+    let entries = Object.values(this.entries).filter(e => e);
 
     const imageData = new ImageData(this.width, this.height);
 
@@ -55,25 +55,25 @@ class AudioTrackWorker {
     const halfHeight = Math.floor(this.height * 0.5);
 
     const audioScale = 1 / (this.max * 1.2);
-    for(let i = 0; i < entries.length; i++) {
-      if(renderEvery > 1 && i % renderEvery !== 0) {
-        continue;
-      }
-
+    for(let i = 0; i < entries.length; i += renderEvery) {
       const entry = entries[i];
+      const entryGroup = entries.slice(i, i + renderEvery);
+      const entryAverage = entryGroup.reduce((acc, entry) => acc + entry.max, 0) / entryGroup.length;
+
       const nextEntryIndex = Math.min(i + renderEvery, entries.length - 1);
       const nextEntry = entries[nextEntryIndex];
+      const nextEntryGroup = entries.slice(nextEntryIndex, nextEntryIndex + renderEvery);
+      const nextAverage = nextEntryGroup.reduce((acc, entry) => acc + entry.max, 0) / nextEntryGroup.length;
 
       const startX = Math.floor((entry.startTime - startTime) * widthRatio);
       const endX = Math.floor((nextEntry.startTime - startTime) * widthRatio);
 
-      const startY = Math.floor(halfHeight * entry.max * audioScale);
-      const endY = Math.floor(halfHeight * nextEntry.max * audioScale);
+      const startY = Math.floor(halfHeight * entryAverage * audioScale);
+      const endY = Math.floor(halfHeight * nextAverage * audioScale);
 
       Line(imageData, mainColor, startX, halfHeight + startY, endX, halfHeight + endY);
       Line(imageData, mainColor, endX, halfHeight + endY, endX, halfHeight - endY);
       Line(imageData, mainColor, endX, halfHeight - endY, startX, halfHeight - startY);
-      Line(imageData, mainColor, startX, halfHeight - startY, startX, halfHeight + startY);
     }
 
     postMessage({
@@ -102,13 +102,12 @@ self.addEventListener(
         return;
 
       case "SetEntries":
-        worker.entries = data.entries;
+        worker.entries = (data.entries || []).flat();
         break;
 
       case "SetScale":
         worker.scale = data.scale;
         worker.duration = data.duration;
-        worker.max = data.max;
         break;
 
       case "SetTime":

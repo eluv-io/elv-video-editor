@@ -4,7 +4,6 @@ import React, {useCallback, useEffect, useRef, useState} from "react";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {observer} from "mobx-react";
 import {Tooltip} from "@mantine/core";
-import {videoStore} from "@/stores/index.js";
 
 const S = CreateModuleClassMatcher(CommonStyles);
 
@@ -18,16 +17,9 @@ const Handle = observer(({
   PositionToPixels,
   StartDrag,
   EndDrag,
-  HandleChange,
+  HandleChange
 }) => {
   if(handle.position < min || handle.position > max) { return null; }
-
-  let styleClassName = "slider__handle--line";
-  if(handle.style === "circle") {
-    styleClassName = "slider__handle--circle";
-  } else if(handle.style === "arrow") {
-    styleClassName = "slider__handle--arrow";
-  }
 
   return (
     <Tooltip label={handle.tooltip} disabled={!handle.tooltip}>
@@ -37,7 +29,8 @@ const Handle = observer(({
           JoinClassNames(
             S(
               "slider__handle",
-              styleClassName, handle.disabled ? "slider__handle--disabled" : "",
+              `slider__handle--${handle.style || "line"}`,
+              handle.disabled ? "slider__handle--disabled" : "",
               dragging ? "slider-handle__active" : ""
             ),
             handle.className || ""
@@ -109,6 +102,8 @@ const MarkedSlider = observer(({
   nMarks,
   majorMarksEvery,
   handles=[],
+  indicators=[],
+  handleSeparator,
   onChange,
   onSlide,
   RenderText,
@@ -159,14 +154,31 @@ const MarkedSlider = observer(({
     let handleIndex = 0;
     let closestHandle = max * 2;
 
-    handles.forEach((handle, i) => {
+    // If a 'handle separator' (e.g. current playhead position) is specified, only consider handles
+    // on the same side of the separator as clicked, unless none are
+    let availableHandles = handles.map((handle, index) => ({...handle, index}));
+    if(typeof handleSeparator !== "undefined") {
+      const isAfterSeparator = position > handleSeparator;
+
+      availableHandles = availableHandles.filter(handle =>
+        isAfterSeparator ?
+          handle.position > handleSeparator :
+          handle.position < handleSeparator
+      );
+
+      if(availableHandles.length === 0) {
+        availableHandles = handles.map((handle, index) => ({...handle, index}));
+      }
+    }
+    
+    availableHandles.forEach(handle => {
       const distance = Math.abs(handle.position - position);
       if(distance < closestHandle && !handle.disabled && !handle.handleControlOnly) {
         closestHandle = distance;
-        handleIndex = i;
+        handleIndex = handle.index;
       }
     });
-
+    
     return handleIndex;
   }, [min, max, handles]);
 
@@ -300,6 +312,23 @@ const MarkedSlider = observer(({
                   StartDrag={StartDrag}
                   EndDrag={EndDrag}
                   HandleChange={HandleChange}
+                />
+              )
+            }
+            {
+              indicators.map((handle, index) =>
+                <Handle
+                  key={`handle-${index}`}
+                  handle={{
+                    ...handle,
+                    disabled: true,
+                    className: JoinClassNames(handle.className, S("slider__handle--indicator"))
+                  }}
+                  index={index}
+                  min={min}
+                  max={max}
+                  dragging={false}
+                  PositionToPixels={PositionToPixels}
                 />
               )
             }

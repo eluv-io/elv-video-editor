@@ -84,7 +84,7 @@ const InitializeTrackReactions = ({track, worker}) => {
         scale: 100,
         scaleMax: videoStore.scaleMax,
         scaleMin: videoStore.scaleMin,
-        duration: videoStore.duration
+        duration: videoStore.duration,
       }),
       () => {
         worker.postMessage({
@@ -263,20 +263,29 @@ const Track = observer(({track, noActive}) => {
 
   return (
     <div className={S("track-container")}>
-      <TooltipOverlay
-        trackId={track.trackId}
-        onClick={({clientX}) => canvas && Click({canvas, clientX, trackId: track.trackId})}
-        onMouseMove={({clientX}) => canvas && Hover({canvas, clientX, trackId: track.trackId})}
-        onMouseLeave={ClearHover}
-      />
+      {
+        track.trackType === "audio" ? null :
+          <TooltipOverlay
+            trackId={track.trackId}
+            onClick={({clientX}) => canvas && Click({canvas, clientX, trackId: track.trackId})}
+            onMouseMove={({clientX}) => canvas && Hover({canvas, clientX, trackId: track.trackId})}
+            onMouseLeave={ClearHover}
+          />
+      }
       <TrackCanvas
         containerClassName={S("track")}
         className={S("track__canvas")}
         onResize={setCanvasDimensions}
         setCanvas={canvas => {
           setCanvas(canvas);
+
           const trackWorker = new Worker(
-            new URL("../../workers/TrackWorker.js",  import.meta.url),
+            new URL(
+              track.trackType === "audio" ?
+                "../../workers/AudioTrackWorker.js" :
+              "../../workers/TrackWorker.js",
+              import.meta.url
+            ),
             { type: "module" }
           );
 

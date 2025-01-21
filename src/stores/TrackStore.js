@@ -1,9 +1,10 @@
-import {flow, makeAutoObservable, toJS} from "mobx";
+import {flow, makeAutoObservable, runInAction, toJS} from "mobx";
 import {WebVTT} from "vtt.js";
 import Id from "@/utils/Id";
 import IntervalTree from "node-interval-tree";
 import {Parser as HLSParser} from "m3u8-parser";
 import UrlJoin from "url-join";
+import {Utils} from "@eluvio/elv-client-js";
 
 /*
  * Track Types:
@@ -27,6 +28,7 @@ const HexToRGB = (hex, a) => {
 };
 
 const colors = [
+  "#FFFFFF",
   "#19ded3",
   "#e02b10",
   "#ffc806",
@@ -34,11 +36,8 @@ const colors = [
   "#8a0c0c",
   "#405ff5",
   "#be6ef6",
-  "#fb8e3e",
-  "#FFFFFF"
+  "#fb8e3e"
 ].map(color => HexToRGB(color, 150));
-
-let colorIndex = 0;
 
 class TrackStore {
   entries = {};
@@ -52,13 +51,16 @@ class TrackStore {
   audioLoading = false;
   audioSupported = true;
 
+  showTags = true;
+  showSegments = false;
+  showAudio = false;
+
   totalEntries = 0;
 
   constructor(rootStore) {
     makeAutoObservable(this);
 
     this.rootStore = rootStore;
-    colorIndex = 0;
 
     if(!window.AudioContext && !window.webkitAudioContext) {
       this.audioSupported = false;
@@ -68,19 +70,6 @@ class TrackStore {
     }
   }
 
-  // Randomize start color index based on object ID
-  SeedColorIndex(objectId) {
-    if(!objectId) { return; }
-
-    this.colorIndex = objectId.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % colors.length;
-  }
-
-  NextColor() {
-    const color = colors[colorIndex];
-    colorIndex = (colorIndex + 1) % colors.length;
-    return color;
-  }
-
   Reset() {
     this.tracks = [];
     this.audioTracks = [];
@@ -88,6 +77,12 @@ class TrackStore {
     this.editingTrack = false;
     this.audioLoading = false;
     this.initialized = false;
+  }
+
+  TrackColor(key) {
+    const index = key.split("").reduce((acc, v, i) => acc + v.charCodeAt(0) * i, 0) % colors.length;
+
+    return colors[index];
   }
 
   /* HLS Playlist Parsing */
@@ -133,7 +128,7 @@ class TrackStore {
         }));
 
         return {
-          label: audioName,
+          label: audioName === "audio" ? "Audio" : audioName,
           initSegmentUrl: initSegmentUrl,
           segments: audioSegmentUrls
         };
@@ -177,7 +172,7 @@ class TrackStore {
     const trackId = Id.next();
     this.tracks.push({
       trackId,
-      color: color || this.NextColor(),
+      color: color || this.TrackColor(key),
       version: 1,
       label,
       key: key || `track-${label}`,
@@ -191,7 +186,11 @@ class TrackStore {
   }
 
   TrackEntries(trackId) {
-    return this.entries[trackId];
+    if(trackId in this.entries) {
+      return this.entries[trackId];
+    }
+
+    return this.audioTracks.find(track => track.trackId === trackId)?.entries.flat();
   }
 
   TrackEntryIntervalTree(trackId) {
@@ -200,7 +199,7 @@ class TrackStore {
 
   /* Audio Tracks */
 
-  AddAudioSegment = flow(function * (trackId, audioData, duration, number, samplesPerSecond) {
+  DecodeAudioSegment = flow(function * (trackId, audioData, duration, number, samplesPerSecond) {
     const source = this.audioContext.createBufferSource();
     yield new Promise((resolve, reject) => {
       try {
@@ -241,17 +240,7 @@ class TrackStore {
       })
       .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
 
-    const audioTrack = this.audioTracks.find(track => track.trackId === trackId);
-    if(audioTrack) {
-      audioTrack.entries = [
-        ...audioTrack.entries,
-        audioSamples
-      ];
-
-      if(segmentMax > audioTrack.max) {
-        audioTrack.max = segmentMax;
-      }
-    }
+    return { audioSamples, segmentMax };
   });
 
   AddAudioTracks = flow(function * () {
@@ -264,7 +253,7 @@ class TrackStore {
     this.audioLoading = true;
 
     const loadingVersion = this.rootStore.videoStore.versionHash;
-    const concurrentRequests = 2;
+    const concurrentRequests = 20;
     const audioTracks = yield this.AudioTracksFromHLSPlaylist();
 
     yield Promise.all(
@@ -281,21 +270,41 @@ class TrackStore {
             version: 1
           });
 
+          const trackProxy = this.audioTracks.find(t => t.trackId === trackId);
+
           const duration = track.segments.reduce((duration, segment) => duration + segment.duration, 0);
-          const samplesPerSecond = duration < 300 ? 20 : 8;
+          // Limit samples per second to a reasonable amount based on the video duration - somewhere between 20 for shorter videos and 4 for longer
+          const samplesPerSecond = Math.min(20, Math.max(4, Math.floor(1000 * Math.log2(duration) / duration)));
 
           const initSegment = new Uint8Array(
             await (await fetch(track.initSegmentUrl, { headers: {"Content-type": "audio/mp4"}})).arrayBuffer()
           );
 
-          await this.rootStore.client.utils.LimitedMap(
-            track.segments,
+          let trackMax = 0;
+          this.entries[trackId] = [];
+
+          // Start with a course group and load progressively finer groups
+          let s100 = track.segments.filter((_, i) => i % 100 === 0);
+          let s10 = track.segments.filter((_, i) => i % 100 !== 0 && i % 10 === 0);
+          let s5 = track.segments.filter((_, i) => i % 10 !== 0 && i % 5 === 0);
+          let s2 = track.segments.filter((_, i) => i % 10 !== 0 && i % 5 !== 0 && i % 2 === 0);
+          let s1 = track.segments.filter((_, i) => i % 5 !== 0 && i % 2 !== 0);
+
+          let addedSegments = {};
+          await Utils.LimitedMap(
             concurrentRequests,
+            [...s100, ...s10, ...s5, ...s2, ...s1],
             async segment => {
-              // Abort if video has changed
-              if(this.rootStore.videoStore.versionHash !== loadingVersion) {
+              // Abort if segment already loaded or video has changed
+              if(
+                addedSegments[segment.number] ||
+                this.entries[trackId][segment.number] ||
+                this.rootStore.videoStore.versionHash !== loadingVersion
+              ) {
                 return;
               }
+
+              addedSegments[segment.number] = true;
 
               const segmentData = new Uint8Array(await (await fetch(segment.url)).arrayBuffer());
 
@@ -304,7 +313,18 @@ class TrackStore {
               audioData.set(initSegment);
               audioData.set(segmentData, initSegment.byteLength);
 
-              this.AddAudioSegment(trackId, audioData.buffer, segment.duration, segment.number, samplesPerSecond);
+              const { audioSamples, segmentMax } = await this.DecodeAudioSegment(trackId, audioData.buffer, segment.duration, segment.number, samplesPerSecond);
+
+              runInAction(() => {
+                this.entries[trackId][segment.number] = audioSamples;
+
+                if(segmentMax > trackMax) {
+                  trackMax = segmentMax;
+                  trackProxy.max = segmentMax;
+                }
+
+                trackProxy.version = trackProxy.version + 1;
+              });
             }
           );
         } catch(error) {
@@ -611,6 +631,15 @@ class TrackStore {
     this.SetSelectedTrack(undefined);
 
     this.rootStore.videoStore.EndSegment();
+  }
+
+  ToggleTrackType({type, visible}) {
+    if(type === "Audio" && visible && this.audioTracks.length === 0) {
+      this.AddAudioTracks();
+      setTimeout(() => runInAction(() => this.showAudio = visible), 1000);
+    } else {
+      this[`show${type}`] = visible;
+    }
   }
 
   ToggleTrack(label) {

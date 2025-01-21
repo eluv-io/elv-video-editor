@@ -47,7 +47,7 @@ class OverlayStore {
       } else {
         this.trackInfo[trackKey] = {
           label: FormatName(trackKey),
-          color: this.rootStore.trackStore.NextColor()
+          color: this.rootStore.trackStore.TrackColor(trackKey)
         };
       }
     }
