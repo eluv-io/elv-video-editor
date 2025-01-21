@@ -13,6 +13,7 @@ import {
   VideoTime,
   VolumeControls
 } from "@/components/video/VideoControls";
+import Overlay from "@/components/video/Overlay.jsx";
 
 const S = CreateModuleClassMatcher(VideoStyles);
 
@@ -81,6 +82,10 @@ const Video = observer(() => {
   return (
     <div id="video-container" className={S("video-container", videoStore.fullScreen ? "video-container--fullscreen" : "")}>
       <div className={S("video-wrapper")}>
+        {
+          !video ? null :
+            <Overlay element={video} />
+        }
         <video
           key={`video-${videoStore.source}`}
           ref={setVideo}

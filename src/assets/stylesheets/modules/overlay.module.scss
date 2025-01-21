@@ -1,24 +1,6 @@
-.track-container {
-  background-color: var(--background-track);
-  height: 100%;
-  position: relative;
-  width: 100%;
-}
-
-.track {
-  height: 100%;
-  width: 100%;
-  z-index: 1;
-
-  &__canvas {
-    height: 100%;
-    width: 100%;
-    z-index: 2;
-  }
-}
-
-.tooltip-overlay {
+.overlay {
   inset: 0;
+  margin-inline: auto;
   position: absolute;
   z-index: 1;
 }
@@ -32,9 +14,8 @@
     font-weight: 500;
   }
 
-  &__timestamps {
+  &__label {
     color: var(--text-secondary);
-    font-family: var(--font-monospace);
     font-size: 12px;
     font-weight: 600;
     margin-bottom: 5px;

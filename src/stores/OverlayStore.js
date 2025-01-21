@@ -22,7 +22,12 @@ class OverlayStore {
   }
 
   constructor(rootStore) {
-    makeAutoObservable(this);
+    makeAutoObservable(
+      this,
+      {
+        overlayTrack: false
+      }
+    );
 
     this.rootStore = rootStore;
   }
@@ -83,7 +88,14 @@ class OverlayStore {
       const overlayTags = Object.assign({}, ...overlayTagChunks);
       overlayTags.version = overlayTagVersion;
 
-      Object.keys(Object.values(overlayTags)[0]).forEach(trackKey => {
+
+      // Determine all tracks with overlay
+      let availableOverlayTrackKeys = {};
+      Object.values(overlayTags).forEach(overlayTag => {
+        Object.keys(overlayTag).forEach(trackKey => availableOverlayTrackKeys[trackKey] = true);
+      });
+
+      Object.keys(availableOverlayTrackKeys).forEach(trackKey => {
         this.enabledOverlayTracks[trackKey] = true;
 
         const metadataTrack = this.rootStore.trackStore.tracks.find(track => track.key === trackKey);
@@ -110,7 +122,7 @@ class OverlayStore {
   }
 
   ToggleOverlayTrack(trackKey, enabled) {
-    this. enabledOverlayTracks[trackKey] = enabled;
+    this.enabledOverlayTracks[trackKey] = enabled;
   }
 }
 

@@ -58,7 +58,13 @@ class TrackStore {
   totalEntries = 0;
 
   constructor(rootStore) {
-    makeAutoObservable(this);
+    makeAutoObservable(
+      this,
+      {
+        entries: false,
+        intervalTrees: false
+      }
+    );
 
     this.rootStore = rootStore;
 
