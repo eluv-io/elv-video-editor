@@ -13,13 +13,13 @@ const frameSpread = 10;
 const S = CreateModuleClassMatcher(OverlayStyles);
 
 
-const AssetEntries = ({asset, highlightEntry}) => {
-  let entries = [];
+const AssetTags = ({asset, highlightTag}) => {
+  let tags = [];
   Object.keys(asset.image_tags || {}).forEach(category => {
     if(!asset.image_tags[category].tags) { return; }
 
     const trackInfo = overlayStore.TrackInfo(category);
-    entries = entries.concat(
+    tags = tags.concat(
       asset.image_tags[category].tags.map(tags =>
         ({
           ...tags,
@@ -30,17 +30,17 @@ const AssetEntries = ({asset, highlightEntry}) => {
     );
   });
 
-  if(highlightEntry) {
-    entries.push({
-      ...highlightEntry,
+  if(highlightTag) {
+    tags.push({
+      ...highlightTag,
       color: { r: 255, g: 255, b: 255}
     });
   }
 
-  return entries.filter(entry => !!entry.box);
+  return tags.filter(tag => !!tag.box);
 };
 
-const Entries = () => {
+const Tags = () => {
   if(videoStore.frame === 0) { return []; }
 
   const tags = {};
@@ -60,31 +60,31 @@ const Entries = () => {
 
   if(Object.keys(tags).length === 0) { return []; }
 
-  let entries = [];
+  let activeTags = [];
   tracksStore.tracks
     .filter(track => track.trackType === "metadata")
     .forEach(track => {
       if(!overlayStore.visibleOverlayTracks[track.key]) { return; }
 
-      if(!tags[track.key] || typeof tags[track.key] !== "object") { return; }
+      if(!activeTags[track.key] || typeof activeTags[track.key] !== "object") { return; }
 
       let boxes = [];
-      if(tags[track.key].tags) {
-        boxes = tags[track.key].tags;
+      if(activeTags[track.key].activeTags) {
+        boxes = activeTags[track.key].activeTags;
       } else {
-        Object.keys(tags[track.key]).map(text => {
-          if(typeof tags[track.key][text] !== "object") { return; }
+        Object.keys(activeTags[track.key]).map(text => {
+          if(typeof activeTags[track.key][text] !== "object") { return; }
 
-          tags[track.key][text].map(entry => {
+          activeTags[track.key][text].map(tag => {
             boxes.push({
-              ...entry,
+              ...tag,
               text
             });
           });
         });
       }
 
-      entries = entries.concat(
+      activeTags = activeTags.concat(
         boxes.map(tag => ({
           ...tag,
           label: track.label,
@@ -93,10 +93,10 @@ const Entries = () => {
       );
     });
 
-  return entries.filter(entry => !!entry.box);
+  return activeTags.filter(tag => !!tag.box);
 };
 
-const EntriesAt = ({canvas, asset, clientX, clientY}) => {
+const TagsAt = ({canvas, asset, clientX, clientY}) => {
   // Convert clientX and clientY into percentages to match box values
   const {top, left, height, width} = canvas.getBoundingClientRect();
   clientX = (clientX - left) / width;
@@ -104,11 +104,11 @@ const EntriesAt = ({canvas, asset, clientX, clientY}) => {
 
   return (
     asset ?
-      AssetEntries({asset}) :
-      Entries()
+      AssetTags({asset}) :
+      Tags()
   )
-    .filter(entry => {
-      const {x1, x2, y1, y2, x3, y3, x4, y4} = entry.box;
+    .filter(tag => {
+      const {x1, x2, y1, y2, x3, y3, x4, y4} = tag.box;
       const minX = Math.min(x1, x2, x3 || x1, x4 || x2);
       const maxX = Math.max(x1, x2, x3 || x1, x4 || x2);
       const minY = Math.min(y1, y2, y3 || y1, y4 || y2);
@@ -118,7 +118,7 @@ const EntriesAt = ({canvas, asset, clientX, clientY}) => {
     });
 };
 
-const Draw = ({canvas, entries, elementSize}) => {
+const Draw = ({canvas, tags, elementSize}) => {
   if(!canvas) { return; }
 
   canvas.width = elementSize.width;
@@ -133,11 +133,11 @@ const Draw = ({canvas, entries, elementSize}) => {
   context.globalAlpha = 0.8;
   context.lineWidth = 2;
 
-  if(entries.length === 0) { return; }
-  entries.forEach(entry => {
-    if(!entry.box) { return; }
+  if(tags.length === 0) { return; }
+  tags.forEach(tag => {
+    if(!tag.box) { return; }
 
-    let {x1, x2, y1, y2, x3, y3, x4, y4} = entry.box;
+    let {x1, x2, y1, y2, x3, y3, x4, y4} = tag.box;
 
     let points = [];
     if(!x3) {
@@ -149,7 +149,7 @@ const Draw = ({canvas, entries, elementSize}) => {
 
     const toHex = n => n.toString(16).padStart(2, "0");
 
-    context.strokeStyle = `#${toHex(entry.color.r)}${toHex(entry.color.g)}${toHex(entry.color.b)}`;
+    context.strokeStyle = `#${toHex(tag.color.r)}${toHex(tag.color.g)}${toHex(tag.color.b)}`;
 
     context.beginPath();
     context.moveTo(points[0][0], points[0][1]);
@@ -161,7 +161,7 @@ const Draw = ({canvas, entries, elementSize}) => {
   });
 };
 
-const Overlay = observer(({element, asset, highlightEntry}) => {
+const Overlay = observer(({element, asset, highlightTag}) => {
   const [canvas, setCanvas] = useState(undefined);
   const [hoverPosition, setHoverPosition] = useState({hovering: false, clientX: 0, clientY: 0});
   const [elementSize, setElementSize] = React.useState({width: 0, height: 0});
@@ -202,13 +202,13 @@ const Overlay = observer(({element, asset, highlightEntry}) => {
         frame: videoStore.frame,
         elementSize,
         enabledTracks: JSON.stringify(overlayStore.visibleOverlayTracks),
-        highlightEntry: JSON.stringify(highlightEntry || "")
+        highlightTag: JSON.stringify(highlightTag || "")
       }),
       () => Draw({
         canvas,
-        entries: asset ?
-          AssetEntries({asset, highlightEntry}) :
-          Entries(),
+        tags: asset ?
+          AssetTags({asset, highlightTag}) :
+          Tags(),
         elementSize
       }),
       {
@@ -222,26 +222,26 @@ const Overlay = observer(({element, asset, highlightEntry}) => {
 
   if(!asset && !overlayStore.overlayEnabled) { return null; }
 
-  const hoverEntries = !hoverPosition.hovering ? [] :
-    EntriesAt({canvas, asset, clientX: hoverPosition.clientX, clientY: hoverPosition.clientY});
+  const hoverTags = !hoverPosition.hovering ? [] :
+    TagsAt({canvas, asset, clientX: hoverPosition.clientX, clientY: hoverPosition.clientY});
 
   return (
     <div className={S("overlay")} style={{width: `${elementSize.width}px`}}>
       <Tooltip.Floating
-        disabled={hoverEntries.length === 0}
+        disabled={hoverTags.length === 0}
         position="top"
         offset={20}
         label={
           <div className={S("tooltip")}>
-            {hoverEntries.map((entry) =>
-              <div className={S("tooltip__item")} key={`entry-${entry.entryId}`}>
+            {hoverTags.map((tag) =>
+              <div className={S("tooltip__item")} key={`tag-${tag.tagId}`}>
                 <div className={S("tooltip__label")}>
-                  { entry.label }
+                  { tag.label }
                 </div>
                 <div className={S("tooltip__content")}>
                   {
-                    (Array.isArray(entry.text) ? entry.text : [entry.text])
-                      .map((text, ti) => <p key={`entry-${ti}`}>{text}</p>)
+                    (Array.isArray(tag.text) ? tag.text : [tag.text])
+                      .map((text, ti) => <p key={`tag-${ti}`}>{text}</p>)
                   }
                 </div>
               </div>

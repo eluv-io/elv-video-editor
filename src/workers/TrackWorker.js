@@ -16,11 +16,11 @@ const activeColor = {
 };
 
 class TrackWorker {
-  constructor({trackId, trackLabel, color, height, width, entries, scale, duration, noActive}) {
+  constructor({trackId, trackLabel, color, height, width, tags, scale, duration, noActive}) {
     this.trackId = trackId;
     this.trackLabel = trackLabel;
     this.color = color;
-    this.entries = entries;
+    this.tags = tags;
     this.scale = scale;
     this.duration = duration;
     this.width = width;
@@ -28,16 +28,16 @@ class TrackWorker {
     this.filter = "";
     this.noActive = noActive;
 
-    this.selectedEntryId = undefined;
-    this.activeEntryIds = [];
-    this.hoverEntryIds = [];
-    this.selectedEntryIds = [];
+    this.selectedTagId = undefined;
+    this.activeTagIds = [];
+    this.hoverTagIds = [];
+    this.selectedTagIds = [];
   }
 
   Draw() {
     if(!this.width || !this.height) { return; }
 
-    let entries = Object.values(this.entries);
+    let tags = Object.values(this.tags);
 
     const imageData = new ImageData(this.width, this.height);
 
@@ -50,39 +50,39 @@ class TrackWorker {
     const startTime = Fraction(scaleMin).div(scale).mul(this.duration);
     const endTime = startTime.add(visibleDuration);
 
-    // Filter non visible and non-matching entries
+    // Filter non visible and non-matching tags
     const formatString = string => (string || "").toString().toLowerCase();
     const filter = formatString(this.filter);
 
-    entries = entries.filter(entry =>
-      entry.endTime >= startTime.valueOf() &&
-      entry.startTime <= endTime.valueOf() &&
-      (!filter || formatString(entry.textList.join(" ")).includes(filter))
+    tags = tags.filter(tag =>
+      tag.endTime >= startTime.valueOf() &&
+      tag.startTime <= endTime.valueOf() &&
+      (!filter || formatString(tag.textList.join(" ")).includes(filter))
     );
 
     const widthRatio = this.width / visibleDuration;
-    const entryHeight = Math.ceil(this.height * 0.60);
-    const startY = Math.ceil((this.height - entryHeight) / 2) - 2;
+    const tagHeight = Math.ceil(this.height * 0.60);
+    const startY = Math.ceil((this.height - tagHeight) / 2) - 2;
 
-    entries.map(entry => {
-      const startPixel = Math.floor((entry.startTime - startTime) * widthRatio);
-      const endPixel = Math.floor((entry.endTime - startTime) * widthRatio);
+    tags.map(tag => {
+      const startPixel = Math.floor((tag.startTime - startTime) * widthRatio);
+      const endPixel = Math.floor((tag.endTime - startTime) * widthRatio);
 
       let color = this.color;
-      if(this.selectedEntryId === entry.entryId) {
-        // Currently shown entry
+      if(this.selectedTagId === tag.tagId) {
+        // Currently shown tag
         //context.fillStyle = color;
         color = selectedColor;
-      } else if(this.selectedEntryIds.includes(entry.entryId)) {
+      } else if(this.selectedTagIds.includes(tag.tagId)) {
         // Selected item - highlight fill
 
         color = selectedColor;
-      } else if(this.hoverEntryIds.includes(entry.entryId)) {
+      } else if(this.hoverTagIds.includes(tag.tagId)) {
         // Hover item - fill
 
         //context.fillStyle = color;
         color = selectedColor;
-      } else if(!this.noActive && this.activeEntryIds.includes(entry.entryId)) {
+      } else if(!this.noActive && this.activeTagIds.includes(tag.tagId)) {
         // Active item - highlight fill
 
         color = activeColor;
@@ -95,7 +95,7 @@ class TrackWorker {
         x: startPixel,
         y: startY,
         width: endPixel - startPixel,
-        height: entryHeight,
+        height: tagHeight,
       });
     });
 
@@ -125,8 +125,8 @@ self.addEventListener(
         delete workers[data.trackId];
         return;
 
-      case "SetEntries":
-        worker.entries = data.entries;
+      case "SetTags":
+        worker.tags = data.tags;
         break;
 
       case "SetScale":
@@ -139,9 +139,9 @@ self.addEventListener(
         break;
 
       case "SetSelected":
-        worker.selectedEntryId = data.selectedEntryId;
-        worker.selectedEntryIds = data.selectedEntryIds;
-        worker.hoverEntryIds = data.hoverEntryIds;
+        worker.selectedTagId = data.selectedTagId;
+        worker.selectedTagIds = data.selectedTagIds;
+        worker.hoverTagIds = data.hoverTagIds;
         break;
 
       case "SetFilter":
@@ -149,7 +149,7 @@ self.addEventListener(
         break;
 
       case "SetActive":
-        worker.activeEntryIds = data.activeEntryIds;
+        worker.activeTagIds = data.activeTagIds;
         break;
 
       case "Resize":

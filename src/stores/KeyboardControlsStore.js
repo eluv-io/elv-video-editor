@@ -128,8 +128,8 @@ class ControlStore {
     this.rootStore.videoStore.PlayPause();
   }
 
-  PlayCurrentEntry() {
-    this.rootStore.entryStore.PlayCurrentEntry();
+  PlayCurrentTag() {
+    this.rootStore.tagStore.PlayCurrentTag();
   }
 
   SetPlaybackRate(rate) {
@@ -195,8 +195,8 @@ class ControlStore {
         ["l"],
         {
           action: {
-            description: "Play current entry",
-            action: this.PlayCurrentEntry
+            description: "Play current tag",
+            action: this.PlayCurrentTag
           }
         }
       ],

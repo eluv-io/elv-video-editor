@@ -62,7 +62,7 @@ export const DownloadFromUrl = (url, filename, options={}) => {
   window.URL.revokeObjectURL(url);
 };
 
-export const SortEntries = entries => entries.sort((a, b) => {
+export const SortTags = tags => tags.sort((a, b) => {
   a = {
     ...a,
     startTime: a.startTime || a.start_time,

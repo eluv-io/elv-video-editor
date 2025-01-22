@@ -5,7 +5,7 @@ import TrackCanvas from "./TrackCanvas";
 import {observer} from "mobx-react";
 import Fraction from "fraction.js";
 import {reaction, toJS} from "mobx";
-import {tracksStore, videoStore, entryStore} from "@/stores/index.js";
+import {tracksStore, videoStore, tagStore} from "@/stores/index.js";
 
 import {CreateModuleClassMatcher} from "@/utils/Utils";
 import {Tooltip} from "@mantine/core";
@@ -30,37 +30,37 @@ const TimeAt = ({canvas, clientX}) => {
 };
 
 const Search = ({trackId, time}) => {
-  return tracksStore.TrackEntryIntervalTree(trackId).search(time, time);
+  return tracksStore.TrackTagIntervalTree(trackId).search(time, time);
 };
 
 const Click = ({canvas, clientX, trackId}) => {
   const time = TimeAt({canvas, clientX});
-  const entries = Search({trackId, time});
+  const tags = Search({trackId, time});
 
   tracksStore.SetSelectedTrack(trackId);
-  entryStore.SetEntries(entries, videoStore.TimeToSMPTE(time));
+  tagStore.SetTags(tags, videoStore.TimeToSMPTE(time));
 };
 
 const Hover = ({canvas, clientX, trackId}) => {
   const time = TimeAt({canvas, clientX});
-  const entries = Search({trackId, time});
+  const tags = Search({trackId, time});
 
-  entryStore.SetHoverEntries(entries, trackId, videoStore.TimeToSMPTE(time));
+  tagStore.SetHoverTags(tags, trackId, videoStore.TimeToSMPTE(time));
 };
 
 const ClearHover = () => {
-  entryStore.ClearHoverEntries([]);
+  tagStore.ClearHoverTags([]);
 };
 
 
 const InitializeTrackReactions = ({track, worker}) => {
   // Update less often when there are many tags to improve performance
-  //const delayFactor = Math.max(1, Math.log10(tracksStore.totalEntries));
+  //const delayFactor = Math.max(1, Math.log10(tracksStore.totalTags));
   const delayFactor = 1;
 
   let reactionDisposals = [];
 
-  // Update when entries change
+  // Update when tags change
   reactionDisposals.push(
     reaction(
       () => ({
@@ -68,9 +68,9 @@ const InitializeTrackReactions = ({track, worker}) => {
       }),
       () => {
         worker.postMessage({
-          operation: "SetEntries",
+          operation: "SetTags",
           trackId: track.trackId,
-          entries: toJS(tracksStore.TrackEntries(track.trackId))
+          tags: toJS(tracksStore.TrackTags(track.trackId))
         });
       },
       {delay: 25 * delayFactor}
@@ -106,7 +106,7 @@ const InitializeTrackReactions = ({track, worker}) => {
   reactionDisposals.push(
     reaction(
       () => ({
-        filter: entryStore.filter
+        filter: tagStore.filter
       }),
       () => {
         if(track.trackType === "clip") {
@@ -116,7 +116,7 @@ const InitializeTrackReactions = ({track, worker}) => {
         worker.postMessage({
           operation: "SetFilter",
           trackId: track.trackId,
-          filter: entryStore.filter
+          filter: tagStore.filter
         });
       },
       {delay: 100 * delayFactor}
@@ -127,50 +127,50 @@ const InitializeTrackReactions = ({track, worker}) => {
   reactionDisposals.push(
     reaction(
       () => ({
-        hoverEntries: entryStore.hoverEntries,
-        selectedEntries: entryStore.entries,
-        selectedEntry: entryStore.selectedEntry
+        hoverTags: tagStore.hoverTags,
+        selectedTags: tagStore.tags,
+        selectedTag: tagStore.selectedTag
       }),
       () => {
-        const selectedEntryIds = toJS(entryStore.entries);
-        const selectedEntryId = toJS(entryStore.selectedEntry ? entryStore.selectedEntry : undefined);
-        const hoverEntryIds = toJS(entryStore.hoverEntries);
+        const selectedTagIds = toJS(tagStore.tags);
+        const selectedTagId = toJS(tagStore.selectedTag ? tagStore.selectedTag : undefined);
+        const hoverTagIds = toJS(tagStore.hoverTags);
 
         worker.postMessage({
           operation: "SetSelected",
           trackId: track.trackId,
-          selectedEntryId,
-          selectedEntryIds,
-          hoverEntryIds
+          selectedTagId,
+          selectedTagIds,
+          hoverTagIds
         });
       },
       {delay: 75 * delayFactor}
     )
   );
 
-  let activeEntryIds = [];
-  // Update on active entry changed
+  let activeTagIds = [];
+  // Update on active tag changed
   reactionDisposals.push(
     reaction(
       () => ({
         frame: videoStore.frame
       }),
       () => {
-        const currentActiveEntryIds = toJS(
-          tracksStore.TrackEntryIntervalTree(track.trackId)
+        const currentActiveTagIds = toJS(
+          tracksStore.TrackTagIntervalTree(track.trackId)
             .search(videoStore.currentTime, videoStore.currentTime)
         ).sort();
 
-        if(currentActiveEntryIds.toString() === activeEntryIds.toString()) {
+        if(currentActiveTagIds.toString() === activeTagIds.toString()) {
           return;
         }
 
-        activeEntryIds = currentActiveEntryIds;
+        activeTagIds = currentActiveTagIds;
 
         worker.postMessage({
           operation: "SetActive",
           trackId: track.trackId,
-          activeEntryIds: currentActiveEntryIds
+          activeTagIds: currentActiveTagIds
         });
       },
       {delay: 50 * delayFactor}
@@ -181,47 +181,47 @@ const InitializeTrackReactions = ({track, worker}) => {
 };
 
 const TooltipOverlay = observer(({trackId, ...props}) => {
-  let entries = [];
-  const hovering = trackId === entryStore.hoverTrack;
+  let tags = [];
+  const hovering = trackId === tagStore.hoverTrack;
 
-  if(hovering && entryStore.hoverEntries?.length > 0) {
+  if(hovering && tagStore.hoverTags?.length > 0) {
     const formatString = string => (string || "").toString().toLowerCase();
-    const filter = formatString(entryStore.filter);
+    const filter = formatString(tagStore.filter);
 
-    entries = entryStore.hoverEntries.map(entryId => {
-      const entry = tracksStore.TrackEntries(trackId)[entryId];
+    tags = tagStore.hoverTags.map(tagId => {
+      const tag = tracksStore.TrackTags(trackId)[tagId];
 
-      if(!entry) {
+      if(!tag) {
         return null;
       }
 
-      if(filter && !formatString(entry.textList.join(" ")).includes(filter)) {
+      if(filter && !formatString(tag.textList.join(" ")).includes(filter)) {
         return null;
       }
 
       return (
-        <div className={S("tooltip__item")} key={`entry-${entry.entryId}`}>
+        <div className={S("tooltip__item")} key={`tag-${tag.tagId}`}>
           <div className={S("tooltip__timestamps")}>
-            {`${entryStore.TimeToSMPTE(entry.startTime)} - ${entryStore.TimeToSMPTE(entry.endTime)}`}
+            {`${tagStore.TimeToSMPTE(tag.startTime)} - ${tagStore.TimeToSMPTE(tag.endTime)}`}
           </div>
           <div className={S("tooltip__content")}>
-            {entry.content ? <pre>{JSON.stringify(entry.content, null, 2)}</pre> : <p>{entry.textList.join(", ")}</p>}
+            {tag.content ? <pre>{JSON.stringify(tag.content, null, 2)}</pre> : <p>{tag.textList.join(", ")}</p>}
           </div>
         </div>
       );
     })
-      .filter(entry => entry);
+      .filter(tag => tag);
   }
 
   return (
     <Tooltip.Floating
-      key={`${entries}`}
-      disabled={entries.length === 0}
+      key={`${tags}`}
+      disabled={tags.length === 0}
       position="top"
       offset={20}
       label={
         <div className={S("tooltip")}>
-          { entries }
+          { tags }
         </div>
       }
     >
@@ -296,7 +296,7 @@ const Track = observer(({track, noActive}) => {
             color: toJS(track.color),
             width: canvasDimensions.width,
             height: canvasDimensions.height,
-            entries: toJS(tracksStore.TrackEntries(track.trackId)),
+            tags: toJS(tracksStore.TrackTags(track.trackId)),
             noActive,
             scale: {
               scale: 100,

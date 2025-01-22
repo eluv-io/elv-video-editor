@@ -9,9 +9,9 @@ const mainColor = {
 };
 
 class AudioTrackWorker {
-  constructor({trackId, height, width, entries, scale, duration}) {
+  constructor({trackId, height, width, tags, scale, duration}) {
     this.trackId = trackId;
-    this.entries = (entries || []).flat();
+    this.tags = (tags || []).flat();
     this.scale = scale;
     this.duration = duration;
     this.width = width;
@@ -19,16 +19,16 @@ class AudioTrackWorker {
     this.filter = "";
     this.max = 1;
 
-    this.selectedEntryId = undefined;
-    this.activeEntryIds = [];
-    this.hoverEntryIds = [];
-    this.selectedEntryIds = [];
+    this.selectedTagId = undefined;
+    this.activeTagIds = [];
+    this.hoverTagIds = [];
+    this.selectedTagIds = [];
   }
 
   Draw() {
     if(!this.width || !this.height) { return; }
 
-    let entries = Object.values(this.entries).filter(e => e);
+    let tags = Object.values(this.tags).filter(e => e);
 
     const imageData = new ImageData(this.width, this.height);
 
@@ -41,34 +41,34 @@ class AudioTrackWorker {
     const startTime = Fraction(scaleMin).div(scale).mul(this.duration);
     const endTime = startTime.add(visibleDuration);
 
-    // Filter non visible and non-matching entries
-    entries = entries
-      .filter(entry =>
-        entry.endTime >= startTime.valueOf() &&
-        entry.startTime <= endTime.valueOf()
+    // Filter non visible and non-matching tags
+    tags = tags
+      .filter(tag =>
+        tag.endTime >= startTime.valueOf() &&
+        tag.startTime <= endTime.valueOf()
       )
       .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
 
-    const renderEvery = Math.floor(entries.length / (this.width * 2)) || 1;
+    const renderEvery = Math.floor(tags.length / (this.width * 2)) || 1;
 
     const widthRatio = this.width / visibleDuration;
     const halfHeight = Math.floor(this.height * 0.5);
 
     const audioScale = 1 / (this.max * 1.2);
-    for(let i = 0; i < entries.length; i += renderEvery) {
-      const entry = entries[i];
-      const entryGroup = entries.slice(i, i + renderEvery);
-      const entryAverage = entryGroup.reduce((acc, entry) => acc + entry.max, 0) / entryGroup.length;
+    for(let i = 0; i < tags.length; i += renderEvery) {
+      const tag = tags[i];
+      const tagGroup = tags.slice(i, i + renderEvery);
+      const tagAverage = tagGroup.reduce((acc, tag) => acc + tag.max, 0) / tagGroup.length;
 
-      const nextEntryIndex = Math.min(i + renderEvery, entries.length - 1);
-      const nextEntry = entries[nextEntryIndex];
-      const nextEntryGroup = entries.slice(nextEntryIndex, nextEntryIndex + renderEvery);
-      const nextAverage = nextEntryGroup.reduce((acc, entry) => acc + entry.max, 0) / nextEntryGroup.length;
+      const nextTagIndex = Math.min(i + renderEvery, tags.length - 1);
+      const nextTag = tags[nextTagIndex];
+      const nextTagGroup = tags.slice(nextTagIndex, nextTagIndex + renderEvery);
+      const nextAverage = nextTagGroup.reduce((acc, tag) => acc + tag.max, 0) / nextTagGroup.length;
 
-      const startX = Math.floor((entry.startTime - startTime) * widthRatio);
-      const endX = Math.floor((nextEntry.startTime - startTime) * widthRatio);
+      const startX = Math.floor((tag.startTime - startTime) * widthRatio);
+      const endX = Math.floor((nextTag.startTime - startTime) * widthRatio);
 
-      const startY = Math.floor(halfHeight * entryAverage * audioScale);
+      const startY = Math.floor(halfHeight * tagAverage * audioScale);
       const endY = Math.floor(halfHeight * nextAverage * audioScale);
 
       Line(imageData, mainColor, startX, halfHeight + startY, endX, halfHeight + endY);
@@ -101,8 +101,8 @@ self.addEventListener(
         delete workers[data.trackId];
         return;
 
-      case "SetEntries":
-        worker.entries = (data.entries || []).flat();
+      case "SetTags":
+        worker.tags = (data.tags || []).flat();
         break;
 
       case "SetScale":
@@ -115,9 +115,9 @@ self.addEventListener(
         break;
 
       case "SetSelected":
-        worker.selectedEntryId = data.selectedEntryId;
-        worker.selectedEntryIds = data.selectedEntryIds;
-        worker.hoverEntryIds = data.hoverEntryIds;
+        worker.selectedTagId = data.selectedTagId;
+        worker.selectedTagIds = data.selectedTagIds;
+        worker.hoverTagIds = data.hoverTagIds;
         break;
 
       case "SetFilter":
@@ -125,7 +125,7 @@ self.addEventListener(
         break;
 
       case "SetActive":
-        worker.activeEntryIds = data.activeEntryIds;
+        worker.activeTagIds = data.activeTagIds;
         break;
 
       case "Resize":

@@ -9,8 +9,8 @@ const TrackCanvas = observer(({onResize, setCanvas, containerClassName="", class
   useEffect(() => {
     if(!ref?.current) { return; }
 
-    const resizeObserver = new ResizeObserver(entries => {
-      const node = entries[0].target.parentNode;
+    const resizeObserver = new ResizeObserver(tags => {
+      const node = tags[0].target.parentNode;
 
       onResize && onResize({width: node.offsetWidth, height: node.offsetHeight});
     });

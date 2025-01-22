@@ -174,7 +174,7 @@ class VideoStore {
     this.clipInFrame = undefined;
     this.clipOutFrame = undefined;
 
-    this.rootStore.entryStore.ClearEntries();
+    this.rootStore.tagStore.ClearTags();
     this.rootStore.trackStore.Reset();
   }
 
@@ -299,8 +299,8 @@ class VideoStore {
 
           this.SetFrameRate({rateRat: rate});
 
-          if(offering.entry_point_rat) {
-            this.primaryContentStartTime = FrameAccurateVideo.ParseRat(offering.entry_point_rat);
+          if(offering.tag_point_rat) {
+            this.primaryContentStartTime = FrameAccurateVideo.ParseRat(offering.tag_point_rat);
           }
 
           if(offering.exit_point_rat) {
@@ -424,21 +424,21 @@ class VideoStore {
 
   SetOfferingClipDetails = () => {
     Object.keys(this.metadata.offerings || {}).map(offeringKey => {
-      const entryPointRat = this.metadata.offerings[offeringKey].entry_point_rat;
+      const tagPointRat = this.metadata.offerings[offeringKey].tag_point_rat;
       const exitPointRat = this.metadata.offerings[offeringKey].exit_point_rat;
-      let entryPoint = null, exitPoint = null;
+      let tagPoint = null, exitPoint = null;
 
-      if(entryPointRat) {
-        entryPoint = FrameAccurateVideo.ParseRat(entryPointRat);
+      if(tagPointRat) {
+        tagPoint = FrameAccurateVideo.ParseRat(tagPointRat);
       }
 
       if(exitPointRat) {
         exitPoint = FrameAccurateVideo.ParseRat(exitPointRat);
       }
 
-      this.availableOfferings[offeringKey].entry = entryPoint;
+      this.availableOfferings[offeringKey].tag = tagPoint;
       this.availableOfferings[offeringKey].exit = exitPoint;
-      this.availableOfferings[offeringKey].durationTrimmed = (entryPoint === null || exitPoint === null) ? null : (exitPoint - entryPoint);
+      this.availableOfferings[offeringKey].durationTrimmed = (tagPoint === null || exitPoint === null) ? null : (exitPoint - tagPoint);
     });
   };
 

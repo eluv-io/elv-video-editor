@@ -1,6 +1,6 @@
 import { configure, runInAction, makeAutoObservable } from "mobx";
 import EditStore from "./EditStore";
-import EntryStore from "./EntryStore";
+import TagStore from "./TagStore.js";
 import KeyboardControlStore from "./KeyboardControlsStore";
 import BrowserStore from "./BrowserStore";
 import OverlayStore from "./OverlayStore";
@@ -23,7 +23,7 @@ class RootStore {
     makeAutoObservable(this);
 
     this.editStore = new EditStore(this);
-    this.entryStore = new EntryStore(this);
+    this.tagStore = new TagStore(this);
     this.keyboardControlStore = new KeyboardControlStore(this);
     this.browserStore = new BrowserStore(this);
     this.overlayStore = new OverlayStore(this);
@@ -38,7 +38,7 @@ class RootStore {
   Reset() {
     [
       this.videoStore,
-      this.entryStore,
+      this.tagStore,
       this.overlayStore,
       this.trackStore,
       this.editStore
@@ -93,7 +93,7 @@ const root = new RootStore();
 
 export const rootStore = root;
 export const editStore = rootStore.editStore;
-export const entryStore = rootStore.entryStore;
+export const tagStore = rootStore.tagStore;
 export const keyboardControlsStore = rootStore.keyboardControlStore;
 export const browserStore = rootStore.browserStore;
 export const overlayStore = rootStore.overlayStore;

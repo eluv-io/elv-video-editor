@@ -40,7 +40,7 @@ const colors = [
 ].map(color => HexToRGB(color, 150));
 
 class TrackStore {
-  entries = {};
+  tags = {};
   intervalTrees = {};
 
   initialized = false;
@@ -55,13 +55,13 @@ class TrackStore {
   showSegments = false;
   showAudio = false;
 
-  totalEntries = 0;
+  totalTags = 0;
 
   constructor(rootStore) {
     makeAutoObservable(
       this,
       {
-        entries: false,
+        tags: false,
         intervalTrees: false
       }
     );
@@ -174,7 +174,7 @@ class TrackStore {
     return vttTracks;
   });
 
-  AddTrack({label, key, type, entries, color}) {
+  AddTrack({label, key, type, tags, color}) {
     const trackId = Id.next();
     this.tracks.push({
       trackId,
@@ -185,21 +185,21 @@ class TrackStore {
       trackType: type
     });
 
-    this.entries[trackId] = entries;
-    this.intervalTrees[trackId] = this.CreateTrackIntervalTree(entries, label);
+    this.tags[trackId] = tags;
+    this.intervalTrees[trackId] = this.CreateTrackIntervalTree(tags, label);
 
     return trackId;
   }
 
-  TrackEntries(trackId) {
-    if(trackId in this.entries) {
-      return this.entries[trackId];
+  TrackTags(trackId) {
+    if(trackId in this.tags) {
+      return this.tags[trackId];
     }
 
-    return this.audioTracks.find(track => track.trackId === trackId)?.entries.flat();
+    return this.audioTracks.find(track => track.trackId === trackId)?.tags.flat();
   }
 
-  TrackEntryIntervalTree(trackId) {
+  TrackTagIntervalTree(trackId) {
     return this.intervalTrees[trackId];
   }
 
@@ -271,7 +271,7 @@ class TrackStore {
             trackId,
             label: track.label || "Audio",
             trackType: "audio",
-            entries: [],
+            tags: [],
             max: 0,
             version: 1
           });
@@ -287,7 +287,7 @@ class TrackStore {
           );
 
           let trackMax = 0;
-          this.entries[trackId] = [];
+          this.tags[trackId] = [];
 
           // Start with a course group and load progressively finer groups
           let s100 = track.segments.filter((_, i) => i % 100 === 0);
@@ -304,7 +304,7 @@ class TrackStore {
               // Abort if segment already loaded or video has changed
               if(
                 addedSegments[segment.number] ||
-                this.entries[trackId][segment.number] ||
+                this.tags[trackId][segment.number] ||
                 this.rootStore.videoStore.versionHash !== loadingVersion
               ) {
                 return;
@@ -322,7 +322,7 @@ class TrackStore {
               const { audioSamples, segmentMax } = await this.DecodeAudioSegment(trackId, audioData.buffer, segment.duration, segment.number, samplesPerSecond);
 
               runInAction(() => {
-                this.entries[trackId][segment.number] = audioSamples;
+                this.tags[trackId][segment.number] = audioSamples;
 
                 if(segmentMax > trackMax) {
                   trackMax = segmentMax;
@@ -348,32 +348,32 @@ class TrackStore {
 
     let metadataTracks = [];
     Object.keys(metadataTags).forEach(key => {
-      let entries = {};
+      let tags = {};
       const millis = metadataTags[key].version > 0;
-      metadataTags[key].tags.forEach(entry => {
-        const parsedEntry = this.Cue({
-          entryType: "metadata",
-          startTime: millis ? (entry.start_time / 1000) : entry.start_time,
-          endTime: millis ? (entry.end_time / 1000) : entry.end_time,
-          text: entry.text,
-          entry: toJS(entry)
+      metadataTags[key].tags.forEach(tag => {
+        const parsedTag = this.Cue({
+          tagType: "metadata",
+          startTime: millis ? (tag.start_time / 1000) : tag.start_time,
+          endTime: millis ? (tag.end_time / 1000) : tag.end_time,
+          text: tag.text,
+          tag: toJS(tag)
         });
 
-        entries[parsedEntry.entryId] = parsedEntry;
+        tags[parsedTag.tagId] = parsedTag;
       });
 
       metadataTracks.push({
         label: metadataTags[key].label,
         trackType: "metadata",
         key,
-        entries
+        tags
       });
     });
 
     return metadataTracks;
   };
 
-  Cue({entryType, label, startTime, endTime, text, entry}) {
+  Cue({tagType, label, startTime, endTime, text, tag}) {
     const isSMPTE = typeof startTime === "string" && startTime.split(":").length > 1;
 
     if(isSMPTE) {
@@ -392,14 +392,14 @@ class TrackStore {
     }
 
     return {
-      entryId: Id.next(),
-      entryType,
+      tagId: Id.next(),
+      tagType,
       label,
       startTime,
       endTime,
       textList: toJS(textList),
       content: toJS(content),
-      entry
+      tag
     };
   }
 
@@ -426,13 +426,13 @@ class TrackStore {
     cueAttributes.forEach(attr => cueCopy[attr] = cue[attr]);
 
     return this.Cue({
-      entryType: "vtt",
+      tagType: "vtt",
       label,
       startTime: cue.startTime,
       endTime: cue.endTime,
       text: cue.text,
       textList: [cue.text],
-      entry: cueCopy
+      tag: cueCopy
     });
   }
 
@@ -442,7 +442,7 @@ class TrackStore {
     let cues = {};
     vttParser.oncue = cue => {
       const parsedCue = this.FormatVTTCue(track.label, cue);
-      cues[parsedCue.entryId] = parsedCue;
+      cues[parsedCue.tagId] = parsedCue;
     };
 
     try {
@@ -458,17 +458,17 @@ class TrackStore {
     return cues;
   }
 
-  CreateTrackIntervalTree(entries, label) {
+  CreateTrackIntervalTree(tags, label) {
     const intervalTree = new IntervalTree();
 
-    Object.values(entries).forEach(entry => {
+    Object.values(tags).forEach(tag => {
       try {
-        intervalTree.insert(entry.startTime, entry.endTime, entry.entryId);
+        intervalTree.insert(tag.startTime, tag.endTime, tag.tagId);
       } catch(error) {
         // eslint-disable-next-line no-console
-        console.warn(`Invalid entry in track '${label}'`);
+        console.warn(`Invalid tag in track '${label}'`);
         // eslint-disable-next-line no-console
-        console.warn(JSON.stringify(entry, null, 2));
+        console.warn(JSON.stringify(tag, null, 2));
       }
     });
 
@@ -482,14 +482,14 @@ class TrackStore {
       // Initialize video WebVTT tracks by fetching and parsing the VTT file
       subtitleTracks.map(track => {
         try {
-          const entries = this.ParseVTTTrack(track);
+          const tags = this.ParseVTTTrack(track);
 
-          this.totalEntries += Object.keys(entries).length;
+          this.totalTags += Object.keys(tags).length;
 
           this.AddTrack({
             ...track,
             type: "vtt",
-            entries
+            tags
           });
         } catch(error) {
           // eslint-disable-next-line no-console
@@ -510,7 +510,7 @@ class TrackStore {
     try {
       const metadataTracks = this.AddTracksFromTags(this.rootStore.videoStore.tags.metadata_tags);
       metadataTracks.map(track => {
-        if(!track.label || !track.entries) {
+        if(!track.label || !track.tags) {
           // eslint-disable-next-line no-console
           console.error("Invalid track:", track.key);
           // eslint-disable-next-line no-console
@@ -518,13 +518,13 @@ class TrackStore {
           return;
         }
 
-        this.totalEntries += Object.keys(track.entries).length;
+        this.totalTags += Object.keys(track.tags).length;
 
         this.AddTrack({
           label: track.label,
           key: track.key,
           type: "metadata",
-          entries: track.entries
+          tags: track.tags
         });
       });
     } catch(error) {
@@ -553,24 +553,24 @@ class TrackStore {
         let segments = {};
         sources.forEach(({timeline_start, timeline_end, source}) => {
           let segment = this.Cue({
-            entryType: "segment",
+            tagType: "segment",
             startTime: parseFloat(timeline_start.float.toFixed(2)),
             endTime: parseFloat(timeline_end.float.toFixed(2)),
             text: `${timeline_start.float.toFixed(2)} - ${timeline_end.float.toFixed(2)}`,
-            entry: {}
+            tag: {}
           });
 
           segment.source = source;
           segment.streamType = stream;
 
-          segments[segment.entryId] = segment;
+          segments[segment.tagId] = segment;
         });
 
         this.AddTrack({
           label: `${stream === "video" ? "Video" : "Audio"} Segments`,
           key: `${stream}-segments`,
           type: "segments",
-          entries: segments
+          tags: segments
         });
       });
     } catch(error) {
@@ -583,15 +583,15 @@ class TrackStore {
 
   AddClipTrack() {
     const clip = this.Cue({
-      entryType: "clip",
+      tagType: "clip",
       startTime: this.rootStore.videoStore.primaryContentStartTime,
       endTime: this.rootStore.videoStore.primaryContentEndTime,
       text: "Primary Content",
-      entry: {}
+      tag: {}
     });
 
-    const entries = {
-      [clip.entryId]: clip
+    const tags = {
+      [clip.tagId]: clip
     };
 
     this.AddTrack({
@@ -599,7 +599,7 @@ class TrackStore {
       key: "primary-content",
       type: "clip",
       color: {r: 255, g: 255, b: 255, a: 200},
-      entries
+      tags
     });
   }
 
@@ -627,8 +627,8 @@ class TrackStore {
     if(this.selectedTrack === trackId) { return; }
 
     this.selectedTrack = trackId;
-    this.rootStore.entryStore.ClearEntries();
-    this.rootStore.entryStore.ClearFilter();
+    this.rootStore.tagStore.ClearTags();
+    this.rootStore.tagStore.ClearFilter();
 
     this.ClearEditing();
   }
@@ -681,10 +681,10 @@ class TrackStore {
       label,
       key,
       type: "metadata",
-      entries: {}
+      tags: {}
     });
 
-    this.rootStore.entryStore.ClearSelectedEntry();
+    this.rootStore.tagStore.ClearSelectedTag();
 
     this.SetEditing(trackId);
   }
@@ -701,7 +701,7 @@ class TrackStore {
   ModifyTrack(f) {
     const track = this.SelectedTrack();
     f(track);
-    this.intervalTrees[track.trackId] = this.CreateTrackIntervalTree(this.entries[track.trackId], track.label);
+    this.intervalTrees[track.trackId] = this.CreateTrackIntervalTree(this.tags[track.trackId], track.label);
     track.version += 1;
   }
 
@@ -711,18 +711,18 @@ class TrackStore {
     this.tracks = this.tracks.filter(track => track.trackId !== trackId);
   }
 
-  AddEntry({trackId, text, startTime, endTime}) {
+  AddTag({trackId, text, startTime, endTime}) {
     const track = this.tracks.find(track => track.trackId === trackId);
-    const cue = this.Cue({entryType: "metadata", text, startTime, endTime});
+    const cue = this.Cue({tagType: "metadata", text, startTime, endTime});
 
-    this.entries[track.trackId][cue.entryId] = cue;
+    this.tags[track.trackId][cue.tagId] = cue;
 
-    return cue.entryId;
+    return cue.tagId;
   }
 
   ClipInfo() {
     const clipTrack = this.tracks.find(track => track.trackType === "clip");
-    return Object.values(this.entries[clipTrack.trackId])[0];
+    return Object.values(this.tags[clipTrack.trackId])[0];
   }
 }
 

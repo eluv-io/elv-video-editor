@@ -7,6 +7,8 @@ import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
 
+
+
 const SidePanel = observer(() => {
   return (
     <div className={S("content-block", "side-panel-section")}>

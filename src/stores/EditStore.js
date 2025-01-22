@@ -1,6 +1,6 @@
 import { flow, toJS, makeAutoObservable } from "mobx";
 import {diff} from "deep-object-diff";
-import {SortEntries} from "@/utils/Utils";
+import {SortTags} from "@/utils/Utils";
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo";
 
 class EditStore {
@@ -49,12 +49,12 @@ class EditStore {
       const metadataTracks = this.rootStore.trackStore.tracks.filter(track => track.trackType === "metadata");
 
       metadataTracks.forEach(track => {
-        const entries = this.rootStore.trackStore.TrackEntries(track.trackId);
-        const entryMetadata = Object.values(entries).map(entry => ({
-          ...entry.entry,
-          text: entry.content ? entry.content : entry.textList,
-          start_time: Math.floor(entry.startTime * 1000),
-          end_time: Math.floor(entry.endTime * 1000)
+        const tags = this.rootStore.trackStore.TrackTags(track.trackId);
+        const tagMetadata = Object.values(tags).map(tag => ({
+          ...tag.tag,
+          text: tag.content ? tag.content : tag.textList,
+          start_time: Math.floor(tag.startTime * 1000),
+          end_time: Math.floor(tag.endTime * 1000)
         }));
 
         const originalMetadata = metadata[track.key] || {};
@@ -63,13 +63,13 @@ class EditStore {
           ...originalMetadata,
           version: 1,
           label: track.label,
-          tags: SortEntries(entryMetadata)
+          tags: SortTags(tagMetadata)
         };
 
         newMetadata[track.key] = trackMetadata;
 
         if(originalMetadata) {
-          originalMetadata.tags = SortEntries(originalMetadata.tags || []);
+          originalMetadata.tags = SortTags(originalMetadata.tags || []);
 
           const trackDiff = diff(
             originalMetadata,
@@ -148,7 +148,7 @@ class EditStore {
             libraryId,
             objectId,
             writeToken: write_token,
-            metadataSubtree: `offerings/${offering}/entry_point_rat`,
+            metadataSubtree: `offerings/${offering}/tag_point_rat`,
             metadata: startTimeRat
           });
 
@@ -195,13 +195,13 @@ class EditStore {
 
     const offering = this.rootStore.videoStore.metadata.offerings[this.rootStore.videoStore.offeringKey];
 
-    const clipChanged = offering.entry_point_rat !== startTimeRat || offering.exit_point_rat !== endTimeRat;
+    const clipChanged = offering.tag_point_rat !== startTimeRat || offering.exit_point_rat !== endTimeRat;
 
     return {
       clipChanged,
       endTimeRat,
       startTimeRat,
-      entryRevised: this.rootStore.videoStore.TimeToSMPTE(FrameAccurateVideo.ParseRat(startTimeRat)),
+      tagRevised: this.rootStore.videoStore.TimeToSMPTE(FrameAccurateVideo.ParseRat(startTimeRat)),
       exitRevised: this.rootStore.videoStore.TimeToSMPTE(FrameAccurateVideo.ParseRat(endTimeRat)),
       durationUntrimmed: this.rootStore.videoStore.scaleMaxSMPTE,
       durationTrimmed: this.rootStore.videoStore.TimeToSMPTE(FrameAccurateVideo.ParseRat(endTimeRat) - FrameAccurateVideo.ParseRat(startTimeRat))
