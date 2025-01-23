@@ -66,16 +66,16 @@ const Tags = () => {
     .forEach(track => {
       if(!overlayStore.visibleOverlayTracks[track.key]) { return; }
 
-      if(!activeTags[track.key] || typeof activeTags[track.key] !== "object") { return; }
+      if(!tags[track.key] || typeof tags[track.key] !== "object") { return; }
 
       let boxes = [];
-      if(activeTags[track.key].activeTags) {
-        boxes = activeTags[track.key].activeTags;
+      if(tags[track.key].activeTags) {
+        boxes = tags[track.key].activeTags;
       } else {
-        Object.keys(activeTags[track.key]).map(text => {
-          if(typeof activeTags[track.key][text] !== "object") { return; }
+        Object.keys(tags[track.key]).map(text => {
+          if(typeof tags[track.key][text] !== "object") { return; }
 
-          activeTags[track.key][text].map(tag => {
+          tags[track.key][text].map(tag => {
             boxes.push({
               ...tag,
               text
@@ -134,6 +134,7 @@ const Draw = ({canvas, tags, elementSize}) => {
   context.lineWidth = 2;
 
   if(tags.length === 0) { return; }
+
   tags.forEach(tag => {
     if(!tag.box) { return; }
 

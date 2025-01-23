@@ -76,6 +76,10 @@ class TrackStore {
     }
   }
 
+  get metadataTracks() {
+    return this.tracks.filter(track => track.trackType === "metadata");
+  }
+
   Reset() {
     this.tracks = [];
     this.audioTracks = [];
@@ -352,6 +356,7 @@ class TrackStore {
       const millis = metadataTags[key].version > 0;
       metadataTags[key].tags.forEach(tag => {
         const parsedTag = this.Cue({
+          trackKey: key,
           tagType: "metadata",
           startTime: millis ? (tag.start_time / 1000) : tag.start_time,
           endTime: millis ? (tag.end_time / 1000) : tag.end_time,
@@ -373,7 +378,7 @@ class TrackStore {
     return metadataTracks;
   };
 
-  Cue({tagType, label, startTime, endTime, text, tag}) {
+  Cue({tagType, label, startTime, endTime, text, tag, ...extra}) {
     const isSMPTE = typeof startTime === "string" && startTime.split(":").length > 1;
 
     if(isSMPTE) {
@@ -399,7 +404,8 @@ class TrackStore {
       endTime,
       textList: toJS(textList),
       content: toJS(content),
-      tag
+      tag,
+      ...extra
     };
   }
 

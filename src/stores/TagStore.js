@@ -6,6 +6,7 @@ class TagStore {
   tags = [];
   tagTime;
   selectedTag;
+  selectedTracks = {};
 
   hoverTags = [];
   hoverTrack;
@@ -19,6 +20,14 @@ class TagStore {
     makeAutoObservable(this);
 
     this.rootStore = rootStore;
+  }
+
+  ToggleTrackSelected(key) {
+    if(this.selectedTracks[key]) {
+      delete this.selectedTracks[key];
+    } else {
+      this.selectedTracks[key] = true;
+    }
   }
 
   Reset() {
@@ -97,9 +106,31 @@ class TagStore {
     this.ClearEditing();
   }
 
-  Tags() {
-    const tags = this.rootStore.trackStore.TrackTags(this.rootStore.trackStore.SelectedTrack().trackId);
-    return this.tags.map(tagId => tags[tagId]);
+  Tags({startFrame=0, endFrame, limit=100}={}) {
+    const startTime = startFrame && this.rootStore.videoStore.FrameToTime(startFrame);
+    const endTime = endFrame && this.rootStore.videoStore.FrameToTime(endFrame);
+
+    let tracks = this.rootStore.trackStore.metadataTracks;
+    if(Object.keys(this.selectedTracks).length > 0) {
+      // Selected tracks only
+      tracks = tracks.filter(track => this.selectedTracks[track.key]);
+    }
+
+    const filter = (this.filter || "").toLowerCase();
+
+    return tracks
+      .map(track =>
+        Object.values(this.rootStore.trackStore.TrackTags(track.trackId) || {})
+          .filter(tag =>
+            (!startTime || tag.startTime >= startTime) &&
+            (!endTime || tag.endTime <= endTime) &&
+            (!filter || (tag.textList?.join(" ") || JSON.stringify(tag.content || {})).toLowerCase().includes(filter))
+          )
+          .sort((a, b) => a.startTime < b.startTime ? -1 : 1)
+          .slice(0, limit))
+      .flat()
+      .sort((a, b) => a.startTime < b.startTime ? -1 : 1)
+      .slice(0, limit);
   }
 
   SetTags(tags, time) {

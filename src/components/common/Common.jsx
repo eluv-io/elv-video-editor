@@ -26,6 +26,13 @@ export const Loader = ({className = "", loaderClassName=""}) => {
 
 // Buttons
 
+export const Icon = ({
+  icon,
+  ...props
+}) => {
+  return <SVG {...props} src={icon} />;
+};
+
 export const IconButton = ({
   label,
   icon,
@@ -70,7 +77,7 @@ export const IconButton = ({
   );
 };
 
-export const Input = observer(({label, monospace, ...props}) => {
+export const Input = observer(({label, monospace, rightIcon, ...props}) => {
   const input = (
     <TextInput
       classNames={{
@@ -79,6 +86,7 @@ export const Input = observer(({label, monospace, ...props}) => {
       }}
       onChange={props.onChange}
       aria-label={props["aria-label"] || label || ""}
+      rightSection={!rightIcon ? null : <Icon icon={rightIcon} className={S("input__icon", "input__icon--right")} />}
       {...props}
     />
   );

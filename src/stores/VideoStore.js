@@ -60,6 +60,7 @@ class VideoStore {
   fullScreen = false;
   volume = 1;
   muted = false;
+  aspectRatio = 16/9;
 
   seek = 0;
   scaleMin = 0;
@@ -572,6 +573,8 @@ class VideoStore {
 
         this.clipInFrame = 0;
         this.clipOutFrame = this.videoHandler.TotalFrames() - 1;
+
+        this.aspectRatio = this.video.videoWidth / this.video.videoHeight;
       }
     });
 
