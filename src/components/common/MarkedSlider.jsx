@@ -21,10 +21,15 @@ const Handle = observer(({
 }) => {
   if(handle.position < min || handle.position > max) { return null; }
 
+  let style = {left: `${PositionToPixels(handle.position)}px`};
+  if(handle.opacity) {
+    style.opacity = handle.opacity;
+  }
+
   return (
     <Tooltip label={handle.tooltip} disabled={!handle.tooltip}>
       <div
-        style={{left: `${PositionToPixels(handle.position)}px`}}
+        style={style}
         className={
           JoinClassNames(
             S(
@@ -170,7 +175,7 @@ const MarkedSlider = observer(({
         availableHandles = handles.map((handle, index) => ({...handle, index}));
       }
     }
-    
+
     availableHandles.forEach(handle => {
       const distance = Math.abs(handle.position - position);
       if(distance < closestHandle && !handle.disabled && !handle.handleControlOnly) {
@@ -178,7 +183,7 @@ const MarkedSlider = observer(({
         handleIndex = handle.index;
       }
     });
-    
+
     return handleIndex;
   }, [min, max, handles]);
 

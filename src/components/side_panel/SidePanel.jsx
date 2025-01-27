@@ -103,13 +103,20 @@ const Tag = observer(({track, tag}) => {
     <div
       onMouseEnter={() => tagStore.SetHoverTags([tag.tagId], track.trackId, videoStore.TimeToSMPTE(tag.startTime))}
       onMouseLeave={() => tagStore.SetHoverTags([], track.trackId, videoStore.TimeToSMPTE(tag.startTime))}
-      className={S("tag")}
+      className={S("tag", tracksStore.thumbnailsLoaded ? "tag--thumbnail" : "")}
     >
       <div
         style={{backgroundColor: `rgb(${color?.r} ${color?.g} ${color?.b}`}}
         className={S("tag__color")}
       />
-      <div style={{aspectRatio: videoStore.aspectRatio}} className={S("tag__image")}/>
+      {
+        !tracksStore.thumbnailsLoaded ? null :
+          <img
+            src={tracksStore.ThumbnailImage(tag.startTime)}
+            style={{aspectRatio: videoStore.aspectRatio}}
+            className={S("tag__image")}
+          />
+      }
       <div className={S("tag__text")}>
         <Tooltip.Floating
           position="top"
@@ -143,6 +150,8 @@ const Tag = observer(({track, tag}) => {
 
 const Tags = observer(() => {
   const ref = useRef(null);
+  const [tags, setTags] = useState([]);
+  const [update, setUpdate] = useDebouncedState(0, 250);
   const [limit, setLimit] = useDebouncedState(100, 250);
 
   useEffect(() => {
@@ -152,9 +161,21 @@ const Tags = observer(() => {
     if(ref.current) {
       ref.current.scrollTop = 0;
     }
-  }, [tagStore.filter, Object.keys(tagStore.selectedTracks).length, videoStore.scaleMax, videoStore.scaleMin]);
 
-  const tags = tagStore.Tags({startFrame: videoStore.scaleMinFrame, endFrame: videoStore.scaleMaxFrame, limit});
+    setUpdate(update + 1);
+  }, [
+    tagStore.filter,
+    Object.keys(tagStore.selectedTracks).length,
+    videoStore.scaleMax,
+    videoStore.scaleMin,
+    tracksStore.tracks.length
+  ]);
+
+  useEffect(() => {
+    setTags(
+      tagStore.Tags({startFrame: videoStore.scaleMinFrame, endFrame: videoStore.scaleMaxFrame, limit})
+    );
+  }, [update]);
 
   let tracks = {};
   tracksStore.metadataTracks.forEach(track => tracks[track.key] = track);
@@ -165,6 +186,7 @@ const Tags = observer(() => {
       onScroll={event => {
         if(event.currentTarget.scrollTop > event.currentTarget.scrollHeight * 0.86) {
           setLimit(limit + 100);
+          setUpdate(update + 1);
         }
       }}
       className={S("tags")}

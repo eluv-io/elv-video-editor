@@ -259,6 +259,8 @@ class VideoStore {
         source.searchParams.set("ignore_trimming", true);
         source.searchParams.set("player_profile", "hls-js-2441");
 
+        const thumbnailTrackUrl = (playoutMethods.clear || playoutMethods["aes-128"]).thumbnailTrack;
+
         this.baseVideoFrameUrl = yield this.rootStore.client.Rep({
           versionHash: videoObject.versionHash,
           rep: UrlJoin("playout", this.offeringKey, "frames.png")
@@ -281,6 +283,7 @@ class VideoStore {
         }
 
         this.source = source.toString();
+        this.thumbnailTrackUrl = thumbnailTrackUrl;
 
         try {
           this.primaryContentStartTime = 0;
@@ -1055,6 +1058,85 @@ class VideoStore {
       filename
     );
   }
+
+  /* Video thumbnails creation */
+  CreateVideoThumbnails = flow(function * ({options={}}={}) {
+    const { writeToken } = yield this.rootStore.client.EditContentObject({
+      libraryId: this.videoObject.libraryId,
+      objectId: this.videoObject.objectId,
+    });
+
+    const { data } = yield this.rootStore.client.CallBitcodeMethod({
+      libraryId: this.videoObject.libraryId,
+      objectId: this.videoObject.objectId,
+      writeToken,
+      method: "/media/thumbnails/create",
+      constant: false,
+      body: {
+        async: true,
+        frame_interval: Math.ceil(this.frameRate) * 6,
+        add_thumb_track: true,
+        generate_storyboards: true,
+        ...options
+      }
+    });
+
+    yield this.rootStore.client.walletClient.SetProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: `thumbnail-job-${this.videoObject.objectId}`,
+      value: JSON.stringify({writeToken, lroId: data})
+    });
+  });
+
+  VideoThumbnailStatus = flow(function * ({finalize=false}={}) {
+    const info = yield this.rootStore.client.walletClient.ProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: `thumbnail-job-${this.videoObject.objectId}`
+    });
+
+    if(!info) { return; }
+
+    try {
+      const {writeToken, lroId} = JSON.parse(info);
+
+      const response = yield this.rootStore.client.CallBitcodeMethod({
+        libraryId: this.videoObject.libraryId,
+        objectId: this.videoObject.objectId,
+        writeToken,
+        method: UrlJoin("/media/thumbnails/status", lroId),
+        constant: true
+      });
+
+      if(response.data.custom.run_state === "finished" && finalize) {
+        yield this.rootStore.client.FinalizeContentObject({
+          libraryId: this.videoObject.libraryId,
+          objectId: this.videoObject.objectId,
+          writeToken,
+          commitMessage: "Eluvio Video Editor: Generate video thumbnails"
+        });
+
+        yield this.rootStore.client.walletClient.RemoveProfileMetadata({
+          type: "app",
+          appId: "video-editor",
+          mode: "private",
+          key: `thumbnail-job-${this.videoObject.objectId}`
+        });
+      }
+
+      return {
+        state: response?.data?.custom?.run_state,
+        progress: response?.data?.custom?.progress?.percentage || 0,
+        ...response
+      };
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.log(error);
+    }
+  });
 }
 
 export default VideoStore;

@@ -3,7 +3,7 @@ import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
 import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react";
 import {tracksStore, videoStore} from "@/stores";
-import {CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
 import {IconButton, Input, SwitchInput} from "@/components/common/Common";
 import MarkedSlider from "@/components/common/MarkedSlider";
 
@@ -27,6 +27,7 @@ import UploadIcon from "@/assets/icons/v2/upload.svg";
 import SaveIcon from "@/assets/icons/v2/save.svg";
 import KeyboardIcon from "@/assets/icons/v2/keyboard.svg";
 import Track from "@/components/timeline/Track.jsx";
+import ThumbnailTrack from "@/components/timeline/ThumbnailTrack.jsx";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -155,16 +156,20 @@ const TimelineBottomBar = observer(() => {
   );
 });
 
-const TimelineSeekBar = observer(() => {
+const TimelineSeekBar = observer(({hoverSeek}) => {
   if(!videoStore.initialized) { return null; }
 
-  let clipIndicators = [];
+  let indicators = [];
   if(videoStore.clipInFrame) {
-    clipIndicators.push({position: 100 * videoStore.clipInFrame / (videoStore.totalFrames || 1), style: "start"});
+    indicators.push({position: 100 * videoStore.clipInFrame / (videoStore.totalFrames || 1), style: "start"});
   }
 
   if(videoStore.clipOutFrame < videoStore.totalFrames - 1) {
-    clipIndicators.push({position: 100 * videoStore.clipOutFrame / (videoStore.totalFrames || 1), style: "end"});
+    indicators.push({position: 100 * videoStore.clipOutFrame / (videoStore.totalFrames || 1), style: "end"});
+  }
+
+  if(hoverSeek) {
+    indicators.push({position: hoverSeek, opacity: 0.25});
   }
 
   return (
@@ -174,7 +179,7 @@ const TimelineSeekBar = observer(() => {
         min={videoStore.scaleMin}
         max={videoStore.scaleMax}
         handles={[{ position: videoStore.seek }]}
-        indicators={clipIndicators}
+        indicators={indicators}
         showMarks
         topMarks
         nMarks={videoStore.sliderMarks}
@@ -187,16 +192,20 @@ const TimelineSeekBar = observer(() => {
   );
 });
 
-const TimelineScaleBar = observer(() => {
+const TimelineScaleBar = observer(({hoverSeek}) => {
   if(!videoStore.initialized) { return null; }
 
-  let clipIndicators = [];
+  let indicators = [];
   if(videoStore.clipInFrame) {
-    clipIndicators.push({position: 100 * videoStore.clipInFrame / (videoStore.totalFrames || 1), style: "start"});
+    indicators.push({position: 100 * videoStore.clipInFrame / (videoStore.totalFrames || 1), style: "start"});
   }
 
   if(videoStore.clipOutFrame < videoStore.totalFrames - 1) {
-    clipIndicators.push({position: 100 * videoStore.clipOutFrame / (videoStore.totalFrames || 1), style: "end"});
+    indicators.push({position: 100 * videoStore.clipOutFrame / (videoStore.totalFrames || 1), style: "end"});
+  }
+
+  if(hoverSeek) {
+    indicators.push({position: hoverSeek, opacity: 0.25});
   }
 
   return (
@@ -217,7 +226,7 @@ const TimelineScaleBar = observer(() => {
          handleSeparator={100 * videoStore.currentTime / (videoStore.duration || 1)}
          indicators={[
            { position: 100 * videoStore.currentTime / (videoStore.duration || 1) },
-           ...clipIndicators
+           ...indicators
          ]}
          showMarks
          topMarks
@@ -232,7 +241,7 @@ const TimelineScaleBar = observer(() => {
   );
 });
 
-const TimelinePlayheadIndicator = observer(({timelineRef}) => {
+const TimelinePlayheadIndicator = observer(({value, timelineRef, className=""}) => {
   const [dimensions, setDimensions] = useState({});
 
   useEffect(() => {
@@ -257,7 +266,7 @@ const TimelinePlayheadIndicator = observer(({timelineRef}) => {
     return () => resizeObserver.disconnect();
   }, [timelineRef]);
 
-  const seekPercent = (videoStore.seek - videoStore.scaleMin) / videoStore.scaleMagnitude;
+  const seekPercent = (value - videoStore.scaleMin) / videoStore.scaleMagnitude;
   const position = dimensions.width * seekPercent;
 
   if(!position || position < 0) { return null; }
@@ -265,12 +274,13 @@ const TimelinePlayheadIndicator = observer(({timelineRef}) => {
   return (
     <div
       style={{left: position + dimensions.diff}}
-      className={S("playhead-indicator")}
+      className={JoinClassNames(S("playhead-indicator"), className)}
     />
   );
 });
 
 const TimelineSection = observer(() => {
+  const [hoverPosition, setHoverPosition] = useState(undefined);
   const timelineRef = useRef(null);
 
   let tracks = [];
@@ -304,12 +314,33 @@ const TimelineSection = observer(() => {
     StopScroll({element: timelineRef.current, control: true, meta: true});
   }, [timelineRef?.current]);
 
+  let hoverSeek;
+  if(hoverPosition && timelineRef?.current) {
+    // Get position / width of seek bar without label
+    const seekDimensions = timelineRef.current.children[0]?.children[1]?.getBoundingClientRect();
+    if(seekDimensions) {
+      const progress = (hoverPosition - seekDimensions?.left) / seekDimensions?.width;
+
+      if(progress > 0 && progress < 1) {
+        hoverSeek = videoStore.scaleMin + videoStore.scaleMagnitude * progress;
+      }
+    }
+  }
+
+
+
   return (
     <div className={S("content-block", "timeline-section")}>
       <TimelineTopBar />
-      <TimelinePlayheadIndicator timelineRef={timelineRef} />
+      <TimelinePlayheadIndicator value={videoStore.seek} timelineRef={timelineRef} />
+      {
+        !hoverSeek ? null :
+          <TimelinePlayheadIndicator value={hoverSeek} timelineRef={timelineRef} className={S("playhead-indicator--hover")} />
+      }
       <div
         ref={timelineRef}
+        onMouseMove={event => setHoverPosition(event.clientX)}
+        onMouseLeave={() => setHoverPosition(undefined)}
         onScroll={event => {
           event.preventDefault();
           event.stopPropagation();
@@ -338,12 +369,23 @@ const TimelineSection = observer(() => {
         }}
         className={S("timeline-section__content")}
       >
-        <TimelineSeekBar/>
+        <TimelineSeekBar hoverSeek={hoverSeek} />
+        {
+          !tracksStore.thumbnailsLoaded ? null :
+            <div className={S("timeline-row")}>
+              <div className={S("timeline-row__label")}>
+                Thumbnails
+              </div>
+              <div className={S("timeline-row__content")}>
+                <ThumbnailTrack />
+              </div>
+            </div>
+        }
         {
           tracks.map((track, i) =>
             <div key={`track-${track.trackId || i}`} className={S("timeline-row")}>
               <div className={S("timeline-row__label")}>
-                { track.label }
+                {track.label}
               </div>
               <div className={S("timeline-row__content")}>
                 <Track track={track} />
@@ -351,7 +393,7 @@ const TimelineSection = observer(() => {
             </div>
           )
         }
-        <TimelineScaleBar />
+        <TimelineScaleBar hoverSeek={hoverSeek} />
       </div>
 
       <TimelineBottomBar />

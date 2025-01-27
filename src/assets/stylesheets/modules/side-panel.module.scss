@@ -135,6 +135,12 @@
   position: relative;
   width: 100%;
 
+  &--thumbnail {
+    .tag__content {
+      max-width: calc(var(--panel-width) - 200px);
+    }
+  }
+
   &__tooltip {
     max-width: 500px;
     white-space: pre-wrap;
@@ -150,12 +156,12 @@
 
   &__image {
     background-color: black;
-    height: 50px;
+    height: 60px;
   }
 
   &__content {
     font-size: 12px;
-    max-width: calc(var(--panel-width) - 200px);
+    max-width: calc(var(--panel-width) - 100px);
     overflow: hidden;
     text-overflow: ellipsis;
     user-select: none;

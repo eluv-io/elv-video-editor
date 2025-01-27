@@ -17,6 +17,31 @@
   }
 }
 
+
+.thumbnail-track {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  position: relative;
+
+  &__thumbnail {
+    pointer-events: none;
+    user-select: none;
+  }
+
+  &__cover {
+    inset: 0;
+    position: absolute;
+  }
+}
+
+
+.thumbnail-tooltip {
+  background-color: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
 .tooltip-overlay {
   inset: 0;
   position: absolute;

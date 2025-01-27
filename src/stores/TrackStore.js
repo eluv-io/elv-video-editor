@@ -5,6 +5,7 @@ import IntervalTree from "node-interval-tree";
 import {Parser as HLSParser} from "m3u8-parser";
 import UrlJoin from "url-join";
 import {Utils} from "@eluvio/elv-client-js";
+import {tracksStore} from "@/stores/index.js";
 
 /*
  * Track Types:
@@ -44,6 +45,11 @@ class TrackStore {
   intervalTrees = {};
 
   initialized = false;
+
+  thumbnails = false;
+  thumbnailsLoaded = false;
+  thumbnailImages = {};
+
   tracks = [];
   audioTracks = [];
   selectedTrack;
@@ -62,7 +68,8 @@ class TrackStore {
       this,
       {
         tags: false,
-        intervalTrees: false
+        intervalTrees: false,
+        thumbnails: false
       }
     );
 
@@ -87,6 +94,9 @@ class TrackStore {
     this.editingTrack = false;
     this.audioLoading = false;
     this.initialized = false;
+    this.thumbnails = false;
+    this.thumbnailsLoaded = false;
+    this.thumbnailImages = {};
   }
 
   TrackColor(key) {
@@ -609,6 +619,86 @@ class TrackStore {
     });
   }
 
+  LoadThumbnails = flow(function * () {
+    if(!this.rootStore.videoStore.thumbnailTrackUrl) {
+      return;
+    }
+
+    const vttData = yield (yield fetch(this.rootStore.videoStore.thumbnailTrackUrl)).text();
+
+    let tags = this.ParseVTTTrack({label: "Thumbnails", vttData});
+
+    let imageUrls = {};
+    Object.keys(tags).map(id => {
+      const [path, rest] = tags[id].tag.text.split("\n")[0].split("?");
+      const [query, hash] = rest.split("#");
+      const positionParams = hash.split("=")[1].split(",").map(n => parseInt(n));
+      const queryParams = new URLSearchParams(`?${query}`);
+      const url = new URL(this.rootStore.videoStore.thumbnailTrackUrl);
+      url.pathname = UrlJoin(url.pathname.split("/").slice(0, -1).join("/"), path);
+      queryParams.keys().forEach(key =>
+        url.searchParams.set(key, queryParams.get(key))
+      );
+
+      tags[id].imageUrl = url.toString();
+      tags[id].thumbnailPosition = positionParams;
+
+      imageUrls[url.toString()] = true;
+
+      delete tags[id].tag.text;
+      delete tags[id].textList;
+    });
+
+    yield Promise.all(
+      Object.keys(imageUrls).map(async url => {
+        const image = new Image();
+
+        await new Promise(resolve => {
+          image.src = url;
+          image.crossOrigin = "anonymous";
+          image.onload = () => {
+            resolve();
+          };
+        });
+
+        imageUrls[url] = image;
+      })
+    );
+
+    this.thumbnailImages = imageUrls;
+    this.thumbnails = tags;
+    this.intervalTrees.thumbnails = this.CreateTrackIntervalTree(tags, "Thumbnails");
+    this.thumbnailsLoaded = true;
+  });
+
+  ThumbnailImage(time) {
+    if(!this.thumbnailsLoaded) { return; }
+
+    let thumbnailIndex = tracksStore.intervalTrees?.thumbnails?.search(time, time + 10)[0];
+    const tag = this.thumbnails?.[thumbnailIndex?.toString()];
+
+    if(!tag) { return; }
+
+    if(!tag.thumbnailUrl) {
+      if(!this.thumbnailCanvas) {
+        this.thumbnailCanvas = document.createElement("canvas");
+      }
+
+      const image = this.thumbnailImages[tag?.imageUrl];
+
+      if(image) {
+        const [x, y, w, h] = tag.thumbnailPosition;
+        this.thumbnailCanvas.height = h;
+        this.thumbnailCanvas.width = w;
+        const context = this.thumbnailCanvas.getContext("2d");
+        context.drawImage(image, x, y, w, h, 0, 0, w, h);
+        tag.thumbnailUrl = this.thumbnailCanvas.toDataURL("image/png");
+      }
+    }
+
+    return tag.thumbnailUrl;
+  }
+
   InitializeTracks = flow(function * () {
     if(this.initialized) { return; }
 
@@ -619,6 +709,8 @@ class TrackStore {
     yield this.AddMetadataTracks();
     yield this.AddSegmentTracks();
     yield this.rootStore.overlayStore.AddOverlayTracks();
+
+    this.LoadThumbnails();
   });
 
   /* User Actions */

@@ -32,12 +32,18 @@
 }
 
 .playhead-indicator {
-  background: var(--text-highlight);
+  background-color: var(--text-highlight);
   box-shadow: 0 0 10px var(--text-disabled);
   height: 100%;
   position: absolute;
   width: 2px;
   z-index: 1;
+
+  &--hover {
+    background-color: var(--text-highlight-secondary);
+    opacity: 0.25;
+    pointer-events: none;
+  }
 }
 
 .timeline-row {
