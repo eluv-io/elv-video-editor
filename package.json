@@ -18,9 +18,9 @@
   "dependencies": {
     "@babel/polyfill": "^7.4.3",
     "@eluvio/elv-client-js": "^4.0.96",
-    "@mantine/core": "^7.13.0",
-    "@mantine/dates": "^7.13.0",
-    "@mantine/hooks": "^7.13.0",
+    "@mantine/core": "^7.16.2",
+    "@mantine/hooks": "^7.16.2",
+    "@mantine/modals": "^7.16.2",
     "@tabler/icons-react": "^3.17.0",
     "babel-preset-mobx": "^2.0.0",
     "deep-object-diff": "^1.1.0",

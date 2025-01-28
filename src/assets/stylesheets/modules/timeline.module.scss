@@ -14,7 +14,6 @@
   }
 
   &__content {
-    align-content: start;
     display: grid;
     gap: 3px;
     max-height: calc(100% - 90px);
@@ -79,12 +78,15 @@
   &__content {
     background: var(--background-toolbar);
     height: 60px;
+    max-height: 60px;
+    max-width: 100%;
+    overflow: hidden;
   }
 }
 
 .seek-bar-container {
   background: var(--background-primary);
-  box-shadow: 0 0 10px var(--background-primary);
+  box-shadow: 0 0 10px var(--background-track);
   position: sticky;
   top: 0;
   z-index: 3;

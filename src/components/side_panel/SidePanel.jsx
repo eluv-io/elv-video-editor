@@ -108,7 +108,7 @@ const Tag = observer(({track, tag}) => {
       className={
         S(
           "tag",
-          tracksStore.thumbnailsLoaded ? "tag--thumbnail" : "",
+          tracksStore.thumbnailStatus.available ? "tag--thumbnail" : "",
           tagStore.selectedTagIds.includes(tag.tagId) ? "tag--selected" : "",
           tagStore.hoverTags.includes(tag.tagId) ? "tag--hover" : ""
         )
@@ -120,7 +120,7 @@ const Tag = observer(({track, tag}) => {
       />
       <div className={S("tag__left")}>
         {
-          !tracksStore.thumbnailsLoaded ? null :
+          !tracksStore.thumbnailStatus.available ? null :
             <img
               src={tracksStore.ThumbnailImage(tag.startTime)}
               style={{aspectRatio: videoStore.aspectRatio}}

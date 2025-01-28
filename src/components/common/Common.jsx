@@ -2,7 +2,7 @@ import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
 import React, {useEffect, useRef, useState} from "react";
 import {CreateModuleClassMatcher, JoinClassNames, TextWidth} from "@/utils/Utils.js";
-import {Select, Switch, TextInput, Tooltip} from "@mantine/core";
+import {Button, Select, Switch, TextInput, Tooltip} from "@mantine/core";
 import SVG from "react-inlinesvg";
 import {observer} from "mobx-react";
 
@@ -77,6 +77,26 @@ export const IconButton = ({
   );
 };
 
+export const AsyncButton = observer(({onClick, ...props}) => {
+  const [loading, setLoading] = useState(false);
+
+  return (
+    <Button
+      {...props}
+      loading={loading}
+      onClick={async event => {
+        setLoading(true);
+
+        try {
+          await onClick(event);
+        } finally {
+          setLoading(false);
+        }
+      }}
+    />
+  );
+});
+
 export const Input = observer(({label, monospace, rightIcon, ...props}) => {
   const input = (
     <TextInput
@@ -139,6 +159,7 @@ export const SwitchInput = observer(({...props}) => {
   return (
     <Switch
       {...props}
+      color="var(--background-switch-active)"
       classNames={{
         root: S("switch"),
         thumb: S("switch__thumb"),

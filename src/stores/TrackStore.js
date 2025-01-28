@@ -47,7 +47,7 @@ class TrackStore {
   initialized = false;
 
   thumbnails = false;
-  thumbnailsLoaded = false;
+  thumbnailStatus = { loaded: false };
   thumbnailImages = {};
 
   tracks = [];
@@ -61,6 +61,8 @@ class TrackStore {
   showTags = true;
   showSegments = false;
   showAudio = false;
+  showThumbnails = true;
+  showOverlay = true;
 
   totalTags = 0;
 
@@ -106,7 +108,7 @@ class TrackStore {
     this.audioLoading = false;
     this.initialized = false;
     this.thumbnails = false;
-    this.thumbnailsLoaded = false;
+    this.thumbnailImages = { loaded: false };
     this.thumbnailImages = {};
   }
 
@@ -632,6 +634,12 @@ class TrackStore {
 
   LoadThumbnails = flow(function * () {
     if(!this.rootStore.videoStore.thumbnailTrackUrl) {
+      this.thumbnailStatus = {
+        loaded: true,
+        available: false,
+        status: (yield this.ThumbnailGenerationStatus()) || {}
+      };
+
       return;
     }
 
@@ -679,11 +687,11 @@ class TrackStore {
     this.thumbnailImages = imageUrls;
     this.thumbnails = tags;
     this.intervalTrees.thumbnails = this.CreateTrackIntervalTree(tags, "Thumbnails");
-    this.thumbnailsLoaded = true;
+    this.thumbnailStatus = { loaded: true, available: true };
   });
 
   ThumbnailImage(time) {
-    if(!this.thumbnailsLoaded) { return; }
+    if(!this.thumbnailStatus.available) { return; }
 
     let thumbnailIndex = tracksStore.intervalTrees?.thumbnails?.search(time, time + 10)[0];
     const tag = this.thumbnails?.[thumbnailIndex?.toString()];
@@ -735,28 +743,6 @@ class TrackStore {
     }
   }
 
-  SelectedTrack() {
-    if(!this.selectedTrack) { return; }
-
-    return this.tracks.find(track => track.trackId === this.selectedTrack);
-  }
-
-  SetSelectedTrack(trackId) {
-    if(this.selectedTrack === trackId) { return; }
-
-    this.selectedTrack = trackId;
-    this.rootStore.tagStore.ClearTags();
-    this.rootStore.tagStore.ClearFilter();
-
-    this.ClearEditing();
-  }
-
-  ClearSelectedTrack() {
-    this.SetSelectedTrack(undefined);
-
-    this.rootStore.videoStore.EndSegment();
-  }
-
   ToggleTrackType({type, visible}) {
     if(type === "Audio" && visible && this.audioTracks.length === 0) {
       this.AddAudioTracks();
@@ -764,69 +750,6 @@ class TrackStore {
     } else {
       this[`show${type}`] = visible;
     }
-  }
-
-  ToggleTrack(label) {
-    const trackInfo = this.tracks.find(track => track.label === label);
-
-    if(!trackInfo) { return; }
-
-    // Toggle track on video, using video's status as source of truth
-    trackInfo.active = this.rootStore.videoStore.ToggleTrack(label);
-  }
-
-  ToggleTrackByIndex(index) {
-    const trackInfo = this.tracks[index];
-
-    if(!trackInfo) { return; }
-
-    // Toggle track on video, using video's status as source of truth
-    trackInfo.active = this.rootStore.videoStore.ToggleTrack(trackInfo.label);
-  }
-
-  SetEditing(trackId) {
-    this.SetSelectedTrack(trackId);
-
-    this.editingTrack = true;
-  }
-
-  ClearEditing() {
-    this.editingTrack = false;
-  }
-
-  CreateTrack({label, key}) {
-    const trackId = this.AddTrack({
-      label,
-      key,
-      type: "metadata",
-      tags: {}
-    });
-
-    this.rootStore.tagStore.ClearSelectedTag();
-
-    this.SetEditing(trackId);
-  }
-
-  EditTrack({trackId, label, key}) {
-    const track = this.tracks.find(track => track.trackId === trackId);
-
-    track.label = label;
-    track.key = key;
-
-    this.ClearEditing();
-  }
-
-  ModifyTrack(f) {
-    const track = this.SelectedTrack();
-    f(track);
-    this.intervalTrees[track.trackId] = this.CreateTrackIntervalTree(this.tags[track.trackId], track.label);
-    track.version += 1;
-  }
-
-  RemoveTrack(trackId) {
-    this.ClearSelectedTrack();
-
-    this.tracks = this.tracks.filter(track => track.trackId !== trackId);
   }
 
   AddTag({trackId, text, startTime, endTime}) {
@@ -842,6 +765,104 @@ class TrackStore {
     const clipTrack = this.tracks.find(track => track.trackType === "clip");
     return Object.values(this.tags[clipTrack.trackId])[0];
   }
+
+  /* Video thumbnails creation */
+
+  GenerateVideoThumbnails = flow(function * ({options={}}={}) {
+    try {
+      this.thumbnailStatus.status = { state: "started" };
+
+      const {libraryId, objectId} = this.rootStore.videoStore.videoObject;
+      const {writeToken} = yield this.rootStore.client.EditContentObject({
+        libraryId,
+        objectId
+      });
+
+      const {data} = yield this.rootStore.client.CallBitcodeMethod({
+        libraryId,
+        objectId,
+        writeToken,
+        method: "/media/thumbnails/create",
+        constant: false,
+        body: {
+          async: true,
+          frame_interval: Math.ceil(this.frameRate) * 6,
+          add_thumb_track: true,
+          generate_storyboards: true,
+          ...options
+        }
+      });
+
+      const nodeUrl = yield this.rootStore.client.WriteTokenNodeUrl({writeToken});
+
+      yield this.rootStore.client.walletClient.SetProfileMetadata({
+        type: "app",
+        appId: "video-editor",
+        mode: "private",
+        key: `thumbnail-job-${objectId}`,
+        value: JSON.stringify({writeToken, lroId: data, nodeUrl})
+      });
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
+      this.thumbnailStatus.status = { state: "failed" };
+    }
+  });
+
+  ThumbnailGenerationStatus = flow(function * ({finalize=false}={}) {
+    const { libraryId, objectId } = this.rootStore.videoStore.videoObject;
+    const info = yield this.rootStore.client.walletClient.ProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: `thumbnail-job-${objectId}`
+    });
+
+    if(!info) { return; }
+
+    try {
+      const {writeToken, lroId, nodeUrl} = JSON.parse(info);
+
+      if(nodeUrl) {
+        this.rootStore.client.RecordWriteToken({writeToken, fabricNodeUrl: nodeUrl});
+      }
+
+      const response = yield this.rootStore.client.CallBitcodeMethod({
+        libraryId,
+        objectId,
+        writeToken,
+        method: UrlJoin("/media/thumbnails/status", lroId),
+        constant: true
+      });
+
+      if(response.data.custom.run_state === "finished" && finalize) {
+        yield this.rootStore.client.FinalizeContentObject({
+          libraryId,
+          objectId,
+          writeToken,
+          commitMessage: "Eluvio Video Editor: Generate video thumbnails"
+        });
+
+        yield this.rootStore.client.walletClient.RemoveProfileMetadata({
+          type: "app",
+          appId: "video-editor",
+          mode: "private",
+          key: `thumbnail-job-${objectId}`
+        });
+      }
+
+      this.thumbnailStatus.status = {
+        state: response?.data?.custom?.run_state,
+        progress: response?.data?.custom?.progress?.percentage || 0,
+        ...response
+      };
+
+      return this.thumbnailStatus.status;
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.log(error);
+    }
+  });
 }
 
 export default TrackStore;

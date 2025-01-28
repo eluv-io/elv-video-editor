@@ -106,9 +106,19 @@ const TimelineBottomBar = observer(() => {
       <IconButton icon={KeyboardIcon} label="Keyboard Shortcuts" onClick={() => {}}/>
       <div className={S("toolbar__separator")}/>
       <SwitchInput
+        label="Show Thumbnails"
+        checked={tracksStore.showThumbnails}
+        onChange={event => tracksStore.ToggleTrackType({type: "Thumbnails", visible: event.currentTarget.checked})}
+      />
+      <SwitchInput
         label="Show Tags"
         checked={tracksStore.showTags}
         onChange={event => tracksStore.ToggleTrackType({type: "Tags", visible: event.currentTarget.checked})}
+      />
+      <SwitchInput
+        label="Show Bounding Boxes"
+        checked={tracksStore.showOverlay}
+        onChange={event => tracksStore.ToggleTrackType({type: "Overlay", visible: event.currentTarget.checked})}
       />
       <SwitchInput
         label="Show Segments"
@@ -217,17 +227,13 @@ const TimelinePlayheadIndicator = observer(({value, timelineRef, className=""}) 
     if(!timelineRef?.current) { return; }
 
     const resizeObserver = new ResizeObserver(() => {
-      const contentBox = document.querySelector(`.${S("timeline-row__content")}`);
+      // Seek bar should always be present, use its width
+      const seekBarRow = timelineRef?.current?.children[0];
+      let seekBarDimensions = seekBarRow?.children[1]?.getBoundingClientRect() || {};
 
-      if(!contentBox) { return; }
-
-      // Position is relative to entire timeline
-      // Need to determine the difference between content and timeline to determine label + gap width
-      const contentDimensions = contentBox.getBoundingClientRect();
-      const parentDimensions = contentBox.parentElement.getBoundingClientRect();
-
-      contentDimensions.diff = contentDimensions.left - parentDimensions.left;
-      setDimensions(contentDimensions);
+      // Left position is relative to entire width - determine width of label + gap to add in
+      seekBarDimensions.diff = seekBarDimensions.left - seekBarRow?.getBoundingClientRect()?.left;
+      setDimensions(seekBarDimensions);
     });
 
     resizeObserver.observe(timelineRef.current);
@@ -238,7 +244,7 @@ const TimelinePlayheadIndicator = observer(({value, timelineRef, className=""}) 
   const seekPercent = (value - videoStore.scaleMin) / videoStore.scaleMagnitude;
   const position = dimensions.width * seekPercent;
 
-  if(!position || position < 0 || !timelineRef?.current) { return null; }
+  if(typeof position !== "number" || position < 0 || !timelineRef?.current) { return null; }
 
   return (
     <div
@@ -305,7 +311,6 @@ const TimelineSection = observer(() => {
     );
   }
 
-
   return (
     <div className={S("content-block", "timeline-section")}>
       <TimelineTopBar />
@@ -348,7 +353,7 @@ const TimelineSection = observer(() => {
       >
         <TimelineSeekBar hoverSeek={hoverSeek} />
         {
-          !tracksStore.thumbnailsLoaded ? null :
+          !videoStore.initialized || !tracksStore.thumbnailStatus.loaded || !tracksStore.showThumbnails ? null :
             <div className={S("timeline-row")}>
               <div className={S("timeline-row__label")}>
                 Thumbnails

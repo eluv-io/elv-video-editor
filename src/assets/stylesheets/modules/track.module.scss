@@ -22,9 +22,13 @@
   align-items: center;
   cursor: pointer;
   display: flex;
+  max-width: 100%;
+  overflow: hidden;
   position: relative;
 
   &__thumbnail {
+    border: 1px solid black;
+    color: transparent;
     pointer-events: none;
     user-select: none;
   }
@@ -80,5 +84,21 @@
       max-width: 500px;
       white-space: pre-wrap;
     }
+  }
+}
+
+.thumbnail-creation-track {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+
+  &__status {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    font-size: 12px;
+    font-weight: 600;
+    gap: 7px;
+    user-select: none;
   }
 }

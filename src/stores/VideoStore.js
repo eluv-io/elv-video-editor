@@ -37,7 +37,6 @@ class VideoStore {
   source;
   baseUrl = undefined;
   baseStateChannelUrl = undefined;
-  baseVideoFrameUrl = undefined;
   baseFileUrl = undefined;
   previewSupported = false;
   downloadUrl;
@@ -142,7 +141,6 @@ class VideoStore {
     this.availableOfferings = {};
 
     this.source = undefined;
-    this.baseVideoFrameUrl = undefined;
     this.baseFileUrl = undefined;
     this.baseUrl = undefined;
     this.previewSupported = false;
@@ -261,27 +259,6 @@ class VideoStore {
         source.searchParams.set("player_profile", "hls-js-2441");
 
         const thumbnailTrackUrl = (playoutMethods.clear || playoutMethods["aes-128"]).thumbnailTrack;
-
-        this.baseVideoFrameUrl = yield this.rootStore.client.Rep({
-          versionHash: videoObject.versionHash,
-          rep: UrlJoin("playout", this.offeringKey, "frames.png")
-        });
-
-        try {
-          // Query preview API to check support
-          const frameUrl = new URL(this.baseVideoFrameUrl);
-          frameUrl.searchParams.set("frame", 0);
-          const response = yield fetch(frameUrl.toString());
-          if(response.ok) {
-            this.previewSupported = true;
-          } else {
-            // eslint-disable-next-line no-console
-            console.error("Preview not supported for this content");
-          }
-        } catch(error) {
-          // eslint-disable-next-line no-console
-          console.error("Preview not supported for this content");
-        }
 
         this.source = source.toString();
         this.thumbnailTrackUrl = thumbnailTrackUrl;
@@ -990,12 +967,6 @@ class VideoStore {
     return url.toString();
   }
 
-  VideoFrame(frame) {
-    const url = new URL(this.baseVideoFrameUrl);
-    url.searchParams.set("frame", frame);
-    return url.toString();
-  }
-
   SaveFrame() {
     if(!this.video) { return; }
 
@@ -1057,85 +1028,6 @@ class VideoStore {
       filename
     );
   }
-
-  /* Video thumbnails creation */
-  CreateVideoThumbnails = flow(function * ({options={}}={}) {
-    const { writeToken } = yield this.rootStore.client.EditContentObject({
-      libraryId: this.videoObject.libraryId,
-      objectId: this.videoObject.objectId,
-    });
-
-    const { data } = yield this.rootStore.client.CallBitcodeMethod({
-      libraryId: this.videoObject.libraryId,
-      objectId: this.videoObject.objectId,
-      writeToken,
-      method: "/media/thumbnails/create",
-      constant: false,
-      body: {
-        async: true,
-        frame_interval: Math.ceil(this.frameRate) * 6,
-        add_thumb_track: true,
-        generate_storyboards: true,
-        ...options
-      }
-    });
-
-    yield this.rootStore.client.walletClient.SetProfileMetadata({
-      type: "app",
-      appId: "video-editor",
-      mode: "private",
-      key: `thumbnail-job-${this.videoObject.objectId}`,
-      value: JSON.stringify({writeToken, lroId: data})
-    });
-  });
-
-  VideoThumbnailStatus = flow(function * ({finalize=false}={}) {
-    const info = yield this.rootStore.client.walletClient.ProfileMetadata({
-      type: "app",
-      appId: "video-editor",
-      mode: "private",
-      key: `thumbnail-job-${this.videoObject.objectId}`
-    });
-
-    if(!info) { return; }
-
-    try {
-      const {writeToken, lroId} = JSON.parse(info);
-
-      const response = yield this.rootStore.client.CallBitcodeMethod({
-        libraryId: this.videoObject.libraryId,
-        objectId: this.videoObject.objectId,
-        writeToken,
-        method: UrlJoin("/media/thumbnails/status", lroId),
-        constant: true
-      });
-
-      if(response.data.custom.run_state === "finished" && finalize) {
-        yield this.rootStore.client.FinalizeContentObject({
-          libraryId: this.videoObject.libraryId,
-          objectId: this.videoObject.objectId,
-          writeToken,
-          commitMessage: "Eluvio Video Editor: Generate video thumbnails"
-        });
-
-        yield this.rootStore.client.walletClient.RemoveProfileMetadata({
-          type: "app",
-          appId: "video-editor",
-          mode: "private",
-          key: `thumbnail-job-${this.videoObject.objectId}`
-        });
-      }
-
-      return {
-        state: response?.data?.custom?.run_state,
-        progress: response?.data?.custom?.progress?.percentage || 0,
-        ...response
-      };
-    } catch(error) {
-      // eslint-disable-next-line no-console
-      console.log(error);
-    }
-  });
 }
 
 export default VideoStore;

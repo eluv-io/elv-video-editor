@@ -208,7 +208,7 @@ class TagStore {
   }
 
   async DownloadSegment(tagId, callback) {
-    const tag = this.rootStore.trackStore.TrackTags(this.rootStore.trackStore.SelectedTrack().trackId)[tagId];
+    const tag = this.rootStore.trackStore.TrackTags(this.rootStore.trackStore.selectedTagTrackId)[tagId];
 
     const partHash = tag.source;
     const startTime = this.TimeToSMPTE(tag.startTime);
