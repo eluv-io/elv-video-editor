@@ -2,12 +2,12 @@ import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
 import React, {useState, useEffect} from "react";
 import {observer} from "mobx-react";
-import {videoStore} from "@/stores";
+import {rootStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
 import {Loader} from "@/components/common/Common";
 import HLSPlayer from "hls.js";
 import {
-  DownloadFrameButton,
+  DownloadFrameButton, FrameBack10Button, FrameBack1Button, FrameDisplay, FrameForward10Button, FrameForward1Button,
   FullscreenButton,
   PlayPauseButton,
   VideoTime,
@@ -100,18 +100,33 @@ const Video = observer(() => {
         {
           !ready ? null :
             <div className={S("video-controls")}>
-              <PlayPauseButton />
-              <VolumeControls />
-              <VideoTime />
-              <div className={S("video-controls__spacer")} />
-              <DownloadFrameButton />
-              <FullscreenButton />
+              <div className={S("video-controls__left")}>
+                <PlayPauseButton/>
+                <VolumeControls/>
+                <VideoTime/>
+              </div>
+              <div className={S("video-controls__spacer")}/>
+              {
+                !videoStore.fullScreen ? null :
+                  <div className={S("video-controls__center")}>
+                    <FrameBack10Button />
+                    <FrameBack1Button />
+                    <FrameDisplay />
+                    <FrameForward1Button />
+                    <FrameForward10Button />
+                    <div className={S("video-controls__spacer")}/>
+                  </div>
+              }
+              <div className={S("video-controls__right")}>
+                <DownloadFrameButton/>
+                <FullscreenButton/>
+              </div>
             </div>
         }
       </div>
       {
-        ready ? null :
-          <Loader className={S("loader")} />
+        ready || rootStore.errorMessage ? null :
+          <Loader className={S("loader")}/>
       }
     </div>
   );

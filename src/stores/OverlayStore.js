@@ -13,12 +13,19 @@ class OverlayStore {
   overlayEnabled = false;
   enabledOverlayTracks = {};
   trackInfo = {};
-  activeTrack;
+  overlayCanvasDimensions = {width: 0, height: 0};
 
   get visibleOverlayTracks() {
-    return this.activeTrack ?
-      { [this.activeTrack]: true} :
-      this.enabledOverlayTracks;
+    if(!this.rootStore.trackStore.tracksSelected) {
+      return this.enabledOverlayTracks;
+    }
+
+    let visibleTracks = {};
+    Object.keys(this.enabledOverlayTracks).forEach(key =>
+      visibleTracks[key] = this.rootStore.trackStore.selectedTracks[key]
+    );
+
+    return visibleTracks;
   }
 
   constructor(rootStore) {
@@ -35,10 +42,6 @@ class OverlayStore {
   Reset() {
     this.overlayTrack = undefined;
     this.overlayEnabled = false;
-  }
-
-  SetActiveTrack(track) {
-    this.activeTrack = track;
   }
 
   TrackInfo(trackKey) {
@@ -123,6 +126,10 @@ class OverlayStore {
 
   ToggleOverlayTrack(trackKey, enabled) {
     this.enabledOverlayTracks[trackKey] = enabled;
+  }
+
+  SetOverlayCanvasDimensions(dimensions) {
+    this.overlayCanvasDimensions = dimensions;
   }
 }
 

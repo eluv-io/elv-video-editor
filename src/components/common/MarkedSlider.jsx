@@ -21,7 +21,7 @@ const Handle = observer(({
 }) => {
   if(handle.position < min || handle.position > max) { return null; }
 
-  let style = {left: `${PositionToPixels(handle.position)}px`};
+  let style = {left: `${PositionToPixels(handle.position) - 1}px`};
   if(handle.opacity) {
     style.opacity = handle.opacity;
   }

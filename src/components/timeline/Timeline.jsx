@@ -2,7 +2,7 @@ import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
 
 import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react";
-import {tracksStore, videoStore} from "@/stores";
+import {rootStore, tracksStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
 import {IconButton, Input, SwitchInput} from "@/components/common/Common";
 import MarkedSlider from "@/components/common/MarkedSlider";
@@ -12,12 +12,6 @@ import RedoIcon from "@/assets/icons/v2/redo.svg";
 import AddUserIcon from "@/assets/icons/v2/add-user.svg";
 import DownloadIcon from "@/assets/icons/v2/download.svg";
 
-import FrameBack10 from "@/assets/icons/v2/frame-back-10.svg";
-import FrameBack1 from "@/assets/icons/v2/frame-back-1.svg";
-import FrameForward1 from "@/assets/icons/v2/frame-forward-1.svg";
-import FrameForward10 from "@/assets/icons/v2/frame-forward-10.svg";
-
-import PlayClipIcon from "@/assets/icons/v2/play-clip.svg";
 import AddNewItemIcon from "@/assets/icons/v2/add-new-item.svg";
 import SplitIcon from "@/assets/icons/v2/split.svg";
 import ClipInIcon from "@/assets/icons/v2/clip-start.svg";
@@ -28,39 +22,14 @@ import SaveIcon from "@/assets/icons/v2/save.svg";
 import KeyboardIcon from "@/assets/icons/v2/keyboard.svg";
 import Track from "@/components/timeline/Track.jsx";
 import ThumbnailTrack from "@/components/timeline/ThumbnailTrack.jsx";
+import {
+  FrameBack10Button,
+  FrameBack1Button, FrameDisplay,
+  FrameForward10Button,
+  FrameForward1Button, PlaySelectedTagButton
+} from "@/components/video/VideoControls.jsx";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
-
-const FrameDisplay = observer(() => {
-  const [frameInput, setFrameInput] = useState(videoStore.frame);
-
-  useEffect(() => {
-    setFrameInput(videoStore.frame);
-  }, [videoStore.frame]);
-
-  return (
-    <div className={S("frame-display")}>
-      <Input
-        label="Current Frame"
-        monospace
-        disabled={videoStore.playing}
-        type="number"
-        min={0}
-        max={videoStore.totalFrames}
-        step={1}
-        w={100}
-        value={frameInput}
-        onKeyDown={event => {
-          if(event.key !== "Enter") { return; }
-
-          videoStore.Seek(frameInput);
-        }}
-        onChange={event => setFrameInput(parseInt(event.target.value) || 0)}
-        onBlur={() => frameInput !== videoStore.frame && videoStore.Seek(frameInput)}
-      />
-    </div>
-  );
-});
 
 const JumpToSMPTE = function({smpteInput, setSMPTEInput}) {
   try {
@@ -109,14 +78,14 @@ const TimelineTopBar = observer(() => {
         <JumpToDisplay />
       </div>
       <div className={S("toolbar__controls-group", "center", "frame-controls")}>
-        <IconButton icon={FrameBack10} label="Back 10 Frames" onClick={() => videoStore.SeekFrames({frames: -10})} />
-        <IconButton icon={FrameBack1} label="Back 1 Frame" onClick={() => videoStore.SeekFrames({frames: -1})} />
+        <FrameBack10Button />
+        <FrameBack1Button />
         <FrameDisplay />
-        <IconButton icon={FrameForward1} label="Forward 1 Frame" onClick={() => videoStore.SeekFrames({frames: 1})} />
-        <IconButton icon={FrameForward10} label="Forward 10 Frames" onClick={() => videoStore.SeekFrames({frames: 10})} />
+        <FrameForward1Button />
+        <FrameForward10Button />
       </div>
       <div className={S("toolbar__controls-group", "right")}>
-        <IconButton icon={PlayClipIcon} label="Play Current Selection" className={videoStore.segmentEnd ? S("highlight") : ""} onClick={() => videoStore.PlaySegment(videoStore.clipInFrame, videoStore.clipOutFrame)} />
+        <PlaySelectedTagButton />
         <IconButton icon={AddNewItemIcon} label="Add New Item" onClick={() => {}} />
         <IconButton icon={SplitIcon} label="Split" onClick={() => {}} />
         <div className={S("toolbar__separator")} />
@@ -269,11 +238,11 @@ const TimelinePlayheadIndicator = observer(({value, timelineRef, className=""}) 
   const seekPercent = (value - videoStore.scaleMin) / videoStore.scaleMagnitude;
   const position = dimensions.width * seekPercent;
 
-  if(!position || position < 0) { return null; }
+  if(!position || position < 0 || !timelineRef?.current) { return null; }
 
   return (
     <div
-      style={{left: position + dimensions.diff}}
+      style={{left: position + dimensions.diff - 1, height: timelineRef.current.getBoundingClientRect().height}}
       className={JoinClassNames(S("playhead-indicator"), className)}
     />
   );
@@ -285,8 +254,7 @@ const TimelineSection = observer(() => {
 
   let tracks = [];
   if(tracksStore.showTags) {
-    tracks = tracksStore.tracks
-      .filter(track => track.trackType !== "vtt" && track.trackType !== "clip" && track.trackType !== "segments").slice()
+    tracks = tracksStore.metadataTracks
       .sort((a, b) => (a.label > b.label ? 1 : -1));
   }
 
@@ -327,6 +295,15 @@ const TimelineSection = observer(() => {
     }
   }
 
+  if(rootStore.errorMessage) {
+    return (
+      <div className={S("content-block", "timeline-section")}>
+        <div className={S("error-message")}>
+          { rootStore.errorMessage }
+        </div>
+      </div>
+    );
+  }
 
 
   return (
@@ -383,7 +360,17 @@ const TimelineSection = observer(() => {
         }
         {
           tracks.map((track, i) =>
-            <div key={`track-${track.trackId || i}`} className={S("timeline-row")}>
+            <div
+              key={`track-${track.trackId || i}`}
+              style={
+                track.trackType !== "metadata" ||
+                !tracksStore.tracksSelected ||
+                tracksStore.selectedTracks[track.key] ?
+                  {} :
+                  {display: "none"}
+              }
+              className={S("timeline-row")}
+            >
               <div className={S("timeline-row__label")}>
                 {track.label}
               </div>

@@ -3,10 +3,10 @@ import Id from "@/utils/Id";
 import {DownloadFromUrl} from "@/utils/Utils";
 
 class TagStore {
-  tags = [];
-  tagTime;
-  selectedTag;
-  selectedTracks = {};
+  selectedTime;
+  selectedTagIds = [];
+  selectedTagId;
+  selectedTagTrackId;
 
   hoverTags = [];
   hoverTrack;
@@ -22,25 +22,21 @@ class TagStore {
     this.rootStore = rootStore;
   }
 
-  ToggleTrackSelected(key) {
-    if(this.selectedTracks[key]) {
-      delete this.selectedTracks[key];
-    } else {
-      this.selectedTracks[key] = true;
-    }
+  get selectedTag() {
+    return this.rootStore.trackStore.TrackTags(this.selectedTagTrackId)[this.selectedTagId];
+  }
+
+  get selectedTags() {
+    return this.selectedTagIds.map(tagId =>
+      this.rootStore.trackStore.TrackTags(this.selectedTagTrackId)[tagId]
+    );
   }
 
   Reset() {
-    this.tags = [];
-    this.tagTime = undefined;
-    this.selectedTag = undefined;
-
-    this.hoverTags = [];
-    this.hoverTime = undefined;
-
+    this.ClearTags();
+    this.ClearHoverTags();
+    this.SetEditing(false);
     this.filter = "";
-
-    this.editingTag = false;
   }
 
   TimeToSMPTE(time) {
@@ -71,9 +67,7 @@ class TagStore {
   }
 
   PlayCurrentTag() {
-    if(!this.selectedTag) { return; }
-
-    this.PlayTag(this.SelectedTag());
+    this.selectedTag && this.PlayTag(this.selectedTag);
   }
 
   PlayTag(tag) {
@@ -81,29 +75,24 @@ class TagStore {
 
     this.rootStore.videoStore.PlaySegment(
       this.rootStore.videoStore.TimeToFrame(tag.startTime),
-      this.rootStore.videoStore.TimeToFrame(tag.endTime),
-      this.rootStore.trackStore.SelectedTrack().key
+      this.rootStore.videoStore.TimeToFrame(tag.endTime)
     );
   }
 
-  SelectedTag() {
-    return this.rootStore.trackStore.TrackTags(this.rootStore.trackStore.SelectedTrack().trackId)[this.selectedTag];
-  }
-
   SetSelectedTag(tagId) {
-    this.selectedTag = tagId;
+    this.selectedTagId = tagId;
 
-    this.ClearEditing();
+    this.SetEditing(false);
   }
 
   ClearSelectedTag() {
-    this.selectedTag = undefined;
+    this.selectedTagId = undefined;
 
-    if(this.tags.length === 1) {
+    if(this.selectedTagIds.length === 1) {
       this.ClearTags();
     }
 
-    this.ClearEditing();
+    this.SetEditing(false);
   }
 
   Tags({startFrame=0, endFrame, limit=100}={}) {
@@ -111,9 +100,9 @@ class TagStore {
     const endTime = endFrame && this.rootStore.videoStore.FrameToTime(endFrame);
 
     let tracks = this.rootStore.trackStore.metadataTracks;
-    if(Object.keys(this.selectedTracks).length > 0) {
+    if(this.rootStore.trackStore.tracksSelected) {
       // Selected tracks only
-      tracks = tracks.filter(track => this.selectedTracks[track.key]);
+      tracks = tracks.filter(track => this.rootStore.trackStore.selectedTracks[track.key]);
     }
 
     const filter = (this.filter || "").toLowerCase();
@@ -133,15 +122,19 @@ class TagStore {
       .slice(0, limit);
   }
 
-  SetTags(tags, time) {
+  SetTags(trackId, tags=[], time) {
     this.ClearSelectedTag();
 
-    this.tags = tags || [];
-    this.tagTime = time;
-
-    if(tags.length === 1) {
-      this.SetSelectedTag(tags[0]);
+    if(!Array.isArray(tags)) {
+      tags = [tags];
     }
+
+    this.selectedTagTrackId = trackId;
+    this.selectedTagIds = tags;
+    this.selectedTagId = tags[0];
+    this.selectedTime = time;
+
+    this.SetEditing(false);
   }
 
   SetHoverTags(tags, trackId, time) {
@@ -157,19 +150,21 @@ class TagStore {
   }
 
   ClearTags() {
-    this.tags = [];
-    this.hoverTags = [];
-    this.selectedTag = undefined;
+    this.selectedTagIds = [];
+    this.selectedTagId = undefined;
+    this.selectedTime = undefined;
+    this.selectedTagTrackId = undefined;
   }
 
   SetEditing(tagId) {
+    if(!tagId) {
+      this.editingTag = false;
+      return;
+    }
+
     this.SetSelectedTag(tagId);
 
     this.editingTag = true;
-  }
-
-  ClearEditing() {
-    this.editingTag = false;
   }
 
   CreateTag() {
@@ -197,13 +192,13 @@ class TagStore {
     });
 
     this.SetSelectedTag(tagId);
-    this.ClearEditing();
+    this.SetEditing(false);
   }
 
   RemoveTag(tagId) {
-    if(tagId === this.selectedTag) {
+    if(tagId === this.selectedTagId) {
       this.ClearSelectedTag();
-      this.tags = this.tags.filter(id => id !== tagId);
+      this.selectedTagIds = this.selectedTagIds.filter(id => id !== tagId);
       this.hoverTags = this.hoverTags.filter(id => id !== tagId);
     }
 

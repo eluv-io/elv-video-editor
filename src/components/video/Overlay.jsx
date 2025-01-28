@@ -165,7 +165,6 @@ const Draw = ({canvas, tags, elementSize}) => {
 const Overlay = observer(({element, asset, highlightTag}) => {
   const [canvas, setCanvas] = useState(undefined);
   const [hoverPosition, setHoverPosition] = useState({hovering: false, clientX: 0, clientY: 0});
-  const [elementSize, setElementSize] = React.useState({width: 0, height: 0});
 
   useEffect(() => {
     const resizeObserver = new ResizeObserver(() => {
@@ -183,7 +182,7 @@ const Overlay = observer(({element, asset, highlightTag}) => {
         }
       }
 
-      setElementSize({height, width});
+      overlayStore.SetOverlayCanvasDimensions({height, width});
     });
 
     resizeObserver.observe(element);
@@ -198,10 +197,9 @@ const Overlay = observer(({element, asset, highlightTag}) => {
 
     const DisposeDrawReaction = reaction(
       () => ({
-        activeTrack: overlayStore.activeTrack,
         enabled: overlayStore.overlayEnabled,
         frame: videoStore.frame,
-        elementSize,
+        elementSize: overlayStore.overlayCanvasDimensions,
         enabledTracks: JSON.stringify(overlayStore.visibleOverlayTracks),
         highlightTag: JSON.stringify(highlightTag || "")
       }),
@@ -210,7 +208,7 @@ const Overlay = observer(({element, asset, highlightTag}) => {
         tags: asset ?
           AssetTags({asset, highlightTag}) :
           Tags(),
-        elementSize
+        elementSize: overlayStore.overlayCanvasDimensions
       }),
       {
         delay: 25,
@@ -227,11 +225,12 @@ const Overlay = observer(({element, asset, highlightTag}) => {
     TagsAt({canvas, asset, clientX: hoverPosition.clientX, clientY: hoverPosition.clientY});
 
   return (
-    <div className={S("overlay")} style={{width: `${elementSize.width}px`}}>
+    <div className={S("overlay")} style={{width: `${overlayStore.overlayCanvasDimensions.width}px`}}>
       <Tooltip.Floating
         disabled={hoverTags.length === 0}
         position="top"
         offset={20}
+        withinPortal={false}
         label={
           <div className={S("tooltip")}>
             {hoverTags.map((tag) =>

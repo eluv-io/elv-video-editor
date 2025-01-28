@@ -16,13 +16,7 @@ class AudioTrackWorker {
     this.duration = duration;
     this.width = width;
     this.height = height;
-    this.filter = "";
     this.max = 1;
-
-    this.selectedTagId = undefined;
-    this.activeTagIds = [];
-    this.hoverTagIds = [];
-    this.selectedTagIds = [];
   }
 
   Draw() {
@@ -112,16 +106,6 @@ self.addEventListener(
 
       case "SetTime":
         worker.currentTime = data.currentTime;
-        break;
-
-      case "SetSelected":
-        worker.selectedTagId = data.selectedTagId;
-        worker.selectedTagIds = data.selectedTagIds;
-        worker.hoverTagIds = data.hoverTagIds;
-        break;
-
-      case "SetFilter":
-        worker.filter = data.filter;
         break;
 
       case "SetActive":

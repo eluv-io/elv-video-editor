@@ -1,10 +1,10 @@
 import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
-import React from "react";
+import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react";
-import {videoStore} from "@/stores";
+import {tagStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
-import {IconButton, SelectInput} from "@/components/common/Common";
+import {IconButton, Input, SelectInput} from "@/components/common/Common";
 import Fraction from "fraction.js";
 import SVG from "react-inlinesvg";
 
@@ -19,6 +19,11 @@ import FrameIcon from "@/assets/icons/picture.svg";
 import FullscreenIcon from "@/assets/icons/Maximize.svg";
 import MinimizeIcon from "@/assets/icons/Minimize.svg";
 import {FrameRates} from "@/utils/FrameAccurateVideo";
+import FrameBack10 from "@/assets/icons/v2/frame-back-10.svg";
+import FrameBack1 from "@/assets/icons/v2/frame-back-1.svg";
+import FrameForward1 from "@/assets/icons/v2/frame-forward-1.svg";
+import FrameForward10 from "@/assets/icons/v2/frame-forward-10.svg";
+import PlayClipIcon from "@/assets/icons/v2/play-clip.svg";
 
 export const QualityControls = observer(() => {
   const levels = Object.keys(videoStore.levels).map(levelIndex => {
@@ -211,5 +216,91 @@ export const PlayPauseButton = observer(() => {
       <SVG src={PlayIcon} className={S("play-pause__icon", "play-pause__play")} />
       <SVG src={PauseIcon} className={S("play-pause__icon", "play-pause__pause")} />
     </IconButton>
+  );
+});
+
+export const FrameBack10Button = observer(() => {
+  return (
+    <IconButton
+      label="Back 10 Frames"
+      onClick={() => videoStore.SeekFrames({frames: -10})}
+      icon={FrameBack10}
+      className={S("video-controls__button")}
+    />
+  );
+});
+
+export const FrameBack1Button = observer(() => {
+  return (
+    <IconButton
+      label="Back 1 Frame"
+      onClick={() => videoStore.SeekFrames({frames: -1})}
+      icon={FrameBack1}
+      className={S("video-controls__button")}
+    />
+  );
+});
+
+export const FrameForward1Button = observer(() => {
+  return (
+    <IconButton
+      label="Forward 1 Frame"
+      onClick={() => videoStore.SeekFrames({frames: 1})}
+      icon={FrameForward1}
+      className={S("video-controls__button")}
+    />
+  );
+});
+
+export const FrameForward10Button = observer(() => {
+  return (
+    <IconButton
+      label="Forward 10 Frames"
+      onClick={() => videoStore.SeekFrames({frames: 10})}
+      icon={FrameForward10}
+      className={S("video-controls__button")}
+    />
+  );
+});
+
+export const FrameDisplay = observer(() => {
+  const [frameInput, setFrameInput] = useState(videoStore.frame);
+
+  useEffect(() => {
+    setFrameInput(videoStore.frame);
+  }, [videoStore.frame]);
+
+  return (
+    <div className={S("frame-display")}>
+      <Input
+        label="Current Frame"
+        monospace
+        disabled={videoStore.playing}
+        type="number"
+        min={0}
+        max={videoStore.totalFrames}
+        step={1}
+        w={100}
+        value={frameInput}
+        onKeyDown={event => {
+          if(event.key !== "Enter") { return; }
+
+          videoStore.Seek(frameInput);
+        }}
+        onChange={event => setFrameInput(parseInt(event.target.value) || 0)}
+        onBlur={() => frameInput !== videoStore.frame && videoStore.Seek(frameInput)}
+      />
+    </div>
+  );
+});
+
+export const PlaySelectedTagButton = observer(() => {
+  return (
+    <IconButton
+      disabled={!tagStore.selectedTagId}
+      icon={PlayClipIcon}
+      label="Play Current Selection"
+      onClick={() => tagStore.PlayCurrentTag()}
+    />
   );
 });

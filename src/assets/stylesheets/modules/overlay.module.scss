@@ -1,5 +1,8 @@
 .overlay {
+  align-items: center;
+  display: flex;
   inset: 0;
+  justify-content: center;
   margin-inline: auto;
   position: absolute;
   z-index: 1;

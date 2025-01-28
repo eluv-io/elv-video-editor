@@ -14,6 +14,7 @@
   }
 
   &__content {
+    align-content: start;
     display: grid;
     gap: 3px;
     max-height: calc(100% - 90px);
@@ -122,4 +123,14 @@
   &__current-time {
     background: var(--text-highlight--default) !important;
   }
+}
+
+
+.error-message {
+  align-items: center;
+  color: var(--text-error);
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  width: 100%;
 }

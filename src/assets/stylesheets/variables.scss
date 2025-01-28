@@ -20,11 +20,15 @@
   --text-disabled: #4b494e;
   --text-highlight: #bc77ec;
   --text-highlight-secondary: #7787ec;
+  --text-error: #ce6666;
   --table-border-color: #3B3B3B;
   --font-default: inter, system-ui, "Segoe UI", roboto, helvetica, arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   --font-monospace: "Chivo Mono", "Courier New", courier, monospace;
   --slider-color: var(--text-highlight);
   --slider-indicator-color: var(--text-highlight-secondary);
+  --background-tag: #29292D;
+  --background-tag--selected: #2e2e3d;
+  --background-tag--hover: #38383d;
 
   @keyframes fadein {
     from { opacity: 0; }

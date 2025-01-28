@@ -3,12 +3,13 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-import {Input} from "@/components/common/Common.jsx";
+import {IconButton, Input} from "@/components/common/Common.jsx";
 import {useDebouncedState} from "@mantine/hooks";
 import {rootStore, tagStore, tracksStore, videoStore} from "@/stores/index.js";
+import {Tooltip} from "@mantine/core";
 
 import SearchIcon from "@/assets/icons/v2/search.svg";
-import {Tooltip} from "@mantine/core";
+import PlayIcon from "@/assets/icons/Play.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -80,8 +81,8 @@ const Tracks = observer(() => {
           tracksStore.metadataTracks.map(track =>
             <button
               key={`track-${track.key}`}
-              onClick={() => tagStore.ToggleTrackSelected(track.key)}
-              className={S("track", tagStore.selectedTracks[track.key] ? "track--selected" : "")}
+              onClick={() => tracksStore.ToggleTrackSelected(track.key)}
+              className={S("track", tracksStore.selectedTracks[track.key] ? "track--selected" : "")}
             >
               <div
                 style={{backgroundColor: `rgb(${track.color.r} ${track.color.g} ${track.color.b}`}}
@@ -101,48 +102,70 @@ const Tag = observer(({track, tag}) => {
 
   return (
     <div
+      onClick={() => tagStore.SetTags(track.trackId, tag.tagId, tag.startTime)}
       onMouseEnter={() => tagStore.SetHoverTags([tag.tagId], track.trackId, videoStore.TimeToSMPTE(tag.startTime))}
       onMouseLeave={() => tagStore.SetHoverTags([], track.trackId, videoStore.TimeToSMPTE(tag.startTime))}
-      className={S("tag", tracksStore.thumbnailsLoaded ? "tag--thumbnail" : "")}
+      className={
+        S(
+          "tag",
+          tracksStore.thumbnailsLoaded ? "tag--thumbnail" : "",
+          tagStore.selectedTagIds.includes(tag.tagId) ? "tag--selected" : "",
+          tagStore.hoverTags.includes(tag.tagId) ? "tag--hover" : ""
+        )
+      }
     >
       <div
         style={{backgroundColor: `rgb(${color?.r} ${color?.g} ${color?.b}`}}
         className={S("tag__color")}
       />
-      {
-        !tracksStore.thumbnailsLoaded ? null :
-          <img
-            src={tracksStore.ThumbnailImage(tag.startTime)}
-            style={{aspectRatio: videoStore.aspectRatio}}
-            className={S("tag__image")}
-          />
-      }
-      <div className={S("tag__text")}>
-        <Tooltip.Floating
-          position="top"
-          offset={20}
-          label={
-            tag.content ?
-              <pre className={S("tag__tooltip", "tag__tooltip--json")}>{JSON.stringify(tag.content, null, 2)}</pre> :
-              <div className={S("tag__tooltip")}>{tag.textList.join(", ")}</div>
-          }
-        >
-          <div className={S("tag__content", `tag__content--${tag.content ? "json" : "text"}`)}>
-            {
+      <div className={S("tag__left")}>
+        {
+          !tracksStore.thumbnailsLoaded ? null :
+            <img
+              src={tracksStore.ThumbnailImage(tag.startTime)}
+              style={{aspectRatio: videoStore.aspectRatio}}
+              className={S("tag__image")}
+            />
+        }
+        <div className={S("tag__text")}>
+          <Tooltip.Floating
+            position="top"
+            offset={20}
+            label={
               tag.content ?
-                JSON.stringify(tag.content) :
-                tag.textList.join(", ")
+                <pre className={S("tag__tooltip", "tag__tooltip--json")}>{JSON.stringify(tag.content, null, 2)}</pre> :
+                <div className={S("tag__tooltip")}>{tag.textList.join(", ")}</div>
             }
+          >
+            <div className={S("tag__content", `tag__content--${tag.content ? "json" : "text"}`)}>
+              {
+                tag.content ?
+                  JSON.stringify(tag.content) :
+                  tag.textList.join(", ")
+              }
+            </div>
+          </Tooltip.Floating>
+          <div className={S("tag__track")}>
+            {track.label}
           </div>
-        </Tooltip.Floating>
-        <div className={S("tag__track")}>
-          { track.label }
+          <div className={S("tag__time")}>
+            <span>{videoStore.TimeToSMPTE(tag.startTime)}</span>
+            <span>-</span>
+            <span>{videoStore.TimeToSMPTE(tag.endTime)}</span>
+            <span>({ parseFloat((tag.endTime - tag.startTime).toFixed(2))}s)</span>
+          </div>
         </div>
-        <div className={S("tag__time")}>
-          <span>{videoStore.TimeToSMPTE(tag.startTime)}</span>
-          <span>-</span>
-          <span>{videoStore.TimeToSMPTE(tag.endTime)}</span>
-        </div>
+      </div>
+      <div className={S("tag__actions")}>
+        <IconButton
+          label="Play Tag"
+          icon={PlayIcon}
+          onClick={event => {
+            event.stopPropagation();
+            tagStore.SetTags(track.trackId, tag.tagId, tag.startTime);
+            tagStore.PlayTag(tag);
+          }}
+        />
       </div>
     </div>
   );
@@ -165,7 +188,7 @@ const Tags = observer(() => {
     setUpdate(update + 1);
   }, [
     tagStore.filter,
-    Object.keys(tagStore.selectedTracks).length,
+    Object.keys(tracksStore.selectedTracks).length,
     videoStore.scaleMax,
     videoStore.scaleMin,
     tracksStore.tracks.length

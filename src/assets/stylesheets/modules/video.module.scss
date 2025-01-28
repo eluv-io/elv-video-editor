@@ -71,6 +71,7 @@
   bottom: 0;
   display: flex;
   gap: 10px;
+  justify-content: center;
   min-height: 50px;
   opacity: 0.5;
   padding: 0 10px;
@@ -107,8 +108,27 @@
     }
   }
 
-  &__spacer {
-    flex-grow: 1;
+  &__left,
+  &__center,
+  &__right {
+    align-items: center;
+    bottom: 10px;
+    display: flex;
+    gap: 10px;
+  }
+
+  &__center {
+    padding-bottom: 10px;
+  }
+
+  &__left {
+    left: 10px;
+    position: absolute;
+  }
+
+  &__right {
+    position: absolute;
+    right: 10px;
   }
 }
 

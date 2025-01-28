@@ -53,6 +53,7 @@ class TrackStore {
   tracks = [];
   audioTracks = [];
   selectedTrack;
+  selectedTracks = {};
   editingTrack = false;
   audioLoading = false;
   audioSupported = true;
@@ -81,6 +82,16 @@ class TrackStore {
       // eslint-disable-next-line no-console
       console.error("AudioContext not supported in this browser");
     }
+  }
+
+  get tracksSelected() {
+    return Object.keys(this.selectedTracks).length > 0;
+  }
+
+  get activeMetadataTracks() {
+    return !this.tracksSelected ?
+      this.metadataTracks :
+      this.metadataTracks.filter(track => this.selectedTracks[track.key]);
   }
 
   get metadataTracks() {
@@ -714,6 +725,15 @@ class TrackStore {
   });
 
   /* User Actions */
+
+
+  ToggleTrackSelected(key) {
+    if(this.selectedTracks[key]) {
+      delete this.selectedTracks[key];
+    } else {
+      this.selectedTracks[key] = true;
+    }
+  }
 
   SelectedTrack() {
     if(!this.selectedTrack) { return; }

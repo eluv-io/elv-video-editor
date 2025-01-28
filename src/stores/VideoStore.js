@@ -187,6 +187,7 @@ class VideoStore {
 
   SetVideo = flow(function * (videoObject) {
     this.loading = true;
+    this.rootStore.SetError(undefined);
 
     try {
       this.videoObject = videoObject;
@@ -385,6 +386,8 @@ class VideoStore {
       console.error("Failed to load:");
       // eslint-disable-next-line no-console
       console.log(error);
+
+      rootStore.SetError(error.toString());
     } finally {
       this.loading = false;
     }
@@ -859,18 +862,14 @@ class VideoStore {
     }
   }
 
-  PlaySegment(startFrame, endFrame, activeTrack) {
+  PlaySegment(startFrame, endFrame) {
     this.Seek(startFrame);
-    this.activeTrack = activeTrack;
     this.segmentEnd = endFrame;
     this.video.play();
-    this.rootStore.overlayStore.SetActiveTrack(activeTrack);
   }
 
   EndSegment() {
     this.segmentEnd = undefined;
-    this.activeTrack = undefined;
-    this.rootStore.overlayStore.SetActiveTrack(undefined);
   }
 
   Seek(frame, clearSegment=true) {

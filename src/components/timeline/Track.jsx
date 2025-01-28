@@ -37,8 +37,7 @@ const Click = ({canvas, clientX, trackId}) => {
   const time = TimeAt({canvas, clientX});
   const tags = Search({trackId, time});
 
-  tracksStore.SetSelectedTrack(trackId);
-  tagStore.SetTags(tags, videoStore.TimeToSMPTE(time));
+  tagStore.SetTags(trackId, tags, videoStore.TimeToSMPTE(time));
 };
 
 const Hover = ({canvas, clientX, trackId}) => {
@@ -128,12 +127,12 @@ const InitializeTrackReactions = ({track, worker}) => {
     reaction(
       () => ({
         hoverTags: tagStore.hoverTags,
-        selectedTags: tagStore.tags,
-        selectedTag: tagStore.selectedTag
+        selectedTagIds: tagStore.selectedTagIds,
+        selectedTag: tagStore.selectedTagId
       }),
       () => {
-        const selectedTagIds = toJS(tagStore.tags);
-        const selectedTagId = toJS(tagStore.selectedTag ? tagStore.selectedTag : undefined);
+        const selectedTagIds = toJS(tagStore.selectedTagIds);
+        const selectedTagId = toJS(tagStore.selectedTagId ? tagStore.selectedTagId : undefined);
         const hoverTagIds = toJS(tagStore.hoverTags);
 
         worker.postMessage({
@@ -254,12 +253,66 @@ const Track = observer(({track, noActive}) => {
   }, [canvasDimensions, canvas, worker]);
 
   useEffect(() => {
-    if(!track || !worker) { return; }
+    if(!canvas) { return; }
 
-    const Dispose = InitializeTrackReactions({track, worker});
+    const trackWorker = new Worker(
+      new URL(
+        track.trackType === "audio" ?
+          "../../workers/AudioTrackWorker.js" :
+        "../../workers/TrackWorker.js",
+        import.meta.url
+      ),
+      { type: "module" }
+    );
 
-    return () => Dispose();
-  }, [worker]);
+    trackWorker.postMessage({
+      operation: "Initialize",
+      trackId: track.trackId,
+      trackLabel: track.label,
+      color: toJS(track.color),
+      width: canvasDimensions.width,
+      height: canvasDimensions.height,
+      tags: toJS(tracksStore.TrackTags(track.trackId)),
+      noActive,
+      scale: {
+        scale: 100,
+        scaleMin: videoStore.scaleMin,
+        scaleMax: videoStore.scaleMax
+      },
+      duration: videoStore.duration
+    });
+
+    // Paint image from worker
+    trackWorker.onmessage = e => {
+      if(e.data.trackId !== track.trackId) {
+        return;
+      }
+
+      const {data, width, height} = e.data.imageData;
+
+      const context = canvas.getContext("2d");
+      context.putImageData(
+        new ImageData(data, width, height),
+        0, 0,
+        0, 0,
+        width, height
+      );
+    };
+
+    trackWorker.postMessage({
+      operation: "Redraw",
+      trackId: track.trackId
+    });
+
+    const Dispose = InitializeTrackReactions({track, worker: trackWorker});
+
+    setWorker(trackWorker);
+
+    return () => {
+      Dispose();
+      trackWorker.terminate();
+    };
+  }, [canvas]);
 
   return (
     <div className={S("track-container")}>
@@ -276,55 +329,7 @@ const Track = observer(({track, noActive}) => {
         containerClassName={S("track")}
         className={S("track__canvas")}
         onResize={setCanvasDimensions}
-        setCanvas={canvas => {
-          setCanvas(canvas);
-
-          const trackWorker = new Worker(
-            new URL(
-              track.trackType === "audio" ?
-                "../../workers/AudioTrackWorker.js" :
-              "../../workers/TrackWorker.js",
-              import.meta.url
-            ),
-            { type: "module" }
-          );
-
-          trackWorker.postMessage({
-            operation: "Initialize",
-            trackId: track.trackId,
-            trackLabel: track.label,
-            color: toJS(track.color),
-            width: canvasDimensions.width,
-            height: canvasDimensions.height,
-            tags: toJS(tracksStore.TrackTags(track.trackId)),
-            noActive,
-            scale: {
-              scale: 100,
-              scaleMin: videoStore.scaleMin,
-              scaleMax: videoStore.scaleMax
-            },
-            duration: videoStore.duration
-          });
-
-          // Paint image from worker
-          trackWorker.onmessage = e => {
-            if(e.data.trackId !== track.trackId) {
-              return;
-            }
-
-            const {data, width, height} = e.data.imageData;
-
-            const context = canvas.getContext("2d");
-            context.putImageData(
-              new ImageData(data, width, height),
-              0, 0,
-              0, 0,
-              width, height
-            );
-          };
-
-          setWorker(trackWorker);
-        }}
+        setCanvas={setCanvas}
       />
     </div>
   );

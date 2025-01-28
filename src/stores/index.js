@@ -19,6 +19,7 @@ class RootStore {
   initialized = false;
   view = "source";
   sidePanelDimensions = {};
+  errorMessage = undefined;
 
   constructor() {
     makeAutoObservable(this);
@@ -91,6 +92,10 @@ class RootStore {
 
   SetSidePanelDimensions(dimensions) {
     this.sidePanelDimensions = dimensions;
+  }
+
+  SetError(message) {
+    this.errorMessage = message;
   }
 }
 
