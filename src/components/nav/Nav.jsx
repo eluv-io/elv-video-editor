@@ -10,28 +10,57 @@ import SourceIcon from "@/assets/icons/v2/source.svg";
 import TagIcon from "@/assets/icons/v2/tag.svg";
 import ClipIcon from "@/assets/icons/v2/clip.svg";
 import AssetIcon from "@/assets/icons/v2/asset.svg";
+import UrlJoin from "url-join";
 
 const S = CreateModuleClassMatcher(NavStyles);
 
-const pages = [
-  { label: "Source", key: "source", icon: SourceIcon },
-  { label: "Tags", key: "tags", icon: TagIcon },
-  { label: "Clips", key: "clips", icon: ClipIcon },
-  { label: "Assets", key: "assets", icon: AssetIcon }
-];
-
 const Nav = observer(() => {
+  const { libraryId, objectId } = videoStore.videoObject || {};
+  const pages = [
+    {
+      label: "Source",
+      key: "source",
+      to: "/",
+      icon: SourceIcon,
+      active: !rootStore.view || rootStore.view === "source"
+    },
+    {
+      label: "Tags",
+      key: "tags",
+      disabled: !objectId || (videoStore.ready && !videoStore.isVideo),
+      to: !objectId ? "/" : UrlJoin("/", libraryId, objectId, "tags"),
+      icon: TagIcon,
+      active: rootStore.view === "tags"
+    },
+    {
+      label: "Clips",
+      key: "clips",
+      disabled: !objectId || (videoStore.ready && !videoStore.isVideo),
+      to: !objectId ? "/" : UrlJoin("/", libraryId, objectId, "clips"),
+      icon: ClipIcon,
+      active: rootStore.view === "clips"
+    },
+    {
+      label: "Assets",
+      key: "assets",
+      disabled: !objectId,
+      to: !objectId ? "/" : UrlJoin("/", libraryId, objectId, "assets"),
+      icon: AssetIcon,
+      active: rootStore.view === "assets"
+    }
+  ];
+
   return (
     <nav className={S("nav")}>
       {
-        pages.map(({label, key, icon}) =>
+        pages.map(({label, key, icon, to, active, disabled}) =>
           <IconButton
             key={`button-${key}`}
             label={label}
             icon={icon}
-            onClick={() => rootStore.SetView(key)}
-            active={rootStore.view === key}
-            disabled={key !== "source" && !videoStore.initialized}
+            to={to}
+            disabled={disabled}
+            active={active}
             className={S("nav__button")}
           />
         )

@@ -1,114 +1,54 @@
 import {observer} from "mobx-react";
-import React, {useEffect, useState} from "react";
-import {rootStore} from "@/stores";
-import {Loader, ResizeHandle} from "@/components/common/Common";
+import React, {useEffect} from "react";
+import {rootStore, videoStore} from "@/stores";
+import {Loader} from "@/components/common/Common";
+import {Redirect, Route, Switch, useParams, useRoute} from "wouter";
 import Browser from "@/components/nav/Browser";
-import SidePanel from "@/components/side_panel/SidePanel";
-import VideoSection from "@/components/video/VideoSection";
-import Timeline from "@/components/timeline/Timeline";
 import UrlJoin from "url-join";
 import Nav from "@/components/nav/Nav.jsx";
+import Tags from "@/components/video/Tags.jsx";
 
-const AppContent = observer(() => {
-  const [showSidePanel, setShowSidePanel] = useState(true);
-  const [heights, setHeights] = useState({top: 0, bottom: 0});
-  const [widths, setWidths] = useState({sidePanel: 0, videoPanel: 0});
-
-  const ResizePanelWidth = ({deltaX}) => {
-    const videoPanel = document.querySelector("#video-panel");
-
-    if(!videoPanel) { return; }
-
-    const containerWidth = videoPanel.parentElement.getBoundingClientRect().width;
-    const videoPanelWidth = videoPanel.getBoundingClientRect().width;
-
-    const newVideoPanelWidth = Math.min(Math.max(videoPanelWidth - deltaX, containerWidth * 0.5), containerWidth * 0.8);
-    const newSidePanelWidth = containerWidth - newVideoPanelWidth;
-
-    setWidths({
-      sidePanel: newSidePanelWidth,
-      videoPanel: newVideoPanelWidth
-    });
-  };
-
-  const ResizePanelHeight = ({deltaY}) => {
-    const topPanel = document.querySelector("#top");
-
-    if(!topPanel) { return; }
-
-    const containerHeight = topPanel.parentElement.getBoundingClientRect().height;
-    const topHeight = topPanel.getBoundingClientRect().height;
-
-    const newTopHeight = Math.min(Math.max(topHeight + deltaY, containerHeight * 0.25), containerHeight * 0.75);
-    const newBottomHeight = containerHeight - newTopHeight;
-
-    setHeights({
-      top: newTopHeight,
-      bottom: newBottomHeight
-    });
-  };
+// Keep track of the current page
+const SetView = () => {
+  // eslint-disable-next-line no-unused-vars
+  const [_, params] = useRoute("/:objectId/:libraryId/:view");
 
   useEffect(() => {
-    const HandleResize = () => {
-      ResizePanelWidth({deltaX: 0});
-      ResizePanelHeight({deltaY: 0});
-    };
+    if(!videoStore.ready) { return; }
 
-    window.addEventListener("resize", HandleResize);
+    rootStore.SetView(params?.view || "source");
+  }, [params, videoStore.ready]);
+};
 
-    return () => window.removeEventListener("resize", HandleResize);
-  }, []);
+// All routes after content is selected - route will contain /:libraryId/:objectId
+const ContentRoutes = observer(() => {
+  const { libraryId, objectId } = useParams();
 
-  if(!rootStore.initialized) {
+  useEffect(() => {
+    if(libraryId && objectId && !videoStore.loading && videoStore.videoObject?.objectId !== objectId) {
+      videoStore.SetVideo({libraryId, objectId});
+    }
+  }, [objectId]);
+
+  if(!videoStore.ready) {
     return <Loader />;
   }
 
-  if(rootStore.view === "source") {
-    return <Browser />;
-  }
-
   return (
-    <>
-      <div
-        id="top"
-        className="top"
-        style={{height: heights.top, maxHeight: heights.top, minHeight: heights.top}}
-        ref={element => {
-          if(!element || heights.top) { return; }
-
-          const parentSize = element.parentElement.getBoundingClientRect();
-
-          setWidths({sidePanel: parentSize.width * 0.3, videoPanel: parentSize.width - (parentSize.width * 0.3)});
-          setHeights({top: parentSize.height * 0.5, bottom: parentSize.height - (parentSize.height * 0.5)});
-        }}
-      >
-        {
-          !showSidePanel ? null :
-            <div
-              className="side-panel"
-              style={{width: widths.sidePanel, maxWidth: widths.sidePanel}}
-            >
-              <SidePanel />
-              <ResizeHandle variant="horizontal" onMove={ResizePanelWidth} />
-            </div>
-        }
-        <div
-          id="video-panel"
-          className="video-panel"
-          style={!showSidePanel ? {width: "100%"} : {width: widths.videoPanel, maxWidth: widths.videoPanel}}
-        >
-          <VideoSection/>
-        </div>
-        <ResizeHandle variant="vertical" onMove={ResizePanelHeight}/>
-      </div>
-      <div
-        id="bottom"
-        className="bottom"
-        style={{height: heights.bottom, maxHeight: heights.bottom}}
-      >
-        <Timeline/>
-      </div>
-    </>
+    <Switch>
+      <Route path="/tags">
+        <Tags />
+      </Route>
+      <Route path="/clips">
+        { () => <div>Clips</div> }
+      </Route>
+      <Route path="/assets">
+        { () => <div>Assets</div> }
+      </Route>
+      <Route>
+        <Redirect to={videoStore.isVideo ? "/tags" : "/assets"} />
+      </Route>
+    </Switch>
   );
 });
 
@@ -127,7 +67,19 @@ const App = observer(() => {
     <div className="page-container">
       <Nav />
       <div className="content">
-        <AppContent />
+        <SetView />
+        {
+          !rootStore.initialized ?
+            <Loader /> :
+            <Switch>
+              <Route path="/:libraryId?">
+                <Browser />
+              </Route>
+              <Route path="/:libraryId/:objectId" nest>
+                <ContentRoutes />
+              </Route>
+            </Switch>
+        }
       </div>
     </div>
   );

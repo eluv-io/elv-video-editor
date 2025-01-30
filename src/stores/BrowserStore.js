@@ -1,13 +1,7 @@
 import {flow, makeAutoObservable} from "mobx";
-import UrlJoin from "url-join";
 
 class BrowserStore {
-  libraryId = "";
-  objectId = "";
-  error = "";
-
   libraries = undefined;
-
   selectedObject;
 
   constructor(rootStore) {
@@ -19,93 +13,6 @@ class BrowserStore {
   UpdateVersionHash(versionHash) {
     this.selectedObject.versionHash = versionHash;
   }
-
-  SetErrorMessage(error) {
-    this.error = error;
-  }
-
-  ClearErrorMessage() {
-    this.error = "";
-  }
-
-  SelectVideo = flow(function * ({libraryId, objectId, versionHash}) {
-    try {
-      this.SetLibraryId(libraryId);
-      this.SetObjectId(objectId);
-
-      this.rootStore.Reset();
-      this.ClearErrorMessage();
-      this.selectedObject = undefined;
-
-      if(versionHash) {
-        objectId = this.rootStore.client.utils.DecodeVersionHash(versionHash).objectId;
-      }
-
-      if(!libraryId) {
-        libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
-      }
-
-      if(window.self !== window.top) {
-        this.rootStore.client.SendMessage({
-          options: {
-            operation: "SetFramePath",
-            path: UrlJoin("#", versionHash ? versionHash : UrlJoin(libraryId, objectId))
-          },
-          noResponse: true
-        });
-      }
-
-      window.location.hash = `${UrlJoin("#", versionHash ? versionHash : UrlJoin(libraryId, objectId))}`;
-
-      const object = yield this.rootStore.client.ContentObject({libraryId, objectId, versionHash});
-
-      if(!versionHash) {
-        versionHash = object.hash;
-      }
-
-      const metadata = yield this.rootStore.client.ContentObjectMetadata({
-        objectId,
-        versionHash,
-        resolveLinks: true,
-        resolveIgnoreErrors: true,
-        linkDepthLimit: 1,
-        select: [
-          "public/name",
-          "public/description",
-          "offerings",
-          "video_tags",
-          "files",
-          "mime_types",
-          "assets"
-        ]
-      });
-
-      this.selectedObject = {
-        libraryId,
-        objectId: object.id,
-        versionHash,
-        name: metadata.public && metadata.public.name || metadata.name || versionHash,
-        description: metadata.public && metadata.public.description || metadata.description,
-        metadata,
-        //isVideo: metadata.offerings && metadata.offerings[this.rootStore.videoStore.offeringKey]?.ready
-        isVideo: true
-      };
-
-      this.rootStore.videoStore.SetVideo(this.selectedObject);
-
-      this.rootStore.SetView("tags");
-    } catch(error) {
-      // eslint-disable-next-line no-console
-      console.error("Failed to load object:");
-      // eslint-disable-next-line no-console
-      console.error(error);
-
-      this.SetObjectId("");
-      this.SetErrorMessage(error.message || error);
-
-      throw error;
-    }
-  });
 
   ListLibraries = flow(function * ({page, perPage, filter=""}) {
     if(!this.libraries) {
@@ -163,8 +70,6 @@ class BrowserStore {
   });
 
   ListObjects = flow(function * ({libraryId, page=1, perPage=25, filter="", cacheId=""}) {
-    libraryId = libraryId || this.libraryId;
-
     let filters = [];
     if(filter) {
       filters.push({key: "/public/name", type: "cnt", filter});
@@ -315,14 +220,6 @@ class BrowserStore {
       return false;
     }
   });
-
-  SetLibraryId(libraryId) {
-    this.libraryId = libraryId;
-  }
-
-  SetObjectId(objectId) {
-    this.objectId = objectId;
-  }
 }
 
 export default BrowserStore;

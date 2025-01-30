@@ -4,7 +4,7 @@ import React, {useState, useEffect, useRef} from "react";
 import {observer} from "mobx-react";
 import {browserStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-import {IconButton, Loader} from "@/components/common/Common";
+import {IconButton, Linkish, Loader} from "@/components/common/Common";
 import SVG from "react-inlinesvg";
 
 import LibraryIcon from "@/assets/icons/v2/library.svg";
@@ -15,6 +15,8 @@ import FirstPageIcon from "@/assets/icons/DoubleBackward.svg";
 import LastPageIcon from "@/assets/icons/DoubleForward.svg";
 import PageForwardIcon from "@/assets/icons/Forward.svg";
 import PageBackIcon from "@/assets/icons/Backward.svg";
+import {useParams} from "wouter";
+import UrlJoin from "url-join";
 
 
 const S = CreateModuleClassMatcher(BrowserStyles);
@@ -124,7 +126,7 @@ const SearchBar = observer(({filter, setFilter, delay=500}) => {
   );
 });
 
-const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="library"}) => {
+const BrowserTable = observer(({filter, Load, Path, defaultIcon, contentType="library"}) => {
   const [loading, setLoading] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
   const [content, setContent] = useState(undefined);
@@ -184,10 +186,10 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
         </div>
         {
           content.map(({id, name, image, duration, lastModified, forbidden}) =>
-            <button
+            <Linkish
+              to={Path(id)}
               key={`browser-row-${id}`}
               disabled={forbidden}
-              onClick={() => Select(id)}
               className={S("browser-table__row", "browser-table__row--content")}
             >
               <div className={S("browser-table__cell")}>
@@ -211,7 +213,7 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
                     </div>
                   </>
               }
-            </button>
+            </Linkish>
           )
         }
       </div>
@@ -240,7 +242,7 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
   );
 });
 
-const ObjectBrowser = observer(() => {
+const ObjectBrowser = observer(({libraryId}) => {
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
@@ -248,7 +250,7 @@ const ObjectBrowser = observer(() => {
     browserStore.ListLibraries({});
   }, []);
 
-  const library = browserStore.libraries?.[browserStore.libraryId];
+  const library = browserStore.libraries?.[libraryId];
 
   if(!library) {
     return (
@@ -265,19 +267,19 @@ const ObjectBrowser = observer(() => {
         <IconButton
           icon={BackIcon}
           label="Back to Content Libraries"
-          onClick={() => browserStore.SetLibraryId(undefined)}
+          to="/"
           className={S("browser__header-back")}
         />
         <span>
-          Content Libraries / {library?.name || browserStore.libraryId}
+          Content Libraries / {library?.name || libraryId}
         </span>
       </h1>
       <BrowserTable
         filter={filter}
         defaultIcon={ObjectIcon}
         contentType="object"
-        Load={async args => await browserStore.ListObjects(args)}
-        Select={objectId => browserStore.SelectVideo({libraryId: browserStore.libraryId, objectId})}
+        Path={objectId => UrlJoin("/", libraryId, objectId)}
+        Load={async args => await browserStore.ListObjects({libraryId, ...args})}
       />
     </div>
   );
@@ -296,16 +298,18 @@ const LibraryBrowser = observer(() => {
         filter={filter}
         defaultIcon={LibraryIcon}
         contentType="library"
+        Path={libraryId => `/${libraryId}`}
         Load={async args => await browserStore.ListLibraries(args)}
-        Select={libraryId => browserStore.SetLibraryId(libraryId)}
       />
     </div>
   );
 });
 
 const Browser = observer(() => {
-  return browserStore.libraryId ?
-    <ObjectBrowser key={`browser-${browserStore.libraryId}`} />:
+  const { libraryId } = useParams();
+
+  return libraryId ?
+    <ObjectBrowser key={`browser-${libraryId}`} libraryId={libraryId} />:
     <LibraryBrowser />;
 });
 

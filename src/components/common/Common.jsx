@@ -1,10 +1,11 @@
 import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
-import React, {useEffect, useRef, useState} from "react";
+import React, {forwardRef, useEffect, useRef, useState} from "react";
 import {CreateModuleClassMatcher, JoinClassNames, TextWidth} from "@/utils/Utils.js";
 import {Button, Select, Switch, TextInput, Tooltip} from "@mantine/core";
 import SVG from "react-inlinesvg";
 import {observer} from "mobx-react";
+import {Link} from "wouter";
 
 const S = CreateModuleClassMatcher(CommonStyles);
 
@@ -26,6 +27,28 @@ export const Loader = ({className = "", loaderClassName=""}) => {
 
 // Buttons
 
+export const Linkish = forwardRef(function Linkish({
+  to,
+  href,
+  target="_blank",
+  rel="noopener",
+  onClick,
+  disabled,
+  ...props
+}, ref) {
+  if(!disabled) {
+    if(href) {
+      return <a href={href} target={target} rel={rel} onClick={onClick} ref={ref} {...props} />;
+    } else if(to) {
+      return <Link href={to} onClick={onClick} ref={ref} {...props} />;
+    } else if(onClick || props.type === "submit") {
+      return <button onClick={onClick} ref={ref} {...props} />;
+    }
+  }
+
+  return <div ref={ref} {...props} />;
+});
+
 export const Icon = ({
   icon,
   ...props
@@ -37,6 +60,7 @@ export const IconButton = ({
   label,
   icon,
   active=false,
+  disabled=false,
   tooltipProps={openDelay: 500},
   unstyled=false,
   children,
@@ -47,10 +71,17 @@ export const IconButton = ({
   }
 
   const button = (
-    <button
+    <Linkish
       {...props}
+      disabled={disabled}
       aria-label={label || ""}
-      className={JoinClassNames(!unstyled && S("icon-button", active ? "icon-button--active" : ""), props.className || "")}
+      className={
+        JoinClassNames(
+          !unstyled && S("icon-button", active ? "icon-button--active" : ""),
+          !unstyled && S("icon-button", disabled ? "icon-button--disabled" : ""),
+          props.className || ""
+        )
+      }
     >
       {
         typeof icon === "string" ?
@@ -58,7 +89,7 @@ export const IconButton = ({
           icon
       }
       { children }
-    </button>
+    </Linkish>
   );
 
   if(!label) {

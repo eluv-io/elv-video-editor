@@ -9,6 +9,14 @@ import VideoStore from "./VideoStore";
 
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
 
+if(window.location.hash) {
+  const path = `/${window.location.hash.replace("#", "")}`;
+  const url = new URL(window.location.href);
+  url.hash = "";
+  url.pathname = path;
+  window.history.replaceState({}, null, url.toString());
+}
+
 // Force strict mode so mutations are only allowed within actions.
 configure({
   enforceActions: "always"
@@ -60,34 +68,25 @@ class RootStore {
     });
 
     runInAction(() => this.client = client);
-    const appPath = window.location.hash
-      .replace(/^\/*#?\/*/, "")
-      .split("/");
-
-    if(appPath.length >= 1 && appPath[0].startsWith("hq__")){
-      // Version Hash
-
-      const versionHash = appPath[0];
-      const libraryId = await client.ContentObjectLibraryId({versionHash});
-      const { objectId } = client.utils.DecodeVersionHash(versionHash);
-
-      this.browserStore.SetLibraryId(libraryId);
-      this.browserStore.SetObjectId(objectId);
-      await this.browserStore.SelectVideo({libraryId, objectId, versionHash});
-
-      this.view = "tags";
-    } else if(appPath.length >= 2 && appPath[0].startsWith("ilib") && appPath[1].startsWith("iq__")) {
-      // libraryId + objectId
-      const libraryId = appPath[0];
-      const objectId = appPath[1];
-
-      this.browserStore.SetLibraryId(libraryId);
-      this.browserStore.SetObjectId(objectId);
-      await this.browserStore.SelectVideo({libraryId, objectId});
-      this.view = "tags";
-    }
 
     this.initialized = true;
+
+    const UpdatePage = () =>
+      client.SendMessage({
+        options: {
+          operation: "SetFramePath",
+          path: "/" + window.location.pathname
+        },
+        noResponse: true
+      });
+
+    let page = window.location.pathname;
+    setInterval(() => {
+      if(page !== window.location.pathname) {
+        page = window.location.pathname;
+        UpdatePage();
+      }
+    }, 500);
   }
 
   SetSidePanelDimensions(dimensions) {

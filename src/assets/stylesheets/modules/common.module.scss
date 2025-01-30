@@ -45,13 +45,16 @@
   &--active,
   &:focus-visible {
     &:not(:disabled) {
-      background: var(--background-active);
-      color: var(--text-secondary);
-      transition: color 0.25s ease, background-color 0.3s ease;
+      &:not(.icon-button--disabled) {
+        background: var(--background-active);
+        color: var(--text-secondary);
+        transition: color 0.25s ease, background-color 0.3s ease;
+      }
     }
   }
 
-  &:disabled {
+  &:disabled,
+  &--disabled {
     opacity: 0.5;
   }
 }

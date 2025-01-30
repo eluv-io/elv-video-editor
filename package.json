@@ -37,7 +37,8 @@
     "resize-observer-polyfill": "^1.5.1",
     "tiff.js": "^1.0.0",
     "url-join": "^4.0.0",
-    "vtt.js": "^0.13.0"
+    "vtt.js": "^0.13.0",
+    "wouter": "^3.5.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.22.10",

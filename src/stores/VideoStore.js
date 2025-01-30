@@ -25,6 +25,7 @@ class VideoStore {
   loading = false;
   initialized = false;
   isVideo = false;
+  ready = false;
 
   consecutiveSegmentErrors = 0;
 
@@ -183,11 +184,47 @@ class VideoStore {
     yield this.SetVideo(this.videoObject, offeringKey);
   });
 
-  SetVideo = flow(function * (videoObject) {
+  SetVideo = flow(function * ({libraryId, objectId}) {
     this.loading = true;
+    this.ready = false;
     this.rootStore.SetError(undefined);
 
     try {
+      this.rootStore.Reset();
+      this.selectedObject = undefined;
+
+      if(!libraryId) {
+        libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
+      }
+
+      const versionHash = yield this.rootStore.client.LatestVersionHash({objectId});
+
+      const metadata = yield this.rootStore.client.ContentObjectMetadata({
+        versionHash,
+        resolveLinks: true,
+        resolveIgnoreErrors: true,
+        linkDepthLimit: 1,
+        select: [
+          "public/name",
+          "public/description",
+          "offerings",
+          "video_tags",
+          "files",
+          "mime_types",
+          "assets"
+        ]
+      });
+
+      const videoObject = {
+        libraryId,
+        objectId,
+        versionHash,
+        name: metadata.public && metadata.public.name || metadata.name || versionHash,
+        description: metadata.public && metadata.public.description || metadata.description,
+        metadata,
+        isVideo: metadata.offerings && metadata.offerings[this.rootStore.videoStore.offeringKey]?.ready
+      };
+
       this.videoObject = videoObject;
 
       this.name = videoObject.name;
@@ -356,7 +393,9 @@ class VideoStore {
           this.videoTags = videoTags;
         }
 
-        yield this.rootStore.trackStore.InitializeTracks();
+        this.rootStore.trackStore.InitializeTracks();
+
+        this.ready = true;
       }
     } catch(error) {
       // eslint-disable-next-line no-console
@@ -364,7 +403,7 @@ class VideoStore {
       // eslint-disable-next-line no-console
       console.log(error);
 
-      rootStore.SetError(error.toString());
+      this.rootStore.SetError(error.toString());
     } finally {
       this.loading = false;
     }
@@ -1014,7 +1053,7 @@ class VideoStore {
       queryParams.clip_end = this.FrameToTime(this.clipOutFrame + 1);
     }
 
-    queryParams["header-x_set_content_disposition"] = `attachment;filename=${filename};`;
+    queryParams["header-x_set_content_disposition"] = `attachment;filename="${filename}";`;
 
     const downloadUrl = await this.rootStore.client.Rep({
       versionHash: this.versionHash,
