@@ -1,6 +1,6 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
-import {IconButton, ImageIcon, ToolTip} from "el-vcomponents-js";
+import {IconButton, ImageIcon, ToolTip} from "elv-components-js";
 import Asset from "./Asset";
 import {BackButton} from "../Components";
 import MimeTypes from "mime-types";
