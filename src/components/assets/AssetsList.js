@@ -1,6 +1,6 @@
 import React from "react";
 import {inject, observer} from "mobx-react";
-import {IconButton, ImageIcon, ToolTip} from "elv-components-js";
+import {IconButton, ImageIcon, ToolTip} from "el-vcomponents-js";
 import Asset from "./Asset";
 import {BackButton} from "../Components";
 import MimeTypes from "mime-types";
@@ -124,6 +124,7 @@ class AssetsList extends React.Component {
                   className="asset-icon"
                   icon={this.AssetIcon(asset.assetKey, asset)}
                   alternateIcon={FileIcon}
+                  loading="lazy"
                 />
                 <div className="asset-title">
                   { asset.title || asset.attachment_file_name }
