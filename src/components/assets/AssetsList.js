@@ -9,8 +9,10 @@ import FileIcon from "../../static/icons/file.svg";
 import PictureIcon from "../../static/icons/picture.svg";
 import TagIcon from "../../static/icons/tag.svg";
 import XIcon from "../../static/icons/X.svg";
-import {rootStore} from "../../stores";
+import DownloadIcon from "../../static/icons/download.svg";
+import {DownloadFromUrl} from "../../utils/Utils";
 
+@inject("rootStore")
 @inject("videoStore")
 @observer
 class AssetsList extends React.Component {
@@ -18,19 +20,23 @@ class AssetsList extends React.Component {
     super(props);
 
     this.state = {
+      page: 1,
+      perPage: 21,
       selectedAsset:
-        rootStore.selectedAsset ?
+        props.rootStore.selectedAsset ?
           this.Assets()
-            .findIndex(asset => asset.title === rootStore.selectedAsset) :
+            .findIndex(asset => asset.title === props.rootStore.selectedAsset) :
           undefined,
       filter: "",
       taggedOnly: false,
       imageOnly: false
     };
+
+    window.SetPage = page => this.setState({page});
   }
 
   componentDidUpdate() {
-    rootStore.SetSelectedAsset(this.Assets()[this.state.selectedAsset]?.title);
+    this.props.rootStore.SetSelectedAsset(this.Assets()[this.state.selectedAsset]?.title);
   }
 
   AssetIcon(assetKey, asset) {
@@ -51,10 +57,11 @@ class AssetsList extends React.Component {
 
   Assets() {
     return Object.keys(this.props.videoStore.metadata.assets || {})
-      .map(assetKey => ({
+      .map((assetKey, index) => ({
         ...this.props.videoStore.metadata.assets[assetKey],
         title: this.props.videoStore.metadata.assets[assetKey].title || assetKey,
         assetKey,
+        index,
         filename: ((this.props.videoStore.metadata.assets[assetKey].file || {})["/"] || assetKey).split("/").slice(-1)[0] || ""
       }));
   }
@@ -75,14 +82,17 @@ class AssetsList extends React.Component {
     }
 
     if(this.state.filter) {
+      const filter = this.state.filter.toLowerCase();
+
       assets = assets.filter(asset =>
-        (asset.title || "").toLowerCase().includes(this.state.filter) ||
+        asset.assetKey.toLowerCase().includes(filter) ||
+        (asset.title || "").toLowerCase().includes(filter) ||
         (
           asset.image_tags &&
           Object.keys(asset.image_tags || {}).length > 0 &&
           Object.keys(asset.image_tags).find(category =>
             (((asset.image_tags[category] || {}).tags) || [])
-              .find(tag => (tag.text || "").toLowerCase().includes(this.state.filter))
+              .find(tag => (tag.text || "").toLowerCase().includes(filter))
           )
         )
       );
@@ -92,7 +102,11 @@ class AssetsList extends React.Component {
   }
 
   AssetsList() {
-    const assets = this.FilteredAssets();
+    const assets = this.FilteredAssets()
+      .slice(
+        (this.state.page - 1) * this.state.perPage,
+        (this.state.page) * this.state.perPage
+      );
 
     if(!assets || assets.length === 0) {
       return (
@@ -105,17 +119,17 @@ class AssetsList extends React.Component {
     return (
       <div className="assets-list">
         {
-          assets.map((asset, i) => {
+          assets.map(asset => {
             const hasTags = asset.image_tags && Object.keys(asset.image_tags || {}).length > 0 &&
               Object.keys(asset.image_tags).find(category => (asset.image_tags[category] || {}).tags);
 
             return (
               <div
                 className="asset-entry"
-                key={`asset-${i}`}
+                key={`asset-${asset.assetKey}`}
                 onClick={() =>
                   this.setState({
-                    selectedAsset: i,
+                    selectedAsset: asset.index,
                     scrollY: window.scrollY
                   })
                 }
@@ -174,12 +188,40 @@ class AssetsList extends React.Component {
     );
   }
 
-  PageButtons() {
-    if(typeof this.state.selectedAsset === "undefined") { return null; }
-
+  PageButtons(selectedAsset) {
     const assets = this.FilteredAssets();
+
+    if(typeof this.state.selectedAsset === "undefined") {
+      const start = Math.max(1, this.state.perPage * (this.state.page - 1));
+      const end = Math.min(assets.length, this.state.perPage * this.state.page);
+
+      return (
+        <div className="asset-list-page-buttons">
+          <button
+            disabled={this.state.page <= 1}
+            onClick={() => this.setState({page: this.state.page - 1})}
+          >
+            Previous Page
+          </button>
+          <span>Showing {start} to {end} of {assets.length}</span>
+          <button
+            disabled={this.state.page >= Math.ceil(assets.length / this.state.perPage)}
+            onClick={() => this.setState({page: this.state.page + 1})}
+          >
+            Next Page
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div className="asset-page-buttons">
+        <IconButton
+          icon={DownloadIcon}
+          onClick={() => DownloadFromUrl(this.props.videoStore.AssetLink(selectedAsset.assetKey), selectedAsset.assetKey, {target: "_blank"})}
+          className="download-button"
+        />
+
         <button
           disabled={this.state.selectedAsset <= 0}
           onClick={() => this.setState({selectedAsset: this.state.selectedAsset - 1})}
@@ -217,7 +259,7 @@ class AssetsList extends React.Component {
           Assets
           { selectedAsset ? ` - ${selectedAsset.title || selectedAsset.attachment_file_name || selectedAsset.assetKey}` : "" }
           { this.SortFilter() }
-          { this.PageButtons() }
+          { this.PageButtons(selectedAsset) }
         </h2>
         {
           selectedAsset ?

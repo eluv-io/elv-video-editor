@@ -27,7 +27,7 @@ class Asset extends React.Component {
       return null;
     }
 
-    const url = this.props.videoStore.AssetLink(assetKey, window.innerHeight);
+    const url = this.props.videoStore.AssetLink(assetKey);
 
     const image = (
       <img
