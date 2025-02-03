@@ -23,10 +23,6 @@ class AssetStore {
   }
 
   get filteredAssetList() {
-    if(!this.filter) {
-      return this.assetList;
-    }
-
     const filter = this.filter.toLowerCase();
 
     const selectedTracks = Object.keys(this.selectedTracks);
@@ -36,7 +32,10 @@ class AssetStore {
         selectedTracks.length === 0 ?
           true :
           Object.keys(asset.image_tags || {})
-            .find(key => this.selectedTracks.includes(key))
+            .find(key =>
+              this.selectedTracks[key] &&
+              asset.image_tags[key]?.tags?.length > 0
+            )
       )
       .filter(asset =>
         asset.key.toLowerCase().includes(filter) ||
@@ -65,21 +64,34 @@ class AssetStore {
     );
 
     Object.keys(tracks).forEach(trackKey =>
-      tracks[trackKey] = {
-        key: trackKey,
-        color: this.rootStore.trackStore.TrackColor(trackKey),
-        label: trackKey
-          .split("_")
-          .map(str => str.toLowerCase() === "llava" ? "LLAVA" : Capitalize(str))
-          .join(" ")
-      }
+      tracks[trackKey] = this.__CreateAssetTrack(trackKey)
     );
 
     return Object.values(tracks);
   }
 
+  __CreateAssetTrack(key) {
+    return {
+      key,
+      color: this.rootStore.trackStore.TrackColor(key),
+      label: key
+        .split("_")
+        .map(str => str.toLowerCase() === "llava" ? "LLAVA" : Capitalize(str))
+        .join(" ")
+    };
+  }
+
+  AssetTrack(key) {
+    return (
+      this.assetTracks.find(track => track.key === key) ||
+      this.__CreateAssetTrack(key)
+    );
+  }
+
   Asset(key) {
-    const asset = this.rootStore.videoStore.metadata.assets?.[key];
+    const asset =
+      this.rootStore.videoStore.metadata.assets?.[key] ||
+      this.rootStore.videoStore.metadata.assets?.[key && this.rootStore.client.utils.FromB64(key)];
 
     if(asset) {
       asset.key = key;

@@ -11,15 +11,6 @@
   width: 100%;
 }
 
-.asset-page {
-  display: grid;
-  gap: 5px;
-  grid-template-rows: 1fr 1fr;
-  height: 100%;
-  max-height: 100%;
-  overflow: hidden;
-}
-
 .asset,
 .asset-details {
   background-color: var(--background-toolbar);
@@ -63,11 +54,12 @@
 
   &__download {
     align-items: center;
+    color: var(--text-tertiary);
     display: flex;
     font-size: 12px;
     font-weight: 600;
     gap: 10px;
-    margin-left: auto;
+    margin: 0 20px 0 auto;
 
     svg {
       height: 20px;
@@ -77,5 +69,79 @@
     div {
       margin-top: 3px;
     }
+  }
+}
+
+.asset-details {
+  overflow-y: auto;
+  padding: 15px;
+}
+
+.asset-tags {
+  display: grid;
+  gap: 10px;
+
+  &__track {
+    display: grid;
+    gap: 5px;
+  }
+
+  &__track-title {
+    color: var(--text-tertiary);
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  &__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+}
+
+.asset-tag {
+  align-items: center;
+  border-radius: 20px;
+  display: flex;
+  gap: 10px;
+  max-width: 300px;
+  overflow: hidden;
+  padding: 5px 15px 5px 10px;
+  position: relative;
+  transition: background-color 0.1s ease;
+  width: max-content;
+
+  &:hover {
+    &:not(.track--selected) {
+      background-color: var(--background-secondary);
+    }
+  }
+
+  &--selected {
+    background-color: var(--background-active);
+  }
+
+  &__color {
+    border-radius: 100%;
+    min-height: 10px;
+    min-width: 10px;
+    z-index: 1;
+  }
+
+  &__label {
+    font-size: 12px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
+    white-space: nowrap;
+    z-index: 1;
+  }
+
+  &__background {
+    inset: 0;
+    opacity: 0.15;
+    position: absolute;
+    z-index: 0;
   }
 }

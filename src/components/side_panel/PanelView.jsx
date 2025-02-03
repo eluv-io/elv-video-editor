@@ -1,14 +1,17 @@
 import {observer} from "mobx-react";
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {ResizeHandle} from "@/components/common/Common.jsx";
 import {rootStore} from "@/stores/index.js";
 
-export const PanelView = observer(({mainPanelContent, sidePanelContent, bottomPanelContent}) => {
+let timeout;
+export const PanelView = observer(({mainPanelContent, sidePanelContent, bottomPanelContent, isSubpanel=false}) => {
+  const contentPanelRef = useRef(null);
+  const [topPanel, setTopPanel] = useState(undefined);
   const [heights, setHeights] = useState({top: 0, bottom: 0});
   const [widths, setWidths] = useState({sidePanel: 0, contentPanel: 0});
 
   const ResizePanelWidth = ({deltaX}) => {
-    const contentPanel = document.querySelector("#content-panel");
+    const contentPanel = contentPanelRef?.current;
 
     if(!contentPanel) { return; }
 
@@ -28,11 +31,20 @@ export const PanelView = observer(({mainPanelContent, sidePanelContent, bottomPa
       sidePanel: newSidePanelWidth,
       contentPanel: newcontentPanelWidth
     });
+
+    if(!isSubpanel) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        const sidePanel = document.querySelector(".side-panel");
+
+        if(sidePanel) {
+          rootStore.SetSidePanelDimensions(sidePanel?.getBoundingClientRect());
+        }
+      }, 1000);
+    }
   };
 
   const ResizePanelHeight = ({deltaY}) => {
-    const topPanel = document.querySelector("#top");
-
     if(!topPanel) { return; }
 
     const containerHeight = topPanel.parentElement.getBoundingClientRect().height;
@@ -52,13 +64,16 @@ export const PanelView = observer(({mainPanelContent, sidePanelContent, bottomPa
       bottom: newBottomHeight
     });
 
-    setTimeout(() => {
-      const sidePanel = document.querySelector(".side-panel");
+    if(!isSubpanel) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        const sidePanel = document.querySelector(".side-panel");
 
-      if(sidePanel) {
-        rootStore.SetSidePanelDimensions(sidePanel?.getBoundingClientRect());
-      }
-    }, 1000);
+        if(sidePanel) {
+          rootStore.SetSidePanelDimensions(sidePanel?.getBoundingClientRect());
+        }
+      }, 1000);
+    }
   };
 
   useEffect(() => {
@@ -75,7 +90,6 @@ export const PanelView = observer(({mainPanelContent, sidePanelContent, bottomPa
   return (
     <>
       <div
-        id="top"
         className="top"
         style={{
           height: heights.top,
@@ -89,6 +103,8 @@ export const PanelView = observer(({mainPanelContent, sidePanelContent, bottomPa
           if(!element || heights.top) {
             return;
           }
+
+          setTopPanel(element);
 
           const parentSize = element.parentElement.getBoundingClientRect();
 
@@ -122,7 +138,7 @@ export const PanelView = observer(({mainPanelContent, sidePanelContent, bottomPa
             </div>
         }
         <div
-          id="content-panel"
+          ref={contentPanelRef}
           className="content-panel"
           style={!sidePanelContent ? {width: "100%"} : {width: widths.contentPanel, maxWidth: widths.contentPanel}}
         >
@@ -136,14 +152,13 @@ export const PanelView = observer(({mainPanelContent, sidePanelContent, bottomPa
       {
         !bottomPanelContent ? null :
           <div
-            id="bottom"
             className="bottom"
             style={{height: heights.bottom, maxHeight: heights.bottom}}
           >
             { bottomPanelContent }
           </div>
       }
-      </>
+    </>
   );
 });
 

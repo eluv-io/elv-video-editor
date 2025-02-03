@@ -46,7 +46,7 @@ const TrackSelection = observer(({store}) => {
     if(!ref?.current) { return; }
 
     const resizeObserver = new ResizeObserver(() => {
-      setContentHeight(ref.current.getBoundingClientRect().height + 20);
+      setContentHeight(ref.current.getBoundingClientRect().height + 55);
     });
 
     resizeObserver.observe(ref.current);
@@ -60,12 +60,13 @@ const TrackSelection = observer(({store}) => {
 
       return () => clearTimeout(showScrollTimeout);
     } else {
+      ref?.current?.parentElement?.scrollTo({top: 0});
       setShowScroll(false);
     }
-  }, [hovering]);
+  }, [ref, hovering]);
 
   const willScroll = contentHeight > 90;
-  const willScrollExpanded = contentHeight > rootStore.sidePanelDimensions.height * 0.4;
+  const willScrollExpanded = contentHeight > rootStore.sidePanelDimensions.height * 0.2;
 
   const tracks = store.metadataTracks || store.assetTracks;
 
@@ -178,7 +179,7 @@ const Tag = observer(({track, tag}) => {
         }
         <div className={S("tag__text")}>
           <Tooltip.Floating
-            position="top"
+            position="bottom"
             offset={20}
             label={
               tag.content ?
@@ -222,28 +223,38 @@ const Tag = observer(({track, tag}) => {
 
 const Tags = observer(() => {
   const [tags, setTags] = useState([]);
+  const [limit, setLimit] = useState(0);
+  const [totalTags, setTotalTags] = useState(0);
+
   let tracks = {};
   trackStore.metadataTracks.forEach(track => tracks[track.key] = track);
 
   return (
-    <SidebarScrollContent
-      watchList={[
-        tagStore.filter,
-        Object.keys(trackStore.selectedTracks).length
-      ]}
-      className={S("tags")}
-      Update={limit =>
-        setTags(
-          tagStore.Tags({
+    <>
+      <div className={S("count")}>
+        Showing 1 - {limit} of {totalTags}
+      </div>
+      <SidebarScrollContent
+        watchList={[
+          tagStore.filter,
+          Object.keys(trackStore.selectedTracks).length
+        ]}
+        className={S("tags")}
+        Update={limit => {
+          const { tags, total } = tagStore.Tags({
             startFrame: videoStore.scaleMinFrame,
             endFrame: videoStore.scaleMaxFrame,
             limit
-          })
-        )
-      }
-    >
-      { tags.map(tag => <Tag key={`tag-${tag.tagId}`} track={tracks[tag.trackKey]} tag={tag} />) }
-    </SidebarScrollContent>
+          });
+
+          setTags(tags);
+          setTotalTags(total);
+          setLimit(Math.min(total, limit));
+        }}
+      >
+        {tags.map(tag => <Tag key={`tag-${tag.tagId}`} track={tracks[tag.trackKey]} tag={tag}/>)}
+      </SidebarScrollContent>
+    </>
   );
 });
 
@@ -253,7 +264,7 @@ const Tags = observer(() => {
 const Asset = observer(({asset, selected}) => {
   return (
     <Linkish
-      to={UrlJoin("/assets", asset.key)}
+      to={UrlJoin("/assets", rootStore.client.utils.B64(asset.key))}
       className={S("asset", selected ? "asset--selected" : "")}
     >
       <LoaderImage
@@ -272,30 +283,48 @@ const Asset = observer(({asset, selected}) => {
 
 const AssetList = observer(() => {
   const [assets, setAssets] = useState([]);
+  const [limit, setLimit] = useState(0);
+  const [totalAssets, setTotalAssets] = useState(0);
+
   const { assetKey } = useParams();
 
   return (
-    <SidebarScrollContent
-      watchList={[
-        assetStore.filter,
-        Object.keys(assetStore.selectedTracks).length
-      ]}
-      batchSize={30}
-      className={S("assets")}
-      Update={limit =>
-        setAssets(assetStore.filteredAssetList.slice(0, limit))
-      }
-    >
-      {
-        assets.map(asset =>
-          <Asset
-            selected={asset.key === assetKey}
-            asset={asset}
-            key={asset.key}
-          />
-        )
-      }
-    </SidebarScrollContent>
+    <>
+      <div className={S("count")}>
+        {
+          totalAssets === 0 ?
+            "No assets found" :
+            `Showing 1 - ${limit} of ${totalAssets}`
+        }
+      </div>
+      <SidebarScrollContent
+        watchList={[
+          assetStore.filter,
+          Object.keys(assetStore.selectedTracks).length
+        ]}
+        batchSize={30}
+        className={S("assets")}
+        Update={limit => {
+          const assets = assetStore.filteredAssetList;
+          setAssets(assets.slice(0, limit));
+          setTotalAssets(assets.length);
+          setLimit(Math.min(assets.length, limit));
+        }}
+      >
+        {
+          assets.map(asset =>
+            <Asset
+              selected={
+                asset.key === assetKey ||
+                (assetKey && asset.key === rootStore.client.utils.FromB64(assetKey))
+              }
+              asset={asset}
+              key={asset.key}
+            />
+          )
+        }
+      </SidebarScrollContent>
+    </>
   );
 });
 

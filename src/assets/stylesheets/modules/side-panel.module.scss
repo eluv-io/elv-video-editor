@@ -15,7 +15,7 @@
 .side-panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 5px;
   height: 100%;
   width: 100%;
 }
@@ -42,15 +42,23 @@
   }
 }
 
+.count {
+  align-items: center;
+  color: var(--text-tertiary);
+  display: flex;
+  font-size: 10px;
+  margin-left: 15px
+}
+
 .tracks {
   max-height: 90px;
   overflow-y: hidden;
-  padding: 10px;
-  padding-right: 25px;
+  padding: 10px 25px 10px 10px;
   position: relative;
   transition: max-height 0.25s ease;
 
   &--hover {
+    height: var(--content-height);
     max-height: var(--content-height);
     transition: max-height 0.15s ease;
 
@@ -166,7 +174,9 @@
   }
 
   &__tooltip {
+    max-height: 500px;
     max-width: 500px;
+    overflow: hidden;
     white-space: pre-wrap;
     word-break: break-all;
   }
@@ -238,7 +248,7 @@
   flex-direction: column;
   gap: 7px;
   padding: 10px;
-  transition: background-color 0.25s ease;
+  transition: background-color 0.25s ease, color 0.25s ease;
 
   &:hover {
     background-color: var(--background-tag--hover);
@@ -246,6 +256,7 @@
 
   &--selected {
     background-color: var(--background-tag--selected);
+    color: var(--text-primary);
 
     &:hover {
       background-color: var(--background-tag--selected);

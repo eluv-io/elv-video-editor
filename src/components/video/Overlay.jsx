@@ -4,7 +4,7 @@ import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react";
 import {reaction} from "mobx";
 import ResizeObserver from "resize-observer-polyfill";
-import {overlayStore, trackStore, videoStore} from "@/stores/index.js";
+import {assetStore, overlayStore, trackStore, videoStore} from "@/stores/index.js";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Tooltip} from "@mantine/core";
 
@@ -15,24 +15,32 @@ const S = CreateModuleClassMatcher(OverlayStyles);
 
 const AssetTags = ({asset, highlightTag}) => {
   let tags = [];
-  Object.keys(asset.image_tags || {}).forEach(category => {
-    if(!asset.image_tags[category].tags) { return; }
+  Object.keys(asset.image_tags || {})
+    .sort((a, b) => {
+      if(a.toLowerCase().includes("llava")) {
+        return 1;
+      } else if(b.toLowerCase().includes("llava")) {
+        return -1;
+      }
 
-    const trackInfo = overlayStore.TrackInfo(category);
-    tags = tags.concat(
-      asset.image_tags[category].tags.map(tags =>
-        ({
-          ...tags,
-          trackLabel: trackInfo.label,
-          color: trackInfo.color
-        })
-      )
-    );
-  });
+      return a < b ? -1 : 1;
+    })
+    .forEach(category => {
+      if(!asset.image_tags[category].tags) { return; }
+
+      const trackInfo = assetStore.AssetTrack(category);
+      tags = tags.concat(
+        asset.image_tags[category].tags.map(tags =>
+          ({
+            ...tags,
+            label: trackInfo.label,
+            color: trackInfo.color
+          })
+        )
+      );
+    });
 
   if(highlightTag) {
-    tags = tags.filter(tag => tag === highlightTag);
-
     tags.push({
       ...highlightTag,
       color: { r: 255, g: 255, b: 255}
@@ -197,29 +205,33 @@ const Overlay = observer(({element, asset, highlightTag}) => {
   useEffect(() => {
     if(!canvas) { return; }
 
+    const Redraw = () =>
+      Draw({
+        canvas,
+        tags: asset ?
+          AssetTags({asset, highlightTag}) :
+          Tags(),
+        elementSize: overlayStore.overlayCanvasDimensions
+      });
+
     const DisposeDrawReaction = reaction(
       () => ({
         enabled: overlayStore.overlayEnabled,
         frame: videoStore.frame,
         elementSize: overlayStore.overlayCanvasDimensions,
         enabledTracks: JSON.stringify(overlayStore.visibleOverlayTracks),
-        highlightTag: JSON.stringify(highlightTag || "")
       }),
-      () => Draw({
-        canvas,
-        tags: asset ?
-          AssetTags({asset, highlightTag}) :
-          Tags(),
-        elementSize: overlayStore.overlayCanvasDimensions
-      }),
+      Redraw,
       {
         delay: 25,
         equals: (from, to) => JSON.stringify(from) === JSON.stringify(to)
       }
    );
 
-     return () => DisposeDrawReaction && DisposeDrawReaction();
-  }, [canvas]);
+    Redraw();
+
+    return () => DisposeDrawReaction && DisposeDrawReaction();
+  }, [canvas, highlightTag]);
 
   if(!asset && !overlayStore.overlayEnabled) { return null; }
 
@@ -230,13 +242,13 @@ const Overlay = observer(({element, asset, highlightTag}) => {
     <div className={S("overlay")} style={{width: `${overlayStore.overlayCanvasDimensions.width}px`}}>
       <Tooltip.Floating
         disabled={hoverTags.length === 0}
-        position="top"
+        position="bottom"
         offset={20}
         withinPortal={!!asset}
         label={
           <div className={S("tooltip")}>
-            {hoverTags.map((tag) =>
-              <div className={S("tooltip__item")} key={`tag-${tag.tagId}`}>
+            {hoverTags.map((tag, index) =>
+              <div className={S("tooltip__item")} key={`tag-${index}`}>
                 <div className={S("tooltip__label")}>
                   { tag.label }
                 </div>

@@ -118,19 +118,26 @@ class TagStore {
 
     const filter = (this.filter || "").toLowerCase();
 
-    return tracks
-      .map(track =>
-        Object.values(this.rootStore.trackStore.TrackTags(track.trackId) || {})
+    let total = 0;
+    const tags = tracks
+      .map(track => {
+        const trackTags = Object.values(this.rootStore.trackStore.TrackTags(track.trackId) || {})
           .filter(tag =>
             (!startTime || tag.startTime >= startTime) &&
             (!endTime || tag.endTime <= endTime) &&
             (!filter || (tag.textList?.join(" ") || JSON.stringify(tag.content || {})).toLowerCase().includes(filter))
           )
-          .sort((a, b) => a.startTime < b.startTime ? -1 : 1)
-          .slice(0, limit))
+          .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
+
+        total += trackTags.length;
+
+        return trackTags.slice(0, limit);
+      })
       .flat()
       .sort((a, b) => a.startTime < b.startTime ? -1 : 1)
       .slice(0, limit);
+
+    return { tags, total };
   }
 
   SetTags(trackId, tags=[], time) {

@@ -7,37 +7,3 @@
   position: absolute;
   z-index: 1;
 }
-
-.tooltip {
-  display: grid;
-  gap: 10px;
-
-  &__item {
-    font-size: 14px;
-    font-weight: 500;
-  }
-
-  &__label {
-    color: var(--text-secondary);
-    font-size: 12px;
-    font-weight: 600;
-    margin-bottom: 5px;
-  }
-
-  &__content {
-    max-height: 200px;
-    max-width: 500px;
-    overflow: hidden;
-
-    pre {
-      max-width: 500px;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-
-    p {
-      max-width: 500px;
-      white-space: pre-wrap;
-    }
-  }
-}

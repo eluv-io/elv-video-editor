@@ -96,6 +96,7 @@ const PageControls = observer(({currentPage, pages, maxSpread=15, SetPage}) => {
 const SearchBar = observer(({filter, setFilter, delay=500}) => {
   const [updateTimeout, setUpdateTimeout] = useState(undefined);
   const [input, setInput] = useState(filter);
+  // eslint-disable-next-line no-unused-vars
   const [_, navigate] = useLocation();
 
   useEffect(() => {
