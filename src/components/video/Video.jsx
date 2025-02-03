@@ -2,7 +2,7 @@ import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
 import React, {useState, useEffect} from "react";
 import {observer} from "mobx-react";
-import {rootStore, tracksStore, videoStore} from "@/stores";
+import {rootStore, trackStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
 import {Loader} from "@/components/common/Common";
 import HLSPlayer from "hls.js";
@@ -83,7 +83,7 @@ const Video = observer(() => {
     <div id="video-container" className={S("video-container", videoStore.fullScreen ? "video-container--fullscreen" : "")}>
       <div className={S("video-wrapper")}>
         {
-          !video || !tracksStore.showOverlay ? null :
+          !video || !trackStore.showOverlay ? null :
             <Overlay element={video} />
         }
         <video

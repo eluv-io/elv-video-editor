@@ -5,7 +5,7 @@ import {observer} from "mobx-react";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {IconButton, Input, Linkish, LoaderImage} from "@/components/common/Common.jsx";
 import {useDebouncedState} from "@mantine/hooks";
-import {assetStore, rootStore, tagStore, tracksStore, videoStore} from "@/stores/index.js";
+import {assetStore, rootStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
 import {Tooltip} from "@mantine/core";
 
 import SearchIcon from "@/assets/icons/v2/search.svg";
@@ -120,7 +120,7 @@ const SidebarScrollContent = observer(({watchList=[], children, batchSize=10, Up
     ...watchList,
     videoStore.scaleMax,
     videoStore.scaleMin,
-    tracksStore.tracks.length
+    trackStore.tracks.length
   ]);
 
   useEffect(() => {
@@ -157,7 +157,7 @@ const Tag = observer(({track, tag}) => {
       className={
         S(
           "tag",
-          tracksStore.thumbnailStatus.available ? "tag--thumbnail" : "",
+          trackStore.thumbnailStatus.available ? "tag--thumbnail" : "",
           tagStore.selectedTagIds.includes(tag.tagId) ? "tag--selected" : "",
           tagStore.hoverTags.includes(tag.tagId) ? "tag--hover" : ""
         )
@@ -169,9 +169,9 @@ const Tag = observer(({track, tag}) => {
       />
       <div className={S("tag__left")}>
         {
-          !tracksStore.thumbnailStatus.available ? null :
+          !trackStore.thumbnailStatus.available ? null :
             <img
-              src={tracksStore.ThumbnailImage(tag.startTime)}
+              src={trackStore.ThumbnailImage(tag.startTime)}
               style={{aspectRatio: videoStore.aspectRatio}}
               className={S("tag__image")}
             />
@@ -223,13 +223,13 @@ const Tag = observer(({track, tag}) => {
 const Tags = observer(() => {
   const [tags, setTags] = useState([]);
   let tracks = {};
-  tracksStore.metadataTracks.forEach(track => tracks[track.key] = track);
+  trackStore.metadataTracks.forEach(track => tracks[track.key] = track);
 
   return (
     <SidebarScrollContent
       watchList={[
         tagStore.filter,
-        Object.keys(tracksStore.selectedTracks).length
+        Object.keys(trackStore.selectedTracks).length
       ]}
       className={S("tags")}
       Update={limit =>
@@ -304,7 +304,7 @@ export const TagSidePanel = observer(() => {
     <div className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
         <SidebarFilter store={tagStore} label="Search within tags" />
-        <TrackSelection store={tracksStore} />
+        <TrackSelection store={trackStore} />
         <Tags />
       </div>
     </div>

@@ -5,7 +5,7 @@ import TrackCanvas from "./TrackCanvas";
 import {observer} from "mobx-react";
 import Fraction from "fraction.js";
 import {reaction, toJS} from "mobx";
-import {tracksStore, videoStore, tagStore} from "@/stores/index.js";
+import {trackStore, videoStore, tagStore} from "@/stores/index.js";
 
 import {CreateModuleClassMatcher} from "@/utils/Utils";
 import {Tooltip} from "@mantine/core";
@@ -30,7 +30,7 @@ const TimeAt = ({canvas, clientX}) => {
 };
 
 const Search = ({trackId, time}) => {
-  return tracksStore.TrackTagIntervalTree(trackId).search(time, time);
+  return trackStore.TrackTagIntervalTree(trackId).search(time, time);
 };
 
 const Click = ({canvas, clientX, trackId}) => {
@@ -41,10 +41,13 @@ const Click = ({canvas, clientX, trackId}) => {
 };
 
 const Hover = ({canvas, clientX, trackId}) => {
-  const time = TimeAt({canvas, clientX});
-  const tags = Search({trackId, time});
+  // All tags within 1 pixel of current position
+  const tags = [-1, 0, 1]
+    .map(offset => Search({trackId, time: TimeAt({canvas, clientX: clientX + offset})}))
+    .flat()
+    .filter((v, i, s) => s.indexOf(v) === i);
 
-  tagStore.SetHoverTags(tags, trackId, videoStore.TimeToSMPTE(time));
+  tagStore.SetHoverTags(tags, trackId, videoStore.TimeToSMPTE(TimeAt({canvas, clientX})));
 };
 
 const ClearHover = () => {
@@ -54,7 +57,7 @@ const ClearHover = () => {
 
 const InitializeTrackReactions = ({track, worker}) => {
   // Update less often when there are many tags to improve performance
-  //const delayFactor = Math.max(1, Math.log10(tracksStore.totalTags));
+  //const delayFactor = Math.max(1, Math.log10(trackStore.totalTags));
   const delayFactor = 1;
 
   let reactionDisposals = [];
@@ -69,7 +72,7 @@ const InitializeTrackReactions = ({track, worker}) => {
         worker.postMessage({
           operation: "SetTags",
           trackId: track.trackId,
-          tags: toJS(tracksStore.TrackTags(track.trackId))
+          tags: toJS(trackStore.TrackTags(track.trackId))
         });
       },
       {delay: 25 * delayFactor}
@@ -156,7 +159,7 @@ const InitializeTrackReactions = ({track, worker}) => {
       }),
       () => {
         const currentActiveTagIds = toJS(
-          tracksStore.TrackTagIntervalTree(track.trackId)
+          trackStore.TrackTagIntervalTree(track.trackId)
             .search(videoStore.currentTime, videoStore.currentTime)
         ).sort();
 
@@ -188,7 +191,7 @@ const TooltipOverlay = observer(({trackId, ...props}) => {
     const filter = formatString(tagStore.filter);
 
     tags = tagStore.hoverTags.map(tagId => {
-      const tag = tracksStore.TrackTags(trackId)[tagId];
+      const tag = trackStore.TrackTags(trackId)[tagId];
 
       if(!tag) {
         return null;
@@ -272,7 +275,7 @@ const Track = observer(({track, noActive}) => {
       color: toJS(track.color),
       width: canvasDimensions.width,
       height: canvasDimensions.height,
-      tags: toJS(tracksStore.TrackTags(track.trackId)),
+      tags: toJS(trackStore.TrackTags(track.trackId)),
       noActive,
       scale: {
         scale: 100,

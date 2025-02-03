@@ -4,7 +4,7 @@ import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react";
 import {reaction} from "mobx";
 import ResizeObserver from "resize-observer-polyfill";
-import {overlayStore, tracksStore, videoStore} from "@/stores/index.js";
+import {overlayStore, trackStore, videoStore} from "@/stores/index.js";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Tooltip} from "@mantine/core";
 
@@ -63,7 +63,7 @@ const Tags = () => {
   if(Object.keys(tags).length === 0) { return []; }
 
   let activeTags = [];
-  tracksStore.tracks
+  trackStore.tracks
     .filter(track => track.trackType === "metadata")
     .forEach(track => {
       if(!overlayStore.visibleOverlayTracks[track.key]) { return; }

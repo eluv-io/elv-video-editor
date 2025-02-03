@@ -2,7 +2,7 @@ import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
 
 import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react";
-import {rootStore, tracksStore, videoStore} from "@/stores";
+import {rootStore, trackStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
 import {IconButton, Input, SwitchInput} from "@/components/common/Common";
 import MarkedSlider from "@/components/common/MarkedSlider";
@@ -107,28 +107,28 @@ const TimelineBottomBar = observer(() => {
       <div className={S("toolbar__separator")}/>
       <SwitchInput
         label="Show Thumbnails"
-        checked={tracksStore.showThumbnails}
-        onChange={event => tracksStore.ToggleTrackType({type: "Thumbnails", visible: event.currentTarget.checked})}
+        checked={trackStore.showThumbnails}
+        onChange={event => trackStore.ToggleTrackType({type: "Thumbnails", visible: event.currentTarget.checked})}
       />
       <SwitchInput
         label="Show Tags"
-        checked={tracksStore.showTags}
-        onChange={event => tracksStore.ToggleTrackType({type: "Tags", visible: event.currentTarget.checked})}
+        checked={trackStore.showTags}
+        onChange={event => trackStore.ToggleTrackType({type: "Tags", visible: event.currentTarget.checked})}
       />
       <SwitchInput
         label="Show Bounding Boxes"
-        checked={tracksStore.showOverlay}
-        onChange={event => tracksStore.ToggleTrackType({type: "Overlay", visible: event.currentTarget.checked})}
+        checked={trackStore.showOverlay}
+        onChange={event => trackStore.ToggleTrackType({type: "Overlay", visible: event.currentTarget.checked})}
       />
       <SwitchInput
         label="Show Segments"
-        checked={tracksStore.showSegments}
-        onChange={event => tracksStore.ToggleTrackType({type: "Segments", visible: event.currentTarget.checked})}
+        checked={trackStore.showSegments}
+        onChange={event => trackStore.ToggleTrackType({type: "Segments", visible: event.currentTarget.checked})}
       />
       <SwitchInput
         label="Show Audio"
-        checked={tracksStore.showAudio}
-        onChange={event => tracksStore.ToggleTrackType({type: "Audio", visible: event.currentTarget.checked})}
+        checked={trackStore.showAudio}
+        onChange={event => trackStore.ToggleTrackType({type: "Audio", visible: event.currentTarget.checked})}
       />
       <div className={S("toolbar__spacer")}/>
     </div>
@@ -259,26 +259,26 @@ const TimelineSection = observer(() => {
   const timelineRef = useRef(null);
 
   let tracks = [];
-  if(tracksStore.showTags) {
-    tracks = tracksStore.metadataTracks
+  if(trackStore.showTags) {
+    tracks = trackStore.metadataTracks
       .sort((a, b) => (a.label > b.label ? 1 : -1));
   }
 
-  if(tracksStore.showSegments) {
+  if(trackStore.showSegments) {
     tracks = [
       ...tracks,
       ...(
-        tracksStore.tracks
+        trackStore.tracks
           .filter(track => track.trackType === "segments").slice()
           .sort((a, b) => (a.label > b.label ? 1 : -1))
       )
     ];
   }
 
-  if(tracksStore.showAudio) {
+  if(trackStore.showAudio) {
     tracks = [
       ...tracks,
-      ...tracksStore.audioTracks
+      ...trackStore.audioTracks
     ];
   }
 
@@ -353,7 +353,7 @@ const TimelineSection = observer(() => {
       >
         <TimelineSeekBar hoverSeek={hoverSeek} />
         {
-          !videoStore.initialized || !tracksStore.thumbnailStatus.loaded || !tracksStore.showThumbnails ? null :
+          !videoStore.initialized || !trackStore.thumbnailStatus.loaded || !trackStore.showThumbnails ? null :
             <div className={S("timeline-row")}>
               <div className={S("timeline-row__label")}>
                 Thumbnails
@@ -369,8 +369,8 @@ const TimelineSection = observer(() => {
               key={`track-${track.trackId || i}`}
               style={
                 track.trackType !== "metadata" ||
-                !tracksStore.tracksSelected ||
-                tracksStore.selectedTracks[track.key] ?
+                !trackStore.tracksSelected ||
+                trackStore.selectedTracks[track.key] ?
                   {} :
                   {display: "none"}
               }

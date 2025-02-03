@@ -3,7 +3,7 @@ import TrackStyles from "@/assets/stylesheets/modules/track.module.scss";
 import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-import {videoStore, tracksStore} from "@/stores/index.js";
+import {videoStore, trackStore} from "@/stores/index.js";
 import {Button, Tooltip, Text, Progress} from "@mantine/core";
 import {modals} from "@mantine/modals";
 import {AsyncButton} from "@/components/common/Common.jsx";
@@ -12,13 +12,13 @@ const S = CreateModuleClassMatcher(TrackStyles);
 
 const ThumbnailCreationTrack = observer(() => {
   let content;
-  switch(tracksStore.thumbnailStatus?.status?.state) {
+  switch(trackStore.thumbnailStatus?.status?.state) {
     case "started":
     case "running":
       content = (
         <div className={S("thumbnail-creation-track__status")}>
           <div>Generating Thumbnails...</div>
-          <Progress w={200} value={tracksStore.thumbnailStatus?.status?.progress || 0} max={100}/>
+          <Progress w={200} value={trackStore.thumbnailStatus?.status?.progress || 0} max={100}/>
         </div>
       );
       break;
@@ -47,7 +47,7 @@ const ThumbnailCreationTrack = observer(() => {
                 })
               )) { return; }
 
-              await tracksStore.ThumbnailGenerationStatus({finalize: true});
+              await trackStore.ThumbnailGenerationStatus({finalize: true});
               await new Promise(resolve => setTimeout(resolve, 2000));
               window.location.reload();
 
@@ -71,7 +71,7 @@ const ThumbnailCreationTrack = observer(() => {
               centered: true,
               children: <Text fz="sm">Are you sure you want to generate thumbnails for this content? It should take about 30 seconds to several minutes, depending on the content</Text>,
               labels: { confirm: "Generate Thumbnails", cancel: "Cancel" },
-              onConfirm: () => tracksStore.GenerateVideoThumbnails()
+              onConfirm: () => trackStore.GenerateVideoThumbnails()
             })
           }
         >
@@ -81,16 +81,16 @@ const ThumbnailCreationTrack = observer(() => {
   }
 
   useEffect(() => {
-    if(!["running", "started"].includes(tracksStore.thumbnailStatus?.status?.state)) {
+    if(!["running", "started"].includes(trackStore.thumbnailStatus?.status?.state)) {
       return;
     }
 
     const statusInterval = setInterval(() => {
-      tracksStore.ThumbnailGenerationStatus();
+      trackStore.ThumbnailGenerationStatus();
     }, 3000);
 
     return () => clearInterval(statusInterval);
-  }, [tracksStore.thumbnailStatus?.status?.state]);
+  }, [trackStore.thumbnailStatus?.status?.state]);
 
   return (
     <div className={S("track-container", "thumbnail-creation-track")}>
@@ -118,7 +118,7 @@ const ThumbnailTrack = observer(() => {
     return () => resizeObserver?.disconnect();
   }, [ref]);
 
-  if(!tracksStore.thumbnailStatus.available) {
+  if(!trackStore.thumbnailStatus.available) {
     return <ThumbnailCreationTrack />;
   }
 
@@ -147,7 +147,7 @@ const ThumbnailTrack = observer(() => {
           const dimensions = event.currentTarget.getBoundingClientRect();
           const progress = videoStore.scaleMin + ((event.clientX - dimensions.left) / dimensions.width) * videoStore.scaleMagnitude;
 
-          setHoverThumbnail(tracksStore.ThumbnailImage(progress * videoStore.duration / 100));
+          setHoverThumbnail(trackStore.ThumbnailImage(progress * videoStore.duration / 100));
         }}
         onMouseLeave={() => setHoverThumbnail(undefined)}
         onClick={event => {
@@ -170,7 +170,7 @@ const ThumbnailTrack = observer(() => {
 
               return (
                 <img
-                  src={tracksStore.ThumbnailImage(startTime)}
+                  src={trackStore.ThumbnailImage(startTime)}
                   alt="Thumbnail"
                   key={`thumbnail-${index}`}
                   style={{

@@ -5,7 +5,7 @@ import IntervalTree from "node-interval-tree";
 import {Parser as HLSParser} from "m3u8-parser";
 import UrlJoin from "url-join";
 import {Utils} from "@eluvio/elv-client-js";
-import {tracksStore} from "@/stores/index.js";
+import {trackStore} from "@/stores/index.js";
 
 /*
  * Track Types:
@@ -693,7 +693,7 @@ class TrackStore {
   ThumbnailImage(time) {
     if(!this.thumbnailStatus.available) { return; }
 
-    let thumbnailIndex = tracksStore.intervalTrees?.thumbnails?.search(time, time + 10)[0];
+    let thumbnailIndex = trackStore.intervalTrees?.thumbnails?.search(time, time + 10)[0];
     const tag = this.thumbnails?.[thumbnailIndex?.toString()];
 
     if(!tag) { return; }

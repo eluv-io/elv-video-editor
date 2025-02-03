@@ -1,4 +1,4 @@
-// TODO: Rename tracksstore
+// TODO: Rename trackStore
 
 import { configure, runInAction, makeAutoObservable } from "mobx";
 import AssetStore from "@/stores/AssetStore.js";
@@ -110,6 +110,6 @@ export const tagStore = rootStore.tagStore;
 export const keyboardControlsStore = rootStore.keyboardControlStore;
 export const browserStore = rootStore.browserStore;
 export const overlayStore = rootStore.overlayStore;
-export const tracksStore = rootStore.trackStore;
+export const trackStore = rootStore.trackStore;
 export const videoStore = rootStore.videoStore;
 export const assetStore = rootStore.assetStore;
