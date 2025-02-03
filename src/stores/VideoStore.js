@@ -25,6 +25,7 @@ class VideoStore {
   loading = false;
   initialized = false;
   isVideo = false;
+  hasAssets = false;
   ready = false;
 
   consecutiveSegmentErrors = 0;
@@ -107,7 +108,12 @@ class VideoStore {
   }
 
   constructor(rootStore) {
-    makeAutoObservable(this);
+    makeAutoObservable(
+      this,
+      {
+        metadata: false
+      }
+    );
 
     this.rootStore = rootStore;
 
@@ -118,6 +124,7 @@ class VideoStore {
     this.loading = true;
     this.initialized = false;
     this.isVideo = false;
+    this.hasAssets = false;
 
     this.video = undefined;
     this.player = undefined;
@@ -209,7 +216,6 @@ class VideoStore {
           "public/description",
           "offerings",
           "video_tags",
-          "files",
           "mime_types",
           "assets"
         ]
@@ -246,9 +252,12 @@ class VideoStore {
 
       this.metadata = videoObject.metadata;
       this.isVideo = videoObject.isVideo;
+      this.hasAssets = Object.keys((videoObject.metadata || {}).assets || {}).length > 0;
+
 
       if(!this.isVideo) {
         this.initialized = true;
+        this.ready = true;
       } else {
         this.availableOfferings = yield this.rootStore.client.AvailableOfferings({
           versionHash: videoObject.versionHash
@@ -991,19 +1000,6 @@ class VideoStore {
         videoContainer.msRequestFullscreen();
       }
     }
-  }
-
-  AssetLink(assetKey, height) {
-    const filePath = this.metadata.assets[assetKey].file["/"].split("/files/").slice(1).join("/");
-
-    const url = new URL(this.baseStateChannelUrl);
-    url.pathname = UrlJoin(url.pathname, "rep", "thumbnail", "files", filePath);
-
-    if(height) {
-      url.searchParams.set("height", height);
-    }
-
-    return url.toString();
   }
 
   SaveFrame() {

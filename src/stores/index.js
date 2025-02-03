@@ -1,16 +1,19 @@
+// TODO: Rename tracksstore
+
 import { configure, runInAction, makeAutoObservable } from "mobx";
-import EditStore from "./EditStore";
-import TagStore from "./TagStore.js";
-import KeyboardControlStore from "./KeyboardControlsStore";
+import AssetStore from "@/stores/AssetStore.js";
 import BrowserStore from "./BrowserStore";
+import EditStore from "./EditStore";
+import KeyboardControlStore from "./KeyboardControlsStore";
 import OverlayStore from "./OverlayStore";
+import TagStore from "./TagStore.js";
 import TrackStore from "./TrackStore";
 import VideoStore from "./VideoStore";
 
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
 
 if(window.location.hash) {
-  const path = `/${window.location.hash.replace("#", "")}`;
+  const path = `/${window.location.hash.replace("#", "")}`.replace("//", "/");
   const url = new URL(window.location.href);
   url.hash = "";
   url.pathname = path;
@@ -39,6 +42,7 @@ class RootStore {
     this.overlayStore = new OverlayStore(this);
     this.trackStore = new TrackStore(this);
     this.videoStore = new VideoStore(this);
+    this.assetStore = new AssetStore(this);
 
     this.InitializeClient();
 
@@ -75,7 +79,7 @@ class RootStore {
       client.SendMessage({
         options: {
           operation: "SetFramePath",
-          path: "/" + window.location.pathname
+          path: window.location.pathname
         },
         noResponse: true
       });
@@ -86,7 +90,7 @@ class RootStore {
         page = window.location.pathname;
         UpdatePage();
       }
-    }, 500);
+    }, 1000);
   }
 
   SetSidePanelDimensions(dimensions) {
@@ -108,3 +112,4 @@ export const browserStore = rootStore.browserStore;
 export const overlayStore = rootStore.overlayStore;
 export const tracksStore = rootStore.trackStore;
 export const videoStore = rootStore.videoStore;
+export const assetStore = rootStore.assetStore;

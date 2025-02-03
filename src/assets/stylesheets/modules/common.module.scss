@@ -3,6 +3,20 @@
   to { transform: rotate(360deg); }
 }
 
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 .spinner {
   --spinner-width: 5px;
   --spinner-color: #FFF;
@@ -28,6 +42,38 @@
 
   &:global {
     animation: 0.5s fadein ease;
+  }
+}
+
+.lazy-image {
+  &__background {
+    /* stylelint-disable-next-line no-important */
+    animation: gradient 15s ease infinite!important;
+    backdrop-filter: blur(20px);
+    background: linear-gradient(-55deg, #fff, #617d91, #354b54, #000);
+    /* stylelint-disable-next-line no-important */
+    background-size: 1000% 1000%!important;
+    display: block;
+    max-width: 100%;
+    opacity: 0;
+    overflow: hidden;
+
+    &--visible {
+      /* stylelint-disable-next-line no-important */
+      opacity: 0.5!important;
+    }
+  }
+
+  &__loader-image {
+    display: block;
+    /* stylelint-disable-next-line no-important */
+    height: 2px!important;
+    /* stylelint-disable-next-line no-important */
+    opacity: 0!important;
+    position: absolute;
+    user-select: none;
+    /* stylelint-disable-next-line no-important */
+    width: 2px!important;
   }
 }
 

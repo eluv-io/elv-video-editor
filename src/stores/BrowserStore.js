@@ -165,7 +165,7 @@ class BrowserStore {
   LookupContent = flow(function * (contentId) {
     contentId = contentId.replace(/ /g, "");
 
-    if(!contentId) { return; }
+    if(!contentId) { return {}; }
 
     try {
       const client = this.rootStore.client;
@@ -202,11 +202,9 @@ class BrowserStore {
 
       switch(accessType) {
         case "library":
-          this.SetLibraryId(libraryId);
-          return true;
+          return { libraryId };
         case "object":
-          yield this.SelectVideo({libraryId, objectId, versionHash});
-          return true;
+          return { libraryId, objectId, versionHash };
         default:
           // eslint-disable-next-line no-console
           console.error("Invalid content:", contentId, accessType);
@@ -216,9 +214,9 @@ class BrowserStore {
       console.error("Failed to look up ID:");
       // eslint-disable-next-line no-console
       console.error(error);
-
-      return false;
     }
+
+    return {};
   });
 }
 

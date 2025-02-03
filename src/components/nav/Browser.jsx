@@ -15,7 +15,7 @@ import FirstPageIcon from "@/assets/icons/DoubleBackward.svg";
 import LastPageIcon from "@/assets/icons/DoubleForward.svg";
 import PageForwardIcon from "@/assets/icons/Forward.svg";
 import PageBackIcon from "@/assets/icons/Backward.svg";
-import {useParams} from "wouter";
+import {useLocation, useParams} from "wouter";
 import UrlJoin from "url-join";
 
 
@@ -96,19 +96,21 @@ const PageControls = observer(({currentPage, pages, maxSpread=15, SetPage}) => {
 const SearchBar = observer(({filter, setFilter, delay=500}) => {
   const [updateTimeout, setUpdateTimeout] = useState(undefined);
   const [input, setInput] = useState(filter);
+  const [_, navigate] = useLocation();
 
   useEffect(() => {
     clearTimeout(updateTimeout);
 
     setUpdateTimeout(
-      setTimeout(() => {
-        if(["ilib", "iq__", "hq__", "0x"].find(prefix => input.startsWith(prefix))) {
-          browserStore.LookupContent(input)
-            .then(result => {
-              if(!result) {
-                setFilter(input);
-              }
-            });
+      setTimeout(async () => {
+        if(["ilib", "iq__", "hq__", "0x"].find(prefix => input.trim().startsWith(prefix))) {
+          const result = await browserStore.LookupContent(input);
+
+          if(result.objectId) {
+            navigate(`/${result.libraryId}/${result.objectId}`);
+          } else if(result.libraryId) {
+            navigate(`/${result.libraryId}`);
+          }
         } else {
           setFilter(input);
         }

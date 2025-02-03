@@ -3,30 +3,32 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-import {IconButton, Input} from "@/components/common/Common.jsx";
+import {IconButton, Input, Linkish, LoaderImage} from "@/components/common/Common.jsx";
 import {useDebouncedState} from "@mantine/hooks";
-import {rootStore, tagStore, tracksStore, videoStore} from "@/stores/index.js";
+import {assetStore, rootStore, tagStore, tracksStore, videoStore} from "@/stores/index.js";
 import {Tooltip} from "@mantine/core";
 
 import SearchIcon from "@/assets/icons/v2/search.svg";
 import PlayIcon from "@/assets/icons/Play.svg";
+import UrlJoin from "url-join";
+import {useParams} from "wouter";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
-const TagSearch = observer(() => {
-  const [filter, setFilter] = useDebouncedState(tagStore.filter, 100);
+const SidebarFilter = observer(({store, label}) => {
+  const [filter, setFilter] = useDebouncedState(store.filter, 100);
 
   useEffect(() => {
-    tagStore.SetFilter(filter);
+    store.SetFilter(filter);
   }, [filter]);
 
   return (
     <div className={S("search")}>
       <Input
-        placeholder="Search within tags"
+        placeholder={label}
         defaultValue={filter}
         onChange={event => setFilter(event.currentTarget.value)}
-        aria-label="Search within tags"
+        aria-label={label}
         className={S("search__input")}
         rightIcon={SearchIcon}
       />
@@ -34,7 +36,7 @@ const TagSearch = observer(() => {
   );
 });
 
-const Tracks = observer(() => {
+const TrackSelection = observer(({store}) => {
   const ref = useRef(null);
   const [contentHeight, setContentHeight] = useState(0);
   const [hovering, setHovering] = useDebouncedState(false, 250);
@@ -65,6 +67,8 @@ const Tracks = observer(() => {
   const willScroll = contentHeight > 90;
   const willScrollExpanded = contentHeight > rootStore.sidePanelDimensions.height * 0.4;
 
+  const tracks = store.metadataTracks || store.assetTracks;
+
   return (
     <div
       style={{"--content-height": `${contentHeight}px`}}
@@ -78,11 +82,11 @@ const Tracks = observer(() => {
       }
       <div ref={ref} className={S("tracks__content")}>
         {
-          tracksStore.metadataTracks.map(track =>
+          tracks.map(track =>
             <button
               key={`track-${track.key}`}
-              onClick={() => tracksStore.ToggleTrackSelected(track.key)}
-              className={S("track", tracksStore.selectedTracks[track.key] ? "track--selected" : "")}
+              onClick={() => store.ToggleTrackSelected(track.key)}
+              className={S("track", store.selectedTracks[track.key] ? "track--selected" : "")}
             >
               <div
                 style={{backgroundColor: `rgb(${track.color.r} ${track.color.g} ${track.color.b}`}}
@@ -96,6 +100,51 @@ const Tracks = observer(() => {
     </div>
   );
 });
+
+// Infinite scroll
+const SidebarScrollContent = observer(({watchList=[], children, batchSize=10, Update, className=""}) => {
+  const ref = useRef(null);
+  const [update, setUpdate] = useDebouncedState(0, 250);
+  const [limit, setLimit] = useDebouncedState(batchSize, 250);
+
+  useEffect(() => {
+    // Reset limit when tag content changes
+    setLimit(batchSize);
+
+    if(ref.current) {
+      ref.current.scrollTop = 0;
+    }
+
+    setUpdate(update + 1);
+  }, [
+    ...watchList,
+    videoStore.scaleMax,
+    videoStore.scaleMin,
+    tracksStore.tracks.length
+  ]);
+
+  useEffect(() => {
+    Update(limit);
+  }, [update]);
+
+  return (
+    <div
+      ref={ref}
+      onScroll={event => {
+        if(event.currentTarget.scrollTop + event.currentTarget.offsetHeight > event.currentTarget.scrollHeight * 0.86) {
+          setLimit(limit + batchSize);
+          setUpdate(update + 1);
+        }
+      }}
+      className={className}
+    >
+      { children }
+    </div>
+  );
+});
+
+
+/* Metadata tags */
 
 const Tag = observer(({track, tag}) => {
   const color = track.color;
@@ -172,85 +221,104 @@ const Tag = observer(({track, tag}) => {
 });
 
 const Tags = observer(() => {
-  const ref = useRef(null);
   const [tags, setTags] = useState([]);
-  const [update, setUpdate] = useDebouncedState(0, 250);
-  const [limit, setLimit] = useDebouncedState(100, 250);
-
-  useEffect(() => {
-    // Reset limit when tag content changes
-    setLimit(100);
-
-    if(ref.current) {
-      ref.current.scrollTop = 0;
-    }
-
-    setUpdate(update + 1);
-  }, [
-    tagStore.filter,
-    Object.keys(tracksStore.selectedTracks).length,
-    videoStore.scaleMax,
-    videoStore.scaleMin,
-    tracksStore.tracks.length
-  ]);
-
-  useEffect(() => {
-    setTags(
-      tagStore.Tags({startFrame: videoStore.scaleMinFrame, endFrame: videoStore.scaleMaxFrame, limit})
-    );
-  }, [update]);
-
   let tracks = {};
   tracksStore.metadataTracks.forEach(track => tracks[track.key] = track);
 
   return (
-    <div
-      ref={ref}
-      onScroll={event => {
-        if(event.currentTarget.scrollTop > event.currentTarget.scrollHeight * 0.86) {
-          setLimit(limit + 100);
-          setUpdate(update + 1);
-        }
-      }}
+    <SidebarScrollContent
+      watchList={[
+        tagStore.filter,
+        Object.keys(tracksStore.selectedTracks).length
+      ]}
       className={S("tags")}
+      Update={limit =>
+        setTags(
+          tagStore.Tags({
+            startFrame: videoStore.scaleMinFrame,
+            endFrame: videoStore.scaleMaxFrame,
+            limit
+          })
+        )
+      }
     >
       { tags.map(tag => <Tag key={`tag-${tag.tagId}`} track={tracks[tag.trackKey]} tag={tag} />) }
-    </div>
+    </SidebarScrollContent>
   );
 });
 
 
-const SidePanel = observer(() => {
-  const ref = useRef(null);
+/* Assets */
 
-  useEffect(() => {
-    if(!ref?.current) { return; }
+const Asset = observer(({asset, selected}) => {
+  return (
+    <Linkish
+      to={UrlJoin("/assets", asset.key)}
+      className={S("asset", selected ? "asset--selected" : "")}
+    >
+      <LoaderImage
+        lazy={false}
+        loaderDelay={0}
+        loaderAspectRatio={1}
+        src={assetStore.AssetLink(asset.key, {width: 400})}
+        className={S("asset__image")}
+      />
+      <div className={S("asset__name")}>
+        { asset.key }
+      </div>
+    </Linkish>
+  );
+});
 
-    const resizeObserver = new ResizeObserver(() =>
-      rootStore.SetSidePanelDimensions(ref.current.getBoundingClientRect())
-    );
-
-    resizeObserver.observe(ref.current);
-
-    return () => resizeObserver?.disconnect();
-  }, [ref]);
+const AssetList = observer(() => {
+  const [assets, setAssets] = useState([]);
+  const { assetKey } = useParams();
 
   return (
-    <div
-      ref={ref}
-      style={{
-        "--panel-height": `${rootStore.sidePanelDimensions.height}px`,
-        "--panel-width": `${rootStore.sidePanelDimensions.width}px`
-      }}
-      className={S("content-block", "side-panel-section")}
+    <SidebarScrollContent
+      watchList={[
+        assetStore.filter,
+        Object.keys(assetStore.selectedTracks).length
+      ]}
+      batchSize={30}
+      className={S("assets")}
+      Update={limit =>
+        setAssets(assetStore.filteredAssetList.slice(0, limit))
+      }
     >
+      {
+        assets.map(asset =>
+          <Asset
+            selected={asset.key === assetKey}
+            asset={asset}
+            key={asset.key}
+          />
+        )
+      }
+    </SidebarScrollContent>
+  );
+});
+
+export const TagSidePanel = observer(() => {
+  return (
+    <div className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
-        <TagSearch />
-        <Tracks />
+        <SidebarFilter store={tagStore} label="Search within tags" />
+        <TrackSelection store={tracksStore} />
         <Tags />
       </div>
     </div>
   );
 });
 
-export default SidePanel;
+export const AssetSidePanel = observer(() => {
+  return (
+    <div className={S("content-block", "side-panel-section")}>
+      <div className={S("side-panel")}>
+        <SidebarFilter store={assetStore} label="Search assets" />
+        <TrackSelection store={assetStore} />
+        <AssetList />
+      </div>
+    </div>
+  );
+});

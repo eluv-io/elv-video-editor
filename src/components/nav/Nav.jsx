@@ -43,7 +43,7 @@ const Nav = observer(() => {
     {
       label: "Assets",
       key: "assets",
-      disabled: !objectId,
+      disabled: !objectId || (videoStore.ready && !videoStore.hasAssets),
       to: !objectId ? "/" : UrlJoin("/", libraryId, objectId, "assets"),
       icon: AssetIcon,
       active: rootStore.view === "assets"

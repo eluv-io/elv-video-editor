@@ -25,6 +25,81 @@ export const Loader = ({className = "", loaderClassName=""}) => {
   );
 };
 
+export const LoaderImage = observer(({
+  src,
+  alternateSrc,
+  width,
+  loaderHeight,
+  loaderWidth,
+  loaderAspectRatio,
+  lazy=true,
+  showWithoutSource=false,
+  delay=25,
+  loaderDelay=250,
+  setRef,
+  ...props
+}) => {
+  const [loaded, setLoaded] = useState(false);
+  const [showLoader, setShowLoader] = useState(false);
+  const [useAlternateSrc, setUseAlternateSrc] = useState(false);
+
+  useEffect(() => {
+    setLoaded(false);
+    setShowLoader(false);
+
+    setTimeout(() => setShowLoader(true), loaderDelay);
+  }, []);
+
+  if(!src && !showWithoutSource) {
+    return null;
+  }
+
+  if(width) {
+    try {
+      const url = new URL(src);
+      url.searchParams.set("width", width);
+      src = url.toString();
+    } catch(error) { /* empty */ }
+  }
+
+  if(loaded) {
+    return <img ref={setRef} src={(useAlternateSrc && src) || src} {...props} />;
+  }
+
+  return (
+    <>
+      {
+        !src ? null :
+          <img
+            {...props}
+            key={`img-${src}-${props.key || ""}`}
+            className={S("lazy-image__loader-image") + " " + props.className}
+            loading={lazy ? "lazy" : "eager"}
+            src={(useAlternateSrc && alternateSrc) || src}
+            onLoad={() => setTimeout(() => setLoaded(true), delay)}
+            onError={() => {
+              setUseAlternateSrc(true);
+            }}
+          />
+      }
+      {
+        loaded ? null :
+          <object
+            {...props}
+            style={{
+              ...(props.style || {}),
+              ...(loaderWidth ? {width: loaderWidth} : {}),
+              ...(loaderHeight ? {height: loaderHeight} : {}),
+              ...(loaderAspectRatio ? {aspectRatio: loaderAspectRatio} : {})
+            }}
+            key={props.key ? `${props.key}--placeholder` : undefined}
+            className={[S("lazy-image__background", showLoader ? "lazy-image__background--visible" : ""), props.className || ""].join(" ")}
+          />
+      }
+    </>
+  );
+});
+
 // Buttons
 
 export const Linkish = forwardRef(function Linkish({
@@ -34,8 +109,13 @@ export const Linkish = forwardRef(function Linkish({
   rel="noopener",
   onClick,
   disabled,
+  styled=false,
   ...props
 }, ref) {
+  if(styled) {
+    props.className = JoinClassNames("button", props.className || "");
+  }
+
   if(!disabled) {
     if(href) {
       return <a href={href} target={target} rel={rel} onClick={onClick} ref={ref} {...props} />;

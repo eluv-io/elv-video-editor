@@ -31,6 +31,8 @@ const AssetTags = ({asset, highlightTag}) => {
   });
 
   if(highlightTag) {
+    tags = tags.filter(tag => tag === highlightTag);
+
     tags.push({
       ...highlightTag,
       color: { r: 255, g: 255, b: 255}
@@ -230,7 +232,7 @@ const Overlay = observer(({element, asset, highlightTag}) => {
         disabled={hoverTags.length === 0}
         position="top"
         offset={20}
-        withinPortal={false}
+        withinPortal={!!asset}
         label={
           <div className={S("tooltip")}>
             {hoverTags.map((tag) =>

@@ -22,6 +22,17 @@ class TagStore {
     this.rootStore = rootStore;
   }
 
+  get assets() {
+    const assets = this.rootStore.videoStore.metadata?.assets || {};
+
+    return Object.keys(assets)
+      .sort()
+      .map(filename => ({
+        filename,
+        ...assets[filename],
+      }));
+  }
+
   get selectedTag() {
     return this.rootStore.trackStore.TrackTags(this.selectedTagTrackId)[this.selectedTagId];
   }
