@@ -43,7 +43,7 @@ const AssetTags = ({asset, highlightTag}) => {
   if(highlightTag) {
     tags.push({
       ...highlightTag,
-      color: { r: 255, g: 255, b: 255}
+      color: { r: 0, g: 200, b: 0}
     });
   }
 

@@ -15,7 +15,7 @@ import {Tooltip} from "@mantine/core";
 
 const S = CreateModuleClassMatcher(AssetStyles);
 
-const AssetTags = observer(({asset, setHoverTag}) => {
+const AssetTags = observer(({asset, setHoverTag, selectedTag, setSelectedTag}) => {
   if(!asset) {
     return null;
   }
@@ -67,10 +67,15 @@ const AssetTags = observer(({asset, setHoverTag}) => {
                       }
                       key={index}
                     >
-                      <div
+                      <button
+                        onClick={() =>
+                          tag === selectedTag ?
+                            setSelectedTag(undefined) :
+                            setSelectedTag(tag)
+                        }
                         onMouseEnter={() => setHoverTag(tag)}
                         onMouseLeave={() => setHoverTag(undefined)}
-                        className={S("asset-tag")}
+                        className={S("asset-tag", tag === selectedTag ? "asset-tag--selected" : "")}
                       >
                         <div
                           style={{backgroundColor: `rgb(${track.color.r} ${track.color.g} ${track.color.b}`}}
@@ -83,7 +88,7 @@ const AssetTags = observer(({asset, setHoverTag}) => {
                         <div className={S("asset-tag__label")}>
                           {tag.text}
                         </div>
-                      </div>
+                      </button>
                     </Tooltip.Floating>
                   )
                 }
@@ -134,16 +139,28 @@ const AssetContent = observer(({asset, hoverTag}) => {
   );
 });
 
-const AssetDetails = observer(({asset, setHoverTag}) => {
+const AssetDetails = observer(({asset, selectedTag, setSelectedTag, setHoverTag}) => {
   return (
     <div className={S("asset-details")}>
-      <AssetTags asset={asset} setHoverTag={setHoverTag}/>
+      <AssetTags
+        asset={asset}
+        setHoverTag={setHoverTag}
+        selectedTag={selectedTag}
+        setSelectedTag={setSelectedTag}
+      />
+      {
+        !selectedTag ? null :
+          <pre className={S("asset-details__tag-details")}>
+            { selectedTag?.text  }
+          </pre>
+      }
     </div>
   );
 });
 
 const SelectedAsset = observer(() => {
   const {assetKey} = useParams();
+  const [selectedTag, setSelectedTag] = useState(undefined);
   const [hoverTag, setHoverTag] = useState(undefined);
 
   const asset = assetStore.Asset(assetKey);
@@ -161,10 +178,15 @@ const SelectedAsset = observer(() => {
       <PanelView
         isSubpanel
         mainPanelContent={
-          <AssetContent asset={asset} hoverTag={hoverTag} />
+          <AssetContent asset={asset} hoverTag={hoverTag || selectedTag} />
         }
         bottomPanelContent={
-          <AssetDetails asset={asset} setHoverTag={setHoverTag} />
+          <AssetDetails
+            asset={asset}
+            selectedTag={selectedTag}
+            setSelectedTag={setSelectedTag}
+            setHoverTag={setHoverTag}
+          />
         }
       />
     </div>
