@@ -23,7 +23,13 @@ class AssetStore {
   }
 
   get filteredAssetList() {
-    const filter = this.filter.toLowerCase();
+    const filterTerms = (this.filter
+      .toLowerCase()
+      .trim()
+      // Split by space, except in quotes
+      .match(/(".*?"|[^"\s]+)+(?=\s*|\s*$)/g) || [])
+      // Remove quotes from start and end
+      .map(token => token.replace(/^"(.+)"$/, "$1"));
 
     const selectedTracks = Object.keys(this.selectedTracks);
     return this.assetList
@@ -38,14 +44,16 @@ class AssetStore {
             )
       )
       .filter(asset =>
-        asset.key.toLowerCase().includes(filter) ||
-        (asset.title || "").toLowerCase().includes(filter) ||
-        (
-          asset.image_tags &&
-          Object.keys(asset.image_tags || {}).length > 0 &&
-          Object.keys(asset.image_tags).find(category =>
-            (((asset.image_tags[category] || {}).tags) || [])
-              .find(tag => (tag.text || "").toLowerCase().includes(filter))
+        filterTerms.every(term =>
+          asset.key.toLowerCase().includes(term) ||
+          (asset.title || "").toLowerCase().includes(term) ||
+          (
+            asset.image_tags &&
+            Object.keys(asset.image_tags || {}).length > 0 &&
+            Object.keys(asset.image_tags).find(category =>
+              (((asset.image_tags[category] || {}).tags) || [])
+                .find(tag => (tag.text || "").toLowerCase().includes(term))
+            )
           )
         )
       );

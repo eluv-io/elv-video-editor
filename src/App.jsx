@@ -55,7 +55,7 @@ const ContentRoutes = observer(() => {
         <Assets />
       </Route>
       <Route>
-        <Redirect to={videoStore.isVideo ? "/tags" : "/assets"} />
+        <Redirect to={videoStore.isVideo ? "/tags" : "/assets"} replace />
       </Route>
     </Switch>
   );

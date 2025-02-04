@@ -85,7 +85,7 @@ export const PanelView = observer(({mainPanelContent, sidePanelContent, bottomPa
     window.addEventListener("resize", HandleResize);
 
     return () => window.removeEventListener("resize", HandleResize);
-  }, []);
+  }, [topPanel, contentPanelRef]);
 
   return (
     <>

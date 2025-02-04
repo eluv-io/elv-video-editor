@@ -65,8 +65,8 @@ const TrackSelection = observer(({store}) => {
     }
   }, [ref, hovering]);
 
-  const willScroll = contentHeight > 90;
-  const willScrollExpanded = contentHeight > rootStore.sidePanelDimensions.height * 0.2;
+  const willScroll = contentHeight > 140;
+  const willScrollExpanded = contentHeight > rootStore.sidePanelDimensions.height * 0.3;
 
   const tracks = store.metadataTracks || store.assetTracks;
 
