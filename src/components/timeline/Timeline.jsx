@@ -2,9 +2,9 @@ import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
 
 import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react";
-import {rootStore, trackStore, videoStore} from "@/stores";
+import {keyboardControlsStore, rootStore, trackStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
-import {IconButton, Input, SwitchInput} from "@/components/common/Common";
+import {IconButton, SMPTEInput, SwitchInput} from "@/components/common/Common";
 import MarkedSlider from "@/components/common/MarkedSlider";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
@@ -24,46 +24,14 @@ import Track from "@/components/timeline/Track.jsx";
 import ThumbnailTrack from "@/components/timeline/ThumbnailTrack.jsx";
 import {
   FrameBack10Button,
-  FrameBack1Button, FrameDisplay,
+  FrameBack1Button,
+  FrameDisplay,
   FrameForward10Button,
-  FrameForward1Button, PlaySelectedTagButton
+  FrameForward1Button,
+  PlaySelectedTagButton
 } from "@/components/video/VideoControls.jsx";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
-
-const JumpToSMPTE = function({smpteInput, setSMPTEInput}) {
-  try {
-    const frame = videoStore.SMPTEToFrame(smpteInput);
-    setSMPTEInput(videoStore.FrameToSMPTE(frame));
-    videoStore.Seek(frame);
-  } catch(error) {
-    setSMPTEInput(videoStore.smpte);
-  }
-};
-
-const JumpToDisplay = observer(() => {
-  const [smpteInput, setSMPTEInput] = useState(videoStore.smpte);
-
-  useEffect(() => {
-    setSMPTEInput(videoStore.smpte);
-  }, [videoStore.frame]);
-
-  return (
-    <div className={S("jump-to")}>
-      <label>Jump to</label>
-      <Input
-        w={150}
-        value={smpteInput}
-        disabled={videoStore.playing}
-        monospace
-        aria-label="Jump to SMPTE"
-        onChange={event => setSMPTEInput(event.target.value)}
-        onKeyDown={event => event.key === "Enter" && JumpToSMPTE({smpteInput, setSMPTEInput})}
-        onBlur={() => JumpToSMPTE({smpteInput, setSMPTEInput})}
-      />
-    </div>
-  );
-});
 
 const TimelineTopBar = observer(() => {
   return (
@@ -75,7 +43,15 @@ const TimelineTopBar = observer(() => {
         <IconButton icon={AddUserIcon} label="Add User" onClick={() => {}} />
         <IconButton icon={DownloadIcon} label="Save Video at Current Quality" onClick={() => videoStore.SaveVideo()} />
         <div className={S("toolbar__separator")} />
-        <JumpToDisplay />
+        <div className={S("jump-to")}>
+          <label>Jump to</label>
+          <SMPTEInput
+            label="Jump to"
+            aria-label="Jump to"
+            value={videoStore.smpte}
+            onChange={({frame}) => videoStore.Seek(frame)}
+          />
+        </div>
       </div>
       <div className={S("toolbar__controls-group", "center", "frame-controls")}>
         <FrameBack10Button />
@@ -90,9 +66,17 @@ const TimelineTopBar = observer(() => {
         <IconButton icon={SplitIcon} label="Split" onClick={() => {}} />
         <div className={S("toolbar__separator")} />
         <IconButton icon={ClipInIcon} label="Set Clip In to Current Frame" onClick={() => videoStore.SetClipMark({inFrame: videoStore.frame})} />
-        <Input label="Clip Start" monospace value={videoStore.FrameToSMPTE(videoStore.clipInFrame) || "00:00:00:00"} w={150} onChange={() => {}} />
+        <SMPTEInput
+          label="Clip Start"
+          value={videoStore.FrameToSMPTE(videoStore.clipInFrame) || "00:00:00:00"}
+          onChange={({frame}) => videoStore.SetClipMark({inFrame: frame})}
+        />
         <IconButton icon={ClipOutIcon} label="Set Clip Out to Current Frame" onClick={() => videoStore.SetClipMark({outFrame: videoStore.frame})} />
-        <Input label="Clip End" monospace value={videoStore.FrameToSMPTE(videoStore.clipOutFrame) || "00:00:00:00"} w={150} onChange={() => {}} />
+        <SMPTEInput
+          label="Clip End"
+          value={videoStore.FrameToSMPTE(videoStore.clipOutFrame) || "00:00:00:00"}
+          onChange={({frame}) => videoStore.SetClipMark({outFrame: frame})}
+        />
       </div>
     </div>
   );
@@ -103,7 +87,7 @@ const TimelineBottomBar = observer(() => {
     <div className={S("toolbar", "timeline-section__bottom-bar")}>
       <IconButton icon={UploadIcon} label="Upload" onClick={() => {}}/>
       <IconButton icon={SaveIcon} label="Save Changes" onClick={() => {}}/>
-      <IconButton icon={KeyboardIcon} label="Keyboard Shortcuts" onClick={() => {}}/>
+      <IconButton disabled={!keyboardControlsStore.keyboardControlsActive} icon={KeyboardIcon} label="Keyboard Shortcuts" onClick={() => {}}/>
       <div className={S("toolbar__separator")}/>
       <SwitchInput
         label="Show Thumbnails"
@@ -140,11 +124,19 @@ const TimelineSeekBar = observer(({hoverSeek}) => {
 
   let indicators = [];
   if(videoStore.clipInFrame) {
-    indicators.push({position: 100 * videoStore.clipInFrame / (videoStore.totalFrames || 1), style: "start"});
+    indicators.push({
+      position: 100 * videoStore.clipInFrame / (videoStore.totalFrames || 1),
+      style: "start",
+      connectStart: true
+    });
   }
 
   if(videoStore.clipOutFrame < videoStore.totalFrames - 1) {
-    indicators.push({position: 100 * videoStore.clipOutFrame / (videoStore.totalFrames || 1), style: "end"});
+    indicators.push({
+      position: 100 * videoStore.clipOutFrame / (videoStore.totalFrames || 1),
+      style: "end",
+      connectEnd: true
+    });
   }
 
   if(hoverSeek) {
@@ -176,11 +168,19 @@ const TimelineScaleBar = observer(({hoverSeek}) => {
 
   let indicators = [];
   if(videoStore.clipInFrame) {
-    indicators.push({position: 100 * videoStore.clipInFrame / (videoStore.totalFrames || 1), style: "start"});
+    indicators.push({
+      position: 100 * videoStore.clipInFrame / (videoStore.totalFrames || 1),
+      style: "start",
+      connectStart: true
+    });
   }
 
   if(videoStore.clipOutFrame < videoStore.totalFrames - 1) {
-    indicators.push({position: 100 * videoStore.clipOutFrame / (videoStore.totalFrames || 1), style: "end"});
+    indicators.push({
+      position: 100 * videoStore.clipOutFrame / (videoStore.totalFrames || 1),
+      style: "end",
+      connectEnd: true
+    });
   }
 
   if(hoverSeek) {

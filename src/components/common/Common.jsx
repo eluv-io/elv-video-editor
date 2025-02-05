@@ -6,6 +6,7 @@ import {Button, Select, Switch, TextInput, Tooltip} from "@mantine/core";
 import SVG from "react-inlinesvg";
 import {observer} from "mobx-react";
 import {Link} from "wouter";
+import {videoStore} from "@/stores/index.js";
 
 const S = CreateModuleClassMatcher(CommonStyles);
 
@@ -117,13 +118,16 @@ export const Linkish = forwardRef(function Linkish({
   }
 
   if(!disabled) {
+    // a tags don't have :disabled
     if(href) {
       return <a href={href} target={target} rel={rel} onClick={onClick} ref={ref} {...props} />;
     } else if(to) {
       return <Link href={to} onClick={onClick} ref={ref} {...props} />;
-    } else if(onClick || props.type === "submit") {
-      return <button onClick={onClick} ref={ref} {...props} />;
     }
+  }
+
+  if(onClick || props.type === "submit") {
+    return <button onClick={onClick} ref={ref} {...props} />;
   }
 
   return <div ref={ref} {...props} />;
@@ -263,6 +267,50 @@ export const SelectInput = observer(({label, options=[], autoWidth=true, ...prop
         comboboxProps={{width: "max-content", ...(props.comboboxProps || {})}}
       />
     </Tooltip>
+  );
+});
+
+
+const FormatSMPTE = ({originalValue, smpte, setSMPTEInput}) => {
+  try {
+    const frame = videoStore.SMPTEToFrame(smpte);
+
+    return { frame, smpte };
+  } catch(error) {
+    setSMPTEInput(originalValue);
+    return { frame: videoStore.SMPTEToFrame(originalValue) , smpte: originalValue };
+  }
+};
+
+export const SMPTEInput = observer(({value, onChange, ...props}) => {
+  const [smpteInput, setSMPTEInput] = useState(value);
+
+  useEffect(() => {
+    setSMPTEInput(value);
+  }, [value]);
+
+  return (
+    <Input
+      w={150}
+      value={smpteInput}
+      monospace
+      onChange={event => setSMPTEInput(event.target.value)}
+      onKeyDown={event => {
+        if(event.key === "Enter") {
+          onChange?.(FormatSMPTE({originalValue: value, smpte: smpteInput, setSMPTEInput}));
+        } else if(event.key === "ArrowUp") {
+          const { frame } = FormatSMPTE({originalValue: value, smpte: smpteInput, setSMPTEInput});
+          const newSMPTE = videoStore.FrameToSMPTE(Math.min(frame + 1, videoStore.totalFrames));
+          onChange?.(FormatSMPTE({originalValue: value, smpte: newSMPTE, setSMPTEInput}));
+        } else if(event.key === "ArrowDown") {
+          const { frame } = FormatSMPTE({originalValue: value, smpte: smpteInput, setSMPTEInput});
+          const newSMPTE = videoStore.FrameToSMPTE(Math.max(frame - 1, 0));
+          onChange?.(FormatSMPTE({originalValue: value, smpte: newSMPTE, setSMPTEInput}));
+        }
+      }}
+      onBlur={() => onChange?.(FormatSMPTE({originalValue: value, smpte: smpteInput, setSMPTEInput}))}
+      {...props}
+    />
   );
 });
 

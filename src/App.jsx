@@ -1,6 +1,6 @@
 import {observer} from "mobx-react";
-import React, {useEffect} from "react";
-import {rootStore, videoStore} from "@/stores";
+import React, {useEffect, useRef} from "react";
+import {keyboardControlsStore, rootStore, videoStore} from "@/stores";
 import {Linkish, Loader} from "@/components/common/Common";
 import {Redirect, Route, Switch, useParams, useRoute} from "wouter";
 import Browser from "@/components/nav/Browser";
@@ -49,7 +49,7 @@ const ContentRoutes = observer(() => {
         <Tags />
       </Route>
       <Route path="/clips">
-        { () => <div>Clips</div> }
+        <Tags />
       </Route>
       <Route path="/assets/:assetKey?">
         <Assets />
@@ -62,6 +62,23 @@ const ContentRoutes = observer(() => {
 });
 
 const App = observer(() => {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if(!ref?.current) { return; }
+
+    const SetControlsActive = () => {
+      keyboardControlsStore.ToggleKeyboardControlsActive(
+        ref.current.contains(document.activeElement) &&
+        !["input", "textarea"].includes(document.activeElement?.tagName?.toLowerCase())
+      );
+    };
+
+    document.addEventListener("focusin", SetControlsActive);
+
+    return () => document.removeEventListener("focusin", SetControlsActive);
+  }, [ref]);
+
   if(window.self === window.top) {
     // Not in Core frame - Redirect
     window.location = UrlJoin(EluvioConfiguration.coreUrl, "/", window.location.hash);
@@ -73,7 +90,14 @@ const App = observer(() => {
   }
 
   return (
-    <div className="page-container">
+    <div
+      tabIndex={0}
+      onKeyDown={keyboardControlsStore.HandleInput}
+      onKeyUp={keyboardControlsStore.HandleModifiers}
+      id="page-container"
+      className="page-container"
+      ref={ref}
+    >
       <Nav />
       <div className="content">
         <SetView />

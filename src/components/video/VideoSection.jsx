@@ -1,8 +1,8 @@
 import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
-import React from "react";
+import React, {useEffect} from "react";
 import {observer} from "mobx-react";
-import {videoStore} from "@/stores";
+import {keyboardControlsStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {
   DropFrameControls, FrameRateControls, OfferingControls,
@@ -18,6 +18,12 @@ const S = CreateModuleClassMatcher(VideoStyles);
 
 
 const VideoSection = observer(() => {
+  useEffect(() => {
+    keyboardControlsStore.ToggleKeyboardControls(true);
+
+    return () => keyboardControlsStore.ToggleKeyboardControls(false);
+  }, []);
+
   return (
     <div className={S("content-block", "video-section")}>
       <h1 className={S("video-section__title")}>

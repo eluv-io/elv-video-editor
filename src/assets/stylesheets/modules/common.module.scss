@@ -85,7 +85,7 @@
   min-height: 25px;
   min-width: 25px;
   padding: 2px;
-  transition: color 0.25s ease, background-color 0.1s ease;
+  transition: color 0.25s ease, background-color 0.1s ease, opacity 0.25s ease;
 
   &:hover,
   &--active,
@@ -94,7 +94,7 @@
       &:not(.icon-button--disabled) {
         background: var(--background-active);
         color: var(--text-secondary);
-        transition: color 0.25s ease, background-color 0.3s ease;
+        transition: color 0.25s ease, background-color 0.3s ease, opacity 0.25s ease;
       }
     }
   }
@@ -266,6 +266,7 @@
     &--end {
       border-left: 0;
       border-right: 2px solid var(--slider-indicator-color);
+      margin-right: -2px;
     }
 
     &--circle {
@@ -293,6 +294,18 @@
       margin-left: -8px;
       padding-bottom: calc(var(--slider-height) / 2);
       width: 1rem;
+    }
+  }
+
+  &__connection {
+    background-color: var(--slider-indicator-color);
+    height: var(--slider-height);
+    opacity: 0.1;
+    position: absolute;
+    z-index: 100;
+
+    & + .slider__connection {
+      display: none;
     }
   }
 

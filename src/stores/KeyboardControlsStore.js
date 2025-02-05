@@ -2,6 +2,8 @@ import {makeAutoObservable} from "mobx";
 
 class ControlStore {
   controlMap;
+  keyboardControlsEnabled = false;
+  keyboardControlsActive = false;
   modifiers = {
     alt: false,
     control: false,
@@ -14,7 +16,18 @@ class ControlStore {
 
     this.rootStore = rootStore;
 
+    this.HandleModifiers = this.HandleModifiers.bind(this);
+    this.HandleInput = this.HandleInput.bind(this);
+
     this.InitializeControlMap();
+  }
+
+  ToggleKeyboardControls(enabled) {
+    this.keyboardControlsEnabled = enabled;
+  }
+
+  ToggleKeyboardControlsActive(active) {
+    this.keyboardControlsActive = active;
   }
 
   InitializeControlMap() {
@@ -29,25 +42,27 @@ class ControlStore {
           controlMap[button] = {};
 
           if(controls.action) {
-            controlMap[button].action = controls.action.action;
+            controlMap[button].action = controls.action.action.bind(this);
           }
 
           if(controls.shiftAction) {
-            controlMap[button].shiftAction = controls.shiftAction.action;
+            controlMap[button].shiftAction = controls.shiftAction.action.bind(this);
           }
 
           if(controls.altAction) {
-            controlMap[button].altAction = controls.altAction.action;
+            controlMap[button].altAction = controls.altAction.action.bind(this);
           }
 
           if(controls.controlAction) {
-            controlMap[button].controlAction = controls.controlAction.action;
+            controlMap[button].controlAction = controls.controlAction.action.bind(this);
           }
         });
       });
     });
 
     this.controlMap = controlMap;
+
+    document.addEventListener("focusin", this._ToggleKeyboardControlsActive);
   }
 
   HandleModifiers(event) {
@@ -71,7 +86,10 @@ class ControlStore {
 
   HandleInput(event) {
     // Disable controls when using input element
-    if(document.activeElement && document.activeElement.tagName.toLowerCase() === "input") {
+    if(
+      !this.keyboardControlsEnabled ||
+      ["input", "textarea"].includes(event.target?.tagName?.toLowerCase())
+    ) {
       return;
     }
 
@@ -122,6 +140,10 @@ class ControlStore {
 
   SeekFrames({frames, seconds}) {
     this.rootStore.videoStore.SeekFrames({frames, seconds});
+  }
+
+  SeekProgress(progress) {
+    this.rootStore.videoStore.SeekPercentage(progress);
   }
 
   PlayPause() {
@@ -183,7 +205,7 @@ class ControlStore {
   controls = {
     "Playback": [
       [
-        ["p", " "],
+        ["p", "k", " "],
         {
           action: {
             description: "Play/Pause",
@@ -210,16 +232,7 @@ class ControlStore {
         }
       ],
       [
-        ["-"],
-        {
-          action: {
-            description: "Reduce playback rate by 0.5x",
-            action: () => this.ChangePlaybackRate(-0.5)
-          }
-        }
-      ],
-      [
-        ["["],
+        ["<"],
         {
           action: {
             description: "Reduce playback rate by 0.1x",
@@ -237,20 +250,11 @@ class ControlStore {
         }
       ],
       [
-        ["]"],
+        [">"],
         {
           action: {
             description: "Increase playback rate by 0.1x",
             action: () => this.ChangePlaybackRate(0.1)
-          }
-        }
-      ],
-      [
-        ["+"],
-        {
-          action: {
-            description: "Increase playback rate by 0.5x",
-            action: () => this.ChangePlaybackRate(0.5)
           }
         }
       ]
@@ -290,19 +294,19 @@ class ControlStore {
             action: () => this.ChangeVolume(0.25)
           }
         }
-      ],
-      [
-        [],
-        {
-          keyLabel: "Scroll (over video or volume control)",
-          action: {
-            description: "Adjust volume up or down",
-            action: () => {}
-          }
-        }
       ]
     ],
     "Seeking": [
+      [
+        ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+        {
+          keyLabel: "1-9",
+          action: {
+            description: "Seek from 0% to 90% of the video",
+            action: (event) => this.SeekProgress(parseInt(event.key) / 10)
+          }
+        }
+      ],
       [
         ["ArrowLeft"],
         {
@@ -341,16 +345,6 @@ class ControlStore {
       ],
     ],
     "Tracks": [
-      [
-        ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
-        {
-          keyLabel: "1-9",
-          action: {
-            description: "Toggle the specified track",
-            action: (event) => this.ToggleTrackByIndex(event.key),
-          }
-        }
-      ],
       [
         [],
         {

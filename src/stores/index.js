@@ -30,6 +30,7 @@ class RootStore {
   initialized = false;
   view = "source";
   sidePanelDimensions = {};
+  keyboardControlsEnabled = false;
   errorMessage = undefined;
 
   constructor() {

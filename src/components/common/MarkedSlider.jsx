@@ -14,6 +14,7 @@ const Handle = observer(({
   dragging,
   min,
   max,
+  connectTo,
   PositionToPixels,
   StartDrag,
   EndDrag,
@@ -21,34 +22,48 @@ const Handle = observer(({
 }) => {
   if(handle.position < min || handle.position > max) { return null; }
 
-  let style = {left: `${PositionToPixels(handle.position) - 1}px`};
+  let style = {left: `${PositionToPixels(handle.position) - (handle.style === "end" ? 4 : 1)}px`};
   if(handle.opacity) {
     style.opacity = handle.opacity;
   }
 
+  let connectStyle;
+  if(connectTo) {
+    const start = PositionToPixels(handle.position < connectTo.position ? handle.position : connectTo.position);
+    const end = PositionToPixels(handle.position < connectTo.position ? connectTo.position : handle.position);
+
+    connectStyle = { left: `${start - 1}px`, width: `${end - start + 1}px` };
+  }
+
   return (
-    <Tooltip label={handle.tooltip} disabled={!handle.tooltip}>
-      <div
-        style={style}
-        className={
-          JoinClassNames(
-            S(
-              "slider__handle",
-              `slider__handle--${handle.style || "line"}`,
-              handle.disabled ? "slider__handle--disabled" : "",
-              dragging ? "slider-handle__active" : ""
-            ),
-            handle.className || ""
-          )
-        }
-        onMouseDown={handle.disabled ? undefined : event => StartDrag(event, index)}
-        onMouseUp={handle.disabled ? undefined :EndDrag}
-        onClick={handle.disabled ? undefined : HandleChange}
-        {...(handle.additionalProps || {})}
-      >
-        { handle.style === "arrow" ? "▼" : null }
-      </div>
-    </Tooltip>
+    <>
+      {
+        !connectTo ? null :
+          <div style={connectStyle} className={S("slider__connection")} />
+      }
+      <Tooltip label={handle.tooltip} disabled={!handle.tooltip}>
+        <div
+          style={style}
+          className={
+            JoinClassNames(
+              S(
+                "slider__handle",
+                `slider__handle--${handle.style || "line"}`,
+                handle.disabled ? "slider__handle--disabled" : "",
+                dragging ? "slider-handle__active" : ""
+              ),
+              handle.className || ""
+            )
+          }
+          onMouseDown={handle.disabled ? undefined : event => StartDrag(event, index)}
+          onMouseUp={handle.disabled ? undefined :EndDrag}
+          onClick={handle.disabled ? undefined : HandleChange}
+          {...(handle.additionalProps || {})}
+        >
+          { handle.style === "arrow" ? "▼" : null }
+        </div>
+      </Tooltip>
+    </>
   );
 });
 
@@ -63,42 +78,42 @@ const Marks = observer(({
   showNotches=true,
   showText=true
 }) => {
-    const scaleInterval = (max - min) / nMarks;
-    const scaleOffset = scaleInterval / 2;
-    const widthInterval = width / nMarks;
-    const widthOffset = widthInterval / 2;
+  const scaleInterval = (max - min) / nMarks;
+  const scaleOffset = scaleInterval / 2;
+  const widthInterval = width / nMarks;
+  const widthOffset = widthInterval / 2;
 
-    let marks = [];
-    for(let i = 0; i < nMarks; i++) {
-      const scalePosition = min + (scaleInterval * i + scaleOffset);
-      const passed = (handles[0] || {}).position > scalePosition;
-      const majorMark = (Math.ceil(i + majorMarksEvery / 2)) % majorMarksEvery === 0;
+  let marks = [];
+  for(let i = 0; i < nMarks; i++) {
+    const scalePosition = min + (scaleInterval * i + scaleOffset);
+    const passed = (handles[0] || {}).position > scalePosition;
+    const majorMark = (Math.ceil(i + majorMarksEvery / 2)) % majorMarksEvery === 0;
 
-      marks.push(
-        <div
-          style={{left: widthInterval * i + widthOffset }} key={`-elv-slider-mark-${i}`}
-          className={S("slider__mark", passed ? "slider__mark--passed" : "")}
-        >
-          {
-            !showNotches ? null :
-              <div className={S("slider__mark-notch", majorMark ? "slider__mark-notch--major" : "")} />
-          }
-          {
-            !showText || !majorMark ? null :
-              <div className={S("slider__mark-text")}>
-                { RenderText(scalePosition) }
-              </div>
-          }
-        </div>
-      );
-    }
-
-    return (
-      <div className={S("slider__marks-container")}>
-        { marks }
+    marks.push(
+      <div
+        style={{left: widthInterval * i + widthOffset }} key={`-elv-slider-mark-${i}`}
+        className={S("slider__mark", passed ? "slider__mark--passed" : "")}
+      >
+        {
+          !showNotches ? null :
+            <div className={S("slider__mark-notch", majorMark ? "slider__mark-notch--major" : "")} />
+        }
+        {
+          !showText || !majorMark ? null :
+            <div className={S("slider__mark-text")}>
+              { RenderText(scalePosition) }
+            </div>
+        }
       </div>
     );
-  });
+  }
+
+  return (
+    <div className={S("slider__marks-container")}>
+      { marks }
+    </div>
+  );
+});
 
 let tooltipTimeout, dragTimeout, draggingHandleIndex;
 const MarkedSlider = observer(({
@@ -333,6 +348,15 @@ const MarkedSlider = observer(({
                   min={min}
                   max={max}
                   dragging={false}
+                  connectTo={
+                    handle.connectStart ?
+                      indicators.find(indicator => indicator.connectEnd) || { position: 100 } :
+                      handle.connectEnd ?
+                        indicators.find(indicator => indicator.connectStart) ?
+                          // Don't show end connection if start connection is already rendered
+                          undefined : { position: 0 } :
+                          undefined
+                  }
                   PositionToPixels={PositionToPixels}
                 />
               )

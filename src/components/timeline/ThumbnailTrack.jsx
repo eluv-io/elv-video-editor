@@ -132,7 +132,6 @@ const ThumbnailTrack = observer(() => {
       offset={30}
       openDelay={250}
       disabled={!hoverThumbnail}
-      keepMounted
       label={
         !hoverThumbnail ? null :
           <img src={hoverThumbnail} className={S("thumbnail-tooltip__thumbnail")}/>
