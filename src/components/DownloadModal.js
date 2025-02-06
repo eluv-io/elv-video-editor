@@ -10,11 +10,13 @@ import RetryIcon from "../static/icons/rotate-ccw.svg";
 const DownloadDetails = ({Submit, Close}) => {
   const [submitting, setSubmitting] = useState(false);
   const [representations, setRepresentations] = useState(undefined);
+  const [audioRepresentations, setAudioRepresentations] = useState(undefined);
   const [options, setOptions] = useState({
     format: "mp4",
     filename: "",
     defaultFilename: "",
     representation: "",
+    audioRepresentation: "",
     offering: videoStore.offeringKey,
     clipInFrame: videoStore.clipInFrame,
     clipOutFrame: videoStore.clipOutFrame,
@@ -25,6 +27,7 @@ const DownloadDetails = ({Submit, Close}) => {
       format: options.format,
       offering: options.offering,
       representationInfo: representations?.find(rep => rep.key === options.representation),
+      audioRepresentationInfo: audioRepresentations?.find(rep => rep.key === options.audioRepresentation),
       clipInFrame: videoStore.clipInFrame,
       clipOutFrame: videoStore.clipOutFrame
     });
@@ -34,45 +37,20 @@ const DownloadDetails = ({Submit, Close}) => {
       filename: options.filename === options.defaultFilename ?
         defaultFilename : options.filename
     });
-  }, [options.format, options.offering, options.representation, options.clipInFrame, options.clipOutFrame]);
+  }, [options.format, options.offering, options.representation, options.audioRepresentation, options.clipInFrame, options.clipOutFrame]);
 
   useEffect(() => {
-    const repMetadata = videoStore?.metadata?.offerings?.[options.offering]?.playout?.streams?.video?.representations;
+    const repInfo = videoStore.ResolutionOptions(options.offering);
 
-    if(!repMetadata) {
-      setRepresentations(undefined);
-    }
-
-    const repInfo = (
-      Object.keys(repMetadata)
-        .map(repKey => {
-          try {
-            const { bit_rate, codec, height, width } = repMetadata[repKey];
-
-            return {
-              key: repKey,
-              resolution: `${width}x${height}`,
-              width,
-              height,
-              codec,
-              bitrate: bit_rate,
-              string: `${width}x${height} (${(parseInt(bit_rate) / 1000 / 1000).toFixed(1)}Mbps)`
-            };
-          } catch(error) {
-            // eslint-disable-next-line no-console
-            console.error(error);
-          }
-        })
-        .filter(rep => rep)
-        .sort((a, b) => a.bitrate > b.bitrate ? -1 : 1)
-    );
-
-    repInfo[0].isTopResolution = true;
+    const audioRepInfo = videoStore.AudioOptions(options.offering);
 
     setRepresentations(repInfo);
+    setAudioRepresentations(audioRepInfo);
+
     setOptions({
       ...options,
-      representation: repInfo[0]?.key || ""
+      representation: repInfo[0]?.key || "",
+      audioRepresentation: audioRepInfo.find(rep => rep.default)?.key || ""
     });
   }, [options.offering]);
 
@@ -111,7 +89,7 @@ const DownloadDetails = ({Submit, Close}) => {
         </select>
       </div>
       {
-        !representations ? null :
+        !representations || representations.length === 0 ? null :
           <div className="download-modal__field">
             <label htmlFor="resolution" className="download-modal__label">
               Resolution
@@ -124,6 +102,28 @@ const DownloadDetails = ({Submit, Close}) => {
             >
               {
                 representations.map(({string, key}) =>
+                  <option key={key} value={key}>
+                    { string }
+                  </option>
+                )
+              }
+            </select>
+          </div>
+      }
+      {
+        !audioRepresentations || audioRepresentations.length === 0 ? null :
+          <div className="download-modal__field">
+            <label htmlFor="resolution" className="download-modal__label">
+              Audio
+            </label>
+            <select
+              name="audio"
+              value={options.audioRepresentation}
+              onChange={event => setOptions({...options, audioRepresentation: event.target.value})}
+              className="download-modal__input"
+            >
+              {
+                audioRepresentations.map(({string, key}) =>
                   <option key={key} value={key}>
                     { string }
                   </option>
@@ -157,11 +157,7 @@ const DownloadDetails = ({Submit, Close}) => {
         </div>
         <div>
           Duration:&nbsp;
-          ({
-            videoStore.videoHandler.TimeToString({
-              time: videoStore.videoHandler.FrameToTime(options.clipOutFrame) - videoStore.videoHandler.FrameToTime(options.clipInFrame)
-            })
-          })
+          ({ videoStore.videoHandler.FrameToString({frame: options.clipOutFrame - options.clipInFrame}) })
         </div>
       </div>
       <LoadingElement loading={submitting} loadingClassname="download-modal__actions download-modal__actions--loading">
@@ -323,8 +319,8 @@ const DownloadHistory = ({highlightedJobId, setConfirming}) => {
       ...videoStore.downloadJobInfo[jobId],
       highlighted: jobId === highlightedJobId,
       jobId,
-      duration: videoStore.videoHandler.TimeToString({
-        time: videoStore.videoHandler.FrameToTime(videoStore.downloadJobInfo[jobId].clipOutFrame) - videoStore.videoHandler.FrameToTime(videoStore.downloadJobInfo[jobId].clipInFrame)
+      duration: videoStore.videoHandler.FrameToString({
+        frame: videoStore.downloadJobInfo[jobId].clipOutFrame - videoStore.downloadJobInfo[jobId].clipInFrame
       })
     }))
     .filter(({versionHash}) => videoStore.versionHash === versionHash)
@@ -385,7 +381,16 @@ const DownloadModal = ({Close}) => {
     setError("");
   }, [tab]);
 
-  const Submit = async ({format, offering, clipInFrame, clipOutFrame, filename, defaultFilename, representation}) => {
+  const Submit = async ({
+    format,
+    offering,
+    clipInFrame,
+    clipOutFrame,
+    filename,
+    defaultFilename,
+    representation,
+    audioRepresentation
+  }) => {
     try {
       setJobId(
         (await videoStore.StartDownloadJob({
@@ -394,7 +399,8 @@ const DownloadModal = ({Close}) => {
           clipInFrame,
           clipOutFrame,
           filename: filename || defaultFilename,
-          representation
+          representation,
+          audioRepresentation
         })).jobId
       );
       setTab("history");

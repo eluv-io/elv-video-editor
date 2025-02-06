@@ -247,35 +247,27 @@ class FrameAccurateVideo {
     return Math.floor(Fraction(this.video.duration || 0).mul(this.frameRate).valueOf());
   }
 
-  TimeToString({time, includeFractionalSeconds, showHours, showMinutes}) {
-    let hours = Math.floor(Math.max(0, time) / 60 / 60) % 24;
-    let minutes = Math.floor(Math.max(0, time) / 60 % 60);
-    let seconds = Math.max(time, 0) % 60;
+  FrameToString({frame, includeFractionalSeconds}) {
+    let [hours, minutes, seconds, frames] = this.SMPTE(frame).split(":").map(e => parseInt(e));
 
-    if(!includeFractionalSeconds) {
-      seconds = Math.ceil(seconds);
+    if(includeFractionalSeconds) {
+      seconds = Fraction(frames).div(this.frameRate).add(seconds).round(4);
     }
 
-    if(minutes === 60) {
-      hours += 1;
-      minutes = 0;
+    let string = "";
+    if(hours > 0) {
+      string += `${hours}h `;
     }
 
-    let countdownString = "";
-
-    if(hours > 0 || showHours) {
-      countdownString += `${hours}h `;
-    }
-
-    if(minutes > 0 || showMinutes || showHours) {
-      countdownString += `${minutes}m `;
+    if(minutes > 0) {
+      string += `${minutes}m `;
     }
 
     if(seconds > 0) {
-      countdownString += ` ${seconds}s`;
+      string += `${seconds}s`;
     }
 
-    return countdownString.trim();
+    return string.trim();
   }
 
   /* Controls */

@@ -3,6 +3,7 @@ import FrameAccurateVideo, {FrameRateDenominator, FrameRateNumerator, FrameRates
 import UrlJoin from "url-join";
 import HLS from "hls.js";
 import {DownloadFromUrl} from "../utils/Utils";
+import {videoStore} from "./index";
 
 class VideoStore {
   @observable videoKey = 0;
@@ -1062,12 +1063,83 @@ class VideoStore {
 
   // Video Downloads
 
+  // Video/Audio track info
+  ResolutionOptions(offering) {
+    const repMetadata = videoStore?.metadata?.offerings?.[offering]?.playout?.streams?.video?.representations || {};
+
+    const repInfo = (
+      Object.keys(repMetadata)
+        .map(repKey => {
+          try {
+            const { bit_rate, codec, height, width } = repMetadata[repKey];
+
+            return {
+              key: repKey,
+              resolution: `${width}x${height}`,
+              width,
+              height,
+              codec,
+              bitrate: bit_rate,
+              string: `${width}x${height} (${(parseInt(bit_rate) / 1000 / 1000).toFixed(1)}Mbps)`
+            };
+          } catch(error) {
+            // eslint-disable-next-line no-console
+            console.error(error);
+          }
+        })
+        .filter(rep => rep)
+        .sort((a, b) => a.bitrate > b.bitrate ? -1 : 1)
+    );
+
+    if(repInfo[0]) {
+      repInfo[0].isTopResolution = true;
+    }
+
+    return repInfo;
+  }
+
+  AudioOptions(offering) {
+    const audioRepMetadata = this.metadata.offerings?.[offering]?.playout?.streams || {};
+    const mediaStruct = this.metadata.offerings?.[offering]?.media_struct?.streams || {};
+
+    return (
+      Object.keys(audioRepMetadata)
+        .map(streamKey =>
+          Object.keys(audioRepMetadata[streamKey]?.representations || {})
+            .map(repKey => {
+              try {
+                const rep = audioRepMetadata[streamKey].representations?.[repKey];
+                const label = mediaStruct[streamKey]?.label;
+
+                if(rep.type !== "RepAudio") { return; }
+
+                return {
+                  key: repKey,
+                  bitrate: rep.bit_rate,
+                  default: mediaStruct[streamKey]?.default_for_media_type,
+                  label: label || repKey,
+                  string: label ?
+                    `${label} (${(parseInt(rep.bit_rate) / 1000).toFixed(0)}Kbps)` :
+                    repKey
+                };
+              } catch(error) {
+                // eslint-disable-next-line no-console
+                console.error(error);
+              }
+            })
+        )
+        .flat()
+        .filter(rep => rep)
+        .sort((a, b) => a.string < b.string ? -1 : 1)
+    );
+  }
+
   @action.bound
   ToggleDownloadModal(show) {
     this.showDownloadModal = show;
   }
 
-  DownloadJobDefaultFilename({format="mp4", offering="default", clipInFrame, clipOutFrame, representationInfo}) {
+  DownloadJobDefaultFilename({format="mp4", offering="default", clipInFrame, clipOutFrame, representationInfo, audioRepresentationInfo}) {
     let filename = this.name;
 
     if(offering && offering !== "default") {
@@ -1075,19 +1147,17 @@ class VideoStore {
     }
 
     if(clipInFrame || (clipOutFrame && clipOutFrame !== this.videoHandler.TotalFrames() - 1)) {
-      const startTime = this.videoHandler.TimeToString({
-        time: this.videoHandler.FrameToTime(clipInFrame || 0),
-        showMinutes: true
-      }).replaceAll(" ", "");
-      const endTime = this.videoHandler.TimeToString({
-        time: this.videoHandler.FrameToTime(clipOutFrame || this.videoHandler.TotalFrames()),
-        showMinutes: true
-      }).replaceAll(" ", "");
+      const startTime = this.videoHandler.FrameToString({frame: clipInFrame}).replaceAll(" ", "");
+      const endTime = this.videoHandler.FrameToString({frame: clipOutFrame || this.videoHandler.TotalFrames()}).replaceAll(" ", "");
       filename = `${filename} (${startTime} - ${endTime})`;
     }
 
     if(representationInfo && !representationInfo.isTopResolution) {
       filename = `${filename} (${representationInfo.width}x${representationInfo.height})`;
+    }
+
+    if(audioRepresentationInfo && !audioRepresentationInfo.default) {
+      filename = `${filename} (${audioRepresentationInfo.label})`;
     }
 
     return `${filename}.${format === "mp4" ? "mp4" : "mov"}`;
@@ -1139,6 +1209,7 @@ class VideoStore {
     format="mp4",
     offering="default",
     representation,
+    audioRepresentation,
     clipInFrame,
     clipOutFrame,
     encrypt=true
@@ -1160,18 +1231,17 @@ class VideoStore {
         params.representation = representation;
       }
 
+      if(audioRepresentation) {
+        params.audio = audioRepresentation;
+      }
+
       if(clipInFrame) {
-        params.start_ms = this.videoHandler.TimeToString({
-          time: this.videoHandler.FrameToTime(clipInFrame),
-          includeFractionalSeconds: true
-        }).replaceAll(" ", "");
+        // Use more literal time for api as opposed to SMPTE
+        params.start_ms = `${((1 / this.frameRate) * clipInFrame).toFixed(4)}s`;
       }
 
       if(clipOutFrame && clipOutFrame !== this.videoHandler.TotalFrames() - 1) {
-        params.end_ms = this.videoHandler.TimeToString({
-          time: this.videoHandler.FrameToTime(clipOutFrame),
-          includeFractionalSeconds: true
-        }).replaceAll(" ", "");
+        params.end_ms = `${((1 / this.frameRate) * clipOutFrame).toFixed(4)}s`;
       }
 
       const response = yield this.rootStore.client.MakeFileServiceRequest({
