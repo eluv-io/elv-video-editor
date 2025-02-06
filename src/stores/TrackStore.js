@@ -97,7 +97,9 @@ class TrackStore {
   }
 
   get metadataTracks() {
-    return this.tracks.filter(track => track.trackType === "metadata");
+    return this.tracks
+      .filter(track => track.trackType === "metadata")
+      .sort((a, b) => (a.label > b.label ? 1 : -1));
   }
 
   Reset() {
@@ -734,6 +736,9 @@ class TrackStore {
 
   /* User Actions */
 
+  ResetSelectedTracks() {
+    this.selectedTracks = {};
+  }
 
   ToggleTrackSelected(key) {
     if(this.selectedTracks[key]) {
@@ -786,7 +791,7 @@ class TrackStore {
         constant: false,
         body: {
           async: true,
-          frame_interval: Math.ceil(this.frameRate) * 6,
+          frame_interval: Math.ceil(this.rootStore.videoStore.frameRate) * 6,
           add_thumb_track: true,
           generate_storyboards: true,
           ...options

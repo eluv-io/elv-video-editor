@@ -130,7 +130,6 @@ const ThumbnailTrack = observer(() => {
     <Tooltip.Floating
       position="top"
       offset={30}
-      openDelay={250}
       disabled={!hoverThumbnail}
       label={
         !hoverThumbnail ? null :

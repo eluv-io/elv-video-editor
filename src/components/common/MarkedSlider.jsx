@@ -211,7 +211,7 @@ const MarkedSlider = observer(({
     if(handles.length === 1) {
       // Slider - only one handle
       onChange(value);
-    } else if(event.metaKey) {
+    } else if(event.altKey) {
       // Dragging whole range
       if(!onSlide || event.type !== "mousemove") { return; }
 
@@ -303,7 +303,7 @@ const MarkedSlider = observer(({
               showNotches={false}
             />
         }
-        <Tooltip.Floating label={RenderText(hoverPosition)} position="top" offset={20} /*openDelay={500}*/ >
+        <Tooltip.Floating label={RenderText(hoverPosition)} position="top" offset={20}>
           <div
             onMouseDown={handleControlOnly ? undefined : StartDrag}
             onMouseUp={handleControlOnly ? null : EndDrag}

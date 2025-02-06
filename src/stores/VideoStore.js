@@ -825,7 +825,7 @@ class VideoStore {
       (this.scaleMax - this.scaleMin < MIN_SCALE * 1.1 && delta < 0)
     ) { return; }
 
-    delta = delta < 0 ? 1.5 : -1.5;
+    delta = delta < 0 ? 3 : -3;
 
     if(this.scaleMagnitude < 5) {
       delta *= 0.25;
@@ -951,7 +951,12 @@ class VideoStore {
   }
 
   ChangeVolume(delta) {
-    this.video.volume = Math.max(0, Math.min(1, this.video.volume + delta));
+    if(this.video.muted && delta > 0) {
+      // Go up from 0 if muted
+      this.video.volume = delta;
+    } else {
+      this.video.volume = Math.max(0, Math.min(1, this.video.volume + delta));
+    }
 
     if(this.video.volume === 0) {
       this.video.muted = true;

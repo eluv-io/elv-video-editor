@@ -2,7 +2,7 @@ import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
 
 import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react";
-import {keyboardControlsStore, rootStore, trackStore, videoStore} from "@/stores";
+import {rootStore, trackStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
 import {IconButton, SMPTEInput, SwitchInput} from "@/components/common/Common";
 import MarkedSlider from "@/components/common/MarkedSlider";
@@ -19,7 +19,6 @@ import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
 
 import UploadIcon from "@/assets/icons/v2/upload.svg";
 import SaveIcon from "@/assets/icons/v2/save.svg";
-import KeyboardIcon from "@/assets/icons/v2/keyboard.svg";
 import Track from "@/components/timeline/Track.jsx";
 import ThumbnailTrack from "@/components/timeline/ThumbnailTrack.jsx";
 import {
@@ -30,6 +29,7 @@ import {
   FrameForward1Button,
   PlaySelectedTagButton
 } from "@/components/video/VideoControls.jsx";
+import KeyboardControls from "@/components/timeline/KeyboardControls.jsx";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -87,7 +87,7 @@ const TimelineBottomBar = observer(() => {
     <div className={S("toolbar", "timeline-section__bottom-bar")}>
       <IconButton icon={UploadIcon} label="Upload" onClick={() => {}}/>
       <IconButton icon={SaveIcon} label="Save Changes" onClick={() => {}}/>
-      <IconButton disabled={!keyboardControlsStore.keyboardControlsActive} icon={KeyboardIcon} label="Keyboard Shortcuts" onClick={() => {}}/>
+      <KeyboardControls />
       <div className={S("toolbar__separator")}/>
       <SwitchInput
         label="Show Thumbnails"
@@ -260,8 +260,7 @@ const TimelineSection = observer(() => {
 
   let tracks = [];
   if(trackStore.showTags) {
-    tracks = trackStore.metadataTracks
-      .sort((a, b) => (a.label > b.label ? 1 : -1));
+    tracks = trackStore.metadataTracks;
   }
 
   if(trackStore.showSegments) {
@@ -329,12 +328,12 @@ const TimelineSection = observer(() => {
         }}
         onWheel={event => {
           // Scroll wheel zoom in/out
-          if(!event.ctrlKey && !event.metaKey) { return; }
+          if(!event.ctrlKey && !event.shiftKey) { return; }
 
           event.preventDefault();
 
-          if(event.metaKey) {
-            videoStore.SetScale(videoStore.scaleMin + event.deltaX * 0.01, videoStore.scaleMax + event.deltaX * 0.01, true);
+          if(event.shiftKey) {
+            videoStore.SetScale(videoStore.scaleMin + event.deltaX * 0.05, videoStore.scaleMax + event.deltaX * 0.05, true);
             return;
           }
 

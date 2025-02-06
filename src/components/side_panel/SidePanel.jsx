@@ -231,9 +231,12 @@ const Tags = observer(() => {
 
   return (
     <>
-      <div className={S("count")}>
-        Showing 1 - {limit} of {totalTags}
-      </div>
+      {
+        !videoStore.initialized || totalTags === 0 ? null :
+          <div className={S("count")}>
+            Showing 1 - {limit} of {totalTags}
+          </div>
+      }
       <SidebarScrollContent
         watchList={[
           tagStore.filter,

@@ -1,0 +1,62 @@
+.controls-modal {
+  &__header {
+    display: none;
+  }
+
+  &__body {
+    background-color: var(--background-modal);
+    color: var(--text-secondary);
+    display: grid;
+    gap: 50px;
+    padding: 50px;
+  }
+}
+
+.controls-row {
+  display: grid;
+  gap: 50px;
+  grid-template-columns: 1fr 1px 1fr 1px 1fr;
+
+  &__separator {
+    background-color: var(--table-border-color);
+    height: 100%;
+    width: 1px;
+  }
+}
+
+.controls-group {
+  align-content: start;
+  display: grid;
+  gap: 15px;
+
+
+  &__title {
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+}
+
+.control {
+  display: flex;
+  font-size: 14px;
+  gap: 20px;
+  justify-content: space-between;
+
+  &__action {
+    min-width: 55%;
+  }
+
+  &__keys {
+    align-items: center;
+    display: flex;
+    gap: 5px;
+    justify-content: flex-end;
+    text-align: right;
+    width: max-content;
+  }
+
+  &__icon {
+    height: 15px;
+    width: 15px;
+  }
+}

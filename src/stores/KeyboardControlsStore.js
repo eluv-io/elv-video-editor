@@ -39,7 +39,7 @@ class ControlStore {
         const controls = schema[1];
 
         buttons.forEach(button => {
-          controlMap[button] = {};
+          controlMap[button] = controlMap[button] || {};
 
           if(controls.action) {
             controlMap[button].action = controls.action.action.bind(this);
@@ -97,7 +97,7 @@ class ControlStore {
 
     if(event.type.toLowerCase() !== "keydown") { return; }
 
-    const actionMap = this.controlMap[event.key] || {};
+    const actionMap = this.controlMap[event.key] || this.controlMap[event.code] || {};
 
     const shift = this.modifiers.shift;
     const alt = this.modifiers.alt;
@@ -171,15 +171,25 @@ class ControlStore {
   }
 
   SetVolume(volume) {
-    this.rootStore.videoStore.SetVolume(volume * 100);
+    this.rootStore.videoStore.SetVolume(volume);
   }
 
   ChangeVolume(delta) {
-    this.rootStore.videoStore.ChangeVolume(delta * 100);
+    this.rootStore.videoStore.ChangeVolume(delta);
   }
 
   ToggleTrackByIndex(index) {
-    this.rootStore.trackStore.ToggleTrackByIndex(parseInt(index) - 1);
+    index = index === 0 ? 9 : index - 1;
+
+    const track = this.rootStore.trackStore.metadataTracks[parseInt(index)];
+
+    if(track) {
+      this.rootStore.trackStore.ToggleTrackSelected(track.key);
+    }
+  }
+
+  ShowAllTracks() {
+    this.rootStore.trackStore.ResetSelectedTracks();
   }
 
   PlayClip() {
@@ -205,7 +215,7 @@ class ControlStore {
   controls = {
     "Playback": [
       [
-        ["p", "k", " "],
+        [" ", "p", "k"],
         {
           action: {
             description: "Play/Pause",
@@ -244,7 +254,7 @@ class ControlStore {
         ["="],
         {
           action: {
-            description: "Reset playback rate to normal",
+            description: "Reset playback",
             action: () => this.SetPlaybackRate(1)
           }
         }
@@ -300,7 +310,7 @@ class ControlStore {
       [
         ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
         {
-          keyLabel: "1-9",
+          keyLabel: "0-9",
           action: {
             description: "Seek from 0% to 90% of the video",
             action: (event) => this.SeekProgress(parseInt(event.key) / 10)
@@ -346,11 +356,51 @@ class ControlStore {
     ],
     "Tracks": [
       [
-        [],
+        [
+          "Digit0", "Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6", "Digit7", "Digit8", "Digit9",
+          "Numpad0", "Numpad1", "Numpad2", "Numpad3", "Numpad4", "Numpad5", "Numpad6", "Numpad7", "Numpad8", "Numpad9"
+        ],
         {
-          keyLabel: "Shift + Scroll (over track)",
+          keyLabel: "0-9",
+          shiftAction: {
+            description: "Toggle tag track",
+            action: event => this.ToggleTrackByIndex(parseInt(event.code.replace(/\D/g, "")))
+          }
+        }
+      ],
+      [
+        ["~"],
+        {
           action: {
-            description: "Adjust timeline scale",
+            description: "Enable all tag tracks",
+            action: () => this.ShowAllTracks()
+          }
+        }
+      ],
+      [
+        [""],
+        {
+          keyLabel: "Control + scroll over timeline",
+          action: {
+            description: "Change timeline scale",
+            action: () => {}
+          }
+        }
+      ],
+      [
+        [""],
+        {
+          keyLabel: "Shift + scroll over timeline",
+          action: {
+            description: "Move timeline scale position",
+            action: () => {}
+          }
+        },
+        [""],
+        {
+          keyLabel: "Alt + drag scale bar",
+          action: {
+            description: "Move timeline scale position",
             action: () => {}
           }
         }
@@ -361,28 +411,16 @@ class ControlStore {
         ["\\"],
         {
           action: {
-            description: "Play currently selected clip from the beginning",
+            description: "Play current clip from the beginning",
             action: () => this.PlayClip()
           }
         },
       ],
-      /*
-      [
-        ["Delete", "Backspace"],
-        {
-          action: {
-            description: "Delete currently selected clip",
-            action: () => this.DeleteClip()
-          }
-        },
-      ],
-
-       */
       [
         ["{"],
         {
           action: {
-            description: "Set Mark In to current playhead position",
+            description: "Set mark in to current time",
             action: () => this.SetMarkIn()
           }
         }
@@ -391,7 +429,7 @@ class ControlStore {
         ["}"],
         {
           action: {
-            description: "Set Mark Out to current playhead position",
+            description: "Set mark out to current time",
             action: () => this.SetMarkOut()
           }
         }
@@ -407,7 +445,6 @@ class ControlStore {
           }
         }
       ],
-      /*
       [
         ["z"],
         {
@@ -426,7 +463,6 @@ class ControlStore {
           }
         }
       ]
-     */
     ]
   };
 }
