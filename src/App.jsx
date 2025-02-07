@@ -67,16 +67,21 @@ const App = observer(() => {
   useEffect(() => {
     if(!ref?.current) { return; }
 
-    const SetControlsActive = () => {
+    const SetControlsActive = event => {
       keyboardControlsStore.ToggleKeyboardControlsActive(
+        event.type !== "blur" &&
         ref.current.contains(document.activeElement) &&
         !["input", "textarea"].includes(document.activeElement?.tagName?.toLowerCase())
       );
     };
 
+    window.addEventListener("blur", SetControlsActive);
     document.addEventListener("focusin", SetControlsActive);
 
-    return () => document.removeEventListener("focusin", SetControlsActive);
+    return () => {
+      window.removeEventListener("blur", SetControlsActive);
+      document.removeEventListener("focusin", SetControlsActive);
+    };
   }, [ref]);
 
   if(window.self === window.top) {

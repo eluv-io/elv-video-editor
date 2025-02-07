@@ -10,7 +10,6 @@ import MarkedSlider from "@/components/common/MarkedSlider";
 import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
 import AddUserIcon from "@/assets/icons/v2/add-user.svg";
-import DownloadIcon from "@/assets/icons/v2/download.svg";
 
 import AddNewItemIcon from "@/assets/icons/v2/add-new-item.svg";
 import SplitIcon from "@/assets/icons/v2/split.svg";
@@ -30,6 +29,7 @@ import {
   PlaySelectedTagButton
 } from "@/components/video/VideoControls.jsx";
 import KeyboardControls from "@/components/timeline/KeyboardControls.jsx";
+import Download from "@/components/download/Download.jsx";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -41,7 +41,7 @@ const TimelineTopBar = observer(() => {
         <IconButton icon={RedoIcon} label="Redo" onClick={() => {}} />
         <div className={S("toolbar__separator")} />
         <IconButton icon={AddUserIcon} label="Add User" onClick={() => {}} />
-        <IconButton icon={DownloadIcon} label="Save Video at Current Quality" onClick={() => videoStore.SaveVideo()} />
+        <Download />
         <div className={S("toolbar__separator")} />
         <div className={S("jump-to")}>
           <label>Jump to</label>

@@ -1,17 +1,3 @@
-.controls-modal {
-  &__header {
-    display: none;
-  }
-
-  &__body {
-    background-color: var(--background-modal);
-    color: var(--text-secondary);
-    display: grid;
-    gap: 50px;
-    padding: 50px;
-  }
-}
-
 .controls-row {
   display: grid;
   gap: 50px;
@@ -21,6 +7,10 @@
     background-color: var(--table-border-color);
     height: 100%;
     width: 1px;
+  }
+
+  & + .controls-row {
+    margin-top: 50px;
   }
 }
 

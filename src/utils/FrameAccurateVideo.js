@@ -247,6 +247,29 @@ class FrameAccurateVideo {
     return Math.floor(Fraction(this.video.duration || 0).mul(this.frameRate).valueOf());
   }
 
+  FrameToString({frame, includeFractionalSeconds}) {
+    let [hours, minutes, seconds, frames] = this.SMPTE(frame).split(":").map(e => parseInt(e));
+
+    if(includeFractionalSeconds) {
+      seconds = Fraction(frames).div(this.frameRate).add(seconds).round(4);
+    }
+
+    let string = "";
+    if(hours > 0) {
+      string += `${hours}h `;
+    }
+
+    if(minutes > 0) {
+      string += `${minutes}m `;
+    }
+
+    if(seconds > 0) {
+      string += `${seconds}s`;
+    }
+
+    return string.trim();
+  }
+
   /* Controls */
 
   SeekForward(frames=1) {

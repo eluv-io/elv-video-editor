@@ -2,11 +2,11 @@ import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
 import React, {forwardRef, useEffect, useRef, useState} from "react";
 import {CreateModuleClassMatcher, JoinClassNames, TextWidth} from "@/utils/Utils.js";
-import {Button, Select, Switch, TextInput, Tooltip} from "@mantine/core";
+import {Button, Modal as MantineModal, Select, Switch, TextInput, Tooltip} from "@mantine/core";
 import SVG from "react-inlinesvg";
 import {observer} from "mobx-react";
 import {Link} from "wouter";
-import {videoStore} from "@/stores/index.js";
+import {keyboardControlsStore, videoStore} from "@/stores/index.js";
 
 const S = CreateModuleClassMatcher(CommonStyles);
 
@@ -270,6 +270,29 @@ export const SelectInput = observer(({label, options=[], autoWidth=true, ...prop
   );
 });
 
+// Form styled inputs
+export const FormTextInput = observer(props =>
+  <TextInput
+    {...props}
+    classNames={{
+      root: S("form-input"),
+      label: S("form-input__label"),
+      input: S("form-input__input")
+    }}
+  />
+);
+
+export const FormSelect = observer(props =>
+  <Select
+    {...props}
+    data={props.options || props.data}
+    classNames={{
+      root: S("form-input"),
+      label: S("form-input__label"),
+      input: S("form-input__input")
+    }}
+  />
+);
 
 const FormatSMPTE = ({originalValue, smpte, setSMPTEInput}) => {
   try {
@@ -309,6 +332,7 @@ export const SMPTEInput = observer(({value, onChange, ...props}) => {
         }
       }}
       onBlur={() => onChange?.(FormatSMPTE({originalValue: value, smpte: smpteInput, setSMPTEInput}))}
+      className={JoinClassNames(S("smpte-input", props.className))}
       {...props}
     />
   );
@@ -365,4 +389,19 @@ export const ResizeHandle = observer(({onMove, variant="both"}) => {
       />
     </div>
   );
+});
+
+export const Modal = observer((props) => {
+  // Disable keyboard controls when modal is opened
+  useEffect(() => {
+    if(!props.opened) { return; }
+
+    const controlsOriginallyEnabled = keyboardControlsStore.keyboardControlsEnabled;
+
+    keyboardControlsStore.ToggleKeyboardControls(false);
+
+    return () => keyboardControlsStore.ToggleKeyboardControls(controlsOriginallyEnabled);
+  }, [props.opened]);
+
+  return <MantineModal {...props} />;
 });

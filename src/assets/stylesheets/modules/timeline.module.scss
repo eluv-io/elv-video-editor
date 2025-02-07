@@ -29,6 +29,12 @@
   align-items: center;
   display: flex;
   gap: 10px;
+
+  @media screen and (width <= 1600px) {
+    label {
+      display: none;
+    }
+  }
 }
 
 .playhead-indicator {

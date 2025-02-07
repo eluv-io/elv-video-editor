@@ -92,6 +92,24 @@
       right: var(--content-inline-padding);
     }
   }
+
+  @media screen and (width <= 1600px) {
+    justify-content: space-between;
+
+    &__controls-group {
+      &.left,
+      &.right,
+      &.center {
+        left: unset;
+        position: relative;
+        right: unset;
+      }
+    }
+
+    input {
+      font-size: 12px;
+    }
+  }
 }
 
 .tooltip {

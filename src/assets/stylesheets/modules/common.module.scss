@@ -82,6 +82,8 @@
   color: var(--text-secondary);
   display: flex;
   justify-content: center;
+  max-height: 25px;
+  max-width: 25px;
   min-height: 25px;
   min-width: 25px;
   padding: 2px;
@@ -141,6 +143,36 @@
       cursor: default;
       opacity: 1;
     }
+  }
+}
+
+.smpte-input {
+  @media screen and (width <= 1600px) {
+    max-width: 120px;
+  }
+}
+
+.form-input {
+  position: relative;
+
+  &__label {
+    color: var(--text-tertiary);
+    font-size: 12px;
+    font-weight: 600;
+    left: 12px;
+    position: absolute;
+    top: 7px;
+    z-index: 1;
+  }
+
+  &__input {
+    background-color: var(--background-modal);
+    border: 1px solid var(--text-disabled);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 14px;
+    height: 57px;
+    padding-top: 20px;
   }
 }
 

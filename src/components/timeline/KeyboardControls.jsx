@@ -1,8 +1,7 @@
 import KeyboardControlsStyles from "@/assets/stylesheets/modules/keyboard-controls.module.scss";
 import React, {useState} from "react";
 import {observer} from "mobx-react";
-import {Modal} from "@mantine/core";
-import {Icon, IconButton} from "@/components/common/Common.jsx";
+import {Icon, IconButton, Modal} from "@/components/common/Common.jsx";
 import {keyboardControlsStore} from "@/stores/index.js";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 
@@ -75,31 +74,35 @@ const KeyboardControlGroup = observer(({title, controls}) => {
   );
 });
 
+const KeyboardControlsContent = observer(() =>
+  <>
+    <div className={S("controls-row")}>
+      <KeyboardControlGroup title="Playback" controls={keyboardControlsStore.controls.Playback}/>
+      <div className={S("controls-row__separator")}/>
+      <KeyboardControlGroup title="Volume" controls={keyboardControlsStore.controls.Volume}/>
+      <div className={S("controls-row__separator")}/>
+      <KeyboardControlGroup title="Seek" controls={keyboardControlsStore.controls.Seeking}/>
+    </div>
+    <div className={S("controls-row")}>
+      <KeyboardControlGroup title="Timeline" controls={keyboardControlsStore.controls.Tracks}/>
+      <div className={S("controls-row__separator")}/>
+      <KeyboardControlGroup title="Clips" controls={keyboardControlsStore.controls.Clips}/>
+      <div className={S("controls-row__separator")}/>
+      <KeyboardControlGroup title="General" controls={keyboardControlsStore.controls.Editing}/>
+    </div>
+  </>
+);
+
 const KeyboardControlsModal = observer((props) => {
   return (
     <Modal
       size={1200}
       centered
+      withCloseButton={false}
+      padding={50}
       {...props}
-      classNames={{
-        header: S("controls-modal__header"),
-        body: S("controls-modal__body"),
-      }}
     >
-      <div className={S("controls-row")}>
-        <KeyboardControlGroup title="Playback" controls={keyboardControlsStore.controls.Playback}/>
-        <div className={S("controls-row__separator")}/>
-        <KeyboardControlGroup title="Volume" controls={keyboardControlsStore.controls.Volume}/>
-        <div className={S("controls-row__separator")}/>
-        <KeyboardControlGroup title="Seek" controls={keyboardControlsStore.controls.Seeking}/>
-      </div>
-      <div className={S("controls-row")}>
-        <KeyboardControlGroup title="Timeline" controls={keyboardControlsStore.controls.Tracks}/>
-        <div className={S("controls-row__separator")}/>
-        <KeyboardControlGroup title="Clips" controls={keyboardControlsStore.controls.Clips}/>
-        <div className={S("controls-row__separator")}/>
-        <KeyboardControlGroup title="General" controls={keyboardControlsStore.controls.Editing}/>
-      </div>
+      <KeyboardControlsContent />
     </Modal>
   );
 });
@@ -109,7 +112,10 @@ const KeyboardControls = observer(() => {
   return (
     <>
       <IconButton
-        disabled={!keyboardControlsStore.keyboardControlsActive}
+        disabled={
+          !keyboardControlsStore.keyboardControlsActive ||
+          !keyboardControlsStore.keyboardControlsEnabled
+        }
         icon={KeyboardIcon}
         label="Keyboard Shortcuts"
         onClick={() => setShowControls(true)}

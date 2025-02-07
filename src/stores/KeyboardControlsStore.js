@@ -62,7 +62,9 @@ class ControlStore {
 
     this.controlMap = controlMap;
 
-    document.addEventListener("focusin", this._ToggleKeyboardControlsActive);
+    window.onblur = () => this.ToggleKeyboardControlsActive(false);
+
+    document.addEventListener("focusin", this.ToggleKeyboardControlsActive);
   }
 
   HandleModifiers(event) {
@@ -378,7 +380,7 @@ class ControlStore {
         }
       ],
       [
-        [""],
+        ["scale"],
         {
           keyLabel: "Control + scroll over timeline",
           action: {
@@ -388,7 +390,7 @@ class ControlStore {
         }
       ],
       [
-        [""],
+        ["scroll"],
         {
           keyLabel: "Shift + scroll over timeline",
           action: {
@@ -396,7 +398,7 @@ class ControlStore {
             action: () => {}
           }
         },
-        [""],
+        ["drag"],
         {
           keyLabel: "Alt + drag scale bar",
           action: {

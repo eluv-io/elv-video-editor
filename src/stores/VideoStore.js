@@ -75,6 +75,10 @@ class VideoStore {
   clipInFrame;
   clipOutFrame;
 
+  downloadJobInfo = {};
+  downloadJobStatus = {};
+  downloadedJobs = {};
+
   get scaleMagnitude() { return this.scaleMax - this.scaleMin; }
 
   get scaleMinTime() { return this.duration ? this.ProgressToTime(this.scaleMin) : 0; }
@@ -254,6 +258,7 @@ class VideoStore {
       this.isVideo = videoObject.isVideo;
       this.hasAssets = Object.keys((videoObject.metadata || {}).assets || {}).length > 0;
 
+      this.LoadDownloadJobInfo();
 
       if(!this.isVideo) {
         this.initialized = true;
@@ -1068,6 +1073,298 @@ class VideoStore {
       filename
     );
   }
+
+
+  // Clip download
+
+  // Video/Audio track info
+
+  ResolutionOptions(offering) {
+    const repMetadata = this?.metadata?.offerings?.[offering]?.playout?.streams?.video?.representations || {};
+
+    const repInfo = (
+      Object.keys(repMetadata)
+        .map(repKey => {
+          try {
+            const { bit_rate, codec, height, width } = repMetadata[repKey];
+
+            return {
+              key: repKey,
+              resolution: `${width}x${height}`,
+              width,
+              height,
+              codec,
+              bitrate: bit_rate,
+              string: `${width}x${height} (${(parseInt(bit_rate) / 1000 / 1000).toFixed(1)}Mbps)`
+            };
+          } catch(error) {
+            // eslint-disable-next-line no-console
+            console.error(error);
+          }
+        })
+        .filter(rep => rep)
+        .sort((a, b) => a.bitrate > b.bitrate ? -1 : 1)
+    );
+
+    if(repInfo[0]) {
+      repInfo[0].isTopResolution = true;
+    }
+
+    return repInfo;
+  }
+
+  AudioOptions(offering) {
+    const audioRepMetadata = this.metadata.offerings?.[offering]?.playout?.streams || {};
+    const mediaStruct = this.metadata.offerings?.[offering]?.media_struct?.streams || {};
+
+    return (
+      Object.keys(audioRepMetadata)
+        .map(streamKey =>
+          Object.keys(audioRepMetadata[streamKey]?.representations || {})
+            .map(repKey => {
+              try {
+                const rep = audioRepMetadata[streamKey].representations?.[repKey];
+                const label = mediaStruct[streamKey]?.label;
+
+                if(rep.type !== "RepAudio") { return; }
+
+                return {
+                  key: repKey,
+                  bitrate: rep.bit_rate,
+                  default: mediaStruct[streamKey]?.default_for_media_type,
+                  label: label || repKey,
+                  string: label ?
+                    `${label} (${(parseInt(rep.bit_rate) / 1000).toFixed(0)}Kbps)` :
+                    repKey
+                };
+              } catch(error) {
+                // eslint-disable-next-line no-console
+                console.error(error);
+              }
+            })
+        )
+        .flat()
+        .filter(rep => rep)
+        .sort((a, b) => a.string < b.string ? -1 : 1)
+    );
+  }
+
+  DownloadJobDefaultFilename({format="mp4", offering="default", clipInFrame, clipOutFrame, representationInfo, audioRepresentationInfo}) {
+    let filename = this.name;
+
+    if(offering && offering !== "default") {
+      filename = `${filename} (${offering})`;
+    }
+
+    if(clipInFrame || (clipOutFrame && clipOutFrame !== this.videoHandler.TotalFrames() - 1)) {
+      const startTime = this.videoHandler.FrameToString({frame: clipInFrame}).replaceAll(" ", "");
+      const endTime = this.videoHandler.FrameToString({frame: clipOutFrame || this.videoHandler.TotalFrames()}).replaceAll(" ", "");
+      filename = `${filename} (${startTime} - ${endTime})`;
+    }
+
+    if(representationInfo && !representationInfo.isTopResolution) {
+      filename = `${filename} (${representationInfo.width}x${representationInfo.height})`;
+    }
+
+    if(audioRepresentationInfo && !audioRepresentationInfo.default) {
+      filename = `${filename} (${audioRepresentationInfo.label})`;
+    }
+
+    return `${filename}.${format === "mp4" ? "mp4" : "mov"}`;
+  }
+
+  async SaveDownloadJobInfo() {
+    await this.rootStore.client.walletClient.SetProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: `download-jobs-${this.videoObject.objectId}`,
+      value: this.rootStore.client.utils.B64(
+        JSON.stringify(this.downloadJobInfo || {})
+      )
+    });
+  }
+
+  LoadDownloadJobInfo = flow(function * () {
+    const response = JSON.parse(
+      this.rootStore.client.utils.FromB64(
+        (yield this.rootStore.client.walletClient.ProfileMetadata({
+          type: "app",
+          appId: "video-editor",
+          mode: "private",
+          key: `download-jobs-${this.videoObject.objectId}`,
+        })) || ""
+      ) || "{}"
+    );
+
+    let deleted = false;
+    // Remove expired entries
+    Object.keys(response).forEach(key => {
+      if(Date.now() > response[key].expiresAt) {
+        delete response[key];
+        deleted = true;
+      }
+    });
+
+    this.downloadJobInfo = response;
+
+    if(deleted) {
+      this.SaveDownloadJobInfo();
+    }
+  });
+
+  StartDownloadJob = flow(function * ({
+    filename,
+    format="mp4",
+    offering="default",
+    representation,
+    audioRepresentation,
+    clipInFrame,
+    clipOutFrame,
+    encrypt=true
+  }) {
+    try {
+      filename = filename || this.DownloadJobDefaultFilename({format, offering, clipInFrame, clipOutFrame});
+      const expectedExtension = format === "mp4" ? ".mp4" : ".mov";
+      if(!filename.endsWith(expectedExtension)) {
+        filename = `${filename}${expectedExtension}`;
+      }
+
+      let params = {
+        format,
+        offering,
+        filename
+      };
+
+      if(representation) {
+        params.representation = representation;
+      }
+
+      if(audioRepresentation) {
+        params.audio = audioRepresentation;
+      }
+
+      if(clipInFrame) {
+        // Use more literal time for api as opposed to SMPTE
+        params.start_ms = `${((1 / this.frameRate) * clipInFrame).toFixed(4)}s`;
+      }
+
+      if(clipOutFrame && clipOutFrame !== this.videoHandler.TotalFrames() - 1) {
+        params.end_ms = `${((1 / this.frameRate) * clipOutFrame).toFixed(4)}s`;
+      }
+
+      const response = yield this.rootStore.client.MakeFileServiceRequest({
+        versionHash: this.videoObject.versionHash,
+        path: "/call/media/files",
+        method: "POST",
+        body: params,
+        encryption: encrypt ? "cgck" : undefined
+      });
+
+      const status = yield this.DownloadJobStatus({
+        jobId: response.job_id,
+        versionHash: this.videoObject.versionHash
+      });
+
+      this.downloadJobInfo[response.job_id] = {
+        versionHash: this.videoObject.versionHash,
+        filename,
+        format,
+        offering,
+        clipInFrame,
+        clipOutFrame,
+        startedAt: Date.now(),
+        expiresAt: Date.now() + 29 * 24 * 60 * 60 * 1000
+      };
+
+      this.SaveDownloadJobInfo();
+
+      this.downloadJobInfo[response.job_id].automaticDownloadInterval = setInterval(async () => {
+        const status = await this.DownloadJobStatus({jobId: response.job_id}) || {};
+
+        if(status?.status === "completed") {
+          this.SaveDownloadJob({jobId: response.job_id});
+        }
+
+        if(status?.status !== "processing") {
+          clearInterval(this.downloadJobInfo?.[response.job_id]?.automaticDownloadInterval);
+        }
+      }, 10000);
+
+      return {
+        jobId: response.job_id,
+        status
+      };
+    } catch(error) {
+      if(encrypt) {
+        return this.StartDownloadJob({...arguments[0], encrypt: false});
+      }
+    }
+  });
+
+  DownloadJobStatus = flow(function * ({jobId, versionHash}) {
+    this.downloadJobStatus[jobId] = yield this.rootStore.client.MakeFileServiceRequest({
+      versionHash: versionHash || this.downloadJobInfo[jobId].versionHash,
+      path: UrlJoin("call", "media", "files", jobId)
+    });
+
+    return this.downloadJobStatus[jobId];
+  });
+
+  SaveDownloadJob = flow(function * ({jobId}) {
+    clearInterval(this.downloadJobInfo[jobId]?.automaticDownloadInterval);
+
+    const jobInfo = this.downloadJobInfo[jobId];
+
+    const downloadUrl = yield this.rootStore.client.FabricUrl({
+      versionHash: jobInfo.versionHash,
+      call: UrlJoin("media", "files", jobId, "download"),
+      service: "files",
+      queryParams: {
+        "header-x_set_content_disposition": `attachment; filename="${jobInfo.filename}"`
+      }
+    });
+
+    try {
+      DownloadFromUrl(downloadUrl, jobInfo.filename);
+
+      this.downloadedJobs[jobId] = true;
+    } catch(error) {
+      this.rootStore.menuStore.SetErrorMessage("Unable to download");
+      // eslint-disable-next-line no-console
+      console.error("Invalid URL or failed to download", error);
+    }
+  });
+
+  RemoveDownloadJob({jobId}) {
+    clearInterval(this.downloadJobInfo[jobId]?.automaticDownloadInterval);
+    delete this.downloadJobInfo[jobId];
+    this.SaveDownloadJobInfo();
+  }
+
+  SetEmbedUrl = flow(function * () {
+    let options = {
+      autoplay: true,
+    };
+
+    if(this.offeringKey !== "default") {
+      options.offerings = [this.offeringKey];
+    }
+
+    if(this.clipInFrame > 0) {
+      options.clipStart = this.FrameToTime(this.clipInFrame);
+    }
+
+    if(this.videoHandler.TotalFrames() > this.clipOutFrame + 1) {
+      options.clipEnd = this.FrameToTime(this.clipOutFrame + 1);
+    }
+
+    this.embedUrl = yield this.rootStore.client.EmbedUrl({
+      objectId: this.videoObject.objectId,
+      duration: 7 * 24 * 60 * 60 * 1000,
+      options
+    });
+  });
 }
 
 export default VideoStore;
