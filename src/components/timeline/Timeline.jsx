@@ -105,6 +105,11 @@ const TimelineBottomBar = observer(() => {
         onChange={event => trackStore.ToggleTrackType({type: "Overlay", visible: event.currentTarget.checked})}
       />
       <SwitchInput
+        label="Show Subtitles"
+        checked={trackStore.showSubtitles}
+        onChange={event => trackStore.ToggleTrackType({type: "Subtitles", visible: event.currentTarget.checked})}
+      />
+      <SwitchInput
         label="Show Segments"
         checked={trackStore.showSegments}
         onChange={event => trackStore.ToggleTrackType({type: "Segments", visible: event.currentTarget.checked})}
@@ -263,12 +268,23 @@ const TimelineSection = observer(() => {
     tracks = trackStore.metadataTracks;
   }
 
+  if(trackStore.showSubtitles) {
+    tracks = [
+      ...tracks,
+      ...(
+        trackStore.tracks
+          .filter(track => track.trackType === "vtt")
+          .sort((a, b) => (a.label > b.label ? 1 : -1))
+      )
+    ];
+  }
+
   if(trackStore.showSegments) {
     tracks = [
       ...tracks,
       ...(
         trackStore.tracks
-          .filter(track => track.trackType === "segments").slice()
+          .filter(track => track.trackType === "segments")
           .sort((a, b) => (a.label > b.label ? 1 : -1))
       )
     ];

@@ -36,6 +36,9 @@ class VideoStore {
   audioTracks = [];
   currentAudioTrack;
 
+  subtitleTracks = [];
+  currentSubtitleTrack = -1;
+
   source;
   baseUrl = undefined;
   baseStateChannelUrl = undefined;
@@ -190,12 +193,10 @@ class VideoStore {
   }
 
   SetOffering = flow(function * (offeringKey) {
-    this.Reset();
-    this.offeringKey = offeringKey;
-    yield this.SetVideo(this.videoObject, offeringKey);
+    yield this.SetVideo({...this.videoObject, preferredOfferingKey: offeringKey});
   });
 
-  SetVideo = flow(function * ({libraryId, objectId}) {
+  SetVideo = flow(function * ({libraryId, objectId, preferredOfferingKey="default"}) {
     this.loading = true;
     this.ready = false;
     this.rootStore.SetError(undefined);
@@ -232,7 +233,7 @@ class VideoStore {
         name: metadata.public && metadata.public.name || metadata.name || versionHash,
         description: metadata.public && metadata.public.description || metadata.description,
         metadata,
-        isVideo: metadata.offerings && metadata.offerings[this.rootStore.videoStore.offeringKey]?.ready
+        isVideo: metadata.offerings
       };
 
       this.videoObject = videoObject;
@@ -274,31 +275,14 @@ class VideoStore {
 
         this.SetOfferingClipDetails();
 
-        const offeringPlayoutOptions = {};
         const browserSupportedDrms = (yield this.rootStore.client.AvailableDRMs() || []).filter(drm => ["clear", "aes-128"].includes(drm));
+        const { playoutOptions, offeringKey } = yield this.GetSupportedOffering({
+          versionHash: videoObject.versionHash,
+          browserSupportedDrms,
+          preferredOfferingKey
+        });
 
-        let playoutOptions;
-        try {
-          playoutOptions = yield this.rootStore.client.PlayoutOptions({
-            versionHash: videoObject.versionHash,
-            protocols: ["hls"],
-            drms: browserSupportedDrms,
-            hlsjsProfile: false,
-            offering: this.offeringKey
-          });
-        } catch(error) {
-          // eslint-disable-next-line no-console
-          console.error(error);
-        }
-
-        if(!playoutOptions || !playoutOptions["hls"] || !(playoutOptions["hls"].playoutMethods.clear || playoutOptions["hls"].playoutMethods["aes-128"])) {
-          // eslint-disable-next-line no-console
-          console.error(`HLS Clear and AES-128 not supported by ${this.offeringKey} offering.`);
-
-          const response = yield this.GetSupportedOffering({versionHash: videoObject.versionHash, browserSupportedDrms});
-          this.offeringKey = response.offeringKey;
-          playoutOptions = response.playoutOptions;
-        }
+        this.offeringKey = offeringKey;
 
         // Specify playout for full, untrimmed content
         const playoutMethods = playoutOptions["hls"].playoutMethods;
@@ -423,11 +407,9 @@ class VideoStore {
     }
   });
 
-  GetSupportedOffering = flow(function * ({versionHash, browserSupportedDrms}) {
-    let setNewOffering = false;
+  GetSupportedOffering = flow(function * ({versionHash, browserSupportedDrms, preferredOfferingKey}) {
     const offeringPlayoutOptions = {};
     let offeringKey;
-
     for(let offering of Object.keys(this.availableOfferings).sort()) {
       offeringPlayoutOptions[offering] = yield this.rootStore.client.PlayoutOptions({
         versionHash,
@@ -442,9 +424,8 @@ class VideoStore {
       if(!(playoutMethods["aes-128"] || playoutMethods["clear"])) {
         this.availableOfferings[offering].disabled = true;
       } else {
-        if(!setNewOffering) {
+        if(!offeringKey || offering === preferredOfferingKey) {
           offeringKey = offering;
-          setNewOffering = true;
         }
       }
     }
@@ -542,6 +523,15 @@ class VideoStore {
       this.currentAudioTrack = this.player.audioTrack;
     }));
 
+    this.player.on(HLS.Events.SUBTITLE_TRACKS_UPDATED, action(() => {
+      this.subtitleTracks = this.player.subtitleTracks;
+      this.currentSubtitleTrack = this.player.subtitleTrack;
+    }));
+
+    this.player.on(HLS.Events.SUBTITLE_TRACK_SWITCH, action(() => {
+      this.subtitleTracks = this.player.subtitleTracks;
+      this.currentSubtitleTrack = this.player.subtitleTrack;
+    }));
 
     this.player.on(HLS.Events.ERROR, action((event, data) => {
       if(data.fatal || (data.type === "networkError" && parseInt(data.response.code) >= 500)) {
@@ -786,6 +776,11 @@ class VideoStore {
 
   SetAudioTrack(trackIndex) {
     this.player.audioTrack = parseInt(trackIndex);
+    this.player.streamController.immediateLevelSwitch();
+  }
+
+  SetSubtitleTrack(trackIndex) {
+    this.player.subtitleTrack = parseInt(trackIndex);
     this.player.streamController.immediateLevelSwitch();
   }
 
@@ -1117,6 +1112,7 @@ class VideoStore {
     const audioRepMetadata = this.metadata.offerings?.[offering]?.playout?.streams || {};
     const mediaStruct = this.metadata.offerings?.[offering]?.media_struct?.streams || {};
 
+    const currentAudioTrack = this.audioTracks[this.currentAudioTrack];
     return (
       Object.keys(audioRepMetadata)
         .map(streamKey =>
@@ -1129,9 +1125,11 @@ class VideoStore {
                 if(rep.type !== "RepAudio") { return; }
 
                 return {
+                  trackId: this.audioTracks.find(t => t.name === label)?.id,
                   key: repKey,
                   bitrate: rep.bit_rate,
                   default: mediaStruct[streamKey]?.default_for_media_type,
+                  current: label === currentAudioTrack?.name,
                   label: label || repKey,
                   string: label ?
                     `${label} (${(parseInt(rep.bit_rate) / 1000).toFixed(0)}Kbps)` :
@@ -1342,24 +1340,28 @@ class VideoStore {
     this.SaveDownloadJobInfo();
   }
 
-  SetEmbedUrl = flow(function * () {
+  CreateEmbedUrl = flow(function * ({offeringKey, audioTrackId, clipInFrame, clipOutFrame}) {
     let options = {
       autoplay: true,
     };
 
-    if(this.offeringKey !== "default") {
-      options.offerings = [this.offeringKey];
+    if(offeringKey !== "default") {
+      options.offerings = [offeringKey];
     }
 
-    if(this.clipInFrame > 0) {
-      options.clipStart = this.FrameToTime(this.clipInFrame);
+    if(audioTrackId >= 0) {
+      options.audioTrackId = audioTrackId;
     }
 
-    if(this.videoHandler.TotalFrames() > this.clipOutFrame + 1) {
-      options.clipEnd = this.FrameToTime(this.clipOutFrame + 1);
+    if(clipInFrame > 0) {
+      options.clipStart = this.FrameToTime(clipInFrame);
     }
 
-    this.embedUrl = yield this.rootStore.client.EmbedUrl({
+    if(this.videoHandler.TotalFrames() > clipOutFrame + 1) {
+      options.clipEnd = this.FrameToTime(clipOutFrame + 1);
+    }
+
+    return yield this.rootStore.client.EmbedUrl({
       objectId: this.videoObject.objectId,
       duration: 7 * 24 * 60 * 60 * 1000,
       options

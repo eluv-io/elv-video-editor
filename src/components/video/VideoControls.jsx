@@ -25,6 +25,43 @@ import FrameForward1 from "@/assets/icons/v2/frame-forward-1.svg";
 import FrameForward10 from "@/assets/icons/v2/frame-forward-10.svg";
 import PlayClipIcon from "@/assets/icons/v2/play-clip.svg";
 
+export const SubtitleControls = observer(() => {
+  const tracks = videoStore.subtitleTracks.map(track => ({
+    label: track.name || track.lang,
+    value: track.id.toString()
+  }));
+
+  return (
+    <SelectInput
+      label="Subtitles"
+      key={`subtitles-${videoStore.currentSubtitleTrack}`}
+      value={videoStore.currentSubtitleTrack?.toString() || "-1"}
+      options={[
+        { label: "Subtitles Off", value: "-1"},
+        ...tracks
+      ]}
+      onChange={value => value && videoStore.SetSubtitleTrack(value)}
+    />
+  );
+});
+
+export const AudioControls = observer(() => {
+  const tracks = videoStore.audioTracks.map(track => ({
+    label: track.name || track.lang,
+    value: track.id.toString()
+  }));
+
+  return (
+    <SelectInput
+      label="Audio"
+      key={`audio-${videoStore.currentAudioTrack}`}
+      value={videoStore.currentAudioTrack?.toString() || "-1"}
+      options={tracks}
+      onChange={value => value && videoStore.SetAudioTrack(value)}
+    />
+  );
+});
+
 export const QualityControls = observer(() => {
   const levels = Object.keys(videoStore.levels).map(levelIndex => {
     const level = videoStore.levels[levelIndex];

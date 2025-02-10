@@ -78,6 +78,10 @@
     display: flex;
     gap: 12px;
 
+    &--tight {
+      gap: 3px;
+    }
+
     &.left,
     &.center,
     &.right {

@@ -5,8 +5,13 @@ import {observer} from "mobx-react";
 import {keyboardControlsStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {
-  DropFrameControls, FrameRateControls, OfferingControls,
-  PlaybackRateControl, QualityControls,
+  AudioControls,
+  DropFrameControls,
+  FrameRateControls,
+  OfferingControls,
+  PlaybackRateControl,
+  QualityControls,
+  SubtitleControls,
 } from "@/components/video/VideoControls";
 import Video from "@/components/video/Video";
 import SVG from "react-inlinesvg";
@@ -40,12 +45,14 @@ const VideoSection = observer(() => {
           </div>
         </Tooltip>
         <div className={S("toolbar__spacer")} />
-        <div className={S("toolbar__controls-group")}>
+        <div className={S("toolbar__controls-group", "toolbar__controls-group--tight")}>
           <PlaybackRateControl />
           <FrameRateControls />
           <DropFrameControls />
           <OfferingControls />
           <QualityControls />
+          <SubtitleControls />
+          <AudioControls />
         </div>
       </div>
     </div>

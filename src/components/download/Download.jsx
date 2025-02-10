@@ -2,136 +2,28 @@ import DownloadStyles from "@/assets/stylesheets/modules/download.module.scss";
 
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react";
-import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
-import {AsyncButton, FormSelect, FormTextInput, Icon, IconButton, Modal} from "@/components/common/Common.jsx";
+import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {
+  AsyncButton,
+  CopyButton,
+  FormSelect,
+  FormTextInput,
+  Icon,
+  IconButton,
+  Modal
+} from "@/components/common/Common.jsx";
 import {Button, Tabs, Text} from "@mantine/core";
-import {videoStore, trackStore} from "@/stores/index.js";
+import {videoStore} from "@/stores/index.js";
+import {modals} from "@mantine/modals";
 
 import DownloadIcon from "@/assets/icons/download.svg";
 import XIcon from "@/assets/icons/X.svg";
 import RetryIcon from "@/assets/icons/rotate-ccw.svg";
-import {modals} from "@mantine/modals";
+import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 
 const S = CreateModuleClassMatcher(DownloadStyles);
 
-const ThumbnailPreview = observer(({startFrame, endFrame, ...props}) => {
-  const [thumbnails, setThumbnails] = useState(null);
-  const [thumbnailIndex, setThumbnailIndex] = useState(0);
-  const [hover, setHover] = useState(false);
-
-  useEffect(() => {
-    let startTime = videoStore.FrameToTime(startFrame);
-    const endTime = videoStore.FrameToTime(endFrame);
-
-    let thumbnailMap = {};
-    let thumbnailList = [];
-    while(startTime < endTime) {
-      const thumbnailUrl = trackStore.ThumbnailImage(startTime);
-
-      if(!thumbnailMap[thumbnailUrl]) {
-        thumbnailList.push(thumbnailUrl);
-        thumbnailMap[thumbnailUrl] = true;
-      }
-
-      startTime += 1;
-    }
-
-    setThumbnails(thumbnailList);
-  }, [trackStore.thumbnailStatus.available]);
-
-  useEffect(() => {
-    if(!hover || !thumbnails) {
-      setThumbnailIndex(0);
-      return;
-    }
-
-    let index = thumbnailIndex;
-    const interval = setInterval(() => {
-      index = (index + 1) % thumbnails.length;
-      setThumbnailIndex(index);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [hover, thumbnails]);
-
-  if(!trackStore.thumbnailStatus.available || !thumbnails) {
-    return null;
-  }
-
-  const previousIndex = thumbnailIndex === 0 && hover ? thumbnails.length - 1 : thumbnailIndex - 1;
-  return (
-    <div
-      {...props}
-      style={{aspectRatio: videoStore.aspectRatio}}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      className={JoinClassNames(S("thumbnail-preview", hover ? "thumbnail-preview--hover" : ""), props.className)}
-    >
-      {
-        previousIndex < 0 ? null :
-          <img
-            style={{aspectRatio: videoStore.aspectRatio}}
-            key={`thumbnail-${previousIndex}`}
-            src={thumbnails[previousIndex]}
-            className={S("thumbnail-preview__previous")}
-          />
-      }
-      <img
-        style={{aspectRatio: videoStore.aspectRatio}}
-        key={`thumbnail-${thumbnailIndex}`}
-        src={thumbnails[thumbnailIndex]}
-        className={S("thumbnail-preview__current")}
-      />
-    </div>
-  );
-});
-
-const DownloadDetails = observer(({Submit, Close}) => {
-  const [representations, setRepresentations] = useState(undefined);
-  const [audioRepresentations, setAudioRepresentations] = useState(undefined);
-  const [options, setOptions] = useState({
-    format: "mp4",
-    filename: "",
-    defaultFilename: "",
-    representation: "",
-    audioRepresentation: "",
-    offering: videoStore.offeringKey,
-    clipInFrame: videoStore.clipInFrame,
-    clipOutFrame: videoStore.clipOutFrame,
-  });
-
-  useEffect(() => {
-    const defaultFilename = videoStore.DownloadJobDefaultFilename({
-      format: options.format,
-      offering: options.offering,
-      representationInfo: representations?.find(rep => rep.key === options.representation),
-      audioRepresentationInfo: audioRepresentations?.find(rep => rep.key === options.audioRepresentation),
-      clipInFrame: videoStore.clipInFrame,
-      clipOutFrame: videoStore.clipOutFrame
-    });
-    setOptions({
-      ...options,
-      defaultFilename,
-      filename: options.filename === options.defaultFilename ?
-        defaultFilename : options.filename
-    });
-  }, [options.format, options.offering, options.representation, options.audioRepresentation, options.clipInFrame, options.clipOutFrame]);
-
-  useEffect(() => {
-    const repInfo = videoStore.ResolutionOptions(options.offering);
-
-    const audioRepInfo = videoStore.AudioOptions(options.offering);
-
-    setRepresentations(repInfo);
-    setAudioRepresentations(audioRepInfo);
-
-    setOptions({
-      ...options,
-      representation: repInfo[0]?.key || "",
-      audioRepresentation: audioRepInfo.find(rep => rep.default)?.key || ""
-    });
-  }, [options.offering]);
-
+const DownloadForm = observer(({options, setOptions, representations, audioRepresentations, Submit, Close}) => {
   return (
     <div className={S("download__form")}>
       <FormTextInput
@@ -381,7 +273,67 @@ const DownloadModalContent = observer(({setConfirming, Close}) => {
   const [tab, setTab] = useState("details");
   const [jobId, setJobId] = useState(undefined);
   const [error, setError] = useState("");
+  const [representations, setRepresentations] = useState(undefined);
+  const [audioRepresentations, setAudioRepresentations] = useState(undefined);
+  const [embedUrl, setEmbedUrl] = useState(undefined);
+  const [options, setOptions] = useState({
+    format: "mp4",
+    filename: "",
+    defaultFilename: "",
+    representation: "",
+    audioRepresentation: "",
+    offering: videoStore.offeringKey,
+    clipInFrame: videoStore.clipInFrame,
+    clipOutFrame: videoStore.clipOutFrame,
+  });
 
+  // Update
+  useEffect(() => {
+    const audioTrack = audioRepresentations?.find(rep => rep.key === options.audioRepresentation);
+    const defaultFilename = videoStore.DownloadJobDefaultFilename({
+      format: options.format,
+      offering: options.offering,
+      representationInfo: representations?.find(rep => rep.key === options.representation),
+      audioRepresentationInfo: audioTrack,
+      clipInFrame: videoStore.clipInFrame,
+      clipOutFrame: videoStore.clipOutFrame
+    });
+    setOptions({
+      ...options,
+      defaultFilename,
+      filename: options.filename === options.defaultFilename ?
+        defaultFilename : options.filename
+    });
+
+    videoStore.CreateEmbedUrl({
+      offeringKey: options.offering,
+      audioTrackId: audioTrack && !audioTrack.default ? audioTrack.trackKey : undefined,
+      clipInFrame: videoStore.clipInFrame,
+      clipOutFrame: videoStore.clipOutFrame
+    })
+      .then(url => setEmbedUrl(url));
+  }, [options.format, options.offering, options.representation, options.audioRepresentation, options.clipInFrame, options.clipOutFrame]);
+
+  // Load quality and audio options
+  useEffect(() => {
+    const repInfo = videoStore.ResolutionOptions(options.offering);
+
+    const audioRepInfo = videoStore.AudioOptions(options.offering);
+
+    setRepresentations(repInfo);
+    setAudioRepresentations(audioRepInfo);
+
+    setOptions({
+      ...options,
+      representation: repInfo[0]?.key || "",
+      audioRepresentation:
+        audioRepInfo.find(rep => rep.current)?.key ||
+        audioRepInfo.find(rep => rep.default)?.key ||
+        ""
+    });
+  }, [options.offering]);
+
+  // Reset error
   useEffect(() => {
     setError("");
   }, [tab]);
@@ -427,7 +379,7 @@ const DownloadModalContent = observer(({setConfirming, Close}) => {
           <div className={S("preview__header")}>Preview</div>
           <div className={S("preview__container")}>
             <div className={S("preview__thumbnail-container")}>
-              <ThumbnailPreview
+              <PreviewThumbnail
                 startFrame={videoStore.clipInFrame}
                 endFrame={videoStore.clipOutFrame}
                 className={S("preview__thumbnail")}
@@ -454,6 +406,20 @@ const DownloadModalContent = observer(({setConfirming, Close}) => {
               </div>
             </div>
           </div>
+          {
+            !embedUrl ? null :
+              <div className={S("url")}>
+                <div className={S("preview__header")}>
+                  Streaming URL
+                </div>
+                <div className={S("url__container")}>
+                  <div className={S("url__url")}>
+                    { embedUrl }
+                  </div>
+                  <CopyButton label="Copy Streaming URL" value={embedUrl} />
+                </div>
+              </div>
+          }
         </div>
         <div className={S("content")}>
           <Tabs value={tab} color="gray.5" onChange={setTab}>
@@ -474,7 +440,14 @@ const DownloadModalContent = observer(({setConfirming, Close}) => {
           }
           {
             tab === "details" ?
-              <DownloadDetails Submit={Submit} Close={Close} /> :
+              <DownloadForm
+                options={options}
+                setOptions={setOptions}
+                representations={representations}
+                audioRepresentations={audioRepresentations}
+                Submit={Submit}
+                Close={Close}
+              /> :
               <DownloadHistory highlightedJobId={jobId} setConfirming={setConfirming} />
           }
         </div>

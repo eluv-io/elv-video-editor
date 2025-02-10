@@ -107,6 +107,16 @@
   }
 }
 
+.copy-button {
+  transition: color 0.1s ease;
+  background-color: transparent!important;
+
+  &--copied {
+    transition: color 1s ease;
+    color: var(--text-primary-color);
+  }
+}
+
 .input {
   &__input {
     background: var(--background-input);
@@ -379,5 +389,26 @@
     padding-top: 5px;
     pointer-events: none;
     user-select: none;
+  }
+}
+
+.preview-thumbnail {
+  opacity: 0.75;
+  position: relative;
+  transition: opacity 0.25s ease;
+
+  &--hover {
+    opacity: 1;
+  }
+
+  &__previous {
+    inset: 0;
+    position: absolute;
+    z-index: 0;
+  }
+
+  &__current {
+    animation: 0.5s fadein ease forwards;
+    z-index: 1;
   }
 }

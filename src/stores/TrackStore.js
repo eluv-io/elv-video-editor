@@ -62,6 +62,7 @@ class TrackStore {
   showSegments = false;
   showAudio = false;
   showThumbnails = true;
+  showSubtitles = false;
   showOverlay = true;
 
   totalTags = 0;
@@ -519,6 +520,7 @@ class TrackStore {
 
           this.AddTrack({
             ...track,
+            key: track.label,
             type: "vtt",
             tags
           });

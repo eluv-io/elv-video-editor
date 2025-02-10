@@ -1,12 +1,15 @@
 import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
 import React, {forwardRef, useEffect, useRef, useState} from "react";
-import {CreateModuleClassMatcher, JoinClassNames, TextWidth} from "@/utils/Utils.js";
+import {Copy, CreateModuleClassMatcher, JoinClassNames, TextWidth} from "@/utils/Utils.js";
 import {Button, Modal as MantineModal, Select, Switch, TextInput, Tooltip} from "@mantine/core";
 import SVG from "react-inlinesvg";
 import {observer} from "mobx-react";
 import {Link} from "wouter";
 import {keyboardControlsStore, videoStore} from "@/stores/index.js";
+
+import CopyIcon from "@/assets/icons/v2/copy.svg";
+import CheckIcon from "@/assets/icons/check-circle.svg";
 
 const S = CreateModuleClassMatcher(CommonStyles);
 
@@ -191,6 +194,31 @@ export const IconButton = ({
     </Tooltip>
   );
 };
+
+let copyTimeout;
+export const CopyButton = observer(({value, ...props}) => {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <IconButton
+      {...props}
+      icon={!copied ? CopyIcon : CheckIcon}
+      onClick={() => {
+        clearTimeout(copyTimeout);
+        Copy(value);
+        setCopied(true);
+
+        copyTimeout = setTimeout(() => setCopied(false), 2000);
+      }}
+      className={
+        JoinClassNames(
+          S("copy-button", copied ? "copy-button--copied" : ""),
+          props.className
+        )
+      }
+    />
+  );
+});
 
 export const AsyncButton = observer(({onClick, ...props}) => {
   const [loading, setLoading] = useState(false);

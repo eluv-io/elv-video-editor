@@ -1,3 +1,7 @@
+// Ensure common and shared styles are loaded before any specific styles
+import "@/assets/stylesheets/modules/common.module.scss";
+import "@/assets/stylesheets/modules/shared.module.scss";
+
 import {observer} from "mobx-react";
 import React, {useEffect, useRef} from "react";
 import {keyboardControlsStore, rootStore, videoStore} from "@/stores";

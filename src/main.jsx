@@ -2,7 +2,6 @@ import "@/assets/stylesheets/reset.scss";
 
 import "@mantine/core/styles.css";
 import "@/assets/stylesheets/base.scss";
-import "@/assets/stylesheets/modules/common.module.scss";
 
 import MantineTheme from "@/assets/MantineTheme";
 
