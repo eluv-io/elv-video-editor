@@ -13,13 +13,14 @@ import {
   Modal
 } from "@/components/common/Common.jsx";
 import {Button, Tabs, Text} from "@mantine/core";
-import {videoStore} from "@/stores/index.js";
+import {trackStore, videoStore} from "@/stores/index.js";
 import {modals} from "@mantine/modals";
+import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 
 import DownloadIcon from "@/assets/icons/download.svg";
+import QuestionMarkIcon from "@/assets/icons/v2/question-mark.svg";
 import XIcon from "@/assets/icons/X.svg";
 import RetryIcon from "@/assets/icons/rotate-ccw.svg";
-import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 
 const S = CreateModuleClassMatcher(DownloadStyles);
 
@@ -97,7 +98,7 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
     return null;
   } else if(jobStatus.status === "failed") {
     return (
-      <div className={S("download__history-actions")}>
+      <div className={S("history-row__actions")}>
         <IconButton
           icon={RetryIcon}
           title="Retry"
@@ -143,7 +144,7 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
     );
   } else if(jobStatus.status === "completed") {
     return (
-      <div className={S("download__history-actions")}>
+      <div className={S("history-row__actions")}>
         <IconButton
           icon={DownloadIcon}
           label="Download"
@@ -171,29 +172,52 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
       </div>
     );
   } else if(jobStatus.status === "processing") {
-    return <progress value={jobStatus.progress} max={100}/>;
+    return <progress value={jobStatus.progress} max={100} className={S("progress")} />;
   }
 });
 
-const JobStatusTable = observer(({jobs, setConfirming, Reload}) => (
-  <div className={S("download__history")}>
+const JobStatusTable = observer(({jobs, representations, audioRepresentations, setConfirming, Reload}) => (
+  <div className={S("history")}>
     {
       jobs.map(job => {
         const jobStatus = videoStore.downloadJobStatus[job.jobId];
         const downloaded = videoStore.downloadedJobs[job.jobId];
 
+        const startFrame = job.clipInFrame || 0;
+        const endFrame = job.clipOutFrame || videoStore.totalFrames - 1;
+
+        const resolutionLabel = representations?.find(rep => rep.key === job.representation)?.string;
+        const audioTrackLabel = audioRepresentations?.find(rep => rep.key === job.audioRepresentation)?.label;
+
         return (
           <div
             key={`row-${job.jobId}`}
-            className={S("download__history-row", job.highlighted ? "download__history-row--highlighted" : "")}
+            className={
+              S(
+                "history-row",
+                trackStore.thumbnailStatus.available ? "history-row--thumbnail" : "",
+                job.highlighted ? "history-row--highlighted" : ""
+              )
+            }
           >
-            <div className={S("download__history-row-info")}>
-              <div title={job.filename} className={S("download__history-row-name")}>
+            {
+              !trackStore.thumbnailStatus.available ? null :
+                <div style={{aspectRatio: videoStore.aspectRatio}} className={S("history-row__thumbnail-container")}>
+                  <PreviewThumbnail
+                    startFrame={startFrame}
+                    endFrame={endFrame}
+                    className={S("history-row__thumbnail")}
+                  />
+                </div>
+            }
+
+            <div className={S("history-row__info")}>
+              <div title={job.filename} className={S("history-row__name")}>
                 {job.filename}
               </div>
               {
                 !jobStatus ? null :
-                  <div className={S("download__history-row-status")}>
+                  <div className={S("history-row__status")}>
                     {
                       jobStatus?.status === "completed" ?
                         downloaded ? "Download Initiated. Access from browser download history" : "Available" :
@@ -201,13 +225,53 @@ const JobStatusTable = observer(({jobs, setConfirming, Reload}) => (
                     }
                   </div>
               }
-              <div className={S("download__history-row-duration")}>
+              <div className={S("history-row__duration")}>
                 {job?.duration}
               </div>
             </div>
-            <div className={S("download__history-status")}>
+            <div className={S("history-row__actions")}>
               <JobActions job={job} setConfirming={setConfirming} Reload={Reload}/>
             </div>
+
+            <IconButton
+              icon={QuestionMarkIcon}
+              className={S("history-row__details")}
+              aria-label="Clip Details"
+              label={
+                <div className={S("job-details")}>
+                  <div className={S("job-details__detail")}>
+                    <label>Start Time:</label>
+                    <span className="monospace">{videoStore.FrameToSMPTE(startFrame)}</span>
+                  </div>
+                  <div className={S("job-details__detail")}>
+                    <label>End Time:</label>
+                    <span className="monospace">{videoStore.FrameToSMPTE(endFrame)}</span>
+                  </div>
+                  <div className={S("job-details__detail")}>
+                    <label>Duration:</label>
+                    <span>{videoStore.videoHandler.FrameToString({frame: endFrame - startFrame})}</span>
+                  </div>
+                  <div className={S("job-details__detail")}>
+                    <label>Offering:</label>
+                    <span>{job.offering === "default" ? "Default" : job.offering || "Default"}</span>
+                  </div>
+                  {
+                    !resolutionLabel ? null :
+                      <div className={S("job-details__detail")}>
+                        <label>Resolution:</label>
+                        <span>{resolutionLabel}</span>
+                      </div>
+                  }
+                  {
+                    !audioTrackLabel ? null :
+                      <div className={S("job-details__detail")}>
+                        <label>Audio:</label>
+                        <span>{audioTrackLabel}</span>
+                      </div>
+                  }
+                </div>
+              }
+            />
           </div>
         );
       })
@@ -215,7 +279,7 @@ const JobStatusTable = observer(({jobs, setConfirming, Reload}) => (
   </div>
 ));
 
-const DownloadHistory = ({highlightedJobId, setConfirming}) => {
+const DownloadHistory = ({representations, audioRepresentations, highlightedJobId, setConfirming}) => {
   const [key, setKey] = useState(Math.random());
 
   const jobs = Object.keys(videoStore.downloadJobInfo)
@@ -262,6 +326,8 @@ const DownloadHistory = ({highlightedJobId, setConfirming}) => {
       </div> :
       <JobStatusTable
         key={`job-table-${key}`}
+        representations={representations}
+        audioRepresentations={audioRepresentations}
         jobs={jobs}
         setConfirming={setConfirming}
         Reload={() => setKey(Math.random())}
@@ -307,7 +373,7 @@ const DownloadModalContent = observer(({setConfirming, Close}) => {
 
     videoStore.CreateEmbedUrl({
       offeringKey: options.offering,
-      audioTrackId: audioTrack && !audioTrack.default ? audioTrack.trackKey : undefined,
+      audioTrackLabel: audioTrack && !audioTrack.default ? audioTrack.label : undefined,
       clipInFrame: videoStore.clipInFrame,
       clipOutFrame: videoStore.clipOutFrame
     })
@@ -378,13 +444,16 @@ const DownloadModalContent = observer(({setConfirming, Close}) => {
         <div className={S("preview")}>
           <div className={S("preview__header")}>Preview</div>
           <div className={S("preview__container")}>
-            <div className={S("preview__thumbnail-container")}>
-              <PreviewThumbnail
-                startFrame={videoStore.clipInFrame}
-                endFrame={videoStore.clipOutFrame}
-                className={S("preview__thumbnail")}
-              />
-            </div>
+            {
+              !trackStore.thumbnailStatus.available ? null :
+                <div className={S("preview__thumbnail-container")}>
+                  <PreviewThumbnail
+                    startFrame={videoStore.clipInFrame}
+                    endFrame={videoStore.clipOutFrame}
+                    className={S("preview__thumbnail")}
+                  />
+                </div>
+            }
             <div className={S("preview__details")}>
               <div className={S("preview__detail")}>
                 <label>Start Time</label>
@@ -448,7 +517,12 @@ const DownloadModalContent = observer(({setConfirming, Close}) => {
                 Submit={Submit}
                 Close={Close}
               /> :
-              <DownloadHistory highlightedJobId={jobId} setConfirming={setConfirming} />
+              <DownloadHistory
+                representations={representations}
+                audioRepresentations={audioRepresentations}
+                highlightedJobId={jobId}
+                setConfirming={setConfirming}
+              />
           }
         </div>
       </div>

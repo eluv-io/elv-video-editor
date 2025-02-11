@@ -322,7 +322,6 @@ class VideoStore {
 
           if(offering.exit_point_rat) {
             // End time is end of specified frame
-            const frameRate = FrameRates[this.frameRateKey].valueOf();
             this.primaryContentEndTime = Number((FrameAccurateVideo.ParseRat(offering.exit_point_rat)).toFixed(3));
           }
         } catch(error) {
@@ -1269,6 +1268,8 @@ class VideoStore {
         filename,
         format,
         offering,
+        representation,
+        audioRepresentation,
         clipInFrame,
         clipOutFrame,
         startedAt: Date.now(),
@@ -1340,7 +1341,7 @@ class VideoStore {
     this.SaveDownloadJobInfo();
   }
 
-  CreateEmbedUrl = flow(function * ({offeringKey, audioTrackId, clipInFrame, clipOutFrame}) {
+  CreateEmbedUrl = flow(function * ({offeringKey, audioTrackLabel, clipInFrame, clipOutFrame}) {
     let options = {
       autoplay: true,
     };
@@ -1349,9 +1350,6 @@ class VideoStore {
       options.offerings = [offeringKey];
     }
 
-    if(audioTrackId >= 0) {
-      options.audioTrackId = audioTrackId;
-    }
 
     if(clipInFrame > 0) {
       options.clipStart = this.FrameToTime(clipInFrame);
@@ -1361,11 +1359,19 @@ class VideoStore {
       options.clipEnd = this.FrameToTime(clipOutFrame + 1);
     }
 
-    return yield this.rootStore.client.EmbedUrl({
-      objectId: this.videoObject.objectId,
-      duration: 7 * 24 * 60 * 60 * 1000,
-      options
-    });
+    const url = new URL(
+      yield this.rootStore.client.EmbedUrl({
+        objectId: this.videoObject.objectId,
+        duration: 7 * 24 * 60 * 60 * 1000,
+        options
+      })
+    );
+
+    if(audioTrackLabel) {
+      url.searchParams.set("aud", this.rootStore.client.utils.B64(audioTrackLabel));
+    }
+
+    return url.toString();
   });
 }
 

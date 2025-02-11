@@ -161,7 +161,7 @@ export const IconButton = ({
     <Linkish
       {...props}
       disabled={disabled}
-      aria-label={label || ""}
+      aria-label={props["aria-label"] || label || ""}
       className={
         JoinClassNames(
           !unstyled && S("icon-button", active ? "icon-button--active" : ""),
@@ -186,6 +186,7 @@ export const IconButton = ({
   return (
     <Tooltip
       {...tooltipProps}
+      openDelay={0}
       withinPortal
       label={label}
       events={{ hover: true, focus: true, touch: false }}

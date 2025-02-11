@@ -1,20 +1,29 @@
 import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
 import {observer} from "mobx-react";
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {trackStore, videoStore} from "@/stores/index.js";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 
 const S = CreateModuleClassMatcher(CommonStyles);
 
 const PreviewThumbnail = observer(({startFrame, endFrame, ...props}) => {
+  const ref = useRef();
   const [thumbnails, setThumbnails] = useState(null);
-  const [thumbnailIndex, setThumbnailIndex] = useState(0);
-  const [hover, setHover] = useState(false);
+
+  const [clientX, setClientX] = useState(-1);
+  const [hoverInfo, setHoverInfo] = useState({
+    thumbnailIndex: 0,
+    previousThumbnailIndex: 0,
+    progress: 0
+  });
 
   useEffect(() => {
     let startTime = videoStore.FrameToTime(startFrame);
     const endTime = videoStore.FrameToTime(endFrame);
+
+    // Thumbnail interval based on length of clip
+    const interval = Math.min(60, Math.max(1, (endFrame - startFrame) / videoStore.frameRate / 120));
 
     let thumbnailMap = {};
     let thumbnailList = [];
@@ -26,55 +35,70 @@ const PreviewThumbnail = observer(({startFrame, endFrame, ...props}) => {
         thumbnailMap[thumbnailUrl] = true;
       }
 
-      startTime += 1;
+      startTime += interval;
     }
-
+    
     setThumbnails(thumbnailList);
   }, [trackStore.thumbnailStatus.available]);
 
   useEffect(() => {
-    if(!hover || !thumbnails) {
-      setThumbnailIndex(0);
+    if(!ref?.current) { return; }
+
+    if(clientX < 0) {
+      setHoverInfo({
+        thumbnailIndex: 0,
+        previousThumbnailIndex: hoverInfo.previousThumbnailIndex,
+        progress: 0
+      });
+
       return;
     }
 
-    let index = thumbnailIndex;
-    const interval = setInterval(() => {
-      index = (index + 1) % thumbnails.length;
-      setThumbnailIndex(index);
-    }, 1000);
+    const {left, width} = ref.current.getBoundingClientRect();
+    const progress = (clientX - left) / width;
+    const thumbnailIndex = Math.floor(thumbnails.length * progress);
 
-    return () => clearInterval(interval);
-  }, [hover, thumbnails]);
+    setHoverInfo({
+      thumbnailIndex,
+      previousThumbnailIndex: hoverInfo.thumbnailIndex,
+      progress
+    });
+  }, [ref, clientX]);
 
   if(!trackStore.thumbnailStatus.available || !thumbnails) {
     return null;
   }
 
-  const previousIndex = thumbnailIndex === 0 && hover ? thumbnails.length - 1 : thumbnailIndex - 1;
   return (
     <div
       {...props}
-      style={{aspectRatio: videoStore.aspectRatio}}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      className={JoinClassNames(S("preview-thumbnail", hover ? "preview-thumbnail--hover" : ""), props.className)}
+      ref={ref}
+      style={{aspectRatio: videoStore.aspectRatio, ...(props.style || {})}}
+      onMouseMove={event => setClientX(event.clientX)}
+      onMouseLeave={() => setClientX(-1)}
+      className={JoinClassNames(S("preview-thumbnail"), props.className)}
     >
+      <img
+        alt="Thumbnail"
+        style={{aspectRatio: videoStore.aspectRatio}}
+        key={`thumbnail-previous-${hoverInfo.previousThumbnailIndex}`}
+        src={thumbnails[hoverInfo.previousThumbnailIndex]}
+        className={S("preview-thumbnail__image", "preview-thumbnail__image--previous")}
+      />
+      <img
+        alt="Thumbnail"
+        style={{aspectRatio: videoStore.aspectRatio}}
+        key={`thumbnail-${hoverInfo.thumbnailIndex}`}
+        src={thumbnails[hoverInfo.thumbnailIndex]}
+        className={S("preview-thumbnail__image", "preview-thumbnail__image--current")}
+      />
       {
-        previousIndex < 0 ? null :
-          <img
-            style={{aspectRatio: videoStore.aspectRatio}}
-            key={`thumbnail-${previousIndex}`}
-            src={thumbnails[previousIndex]}
-            className={S("preview-thumbnail__previous")}
+        hoverInfo <= 0 ? null :
+          <div
+            style={{width: `${hoverInfo.progress * 100}%`}}
+            className={S("preview-thumbnail__progress")}
           />
       }
-      <img
-        style={{aspectRatio: videoStore.aspectRatio}}
-        key={`thumbnail-${thumbnailIndex}`}
-        src={thumbnails[thumbnailIndex]}
-        className={S("preview-thumbnail__current")}
-      />
     </div>
   );
 });

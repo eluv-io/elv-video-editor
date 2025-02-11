@@ -108,12 +108,12 @@
 }
 
 .copy-button {
-  transition: color 0.1s ease;
   background-color: transparent!important;
+  transition: color 0.1s ease;
 
   &--copied {
-    transition: color 1s ease;
     color: var(--text-primary-color);
+    transition: color 1s ease;
   }
 }
 
@@ -393,22 +393,30 @@
 }
 
 .preview-thumbnail {
-  opacity: 0.75;
+  color: transparent;
+  overflow: hidden;
   position: relative;
-  transition: opacity 0.25s ease;
 
-  &--hover {
-    opacity: 1;
+  * {
+    color: transparent;
   }
 
-  &__previous {
+  &__image {
     inset: 0;
     position: absolute;
-    z-index: 0;
+
+    &--current {
+      z-index: 1;
+    }
   }
 
-  &__current {
-    animation: 0.5s fadein ease forwards;
-    z-index: 1;
+  &__progress {
+    background-color: var(--text-highlight);
+    bottom: 0;
+    height: 2px;
+    left: 0;
+    opacity: 0.5;
+    position: absolute;
+    z-index: 2;
   }
 }
