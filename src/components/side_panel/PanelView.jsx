@@ -4,7 +4,17 @@ import {ResizeHandle} from "@/components/common/Common.jsx";
 import {rootStore} from "@/stores/index.js";
 
 let timeout;
-export const PanelView = observer(({mainPanelContent, sidePanelContent, bottomPanelContent, isSubpanel=false}) => {
+export const PanelView = observer(({
+  mainPanelContent,
+  sidePanelContent,
+  bottomPanelContent,
+  minSizes={
+    sidePanel: 0,
+    mainPanel: 0,
+    bottomPanel: 0
+  },
+  isSubpanel=false
+}) => {
   const contentPanelRef = useRef(null);
   const [topPanel, setTopPanel] = useState(undefined);
   const [heights, setHeights] = useState({top: 0, bottom: 0});
@@ -24,12 +34,20 @@ export const PanelView = observer(({mainPanelContent, sidePanelContent, bottomPa
 
     const contentPanelWidth = contentPanel.getBoundingClientRect().width;
 
-    const newcontentPanelWidth = Math.min(Math.max(contentPanelWidth - deltaX, containerWidth * 0.5), containerWidth * 0.8);
-    const newSidePanelWidth = containerWidth - newcontentPanelWidth;
+    const newContentPanelWidth = Math.min(
+      Math.max(
+        contentPanelWidth - deltaX,
+        containerWidth * 0.5,
+        minSizes.mainPanel || 0
+      ),
+      containerWidth * 0.8,
+      containerWidth - (minSizes.sidePanel || 0)
+    );
+    const newSidePanelWidth = containerWidth - newContentPanelWidth;
 
     setWidths({
       sidePanel: newSidePanelWidth,
-      contentPanel: newcontentPanelWidth
+      contentPanel: newContentPanelWidth
     });
 
     if(!isSubpanel) {
@@ -56,7 +74,14 @@ export const PanelView = observer(({mainPanelContent, sidePanelContent, bottomPa
 
     const topHeight = topPanel.getBoundingClientRect().height;
 
-    const newTopHeight = Math.min(Math.max(topHeight + deltaY, containerHeight * 0.25), containerHeight * 0.75);
+    const newTopHeight = Math.min(
+      Math.max(
+        topHeight + deltaY,
+        containerHeight * 0.25,
+      ),
+      containerHeight - (minSizes.bottomPanel || 0),
+      containerHeight * 0.75
+    );
     const newBottomHeight = containerHeight - newTopHeight;
 
     setHeights({

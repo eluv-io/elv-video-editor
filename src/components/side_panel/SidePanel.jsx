@@ -7,11 +7,12 @@ import {IconButton, Input, Linkish, LoaderImage} from "@/components/common/Commo
 import {useDebouncedState} from "@mantine/hooks";
 import {assetStore, rootStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
 import {Tooltip} from "@mantine/core";
+import UrlJoin from "url-join";
+import {useParams} from "wouter";
 
 import SearchIcon from "@/assets/icons/v2/search.svg";
 import PlayIcon from "@/assets/icons/Play.svg";
-import UrlJoin from "url-join";
-import {useParams} from "wouter";
+import EditIcon from "@/assets/icons/Edit.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -208,6 +209,16 @@ const Tag = observer(({track, tag}) => {
       </div>
       <div className={S("tag__actions")}>
         <IconButton
+          label="Edit Tag"
+          icon={EditIcon}
+          onClick={event => {
+            event.stopPropagation();
+            tagStore.SetTags(track.trackId, tag.tagId, tag.startTime);
+            tagStore.PlayTag(tag);
+          }}
+          className={S("tag__action")}
+        />
+        <IconButton
           label="Play Tag"
           icon={PlayIcon}
           onClick={event => {
@@ -215,6 +226,7 @@ const Tag = observer(({track, tag}) => {
             tagStore.SetTags(track.trackId, tag.tagId, tag.startTime);
             tagStore.PlayTag(tag);
           }}
+          className={S("tag__action")}
         />
       </div>
     </div>

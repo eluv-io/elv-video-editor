@@ -52,6 +52,11 @@
   }
 }
 
+@keyframes fadein {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .timeline-row {
   background: var(--background-primary);
   display: grid;
@@ -62,6 +67,7 @@
   overflow: hidden;
   padding-right: 2px;
   width: 100%;
+  animation: fadein 0.25s forwards;
 
   &--seek {
     height: 40px;
@@ -74,11 +80,13 @@
 
   &__label {
     align-items: center;
-    background: var(--background-toolbar);
+    background-color: var(--background-toolbar);
     display: flex;
     font-size: 14px;
     height: 60px;
     padding-inline: var(--content-inline-padding);
+    justify-content: flex-start;
+    text-align: left;
   }
 
   &__content {

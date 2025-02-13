@@ -37,7 +37,7 @@ const PreviewThumbnail = observer(({startFrame, endFrame, ...props}) => {
 
       startTime += interval;
     }
-    
+
     setThumbnails(thumbnailList);
   }, [trackStore.thumbnailStatus.available]);
 

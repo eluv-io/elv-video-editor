@@ -11,6 +11,11 @@ const Tags = observer(() => {
       sidePanelContent={<TagSidePanel />}
       mainPanelContent={<VideoSection />}
       bottomPanelContent={<Timeline />}
+      minSizes={{
+        mainPanel: 700,
+        sidePanel: 350,
+        bottomPanel: 260
+      }}
     />
   );
 });

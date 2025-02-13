@@ -1371,6 +1371,8 @@ class VideoStore {
       url.searchParams.set("aud", this.rootStore.client.utils.B64(audioTrackLabel));
     }
 
+    url.searchParams.set("vc", "");
+
     return url.toString();
   });
 }

@@ -183,14 +183,19 @@ const InitializeTrackReactions = ({track, worker}) => {
 };
 
 const TooltipOverlay = observer(({trackId, ...props}) => {
-  let tags = [];
+  const [tags, setTags] = useState([]);
   const hovering = trackId === tagStore.hoverTrack;
 
-  if(hovering && tagStore.hoverTags?.length > 0) {
+  useEffect(() => {
+    if(!hovering || tagStore.hoverTags?.length === 0) {
+      setTags([]);
+      return;
+    }
+
     const formatString = string => (string || "").toString().toLowerCase();
     const filter = formatString(tagStore.filter);
 
-    tags = tagStore.hoverTags.map(tagId => {
+    const newHoverTags = tagStore.hoverTags.map(tagId => {
       const tag = trackStore.TrackTags(trackId)[tagId];
 
       if(!tag) {
@@ -213,11 +218,12 @@ const TooltipOverlay = observer(({trackId, ...props}) => {
       );
     })
       .filter(tag => tag);
-  }
+
+    setTags(newHoverTags);
+  }, [hovering, tagStore.hoverTags]);
 
   return (
     <Tooltip.Floating
-      key={`${tags}`}
       disabled={tags.length === 0}
       position="top"
       offset={20}

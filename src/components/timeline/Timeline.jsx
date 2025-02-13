@@ -4,7 +4,7 @@ import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react";
 import {rootStore, trackStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
-import {IconButton, SMPTEInput, SwitchInput} from "@/components/common/Common";
+import {IconButton, Linkish, SMPTEInput, SwitchInput} from "@/components/common/Common";
 import MarkedSlider from "@/components/common/MarkedSlider";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";

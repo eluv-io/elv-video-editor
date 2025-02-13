@@ -337,7 +337,7 @@ export const PlaySelectedTagButton = observer(() => {
       disabled={!tagStore.selectedTagId}
       icon={PlayClipIcon}
       label="Play Current Selection"
-      onClick={() => tagStore.PlayCurrentTag()}
+      onClick={() => videoStore.PlaySegment(videoStore.clipInFrame, videoStore.clipOutFrame)}
     />
   );
 });
