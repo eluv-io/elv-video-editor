@@ -340,8 +340,7 @@ class VideoStore {
               format: "json"
             });
           } else {
-            let video_level_tags = {};
-            let metadata_tags = {};
+            let metadataTags = {};
 
             // Load and merge tag files
             const tagData = yield this.rootStore.client.utils.LimitedMap(
@@ -358,37 +357,27 @@ class VideoStore {
               if(tags) {
                 const tagVersion = tags.version || 0;
 
-                video_level_tags = Object.assign(video_level_tags, tags.video_level_tags);
-
                 if(tags.metadata_tags) {
                   Object.keys(tags.metadata_tags).forEach(trackKey => {
-                    if(metadata_tags[trackKey]) {
-                      metadata_tags[trackKey].tags = metadata_tags[trackKey].tags
+                    if(metadataTags[trackKey]) {
+                      metadataTags[trackKey].tags = metadataTags[trackKey].tags
                         .concat(tags.metadata_tags[trackKey].tags)
                         .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
                     } else {
-                      metadata_tags[trackKey] = tags.metadata_tags[trackKey];
+                      metadataTags[trackKey] = tags.metadata_tags[trackKey];
                     }
 
-                    metadata_tags[trackKey].version = tagVersion;
+                    metadataTags[trackKey].version = tagVersion;
                   });
                 }
               }
             });
 
-            this.tags = {
-              video_level_tags,
-              metadata_tags
-            };
+            this.tags = metadataTags;
           }
-
-          let videoTags = this.tags.video_level_tags || [];
-          if(typeof videoTags === "object") {
-            videoTags = Object.keys(videoTags);
-          }
-
-          this.videoTags = videoTags;
         }
+
+        delete this.tags.shot_tags;
 
         this.rootStore.trackStore.InitializeTracks();
 

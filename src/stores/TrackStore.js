@@ -541,13 +541,13 @@ class TrackStore {
 
   AddMetadataTracks() {
     try {
-      const metadataTracks = this.AddTracksFromTags(this.rootStore.videoStore.tags.metadata_tags);
+      const metadataTracks = this.AddTracksFromTags(this.rootStore.videoStore.tags);
       metadataTracks.map(track => {
         if(!track.label || !track.tags) {
           // eslint-disable-next-line no-console
           console.error("Invalid track:", track.key);
           // eslint-disable-next-line no-console
-          console.error(toJS(this.rootStore.videoStore.tags.metadata_tags[track.key]));
+          console.error(toJS(this.rootStore.videoStore.tags[track.key]));
           return;
         }
 
@@ -659,8 +659,8 @@ class TrackStore {
       const queryParams = new URLSearchParams(`?${query}`);
       const url = new URL(this.rootStore.videoStore.thumbnailTrackUrl);
       url.pathname = UrlJoin(url.pathname.split("/").slice(0, -1).join("/"), path);
-      queryParams.keys().forEach(key =>
-        url.searchParams.set(key, queryParams.get(key))
+      queryParams.forEach((key, value) =>
+        url.searchParams.set(key, value)
       );
 
       tags[id].imageUrl = url.toString();

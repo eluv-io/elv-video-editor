@@ -87,8 +87,7 @@ const Tags = () => {
 
           tags[track.key][text].map(tag => {
             boxes.push({
-              ...tag,
-              text
+              ...tag
             });
           });
         });
