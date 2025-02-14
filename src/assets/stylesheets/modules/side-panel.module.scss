@@ -17,7 +17,16 @@
   flex-direction: column;
   gap: 5px;
   height: 100%;
+  position: relative;
   width: 100%;
+}
+
+.side-panel-modal {
+  animation: var(--animation-fadein) 0.25s ease;
+  background-color: var(--background-primary);
+  inset: 0;
+  position: absolute;
+  z-index: 10;
 }
 
 .search {
@@ -129,6 +138,7 @@
   }
 }
 
+.list,
 .tags {
   align-content: start;
   display: grid;
@@ -153,6 +163,7 @@
   overflow: hidden;
   padding-left: 15px;
   position: relative;
+  text-align: left;
   transition: background-color 0.25s ease;
   width: 100%;
 
@@ -227,17 +238,17 @@
   }
 
   &__actions {
-    padding: 10px 5px 10px 10px;
     display: flex;
+    gap: 5px;
     height: 100%;
     justify-content: center;
-    gap: 5px;
+    padding: 10px 5px 10px 10px;
   }
 
   &__action {
+    height: 17px;
     min-height: 17px;
     min-width: 17px;
-    height: 17px;
     width: 17px;
   }
 }
@@ -287,5 +298,103 @@
     font-size: 10px;
     font-weight: 600;
     word-break: break-all;
+  }
+}
+
+
+.tag-details {
+  align-content: start;
+  display: block;
+  gap: 3px;
+  height: 100%;
+  max-width: 100%;
+  min-height: 0;
+  overflow: hidden auto;
+  padding: 0 15px 30px;
+  width: 100%;
+
+  &__thumbnail-container {
+    background-color: black;
+    margin-bottom: 20px;
+    width: 200px;
+  }
+
+  &__thumbnail {
+    width: 100%;
+  }
+
+  &__detail {
+    display: grid;
+    font-size: 14px;
+    grid-template-columns: 120px 1fr;
+    width: 100%;
+
+    label {
+      font-weight: 600;
+    }
+  }
+
+  &__content {
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 20px;
+    padding-right: 20px;
+    text-align: left;
+    white-space: pre-wrap;
+
+    &--json {
+      background-color: var(--background-secondary);
+      border-radius: 3px;
+      font-size: 12px;
+      padding: 10px;
+    }
+  }
+
+  &__actions {
+    align-items: center;
+    background-color: var(--background-primary);
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+    padding: 10px 0;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+
+  &__back {
+    left: 0;
+    position: absolute;
+  }
+
+  // Form
+  &__input-container {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    width: 100%;
+  }
+
+  &__input {
+    flex-grow: 1;
+  }
+
+  &__input-actions {
+    align-items: center;
+    display: flex;
+    gap: 5px;
+    justify-content: flex-end;
+    padding-right: 10px;
+    width: 100%;
+
+    button {
+      color: var(--text-tertiary);
+      height: 20px;
+      min-height: 20px;
+      min-width: 20px;
+      width: 20px;
+    }
   }
 }

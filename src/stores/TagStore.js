@@ -1,6 +1,5 @@
 import { makeAutoObservable } from "mobx";
 import Id from "@/utils/Id";
-import {DownloadFromUrl} from "@/utils/Utils";
 
 class TagStore {
   selectedTime;
@@ -42,6 +41,11 @@ class TagStore {
       this.rootStore.trackStore.TrackTags(this.selectedTagTrackId)[tagId]
     );
   }
+
+  get selectedTagTrack() {
+    return this.rootStore.trackStore.tracks.find(track => track.trackId === this.selectedTagTrackId);
+  }
+
 
   Reset() {
     this.ClearTags();
@@ -106,7 +110,7 @@ class TagStore {
     this.SetEditing(false);
   }
 
-  Tags({startFrame=0, endFrame, limit=100}={}) {
+  Tags({startFrame=0, endFrame, limit=100, selectedOnly=false}={}) {
     const startTime = startFrame && this.rootStore.videoStore.FrameToTime(startFrame);
     const endTime = endFrame && this.rootStore.videoStore.FrameToTime(endFrame);
 
@@ -119,15 +123,17 @@ class TagStore {
     const filter = (this.filter || "").toLowerCase();
 
     let total = 0;
-    const tags = tracks
+    let tags = tracks
       .map(track => {
-        const trackTags = Object.values(this.rootStore.trackStore.TrackTags(track.trackId) || {})
+        let trackTags = Object.values(this.rootStore.trackStore.TrackTags(track.trackId) || {})
           .filter(tag =>
             (!startTime || tag.startTime >= startTime) &&
             (!endTime || tag.endTime <= endTime) &&
-            (!filter || (tag.textList?.join(" ") || JSON.stringify(tag.content || {})).toLowerCase().includes(filter))
+            (!filter || (tag.textList?.join(" ") || JSON.stringify(tag.content || {})).toLowerCase().includes(filter)) &&
+            (!selectedOnly || this.selectedTagIds.length === 0 || this.selectedTagIds.includes(tag.tagId))
           )
           .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
+
 
         total += trackTags.length;
 
@@ -148,9 +154,13 @@ class TagStore {
     }
 
     this.selectedTagTrackId = trackId;
-    this.selectedTagIds = tags;
-    this.selectedTagId = tags[0];
     this.selectedTime = time;
+
+    if(tags.length === 1) {
+      this.selectedTagId = tags[0];
+    } else {
+      this.selectedTagIds = tags;
+    }
 
     this.SetEditing(false);
   }
@@ -223,32 +233,6 @@ class TagStore {
     this.rootStore.trackStore.ModifyTrack(track => {
       delete this.rootStore.trackStore.TrackTags(track.trackId)[tagId];
     });
-  }
-
-  async DownloadSegment(tagId, callback) {
-    const tag = this.rootStore.trackStore.TrackTags(this.rootStore.trackStore.selectedTagTrackId)[tagId];
-
-    const partHash = tag.source;
-    const startTime = this.TimeToSMPTE(tag.startTime);
-    const endTime = this.TimeToSMPTE(tag.endTime);
-    const type = tag.streamType;
-    const name = this.rootStore.videoStore.name.substring(0, 10);
-
-    const filename = `${name}-${type}--${startTime}-${endTime}.mp4`;
-
-    const client = this.rootStore.client;
-    const data = await client.DownloadPart({
-      libraryId: this.rootStore.menuStore.libraryId,
-      objectId: this.rootStore.menuStore.objectId,
-      versionHash: this.rootStore.videoStore.versionHash,
-      partHash,
-      callback,
-      format: "blob"
-    });
-
-    const downloadUrl = window.URL.createObjectURL(data);
-
-    DownloadFromUrl(downloadUrl, filename);
   }
 }
 

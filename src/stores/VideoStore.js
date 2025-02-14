@@ -343,33 +343,40 @@ class VideoStore {
             let metadataTags = {};
 
             // Load and merge tag files
+            // Record file, group and index of tags so that they can be individually modified
             const tagData = yield this.rootStore.client.utils.LimitedMap(
               5,
               Object.keys(this.metadata.video_tags.metadata_tags),
-              async fileLink => await this.rootStore.client.LinkData({
+              async fileName => await this.rootStore.client.LinkData({
                 versionHash: this.versionHash,
-                linkPath: `video_tags/metadata_tags/${fileLink}`,
+                linkPath: `video_tags/metadata_tags/${fileName}`,
                 format: "json"
               })
             );
 
-            tagData.forEach(tags => {
-              if(tags) {
-                const tagVersion = tags.version || 0;
+            tagData.forEach((tags, fileIndex) => {
+              if(!tags) { return; }
 
-                if(tags.metadata_tags) {
-                  Object.keys(tags.metadata_tags).forEach(trackKey => {
-                    if(metadataTags[trackKey]) {
-                      metadataTags[trackKey].tags = metadataTags[trackKey].tags
-                        .concat(tags.metadata_tags[trackKey].tags)
-                        .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
-                    } else {
-                      metadataTags[trackKey] = tags.metadata_tags[trackKey];
-                    }
+              const tagVersion = tags.version || 0;
 
-                    metadataTags[trackKey].version = tagVersion;
-                  });
-                }
+              if(tags.metadata_tags) {
+                Object.keys(tags.metadata_tags).forEach(trackKey => {
+                  const trackTags = ((tags.metadata_tags[trackKey].tags) || [])
+                    .map((tag, tagIndex) => ({...tag, fi: fileIndex, tk: trackKey, ti: tagIndex}));
+
+                  if(metadataTags[trackKey]) {
+                    metadataTags[trackKey].tags = metadataTags[trackKey].tags
+                      .concat(trackTags)
+                      .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
+                  } else {
+                    metadataTags[trackKey] = {
+                      ...tags.metadata_tags[trackKey],
+                      tags: trackTags
+                    };
+                  }
+
+                  metadataTags[trackKey].version = tagVersion;
+                });
               }
             });
 
@@ -377,7 +384,7 @@ class VideoStore {
           }
         }
 
-        delete this.tags.shot_tags;
+        //delete this.tags.shot_tags;
 
         this.rootStore.trackStore.InitializeTracks();
 

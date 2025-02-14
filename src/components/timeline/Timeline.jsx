@@ -4,7 +4,7 @@ import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react";
 import {rootStore, trackStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
-import {IconButton, Linkish, SMPTEInput, SwitchInput} from "@/components/common/Common";
+import {IconButton, SMPTEInput, SwitchInput} from "@/components/common/Common";
 import MarkedSlider from "@/components/common/MarkedSlider";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
@@ -249,7 +249,7 @@ const TimelinePlayheadIndicator = observer(({value, timelineRef, className=""}) 
   const seekPercent = (value - videoStore.scaleMin) / videoStore.scaleMagnitude;
   const position = dimensions.width * seekPercent;
 
-  if(typeof position !== "number" || position < 0 || !timelineRef?.current) { return null; }
+  if(typeof position !== "number" || isNaN(position) || position < 0 || !timelineRef?.current) { return null; }
 
   return (
     <div
@@ -259,10 +259,7 @@ const TimelinePlayheadIndicator = observer(({value, timelineRef, className=""}) 
   );
 });
 
-const TimelineSection = observer(() => {
-  const [hoverPosition, setHoverPosition] = useState(undefined);
-  const timelineRef = useRef(null);
-
+const TagTimelineContent = observer(() => {
   let tracks = [];
   if(trackStore.showTags) {
     tracks = trackStore.metadataTracks;
@@ -296,6 +293,48 @@ const TimelineSection = observer(() => {
       ...trackStore.audioTracks
     ];
   }
+
+  if(rootStore.errorMessage) {
+    return (
+      <div className={S("content-block", "timeline-section")}>
+        <div className={S("error-message")}>
+          { rootStore.errorMessage }
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    tracks.map((track, i) =>
+      <div
+        key={`track-${track.trackId || i}`}
+        style={
+          track.trackType !== "metadata" ||
+          !trackStore.tracksSelected ||
+          trackStore.selectedTracks[track.key] ?
+            {} :
+            {display: "none"}
+        }
+        className={S("timeline-row")}
+      >
+        <div className={S("timeline-row__label")}>
+          {track.label}
+        </div>
+        <div className={S("timeline-row__content")}>
+          <Track track={track} />
+        </div>
+      </div>
+    )
+  );
+});
+
+const ClipTimelineContent = observer(() => {
+  return null;
+});
+
+const Timeline = observer(({content}) => {
+  const [hoverPosition, setHoverPosition] = useState(undefined);
+  const timelineRef = useRef(null);
 
   useEffect(() => {
     if(!timelineRef.current) { return; }
@@ -348,8 +387,10 @@ const TimelineSection = observer(() => {
 
           event.preventDefault();
 
+          // On shift+scroll, move current scale window along timeline. Movement based on current scale magnitude
           if(event.shiftKey) {
-            videoStore.SetScale(videoStore.scaleMin + event.deltaX * 0.05, videoStore.scaleMax + event.deltaX * 0.05, true);
+            const movement = Math.min(5, videoStore.scaleMagnitude * 0.5) * (event.deltaX < 0 ? -1 : 1);
+            videoStore.SetScale(videoStore.scaleMin + movement, videoStore.scaleMax + movement, true);
             return;
           }
 
@@ -379,26 +420,7 @@ const TimelineSection = observer(() => {
             </div>
         }
         {
-          tracks.map((track, i) =>
-            <div
-              key={`track-${track.trackId || i}`}
-              style={
-                track.trackType !== "metadata" ||
-                !trackStore.tracksSelected ||
-                trackStore.selectedTracks[track.key] ?
-                  {} :
-                  {display: "none"}
-              }
-              className={S("timeline-row")}
-            >
-              <div className={S("timeline-row__label")}>
-                {track.label}
-              </div>
-              <div className={S("timeline-row__content")}>
-                <Track track={track} />
-              </div>
-            </div>
-          )
+          content
         }
         <TimelineScaleBar hoverSeek={hoverSeek} />
       </div>
@@ -408,4 +430,10 @@ const TimelineSection = observer(() => {
   );
 });
 
-export default TimelineSection;
+export const TagTimeline = observer(() => {
+  return <Timeline content={<TagTimelineContent />} />;
+});
+
+export const ClipTimeline = observer(() => {
+  return <Timeline content={<ClipTimelineContent />} />;
+});

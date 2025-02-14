@@ -1,0 +1,8 @@
+.__mantine {
+  &--tooltip {
+    background-color: var(--background-active);
+    border: 1px solid var(--background-secondary);
+    box-shadow: 0 0 10px black;
+    color: var(--text-primary);
+  }
+}

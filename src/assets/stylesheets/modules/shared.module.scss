@@ -1,4 +1,5 @@
 .content-block {
+  animation: var(--animation-fadein) 0.4s linear;
   border: 2px solid var(--content-border-color);
   border-radius: var(--content-border-radius);
 }
@@ -147,15 +148,6 @@
       max-width: 500px;
       white-space: pre-wrap;
     }
-  }
-}
-
-.__mantine {
-  &--tooltip {
-    background-color: var(--background-active);
-    border: 1px solid var(--background-secondary);
-    box-shadow: 0 0 10px black;
-    color: var(--text-primary);
   }
 }
 

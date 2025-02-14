@@ -193,15 +193,15 @@ const SelectedAsset = observer(() => {
   );
 });
 
-const Assets = observer(() => {
+const AssetsView = observer(() => {
   const {assetKey} = useParams();
 
   return (
     <PanelView
-      sidePanelContent={<AssetSidePanel/>}
+      sidePanelContent={<AssetSidePanel />}
       mainPanelContent={<SelectedAsset key={assetKey}/>}
     />
   );
 });
 
-export default Assets;
+export default AssetsView;

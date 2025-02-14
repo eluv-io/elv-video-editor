@@ -334,15 +334,17 @@ const FormatSMPTE = ({originalValue, smpte, setSMPTEInput}) => {
   }
 };
 
-export const SMPTEInput = observer(({value, onChange, ...props}) => {
+export const SMPTEInput = observer(({value, onChange, formInput=false,  ...props}) => {
   const [smpteInput, setSMPTEInput] = useState(value);
+
+  let Component = formInput ? TextInput : Input;
 
   useEffect(() => {
     setSMPTEInput(value);
   }, [value]);
 
   return (
-    <Input
+    <Component
       w={150}
       value={smpteInput}
       monospace

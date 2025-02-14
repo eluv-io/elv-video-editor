@@ -10,8 +10,8 @@ import {Redirect, Route, Switch, useParams, useRoute} from "wouter";
 import Browser from "@/components/nav/Browser";
 import UrlJoin from "url-join";
 import Nav from "@/components/nav/Nav.jsx";
-import Tags from "@/components/video/Tags.jsx";
-import Assets from "@/components/assets/Assets.jsx";
+import TagsAndClipsView from "@/components/views/TagsAndClipsView.jsx";
+import AssetsView from "@/components/views/AssetsView.jsx";
 
 // Keep track of the current page
 const SetView = observer(() => {
@@ -50,13 +50,13 @@ const ContentRoutes = observer(() => {
   return (
     <Switch>
       <Route path="/tags">
-        <Tags />
+        <TagsAndClipsView mode="tags" />
       </Route>
       <Route path="/clips">
-        <Tags />
+        <TagsAndClipsView mode="clips" />
       </Route>
       <Route path="/assets/:assetKey?">
-        <Assets />
+        <AssetsView />
       </Route>
       <Route>
         <Redirect to={videoStore.isVideo ? "/tags" : "/assets"} replace />

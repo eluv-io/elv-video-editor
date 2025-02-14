@@ -1,6 +1,6 @@
 import {createTheme, em, Tooltip} from "@mantine/core";
 
-import SharedStyles from "@/assets/stylesheets/modules/shared.module.scss";
+import MantineStyles from "@/assets/stylesheets/modules/mantine.module.scss";
 
 const MantineTheme = createTheme({
   /** Put your mantine theme override here */
@@ -14,14 +14,14 @@ const MantineTheme = createTheme({
   components: {
     Tooltip: Tooltip.extend({
       classNames: {
-        tooltip: SharedStyles["__mantine--tooltip"],
-        arrow: SharedStyles["__mantine--tooltip__arrow"],
+        tooltip: MantineStyles["__mantine--tooltip"],
+        arrow: MantineStyles["__mantine--tooltip__arrow"],
       }
     }),
     TooltipFloating: Tooltip.Floating.extend({
       classNames: {
-        tooltip: SharedStyles["__mantine--tooltip"],
-        arrow: SharedStyles["__mantine--tooltip__arrow"],
+        tooltip: MantineStyles["__mantine--tooltip"],
+        arrow: MantineStyles["__mantine--tooltip__arrow"],
       }
     })
   }

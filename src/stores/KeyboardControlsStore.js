@@ -384,7 +384,7 @@ class ControlStore {
         {
           keyLabel: "Control + scroll over timeline",
           action: {
-            description: "Change timeline scale",
+            description: "Zoom timeline",
             action: () => {}
           }
         }
@@ -394,7 +394,7 @@ class ControlStore {
         {
           keyLabel: "Shift + scroll over timeline",
           action: {
-            description: "Move timeline scale position",
+            description: "Shift timeline view",
             action: () => {}
           }
         },
@@ -419,7 +419,7 @@ class ControlStore {
         },
       ],
       [
-        ["{"],
+        ["["],
         {
           action: {
             description: "Set mark in to current time",
@@ -428,7 +428,7 @@ class ControlStore {
         }
       ],
       [
-        ["}"],
+        ["]"],
         {
           action: {
             description: "Set mark out to current time",

@@ -387,7 +387,12 @@ class TrackStore {
           startTime: millis ? (tag.start_time / 1000) : tag.start_time,
           endTime: millis ? (tag.end_time / 1000) : tag.end_time,
           text: tag.text,
-          tag: toJS(tag)
+          tag: toJS(tag),
+          origin: {
+            fi: tag.fi,
+            tk: tag.tk,
+            ti: tag.ti
+          }
         });
 
         tags[parsedTag.tagId] = parsedTag;

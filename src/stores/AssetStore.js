@@ -50,10 +50,12 @@ class AssetStore {
           (
             asset.image_tags &&
             Object.keys(asset.image_tags || {}).length > 0 &&
-            Object.keys(asset.image_tags).find(category =>
-              (((asset.image_tags[category] || {}).tags) || [])
-                .find(tag => (tag.text || "").toLowerCase().includes(term))
-            )
+            Object.keys(asset.image_tags)
+              .filter(category => selectedTracks.length === 0 || selectedTracks.includes(category))
+              .find(category =>
+                (((asset.image_tags[category] || {}).tags) || [])
+                  .find(tag => (tag.text || "").toLowerCase().includes(term))
+              )
           )
         )
       );

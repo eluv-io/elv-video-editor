@@ -3,16 +3,13 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-import {IconButton, Input, Linkish, LoaderImage} from "@/components/common/Common.jsx";
+import {Input} from "@/components/common/Common.jsx";
 import {useDebouncedState} from "@mantine/hooks";
-import {assetStore, rootStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
-import {Tooltip} from "@mantine/core";
-import UrlJoin from "url-join";
-import {useParams} from "wouter";
+import {assetStore, rootStore, tagStore, trackStore} from "@/stores/index.js";
 
 import SearchIcon from "@/assets/icons/v2/search.svg";
-import PlayIcon from "@/assets/icons/Play.svg";
-import EditIcon from "@/assets/icons/Edit.svg";
+import {TagDetails, TagsList} from "@/components/side_panel/Tags.jsx";
+import Assets from "@/components/side_panel/Assets.jsx";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -103,245 +100,7 @@ const TrackSelection = observer(({store}) => {
   );
 });
 
-// Infinite scroll
-const SidebarScrollContent = observer(({watchList=[], children, batchSize=10, Update, className=""}) => {
-  const ref = useRef(null);
-  const [update, setUpdate] = useDebouncedState(0, 250);
-  const [limit, setLimit] = useDebouncedState(batchSize, 250);
-
-  useEffect(() => {
-    // Reset limit when tag content changes
-    setLimit(batchSize);
-
-    if(ref.current) {
-      ref.current.scrollTop = 0;
-    }
-
-    setUpdate(update + 1);
-  }, [
-    ...watchList,
-    videoStore.scaleMax,
-    videoStore.scaleMin,
-    trackStore.tracks.length
-  ]);
-
-  useEffect(() => {
-    Update(limit);
-  }, [update]);
-
-  return (
-    <div
-      ref={ref}
-      onScroll={event => {
-        if(event.currentTarget.scrollTop + event.currentTarget.offsetHeight > event.currentTarget.scrollHeight * 0.86) {
-          setLimit(limit + batchSize);
-          setUpdate(update + 1);
-        }
-      }}
-      className={className}
-    >
-      { children }
-    </div>
-  );
-});
-
-
-/* Metadata tags */
-
-const Tag = observer(({track, tag}) => {
-  const color = track.color;
-
-  return (
-    <div
-      onClick={() => tagStore.SetTags(track.trackId, tag.tagId, tag.startTime)}
-      onMouseEnter={() => tagStore.SetHoverTags([tag.tagId], track.trackId, videoStore.TimeToSMPTE(tag.startTime))}
-      onMouseLeave={() => tagStore.SetHoverTags([], track.trackId, videoStore.TimeToSMPTE(tag.startTime))}
-      className={
-        S(
-          "tag",
-          trackStore.thumbnailStatus.available ? "tag--thumbnail" : "",
-          tagStore.selectedTagIds.includes(tag.tagId) ? "tag--selected" : "",
-          tagStore.hoverTags.includes(tag.tagId) ? "tag--hover" : ""
-        )
-      }
-    >
-      <div
-        style={{backgroundColor: `rgb(${color?.r} ${color?.g} ${color?.b}`}}
-        className={S("tag__color")}
-      />
-      <div className={S("tag__left")}>
-        {
-          !trackStore.thumbnailStatus.available ? null :
-            <img
-              src={trackStore.ThumbnailImage(tag.startTime)}
-              style={{aspectRatio: videoStore.aspectRatio}}
-              className={S("tag__image")}
-            />
-        }
-        <div className={S("tag__text")}>
-          <Tooltip.Floating
-            position="bottom"
-            offset={20}
-            label={
-              tag.content ?
-                <pre className={S("tag__tooltip", "tag__tooltip--json")}>{JSON.stringify(tag.content, null, 2)}</pre> :
-                <div className={S("tag__tooltip")}>{tag.textList.join(", ")}</div>
-            }
-          >
-            <div className={S("tag__content", `tag__content--${tag.content ? "json" : "text"}`)}>
-              {
-                tag.content ?
-                  JSON.stringify(tag.content) :
-                  tag.textList.join(", ")
-              }
-            </div>
-          </Tooltip.Floating>
-          <div className={S("tag__track")}>
-            {track.label}
-          </div>
-          <div className={S("tag__time")}>
-            <span>{videoStore.TimeToSMPTE(tag.startTime)}</span>
-            <span>-</span>
-            <span>{videoStore.TimeToSMPTE(tag.endTime)}</span>
-            <span>({ parseFloat((tag.endTime - tag.startTime).toFixed(2))}s)</span>
-          </div>
-        </div>
-      </div>
-      <div className={S("tag__actions")}>
-        <IconButton
-          label="Edit Tag"
-          icon={EditIcon}
-          onClick={event => {
-            event.stopPropagation();
-            tagStore.SetTags(track.trackId, tag.tagId, tag.startTime);
-            tagStore.PlayTag(tag);
-          }}
-          className={S("tag__action")}
-        />
-        <IconButton
-          label="Play Tag"
-          icon={PlayIcon}
-          onClick={event => {
-            event.stopPropagation();
-            tagStore.SetTags(track.trackId, tag.tagId, tag.startTime);
-            tagStore.PlayTag(tag);
-          }}
-          className={S("tag__action")}
-        />
-      </div>
-    </div>
-  );
-});
-
-const Tags = observer(() => {
-  const [tags, setTags] = useState([]);
-  const [limit, setLimit] = useState(0);
-  const [totalTags, setTotalTags] = useState(0);
-
-  let tracks = {};
-  trackStore.metadataTracks.forEach(track => tracks[track.key] = track);
-
-  return (
-    <>
-      {
-        !videoStore.initialized || totalTags === 0 ? null :
-          <div className={S("count")}>
-            Showing 1 - {limit} of {totalTags}
-          </div>
-      }
-      <SidebarScrollContent
-        watchList={[
-          tagStore.filter,
-          Object.keys(trackStore.selectedTracks).length
-        ]}
-        className={S("tags")}
-        Update={limit => {
-          const { tags, total } = tagStore.Tags({
-            startFrame: videoStore.scaleMinFrame,
-            endFrame: videoStore.scaleMaxFrame,
-            limit
-          });
-
-          setTags(tags);
-          setTotalTags(total);
-          setLimit(Math.min(total, limit));
-        }}
-      >
-        {tags.map(tag => <Tag key={`tag-${tag.tagId}`} track={tracks[tag.trackKey]} tag={tag}/>)}
-      </SidebarScrollContent>
-    </>
-  );
-});
-
-
 /* Assets */
-
-const Asset = observer(({asset, selected}) => {
-  return (
-    <Linkish
-      to={UrlJoin("/assets", rootStore.client.utils.B64(asset.key))}
-      className={S("asset", selected ? "asset--selected" : "")}
-    >
-      <LoaderImage
-        lazy={false}
-        loaderDelay={0}
-        loaderAspectRatio={1}
-        src={assetStore.AssetLink(asset.key, {width: 400})}
-        className={S("asset__image")}
-      />
-      <div className={S("asset__name")}>
-        { asset.key }
-      </div>
-    </Linkish>
-  );
-});
-
-const AssetList = observer(() => {
-  const [assets, setAssets] = useState([]);
-  const [limit, setLimit] = useState(0);
-  const [totalAssets, setTotalAssets] = useState(0);
-
-  const { assetKey } = useParams();
-
-  return (
-    <>
-      <div className={S("count")}>
-        {
-          totalAssets === 0 ?
-            "No assets found" :
-            `Showing 1 - ${limit} of ${totalAssets}`
-        }
-      </div>
-      <SidebarScrollContent
-        watchList={[
-          assetStore.filter,
-          Object.keys(assetStore.selectedTracks).length
-        ]}
-        batchSize={30}
-        className={S("assets")}
-        Update={limit => {
-          const assets = assetStore.filteredAssetList;
-          setAssets(assets.slice(0, limit));
-          setTotalAssets(assets.length);
-          setLimit(Math.min(assets.length, limit));
-        }}
-      >
-        {
-          assets.map(asset =>
-            <Asset
-              selected={
-                asset.key === assetKey ||
-                (assetKey && asset.key === rootStore.client.utils.FromB64(assetKey))
-              }
-              asset={asset}
-              key={asset.key}
-            />
-          )
-        }
-      </SidebarScrollContent>
-    </>
-  );
-});
 
 export const TagSidePanel = observer(() => {
   return (
@@ -349,7 +108,12 @@ export const TagSidePanel = observer(() => {
       <div className={S("side-panel")}>
         <SidebarFilter store={tagStore} label="Search within tags" />
         <TrackSelection store={trackStore} />
-        <Tags />
+        <TagsList />
+
+        {
+          !tagStore.selectedTagId ? null :
+            <TagDetails />
+        }
       </div>
     </div>
   );
@@ -361,7 +125,7 @@ export const AssetSidePanel = observer(() => {
       <div className={S("side-panel")}>
         <SidebarFilter store={assetStore} label="Search assets" />
         <TrackSelection store={assetStore} />
-        <AssetList />
+        <Assets />
       </div>
     </div>
   );
