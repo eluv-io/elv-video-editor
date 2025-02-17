@@ -7,18 +7,6 @@ import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Util
 import {IconButton, SMPTEInput, SwitchInput} from "@/components/common/Common";
 import MarkedSlider from "@/components/common/MarkedSlider";
 
-import UndoIcon from "@/assets/icons/v2/undo.svg";
-import RedoIcon from "@/assets/icons/v2/redo.svg";
-import AddUserIcon from "@/assets/icons/v2/add-user.svg";
-
-import AddNewItemIcon from "@/assets/icons/v2/add-new-item.svg";
-import SplitIcon from "@/assets/icons/v2/split.svg";
-import ClipInIcon from "@/assets/icons/v2/clip-start.svg";
-import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
-
-import UploadIcon from "@/assets/icons/v2/upload.svg";
-import SaveIcon from "@/assets/icons/v2/save.svg";
-import Track from "@/components/timeline/Track.jsx";
 import ThumbnailTrack from "@/components/timeline/ThumbnailTrack.jsx";
 import {
   FrameBack10Button,
@@ -30,6 +18,20 @@ import {
 } from "@/components/video/VideoControls.jsx";
 import KeyboardControls from "@/components/timeline/KeyboardControls.jsx";
 import Download from "@/components/download/Download.jsx";
+import Track from "@/components/timeline/Track.jsx";
+
+import UndoIcon from "@/assets/icons/v2/undo.svg";
+import RedoIcon from "@/assets/icons/v2/redo.svg";
+import AddUserIcon from "@/assets/icons/v2/add-user.svg";
+
+import AddNewItemIcon from "@/assets/icons/v2/add-new-item.svg";
+import SplitIcon from "@/assets/icons/v2/split.svg";
+import ClipInIcon from "@/assets/icons/v2/clip-start.svg";
+import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
+
+import UploadIcon from "@/assets/icons/v2/upload.svg";
+import SaveIcon from "@/assets/icons/v2/save.svg";
+import QuestionMarkIcon from "@/assets/icons/v2/question-mark.svg";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -94,31 +96,43 @@ const TimelineBottomBar = observer(() => {
         checked={trackStore.showThumbnails}
         onChange={event => trackStore.ToggleTrackType({type: "Thumbnails", visible: event.currentTarget.checked})}
       />
-      <SwitchInput
-        label="Show Tags"
-        checked={trackStore.showTags}
-        onChange={event => trackStore.ToggleTrackType({type: "Tags", visible: event.currentTarget.checked})}
-      />
-      <SwitchInput
-        label="Show Bounding Boxes"
-        checked={trackStore.showOverlay}
-        onChange={event => trackStore.ToggleTrackType({type: "Overlay", visible: event.currentTarget.checked})}
-      />
-      <SwitchInput
-        label="Show Subtitles"
-        checked={trackStore.showSubtitles}
-        onChange={event => trackStore.ToggleTrackType({type: "Subtitles", visible: event.currentTarget.checked})}
-      />
-      <SwitchInput
-        label="Show Segments"
-        checked={trackStore.showSegments}
-        onChange={event => trackStore.ToggleTrackType({type: "Segments", visible: event.currentTarget.checked})}
-      />
-      <SwitchInput
-        label="Show Audio"
-        checked={trackStore.showAudio}
-        onChange={event => trackStore.ToggleTrackType({type: "Audio", visible: event.currentTarget.checked})}
-      />
+      {
+        rootStore.view === "tags" ?
+          //Tags
+          <>
+            <SwitchInput
+              label="Show Tags"
+              checked={trackStore.showTags}
+              onChange={event => trackStore.ToggleTrackType({type: "Tags", visible: event.currentTarget.checked})}
+            />
+            <SwitchInput
+              label="Show Bounding Boxes"
+              checked={trackStore.showOverlay}
+              onChange={event => trackStore.ToggleTrackType({type: "Overlay", visible: event.currentTarget.checked})}
+            />
+            <SwitchInput
+              label="Show Subtitles"
+              checked={trackStore.showSubtitles}
+              onChange={event => trackStore.ToggleTrackType({type: "Subtitles", visible: event.currentTarget.checked})}
+            />
+            <SwitchInput
+              label="Show Segments"
+              checked={trackStore.showSegments}
+              onChange={event => trackStore.ToggleTrackType({type: "Segments", visible: event.currentTarget.checked})}
+            />
+            <SwitchInput
+              label="Show Audio"
+              checked={trackStore.showAudio}
+              onChange={event => trackStore.ToggleTrackType({type: "Audio", visible: event.currentTarget.checked})}
+            />
+          </> :
+          // Clips
+          <SwitchInput
+            label="Show Primary Content"
+            checked={trackStore.showPrimaryContent}
+            onChange={event => trackStore.ToggleTrackType({type: "PrimaryContent", visible: event.currentTarget.checked})}
+          />
+      }
       <div className={S("toolbar__spacer")}/>
     </div>
   );
@@ -329,7 +343,40 @@ const TagTimelineContent = observer(() => {
 });
 
 const ClipTimelineContent = observer(() => {
-  return null;
+  let tracks = [];
+  if(trackStore.showPrimaryContent) {
+    tracks = [trackStore.tracks.find(track => track.key === "primary-content")];
+  }
+
+  return (
+    tracks
+      .filter(t => t)
+      .map((track, i) =>
+        <div
+          key={`track-${track.trackId || i}`}
+          style={
+            track.trackType === "primary-content" ||
+            !trackStore.clipTracksSelected ||
+            trackStore.selectedClipTracks[track.key] ?
+              {} :
+              {display: "none"}
+          }
+          className={S("timeline-row")}
+        >
+          <div className={S("timeline-row__label")}>
+            {track.label}
+            <IconButton
+              icon={QuestionMarkIcon}
+              label="The primary content tag allows you to modify the start and end times for the default video playout for this offering"
+              className={S("timeline-row__icon")}
+            />
+          </div>
+          <div className={S("timeline-row__content")}>
+            <Track track={track} />
+          </div>
+        </div>
+      )
+  );
 });
 
 const Timeline = observer(({content}) => {

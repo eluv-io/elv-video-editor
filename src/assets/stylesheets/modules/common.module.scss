@@ -79,6 +79,7 @@
 
 .icon-button {
   align-items: center;
+  border-radius: 3px;
   color: var(--text-secondary);
   display: flex;
   justify-content: center;
@@ -183,6 +184,10 @@
     font-size: 14px;
     height: 57px;
     padding-top: 20px;
+  }
+
+  &__textarea {
+    padding-top: 25px;
   }
 }
 

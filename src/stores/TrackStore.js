@@ -5,7 +5,6 @@ import IntervalTree from "node-interval-tree";
 import {Parser as HLSParser} from "m3u8-parser";
 import UrlJoin from "url-join";
 import {Utils} from "@eluvio/elv-client-js";
-import {trackStore} from "@/stores/index.js";
 
 /*
  * Track Types:
@@ -54,6 +53,7 @@ class TrackStore {
   audioTracks = [];
   selectedTrack;
   selectedTracks = {};
+  selectedClipTracks = {};
   editingTrack = false;
   audioLoading = false;
   audioSupported = true;
@@ -65,7 +65,10 @@ class TrackStore {
   showSubtitles = false;
   showOverlay = true;
 
+  showPrimaryContent = true;
+
   totalTags = 0;
+  uiUpdateDelayFactor = 1;
 
   constructor(rootStore) {
     makeAutoObservable(
@@ -100,6 +103,27 @@ class TrackStore {
   get metadataTracks() {
     return this.tracks
       .filter(track => track.trackType === "metadata")
+      .sort((a, b) =>
+        // Move shot detection to top
+        a.key === "shot_detection" ? -1 :
+          b.key === "shot_detection" ? 1 :
+            (a.label > b.label ? 1 : -1)
+      );
+  }
+
+  get clipTracksSelected() {
+    return Object.keys(this.selectedClipTracks).length > 0;
+  }
+
+  get activeClipTracks() {
+    return !this.clipTracksSelected ?
+      this.clipTracks :
+      this.clipTracks.filter(track => this.selectedClipTracks[track.key]);
+  }
+
+  get clipTracks() {
+    return this.tracks
+      .filter(track => track.trackType === "clip" && (track.key !== "primary-content" || this.showPrimaryContent))
       .sort((a, b) => (a.label > b.label ? 1 : -1));
   }
 
@@ -544,15 +568,15 @@ class TrackStore {
     }
   });
 
-  AddMetadataTracks() {
+  AddMetadataTracks(metadataTags) {
     try {
-      const metadataTracks = this.AddTracksFromTags(this.rootStore.videoStore.tags);
+      const metadataTracks = this.AddTracksFromTags(metadataTags);
       metadataTracks.map(track => {
         if(!track.label || !track.tags) {
           // eslint-disable-next-line no-console
           console.error("Invalid track:", track.key);
           // eslint-disable-next-line no-console
-          console.error(toJS(this.rootStore.videoStore.tags[track.key]));
+          console.error(toJS(metadataTags[track.key]));
           return;
         }
 
@@ -565,6 +589,8 @@ class TrackStore {
           tags: track.tags
         });
       });
+
+      this.uiUpdateDelayFactor = Math.max(1, Math.log10(this.totalTags));
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error("Failed to load metadata tracks:");
@@ -619,8 +645,13 @@ class TrackStore {
     }
   }
 
-  AddClipTrack() {
+  async AddPrimaryContentTrack() {
+    while(!this.rootStore.videoStore.initialized) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
     const clip = this.Cue({
+      trackKey: "primary-content",
       tagType: "clip",
       startTime: this.rootStore.videoStore.primaryContentStartTime,
       endTime: this.rootStore.videoStore.primaryContentEndTime,
@@ -702,7 +733,7 @@ class TrackStore {
   ThumbnailImage(time) {
     if(!this.thumbnailStatus.available) { return; }
 
-    let thumbnailIndex = trackStore.intervalTrees?.thumbnails?.search(time, time + 10)[0];
+    let thumbnailIndex = this.intervalTrees?.thumbnails?.search(time, time + 10)[0];
     const tag = this.thumbnails?.[thumbnailIndex?.toString()];
 
     if(!tag) { return; }
@@ -727,14 +758,14 @@ class TrackStore {
     return tag.thumbnailUrl;
   }
 
-  InitializeTracks = flow(function * () {
+  InitializeTracks = flow(function * (metadataTags) {
     if(this.initialized) { return; }
 
     this.initialized = true;
 
-    this.AddClipTrack();
+    this.AddPrimaryContentTrack();
     yield this.AddSubtitleTracks();
-    yield this.AddMetadataTracks();
+    yield this.AddMetadataTracks(metadataTags);
     yield this.AddSegmentTracks();
     yield this.rootStore.overlayStore.AddOverlayTracks();
 
@@ -752,6 +783,18 @@ class TrackStore {
       delete this.selectedTracks[key];
     } else {
       this.selectedTracks[key] = true;
+    }
+  }
+
+  ResetSelectedClipTracks() {
+    this.selectedClipTracks = {};
+  }
+
+  ToggleClipTrackSelected(key) {
+    if(this.selectedClipTracks[key]) {
+      delete this.selectedClipTracks[key];
+    } else {
+      this.selectedClipTracks[key] = true;
     }
   }
 

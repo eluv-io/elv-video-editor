@@ -22,7 +22,6 @@
 }
 
 .side-panel-modal {
-  animation: var(--animation-fadein) 0.25s ease;
   background-color: var(--background-primary);
   inset: 0;
   position: absolute;
@@ -315,8 +314,8 @@
 
   &__thumbnail-container {
     background-color: black;
-    margin-bottom: 20px;
-    width: 200px;
+    margin-bottom: 10px;
+    width: 150px;
   }
 
   &__thumbnail {
@@ -337,7 +336,7 @@
   &__content {
     font-size: 14px;
     font-weight: 500;
-    margin-top: 20px;
+    margin-bottom: 20px;
     padding-right: 20px;
     text-align: left;
     white-space: pre-wrap;
@@ -354,8 +353,7 @@
     align-items: center;
     background-color: var(--background-primary);
     display: flex;
-    gap: 10px;
-    justify-content: flex-end;
+    justify-content: center;
     margin-bottom: 20px;
     padding: 10px 0;
     position: sticky;
@@ -363,12 +361,43 @@
     z-index: 2;
   }
 
-  &__back {
-    left: 0;
+  &__left-actions,
+  &__right-actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
     position: absolute;
   }
 
-  // Form
+  &__left-actions {
+    left: 0;
+  }
+
+  &__right-actions {
+    right: 0;
+  }
+
+  &__track {
+    align-items: center;
+    display: flex;
+    font-size: 14px;
+    font-weight: 600;
+    gap: 10px;
+  }
+
+  &__track-color {
+    border-radius: 100%;
+    height: 8px;
+    width: 8px;
+  }
+}
+
+.tag-form {
+  &__inputs {
+    display: grid;
+    gap: 5px;
+  }
+
   &__input-container {
     align-items: center;
     display: flex;
@@ -379,6 +408,7 @@
 
   &__input {
     flex-grow: 1;
+    width: 100%;
   }
 
   &__input-actions {
@@ -396,5 +426,13 @@
       min-width: 20px;
       width: 20px;
     }
+  }
+
+  &__duration {
+    display: flex;
+    font-size: 12px;
+    gap: 5px;
+    justify-content: flex-end;
+    padding-right: 10px;
   }
 }

@@ -247,6 +247,15 @@ class ControlStore {
         ["<"],
         {
           action: {
+            description: "Reduce playback rate by 0.5x",
+            action: () => this.ChangePlaybackRate(-0.5)
+          }
+        }
+      ],
+      [
+        [","],
+        {
+          action: {
             description: "Reduce playback rate by 0.1x",
             action: () => this.ChangePlaybackRate(-0.1)
           }
@@ -262,11 +271,20 @@ class ControlStore {
         }
       ],
       [
-        [">"],
+        ["."],
         {
           action: {
             description: "Increase playback rate by 0.1x",
             action: () => this.ChangePlaybackRate(0.1)
+          }
+        }
+      ],
+      [
+        [">"],
+        {
+          action: {
+            description: "Increase playback rate by 0.1x",
+            action: () => this.ChangePlaybackRate(0.5)
           }
         }
       ]
@@ -392,20 +410,12 @@ class ControlStore {
       [
         ["scroll"],
         {
-          keyLabel: "Shift + scroll over timeline",
+          keyLabel: "Shift + scroll over timeline, Alt + drag view bar",
           action: {
             description: "Shift timeline view",
             action: () => {}
           }
         },
-        ["drag"],
-        {
-          keyLabel: "Alt + drag scale bar",
-          action: {
-            description: "Move timeline scale position",
-            action: () => {}
-          }
-        }
       ]
     ],
     "Clips": [

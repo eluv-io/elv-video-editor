@@ -110,14 +110,29 @@ class TagStore {
     this.SetEditing(false);
   }
 
-  Tags({startFrame=0, endFrame, limit=100, selectedOnly=false}={}) {
+  Tags({mode="tags", startFrame=0, endFrame, limit=100, selectedOnly=false}={}) {
     const startTime = startFrame && this.rootStore.videoStore.FrameToTime(startFrame);
     const endTime = endFrame && this.rootStore.videoStore.FrameToTime(endFrame);
 
-    let tracks = this.rootStore.trackStore.metadataTracks;
-    if(this.rootStore.trackStore.tracksSelected) {
-      // Selected tracks only
-      tracks = tracks.filter(track => this.rootStore.trackStore.selectedTracks[track.key]);
+    let tracks;
+    if(mode === "tags") {
+      tracks = this.rootStore.trackStore.metadataTracks;
+
+      if(this.rootStore.trackStore.tracksSelected) {
+        // Selected tracks only
+        tracks = tracks.filter(track => this.rootStore.trackStore.selectedTracks[track.key]);
+      }
+    } else {
+      tracks = this.rootStore.trackStore.clipTracks;
+
+      if(this.rootStore.trackStore.clipTracksSelected) {
+        // Selected tracks only
+        tracks = tracks.filter(track => this.rootStore.trackStore.selectedClipTracks[track.key]);
+      }
+
+      if(!this.rootStore.trackStore.showPrimaryContent) {
+        tracks = tracks.filter(track => track.key !== "primary-content");
+      }
     }
 
     const filter = (this.filter || "").toLowerCase();

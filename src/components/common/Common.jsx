@@ -2,7 +2,7 @@ import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
 import React, {forwardRef, useEffect, useRef, useState} from "react";
 import {Copy, CreateModuleClassMatcher, JoinClassNames, TextWidth} from "@/utils/Utils.js";
-import {Button, Modal as MantineModal, Select, Switch, TextInput, Tooltip} from "@mantine/core";
+import {Button, Modal as MantineModal, Select, Switch, Textarea, TextInput, Tooltip} from "@mantine/core";
 import SVG from "react-inlinesvg";
 import {observer} from "mobx-react";
 import {Link} from "wouter";
@@ -311,6 +311,18 @@ export const FormTextInput = observer(props =>
   />
 );
 
+// Form styled inputs
+export const FormTextArea = observer(props =>
+  <Textarea
+    {...props}
+    classNames={{
+      root: S("form-input"),
+      label: S("form-input__label"),
+      input: S("form-input__input", "form-input__textarea")
+    }}
+  />
+);
+
 export const FormSelect = observer(props =>
   <Select
     {...props}
@@ -337,7 +349,7 @@ const FormatSMPTE = ({originalValue, smpte, setSMPTEInput}) => {
 export const SMPTEInput = observer(({value, onChange, formInput=false,  ...props}) => {
   const [smpteInput, setSMPTEInput] = useState(value);
 
-  let Component = formInput ? TextInput : Input;
+  let Component = formInput ? FormTextInput : Input;
 
   useEffect(() => {
     setSMPTEInput(value);

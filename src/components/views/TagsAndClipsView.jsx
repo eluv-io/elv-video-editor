@@ -1,6 +1,6 @@
 import {observer} from "mobx-react";
 import React from "react";
-import {AssetSidePanel, TagSidePanel} from "@/components/side_panel/SidePanel.jsx";
+import {ClipSidePanel, TagSidePanel} from "@/components/side_panel/SidePanel.jsx";
 import VideoSection from "@/components/video/VideoSection.jsx";
 import {ClipTimeline, TagTimeline} from "@/components/timeline/Timeline.jsx";
 import PanelView from "@/components/side_panel/PanelView.jsx";
@@ -11,7 +11,7 @@ const TagsAndClipsView = observer(({mode}) => {
       sidePanelContent={
       mode === "tags" ?
         <TagSidePanel /> :
-        <AssetSidePanel />
+        <ClipSidePanel />
       }
       mainPanelContent={<VideoSection />}
       bottomPanelContent={

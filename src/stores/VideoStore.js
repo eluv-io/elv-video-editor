@@ -15,9 +15,7 @@ class VideoStore {
 
   versionHash = "";
   metadata = {};
-  tags = {};
   name;
-  videoTags = [];
 
   availableOfferings = {};
   offeringKey = "default";
@@ -149,9 +147,7 @@ class VideoStore {
 
     this.versionHash = "";
     this.metadata = {};
-    this.tags = {};
     this.name = "";
-    this.videoTags = [];
     this.offeringKey = "default";
     this.availableOfferings = {};
 
@@ -261,6 +257,7 @@ class VideoStore {
 
       this.LoadDownloadJobInfo();
 
+      let metadataTags = {};
       if(!this.isVideo) {
         this.initialized = true;
         this.ready = true;
@@ -334,14 +331,12 @@ class VideoStore {
           if(this.metadata.video_tags.metadata_tags["/"]) {
             // Single tag file
 
-            this.tags = yield this.rootStore.client.LinkData({
+            metadataTags = yield this.rootStore.client.LinkData({
               versionHash: this.versionHash,
               linkPath: "video_tags/metadata_tags",
               format: "json"
             });
           } else {
-            let metadataTags = {};
-
             // Load and merge tag files
             // Record file, group and index of tags so that they can be individually modified
             const tagData = yield this.rootStore.client.utils.LimitedMap(
@@ -379,14 +374,12 @@ class VideoStore {
                 });
               }
             });
-
-            this.tags = metadataTags;
           }
         }
 
-        //delete this.tags.shot_tags;
+        delete metadataTags.shot_tags;
 
-        this.rootStore.trackStore.InitializeTracks();
+        this.rootStore.trackStore.InitializeTracks(metadataTags);
 
         this.ready = true;
       }
@@ -719,6 +712,13 @@ class VideoStore {
     if(!this.videoHandler) { return; }
 
     return this.videoHandler.FrameToSMPTE(frame);
+  }
+
+  TimeToString(time, includeFractionalSeconds) {
+    if(!this.videoHandler) { return 0; }
+
+    // Pad number to ensure its rounded up
+    return this.videoHandler.TimeToString({time, includeFractionalSeconds});
   }
 
   Update({frame, smpte, progress}) {

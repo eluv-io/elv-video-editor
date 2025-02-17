@@ -54,12 +54,8 @@ const ClearHover = () => {
   tagStore.ClearHoverTags([]);
 };
 
-
 const InitializeTrackReactions = ({track, worker}) => {
   // Update less often when there are many tags to improve performance
-  //const delayFactor = Math.max(1, Math.log10(trackStore.totalTags));
-  const delayFactor = 1;
-
   let reactionDisposals = [];
 
   // Update when tags change
@@ -75,7 +71,7 @@ const InitializeTrackReactions = ({track, worker}) => {
           tags: toJS(trackStore.TrackTags(track.trackId))
         });
       },
-      {delay: 25 * delayFactor}
+      {delay: 25 * trackStore.uiUpdateDelayFactor}
     )
   );
 
@@ -100,7 +96,7 @@ const InitializeTrackReactions = ({track, worker}) => {
           duration: videoStore.duration
         });
       },
-      {delay: 50 * delayFactor}
+      {delay: 50 * trackStore.uiUpdateDelayFactor}
     )
   );
 
@@ -121,7 +117,7 @@ const InitializeTrackReactions = ({track, worker}) => {
           filter: tagStore.filter
         });
       },
-      {delay: 100 * delayFactor}
+      {delay: 100 * trackStore.uiUpdateDelayFactor}
     )
   );
 
@@ -146,7 +142,7 @@ const InitializeTrackReactions = ({track, worker}) => {
           hoverTagIds
         });
       },
-      {delay: 75 * delayFactor}
+      {delay: 75 * trackStore.uiUpdateDelayFactor}
     )
   );
 
@@ -175,7 +171,7 @@ const InitializeTrackReactions = ({track, worker}) => {
           activeTagIds: currentActiveTagIds
         });
       },
-      {delay: 50 * delayFactor}
+      {delay: 50 * trackStore.uiUpdateDelayFactor}
     )
   );
 

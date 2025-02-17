@@ -161,7 +161,7 @@ class FrameAccurateVideo {
   }
 
   SMPTEToFrame(smpte) {
-    const components = smpte.split(":").reverse();
+    const components = smpte.split(/[:;]/).reverse();
 
     const frames = Fraction(components[0]);
     const seconds = Fraction(components[1]);
@@ -265,6 +265,32 @@ class FrameAccurateVideo {
 
     if(seconds > 0) {
       string += `${seconds}s`;
+    }
+
+    return string.trim();
+  }
+
+  TimeToString({time, includeFractionalSeconds}) {
+    let seconds = Fraction(time);
+    const hours = seconds.div(3600).floor().valueOf();
+    const minutes = seconds.div(60).mod(60).floor(0).valueOf();
+    seconds = seconds.mod(60);
+
+    let string = "";
+    if(hours > 0) {
+      string += `${hours}h `;
+    }
+
+    if(minutes > 0) {
+      string += `${minutes}m `;
+    }
+
+    if(seconds > 0) {
+      if(includeFractionalSeconds) {
+        string += `${parseFloat(seconds.valueOf().toFixed(4))}s`;
+      } else {
+        string += seconds.floor().valueOf();
+      }
     }
 
     return string.trim();

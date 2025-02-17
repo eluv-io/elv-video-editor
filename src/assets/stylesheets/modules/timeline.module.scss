@@ -81,7 +81,19 @@
     height: 60px;
     justify-content: flex-start;
     padding-inline: var(--content-inline-padding);
+    position: relative;
     text-align: left;
+  }
+
+  &__icon {
+    color: var(--text-tertiary);
+    height: 20px;
+    min-height: 20px;
+    min-width: 20px;
+    position: absolute;
+    right: 5px;
+    top: 5px;
+    width: 20px;
   }
 
   &__content {

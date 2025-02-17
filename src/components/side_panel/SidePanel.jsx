@@ -34,7 +34,7 @@ const SidebarFilter = observer(({store, label}) => {
   );
 });
 
-const TrackSelection = observer(({store}) => {
+const TrackSelection = observer(({mode="tags"}) => {
   const ref = useRef(null);
   const [contentHeight, setContentHeight] = useState(0);
   const [hovering, setHovering] = useDebouncedState(false, 250);
@@ -66,7 +66,24 @@ const TrackSelection = observer(({store}) => {
   const willScroll = contentHeight > 140;
   const willScrollExpanded = contentHeight > rootStore.sidePanelDimensions.height * 0.3;
 
-  const tracks = store.metadataTracks || store.assetTracks;
+  let tracks, selectedTracks, Toggle;
+  switch(mode) {
+    case "tags":
+      selectedTracks = trackStore.selectedTracks;
+      Toggle = key => trackStore.ToggleTrackSelected(key);
+      tracks = trackStore.metadataTracks;
+      break;
+    case "clips":
+      selectedTracks = trackStore.selectedClipTracks;
+      Toggle = key => trackStore.ToggleClipTrackSelected(key);
+      tracks = trackStore.clipTracks;
+      break;
+    case "assets":
+      selectedTracks = assetStore.selectedTracks;
+      Toggle = key => assetStore.ToggleTrackSelected(key);
+      tracks = assetStore.assetTracks;
+      break;
+  }
 
   return (
     <div
@@ -84,8 +101,8 @@ const TrackSelection = observer(({store}) => {
           tracks.map(track =>
             <button
               key={`track-${track.key}`}
-              onClick={() => store.ToggleTrackSelected(track.key)}
-              className={S("track", store.selectedTracks[track.key] ? "track--selected" : "")}
+              onClick={() => Toggle(track.key)}
+              className={S("track", selectedTracks[track.key] ? "track--selected" : "")}
             >
               <div
                 style={{backgroundColor: `rgb(${track.color.r} ${track.color.g} ${track.color.b}`}}
@@ -107,8 +124,25 @@ export const TagSidePanel = observer(() => {
     <div className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
         <SidebarFilter store={tagStore} label="Search within tags" />
-        <TrackSelection store={trackStore} />
-        <TagsList />
+        <TrackSelection mode="tags" />
+        <TagsList mode="tags" />
+
+        {
+          !tagStore.selectedTagId ? null :
+            <TagDetails />
+        }
+      </div>
+    </div>
+  );
+});
+
+export const ClipSidePanel = observer(() => {
+  return (
+    <div className={S("content-block", "side-panel-section")}>
+      <div className={S("side-panel")}>
+        <SidebarFilter store={tagStore} label="Search clips" />
+        <TrackSelection mode="clips" />
+        <TagsList mode="clips" />
 
         {
           !tagStore.selectedTagId ? null :
@@ -124,7 +158,7 @@ export const AssetSidePanel = observer(() => {
     <div className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
         <SidebarFilter store={assetStore} label="Search assets" />
-        <TrackSelection store={assetStore} />
+        <TrackSelection mode="assets" />
         <Assets />
       </div>
     </div>
