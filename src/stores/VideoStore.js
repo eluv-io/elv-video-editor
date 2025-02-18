@@ -397,8 +397,25 @@ class VideoStore {
 
   GetSupportedOffering = flow(function * ({versionHash, browserSupportedDrms, preferredOfferingKey}) {
     const offeringPlayoutOptions = {};
+
+    const offeringKeys = Object.keys(this.availableOfferings)
+      .sort((a, b) => {
+        // Prefer 'default', then anything including 'default', then alphabetically
+        if(a === "default") {
+          return -1;
+        } else if(b === "default") {
+          return 1;
+        } else if(a.includes("default")) {
+          return b.includes("default") ? 0 : -1;
+        } else if(b.includes("default")) {
+          return 1;
+        }
+
+        return a < b ? -1 : 1;
+      });
+
     let offeringKey;
-    for(let offering of Object.keys(this.availableOfferings).sort()) {
+    for(let offering of offeringKeys) {
       offeringPlayoutOptions[offering] = yield this.rootStore.client.PlayoutOptions({
         versionHash,
         protocols: ["hls"],

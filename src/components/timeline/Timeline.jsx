@@ -436,7 +436,7 @@ const Timeline = observer(({content}) => {
 
           // On shift+scroll, move current scale window along timeline. Movement based on current scale magnitude
           if(event.shiftKey) {
-            const movement = Math.min(5, videoStore.scaleMagnitude * 0.5) * (event.deltaX < 0 ? -1 : 1);
+            const movement = Math.min(5, videoStore.scaleMagnitude * 0.1) * (event.deltaX < 0 ? -1 : 1);
             videoStore.SetScale(videoStore.scaleMin + movement, videoStore.scaleMax + movement, true);
             return;
           }
@@ -457,7 +457,7 @@ const Timeline = observer(({content}) => {
         <TimelineSeekBar hoverSeek={hoverSeek} />
         {
           !videoStore.initialized || !trackStore.thumbnailStatus.loaded || !trackStore.showThumbnails ? null :
-            <div className={S("timeline-row")}>
+            <div className={S("timeline-row", "timeline-row--thumbnails")}>
               <div className={S("timeline-row__label")}>
                 Thumbnails
               </div>

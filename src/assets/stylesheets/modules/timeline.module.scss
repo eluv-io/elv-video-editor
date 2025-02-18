@@ -73,6 +73,16 @@
     }
   }
 
+  &--thumbnails {
+    height: var(--track-height--thumbnails);
+
+    .timeline-row__label,
+    .timeline-row__content {
+      height: var(--track-height-thumbnails);
+      max-height: var(--track-height--thumbnails);
+    }
+  }
+
   &__label {
     align-items: center;
     background-color: var(--background-toolbar);

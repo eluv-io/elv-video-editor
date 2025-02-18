@@ -176,7 +176,8 @@
   }
 
   &--thumbnail {
-    .tag__content {
+    .tag__content,
+    .tag__track {
       max-width: calc(var(--panel-width) - 250px);
     }
   }
@@ -211,15 +212,20 @@
 
   &__content {
     font-size: 12px;
+
+    &--text {
+      font-size: 14px;
+    }
+  }
+
+  &__content,
+  &__track,
+  &__time {
     max-width: calc(var(--panel-width) - 150px);
     overflow: hidden;
     text-overflow: ellipsis;
     user-select: none;
     white-space: nowrap;
-
-    &--text {
-      font-size: 14px;
-    }
   }
 
   &__track {

@@ -590,7 +590,7 @@ class TrackStore {
         });
       });
 
-      this.uiUpdateDelayFactor = Math.max(1, Math.log10(this.totalTags));
+      this.uiUpdateDelayFactor = Math.max(0.25, Math.log10(this.totalTags) / 4 - 0.5);
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error("Failed to load metadata tracks:");

@@ -167,12 +167,15 @@
   position: relative;
 
   &__label {
+    background-color: var(--background-modal);
+    border-radius: 10px 0;
     color: var(--text-tertiary);
     font-size: 12px;
     font-weight: 600;
-    left: 12px;
+    left: 1px;
+    padding: 7px 7px 7px 13px;
     position: absolute;
-    top: 7px;
+    top: 1px;
     z-index: 1;
   }
 
@@ -187,7 +190,7 @@
   }
 
   &__textarea {
-    padding-top: 25px;
+    padding-top: 30px;
   }
 }
 
