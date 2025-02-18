@@ -8,6 +8,15 @@ const InfiniteScroll = observer(({watchList=[], children, batchSize=10, Update, 
   const [update, setUpdate] = useDebouncedState(0, 250);
   const [limit, setLimit] = useDebouncedState(batchSize, 250);
 
+  const CheckUpdate = () => {
+    if(!ref?.current) { return; }
+
+    if(ref.current.scrollTop + ref.current.offsetHeight > ref.current.scrollHeight * 0.86) {
+      setLimit(limit + batchSize);
+      setUpdate(update + 1);
+    }
+  };
+
   useEffect(() => {
     // Reset limit when tag content changes
     setLimit(batchSize);
@@ -23,15 +32,21 @@ const InfiniteScroll = observer(({watchList=[], children, batchSize=10, Update, 
     Update(limit);
   }, [update]);
 
+  useEffect(() => {
+    if(!ref.current) { return; }
+
+    const resizeObserver = new ResizeObserver(CheckUpdate);
+
+    resizeObserver.observe(ref.current);
+
+    return () => resizeObserver.disconnect();
+  }, [ref]);
+
   return (
     <div
       ref={ref}
-      onScroll={event => {
-        if(event.currentTarget.scrollTop + event.currentTarget.offsetHeight > event.currentTarget.scrollHeight * 0.86) {
-          setLimit(limit + batchSize);
-          setUpdate(update + 1);
-        }
-      }}
+      onScroll={CheckUpdate}
+
       className={className}
     >
       { children }

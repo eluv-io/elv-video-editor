@@ -58,7 +58,7 @@
   display: grid;
   gap: 3px;
   grid-template-columns: 200px 1fr;
-  height: 60px;
+  height: var(--track-height);
   max-width: 100%;
   overflow: hidden;
   padding-right: 2px;
@@ -77,8 +77,8 @@
     align-items: center;
     background-color: var(--background-toolbar);
     display: flex;
-    font-size: 14px;
-    height: 60px;
+    font-size: 12px;
+    height: var(--track-height);
     justify-content: flex-start;
     padding-inline: var(--content-inline-padding);
     position: relative;
@@ -98,8 +98,8 @@
 
   &__content {
     background: var(--background-toolbar);
-    height: 60px;
-    max-height: 60px;
+    height: var(--track-height);
+    max-height: var(--track-height);
     max-width: 100%;
     overflow: hidden;
   }

@@ -30,6 +30,7 @@ class RootStore {
   initialized = false;
   view = "source";
   sidePanelDimensions = {};
+  expandedPanel = undefined;
   errorMessage = undefined;
 
   constructor() {
@@ -99,6 +100,10 @@ class RootStore {
 
   SetError(message) {
     this.errorMessage = message;
+  }
+
+  SetExpandedPanel(panel) {
+    this.expandedPanel = panel;
   }
 }
 

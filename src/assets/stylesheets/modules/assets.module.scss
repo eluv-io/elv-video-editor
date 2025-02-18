@@ -80,6 +80,7 @@
   padding: 15px;
 
   &__tag-details {
+    animation: var(--animation-fadein) 0.35s ease;
     background-color: var(--background-secondary);
     border-radius: 5px;
     font-size: 12px;

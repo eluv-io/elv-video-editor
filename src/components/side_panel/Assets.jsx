@@ -4,7 +4,7 @@ import {observer} from "mobx-react";
 import {Linkish, LoaderImage} from "@/components/common/Common.jsx";
 import UrlJoin from "url-join";
 import {assetStore, rootStore} from "@/stores/index.js";
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 import {useParams} from "wouter";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
@@ -15,6 +15,7 @@ const Asset = observer(({asset, selected}) => {
   return (
     <Linkish
       to={UrlJoin("/assets", rootStore.client.utils.B64(asset.key))}
+      onClick={() => rootStore.SetExpandedPanel(undefined)}
       className={S("asset", selected ? "asset--selected" : "")}
     >
       <LoaderImage
@@ -38,6 +39,10 @@ const AssetsList = observer(() => {
 
   const { assetKey } = useParams();
 
+  useEffect(() => {
+    rootStore.SetExpandedPanel("sidePanel");
+  }, []);
+
   return (
     <>
       <div className={S("count")}>
@@ -52,7 +57,7 @@ const AssetsList = observer(() => {
           assetStore.filter,
           Object.keys(assetStore.selectedTracks).length
         ]}
-        batchSize={30}
+        batchSize={60}
         className={S("assets")}
         Update={limit => {
           const assets = assetStore.filteredAssetList;

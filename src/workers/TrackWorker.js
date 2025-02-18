@@ -61,7 +61,7 @@ class TrackWorker {
     );
 
     const widthRatio = this.width / visibleDuration;
-    const tagHeight = Math.ceil(this.height * 0.60);
+    const tagHeight = Math.ceil(this.height * 1);
     const startY = Math.ceil((this.height - tagHeight) / 2) - 2;
 
     tags.map(tag => {

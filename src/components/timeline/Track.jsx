@@ -142,7 +142,7 @@ const InitializeTrackReactions = ({track, worker}) => {
           hoverTagIds
         });
       },
-      {delay: 75 * trackStore.uiUpdateDelayFactor}
+      {delay: 10 * trackStore.uiUpdateDelayFactor}
     )
   );
 

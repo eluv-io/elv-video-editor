@@ -20,6 +20,10 @@ export const PanelView = observer(({
   const [heights, setHeights] = useState({top: 0, bottom: 0});
   const [widths, setWidths] = useState({sidePanel: 0, contentPanel: 0});
 
+  let sidePanelHidden = ["contentPanel", "bottomPanel"].includes(rootStore.expandedPanel);
+  let contentPanelHidden = ["sidePanel", "bottomPanel"].includes(rootStore.expandedPanel);
+  let bottomPanelHidden = ["sidePanel", "contentPanel"].includes(rootStore.expandedPanel);
+
   const ResizePanelWidth = ({deltaX}) => {
     const contentPanel = contentPanelRef?.current;
 
@@ -27,8 +31,12 @@ export const PanelView = observer(({
 
     const containerWidth = contentPanel.parentElement.getBoundingClientRect().width;
 
-    if(!sidePanelContent) {
+    // Expanded panel or no side panel content
+    if(!sidePanelContent || rootStore.expandedPanel === "contentPanel") {
       setWidths({sidePanel: 0, contentPanel: containerWidth});
+      return;
+    } else if(rootStore.expandedPanel === "sidePanel") {
+      setWidths({sidePanel: containerWidth, contentPanel: 0});
       return;
     }
 
@@ -67,9 +75,11 @@ export const PanelView = observer(({
 
     const containerHeight = topPanel.parentElement.getBoundingClientRect().height;
 
-    if(!bottomPanelContent) {
+    if(!bottomPanelContent || bottomPanelHidden) {
       setHeights({top: containerHeight, bottom: 0});
       return;
+    } else if(rootStore.expandedPanel === "bottomPanel") {
+      setHeights({top: 0, bottom: containerHeight});
     }
 
     const topHeight = topPanel.getBoundingClientRect().height;
@@ -111,6 +121,11 @@ export const PanelView = observer(({
 
     return () => window.removeEventListener("resize", HandleResize);
   }, [topPanel, contentPanelRef]);
+
+  useEffect(() => {
+    ResizePanelWidth({deltaX: -1 * window.innerWidth * 0.65});
+    ResizePanelHeight({deltaY: 0});
+  }, [rootStore.expandedPanel]);
 
   return (
     <>
@@ -155,29 +170,32 @@ export const PanelView = observer(({
         {
           !sidePanelContent ? null :
             <div
-              className="side-panel"
+              className={`side-panel ${sidePanelHidden ? "hidden-panel" : ""}`}
               style={{width: widths.sidePanel, maxWidth: widths.sidePanel}}
             >
               { sidePanelContent }
-              <ResizeHandle variant="horizontal" onMove={ResizePanelWidth}/>
+              {
+                contentPanelHidden ? null :
+                  <ResizeHandle variant="horizontal" onMove={ResizePanelWidth}/>
+              }
             </div>
         }
         <div
           ref={contentPanelRef}
-          className="content-panel"
+          className={`content-panel ${contentPanelHidden ? "hidden-panel" : ""}`}
           style={!sidePanelContent ? {width: "100%"} : {width: widths.contentPanel, maxWidth: widths.contentPanel}}
         >
           { mainPanelContent }
         </div>
         {
-          !bottomPanelContent ? null :
+          !bottomPanelContent || bottomPanelHidden ? null :
             <ResizeHandle variant="vertical" onMove={ResizePanelHeight}/>
         }
       </div>
       {
         !bottomPanelContent ? null :
           <div
-            className="bottom"
+            className={`bottom  ${bottomPanelHidden ? "hidden-panel" : ""}`}
             style={{height: heights.bottom, maxHeight: heights.bottom}}
           >
             { bottomPanelContent }

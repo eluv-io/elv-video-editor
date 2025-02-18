@@ -56,6 +56,11 @@ body {
   position: relative;
 }
 
+.hidden-panel {
+  opacity: 0;
+  pointer-events: none;
+}
+
 input {
   background: var(--background-input);
   transition: box-shadow 0.25s ease;
