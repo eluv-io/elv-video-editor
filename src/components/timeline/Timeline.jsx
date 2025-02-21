@@ -22,15 +22,13 @@ import Track from "@/components/timeline/Track.jsx";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
-
 import AddNewItemIcon from "@/assets/icons/v2/add-new-item.svg";
-import TrackIcon from "@/assets/icons/v2/track.svg";
 import ClipInIcon from "@/assets/icons/v2/clip-start.svg";
 import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
-
 import UploadIcon from "@/assets/icons/v2/upload.svg";
 import SaveIcon from "@/assets/icons/v2/save.svg";
 import QuestionMarkIcon from "@/assets/icons/v2/question-mark.svg";
+import {CreateTrackButton} from "@/components/forms/CreateTrack.jsx";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -51,10 +49,10 @@ const TimelineTopBar = observer(() => {
           onClick={() => editStore.Redo()}
         />
         <div className={S("toolbar__separator")} />
-        <IconButton icon={TrackIcon} label="Add Category" onClick={() => {}} />
+        <CreateTrackButton />
         <IconButton
           icon={AddNewItemIcon}
-          disabled={!tagStore.selectedTrack}
+          disabled={!tagStore.selectedTrack || tagStore.selectedTrack?.trackType === "primary-content"}
           label={`Add New ${rootStore.view === "tags" ? "Tag" : "Clip"}`}
           onClick={() =>
             tagStore.AddTag({
@@ -369,9 +367,9 @@ const TagTimelineContent = observer(() => {
 });
 
 const ClipTimelineContent = observer(() => {
-  let tracks = [];
+  let tracks = [...trackStore.clipTracks];
   if(trackStore.showPrimaryContent) {
-    tracks = [trackStore.tracks.find(track => track.key === "primary-content")];
+    tracks.unshift(trackStore.tracks.find(track => track.trackType === "primary-content"));
   }
 
   return (
@@ -409,7 +407,7 @@ const ClipTimelineContent = observer(() => {
             }
           </Linkish>
           <div className={S("timeline-row__content")}>
-            <Track track={track} />
+            <Track track={track} noActive={track.trackType === "primary-content"} />
           </div>
         </div>
       )

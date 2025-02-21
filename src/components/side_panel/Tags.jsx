@@ -3,7 +3,7 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react";
 import {editStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
-import {Text, Tooltip} from "@mantine/core";
+import {FocusTrap, Text, Tooltip} from "@mantine/core";
 import {FormTextArea, IconButton, SMPTEInput} from "@/components/common/Common.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
@@ -43,6 +43,7 @@ const TagTextarea = observer(() => {
       label="Content"
       error={error}
       value={input}
+      data-autofocus
       onChange={event => setInput(event.target.value)}
       onBlur={() => {
         if(!tag.content) {
@@ -57,7 +58,7 @@ const TagTextarea = observer(() => {
           setError(error.toString());
         }
       }}
-      className={S("tag-form__input")}
+      className={S("form__input")}
     />
   );
 });
@@ -106,22 +107,25 @@ const TagActions = observer(({tag, track}) => {
                 icon={EditIcon}
                 onClick={() => tagStore.SetEditing(tag.tagId, "tag")}
               />
-              <IconButton
-                label="Remove Tag"
-                icon={TrashIcon}
-                onClick={() =>
-                  modals.openConfirmModal({
-                    title: "Remove Tag",
-                    centered: true,
-                    children: <Text fz="sm">Are you sure you want to remove this tag?</Text>,
-                    labels: { confirm: "Remove", cancel: "Cancel" },
-                    onConfirm: () => {
-                      tagStore.DeleteTag({trackId: track.trackId, tag});
-                      tagStore.ClearSelectedTag();
+              {
+                track.trackType === "primary-content" ? null :
+                  <IconButton
+                    label="Remove Tag"
+                    icon={TrashIcon}
+                    onClick={() =>
+                      modals.openConfirmModal({
+                        title: "Remove Tag",
+                        centered: true,
+                        children: <Text fz="sm">Are you sure you want to remove this tag?</Text>,
+                        labels: { confirm: "Remove", cancel: "Cancel" },
+                        onConfirm: () => {
+                          tagStore.DeleteTag({trackId: track.trackId, tag});
+                          tagStore.ClearSelectedTag();
+                        }
+                      })
                     }
-                  })
-                }
-              />
+                  />
+              }
             </>
         }
       </div>
@@ -136,18 +140,30 @@ const TagForm = observer(() => {
   const duration = parseFloat(tag.endTime - tag.startTime);
 
   const UpdateTime = ({start = true, time, frame}) => {
-    if(frame) {
-      time = videoStore.FrameToTime(frame);
+    if(typeof frame !== "undefined") {
+      time = videoStore.FrameToTime(frame, false);
     }
+
+    // Don't change if the difference is less than half a frame - original
+    // tag values may not be exactly frame aligned
+    const minDiff = 1 / (2 * videoStore.frameRate);
 
     let updatedTag = {...tag};
     if(start) {
+      if(Math.abs(tag.startTime - time) < minDiff) {
+        return;
+      }
+
       updatedTag.startTime = time;
 
       if(updatedTag.endTime < updatedTag.startTime) {
         updatedTag.endTime = Math.min(updatedTag.startTime + 1, videoStore.duration);
       }
     } else {
+      if(Math.abs(tag.endTime - time) < minDiff) {
+        return;
+      }
+
       updatedTag.endTime = time;
 
       if(updatedTag.endTime < updatedTag.startTime) {
@@ -160,29 +176,11 @@ const TagForm = observer(() => {
 
   return (
     <form
-      key={`tag-form-${tag.tagId}`}
+      key={`form-${tag.tagId}`}
       onSubmit={event => event.preventDefault()}
-      className={S("tag-details", "tag-form")}
+      className={S("tag-details", "form")}
     >
       <TagActions tag={tag} track={track} />
-
-      {
-        /*
-        <div className={S("tag-details__input-container")}>
-          <Select
-            label="Category"
-            value={tag.trackKey}
-            data={
-              trackStore.metadataTracks.map(track =>
-                ({label: track.label, value: track.key})
-              )
-            }
-            className={S("tag-details__input")}
-          />
-        </div>
-
-         */
-      }
       {
         !trackStore.thumbnailStatus.available ? null :
           <div style={{aspectRatio: videoStore.aspectRatio}} className={S("tag-details__thumbnail-container")}>
@@ -202,63 +200,65 @@ const TagForm = observer(() => {
             }
           </div>
       }
-      <div className={S("tag-form__inputs")}>
-        <div className={S("tag-form__input-container")}>
-          <TagTextarea />
+      <FocusTrap active>
+        <div className={S("form__inputs")}>
+          <div className={S("form__input-container")}>
+            <TagTextarea/>
+          </div>
+          <div className={S("form__input-container")}>
+            <SMPTEInput
+              label="Start Time"
+              value={videoStore.TimeToSMPTE(tag.startTime)}
+              formInput
+              onChange={({frame}) => UpdateTime({start: true, frame})}
+              rightSectionWidth={60}
+              rightSection={
+                <div className={S("form__input-actions")}>
+                  <IconButton
+                    icon={MarkInIcon}
+                    label="Set to Clip In"
+                    onClick={() => UpdateTime({start: true, frame: videoStore.clipInFrame})}
+                  />
+                  <IconButton
+                    icon={TimeIcon}
+                    label="Set to Current Time"
+                    onClick={() => UpdateTime({start: true, frame: videoStore.frame})}
+                  />
+                </div>
+              }
+              className={S("form__input")}
+            />
+          </div>
+          <div className={S("form__input-container")}>
+            <SMPTEInput
+              label="End Time"
+              value={videoStore.TimeToSMPTE(tag.endTime)}
+              formInput
+              onChange={({frame}) => UpdateTime({start: false, frame})}
+              rightSectionWidth={60}
+              rightSection={
+                <div className={S("form__input-actions")}>
+                  <IconButton
+                    icon={MarkOutIcon}
+                    label="Set to Clip Out"
+                    onClick={() => UpdateTime({start: false, frame: videoStore.clipOutFrame})}
+                  />
+                  <IconButton
+                    icon={TimeIcon}
+                    label="Set to Current Time"
+                    onClick={() => UpdateTime({start: false, frame: videoStore.frame})}
+                  />
+                </div>
+              }
+              className={S("form__input")}
+            />
+          </div>
+          <div className={S("form__input-note")}>
+            <label>Duration:</label>
+            <span>{videoStore.TimeToString(duration, true)}</span>
+          </div>
         </div>
-        <div className={S("tag-form__input-container")}>
-          <SMPTEInput
-            label="Start Time"
-            value={videoStore.TimeToSMPTE(tag.startTime)}
-            formInput
-            onChange={({frame}) => UpdateTime({start: true, frame})}
-            rightSectionWidth={60}
-            rightSection={
-              <div className={S("tag-form__input-actions")}>
-                <IconButton
-                  icon={MarkInIcon}
-                  label="Set to Clip In"
-                  onClick={() => UpdateTime({start: true, frame: videoStore.clipInFrame})}
-                />
-                <IconButton
-                  icon={TimeIcon}
-                  label="Set to Current Time"
-                  onClick={() => UpdateTime({start: true, frame: videoStore.frame})}
-                />
-              </div>
-            }
-            className={S("tag-form__input")}
-          />
-        </div>
-        <div className={S("tag-form__input-container")}>
-          <SMPTEInput
-            label="End Time"
-            value={videoStore.TimeToSMPTE(tag.endTime)}
-            formInput
-            onChange={({frame}) => UpdateTime({start: false, frame})}
-            rightSectionWidth={60}
-            rightSection={
-              <div className={S("tag-form__input-actions")}>
-                <IconButton
-                  icon={MarkOutIcon}
-                  label="Set to Clip Out"
-                  onClick={() => UpdateTime({start: false, frame: videoStore.clipOutFrame})}
-                />
-                <IconButton
-                  icon={TimeIcon}
-                  label="Set to Current Time"
-                  onClick={() => UpdateTime({start: false, frame: videoStore.frame})}
-                />
-              </div>
-            }
-            className={S("tag-form__input")}
-          />
-        </div>
-      </div>
-      <div className={S("tag-form__duration")}>
-        <label>Duration:</label>
-        <span>{videoStore.TimeToString(duration, true)}</span>
-      </div>
+      </FocusTrap>
     </form>
   );
 });

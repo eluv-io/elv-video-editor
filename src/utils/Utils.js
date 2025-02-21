@@ -150,9 +150,16 @@ export const ConvertColor = ({hex, rgb, alpha}) => {
       r: parseInt(result[1], 16),
       g: parseInt(result[2], 16),
       b: parseInt(result[3], 16),
-      a: alpha
+      a: alpha || 255
     } : null;
   } else {
     return `#${rgb.r.toString(16).padStart(2, "0")}${rgb.g.toString(16).padStart(2, "0")}${rgb.b.toString(16).padStart(2, "0")}`;
   }
 };
+
+export const Slugify = str =>
+  (str || "")
+    .toLowerCase()
+    .replace(/ /g, "-")
+    .replace(/[^a-z0-9-]/g,"")
+    .replace(/-+/g, "_");

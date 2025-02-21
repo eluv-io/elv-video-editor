@@ -18,17 +18,7 @@ import {ConvertColor} from "@/utils/Utils.js";
  * vtt - VTT Subtitles
  */
 
-const colors = [
-  "#FFFFFF",
-  "#19ded3",
-  "#e02b10",
-  "#ffc806",
-  "#f10fbf",
-  "#8a0c0c",
-  "#405ff5",
-  "#be6ef6",
-  "#fb8e3e"
-].map(color => ConvertColor({hex: color, alpha: 100}));
+
 
 class TrackStore {
   tags = {};
@@ -60,6 +50,18 @@ class TrackStore {
 
   totalTags = 0;
   uiUpdateDelayFactor = 1;
+
+  colors = [
+    "#FFFFFF",
+    "#19ded3",
+    "#e02b10",
+    "#ffc806",
+    "#f10fbf",
+    "#8a0c0c",
+    "#405ff5",
+    "#be6ef6",
+    "#fb8e3e"
+  ].map(color => ConvertColor({hex: color, alpha: 100}));
 
   constructor(rootStore) {
     makeAutoObservable(
@@ -98,7 +100,7 @@ class TrackStore {
         // Move shot detection to top
         a.key === "shot_detection" ? -1 :
           b.key === "shot_detection" ? 1 :
-            (a.label > b.label ? 1 : -1)
+            (a.label?.toLowerCase() > b.label?.toLowerCase() ? 1 : -1)
       );
   }
 
@@ -114,8 +116,12 @@ class TrackStore {
 
   get clipTracks() {
     return this.tracks
-      .filter(track => track.trackType === "clip" && (track.key !== "primary-content" || this.showPrimaryContent))
+      .filter(track => track.trackType === "clip" && track.key !== "primary-content")
       .sort((a, b) => (a.label > b.label ? 1 : -1));
+  }
+
+  NextId() {
+    return Id.next();
   }
 
   Reset() {
@@ -131,9 +137,9 @@ class TrackStore {
   }
 
   TrackColor(key) {
-    const index = key.split("").reduce((acc, v, i) => acc + v.charCodeAt(0) * i, 0) % colors.length;
+    const index = key.split("").reduce((acc, v, i) => acc + v.charCodeAt(0) * i, 0) % this.colors.length;
 
-    return colors[index];
+    return this.colors[index];
   }
 
   Track(trackId) {
@@ -150,7 +156,7 @@ class TrackStore {
 
   AddTag({trackId, tag}) {
     if(!tag.tagId) {
-      tag.tagId = Id.next();
+      tag.tagId = this.NextId();
     }
 
     this.tags[trackId][tag.tagId] = JSON.parse(JSON.stringify(tag));
@@ -274,8 +280,8 @@ class TrackStore {
     return vttTracks;
   });
 
-  AddTrack({label, key, type, tags={}, color}) {
-    const trackId = Id.next();
+  AddTrack({trackId, label, key, type, tags={}, color, ...additional}) {
+    trackId = trackId || this.NextId();
 
     let updatedTags = {};
     Object.keys(tags).forEach(key =>
@@ -288,13 +294,20 @@ class TrackStore {
       version: 1,
       label,
       key: key || `track-${label}`,
-      trackType: type
+      trackType: type,
+      ...additional
     });
 
     this.tags[trackId] = updatedTags;
     this.intervalTrees[trackId] = this.CreateTrackIntervalTree(tags, label);
 
     return trackId;
+  }
+
+  DeleteTrack({trackId}) {
+    delete this.tags[trackId];
+    this.tracks = this.tracks.filter(track => track.trackId !== trackId);
+    delete this.intervalTrees[trackId];
   }
 
   TrackTags(trackId) {
@@ -371,7 +384,7 @@ class TrackStore {
     yield Promise.all(
       audioTracks.map(async track => {
         try {
-          const trackId = Id.next();
+          const trackId = this.NextId();
 
           this.audioTracks.push({
             trackId,
@@ -504,7 +517,7 @@ class TrackStore {
     }
 
     return {
-      tagId: Id.next(),
+      tagId: this.NextId(),
       tagType,
       label,
       startTime,
@@ -718,7 +731,7 @@ class TrackStore {
     this.AddTrack({
       label: "Primary Content",
       key: "primary-content",
-      type: "clip",
+      type: "primary-content",
       color: {r: 255, g: 255, b: 255, a: 200},
       tags
     });

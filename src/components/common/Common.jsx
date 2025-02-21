@@ -1,7 +1,7 @@
 import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
 import React, {forwardRef, useEffect, useRef, useState} from "react";
-import {Copy, CreateModuleClassMatcher, JoinClassNames, TextWidth} from "@/utils/Utils.js";
+import {ConvertColor, Copy, CreateModuleClassMatcher, JoinClassNames, TextWidth} from "@/utils/Utils.js";
 import {Button, ColorInput, Modal as MantineModal, Select, Switch, Textarea, TextInput, Tooltip} from "@mantine/core";
 import SVG from "react-inlinesvg";
 import {observer} from "mobx-react";
@@ -323,24 +323,41 @@ export const FormTextArea = observer(props =>
     {...props}
     classNames={{
       root: S("form-input"),
-      label: S("form-input__label"),
+      label: S("form-input__label", "form-input__label--textarea"),
       input: S("form-input__input", "form-input__textarea")
     }}
   />
 );
 
-export const FormColorInput = observer(props =>
-  <ColorInput
-    {...props}
-    classNames={{
-      root: S("form-input"),
-      label: S("form-input__label"),
-      input: S("form-input__input"),
-      section: S("form-input__color-section"),
-      colorPreview: S("form-input__color-preview")
-    }}
-  />
-);
+export const FormColorInput = observer(props => {
+  // Display in hex, value in rgba
+  const [hexValue, setHexValue] = useState(ConvertColor({rgb: props.value}));
+
+  useEffect(() => {
+    try {
+      const convertedColor = ConvertColor({hex: hexValue});
+
+      if(convertedColor) {
+        props.onChange(ConvertColor({hex: hexValue}));
+      }
+    } catch(error) { /* empty */ }
+  }, [hexValue]);
+
+  return (
+    <ColorInput
+      {...props}
+      value={hexValue}
+      onChange={setHexValue}
+      classNames={{
+        root: S("form-input"),
+        label: S("form-input__label"),
+        input: S("form-input__input"),
+        section: S("form-input__color-section"),
+        colorPreview: S("form-input__color-preview")
+      }}
+    />
+  );
+});
 
 export const FormSelect = observer(props =>
   <Select

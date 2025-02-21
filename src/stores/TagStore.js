@@ -258,7 +258,7 @@ class TagStore {
     if(this.editing && this.editedItem && save) {
       if(this.selectedTrackId) {
         const originalTrack = {...this.selectedTrack};
-        const modifiedTrack = {...this.editedItem};
+        const modifiedTrack = {...this.editedItem, label: this.editedItem.label || originalTrack.label};
 
         if(JSON.stringify(originalTrack) !== JSON.stringify(modifiedTrack)) {
           this.rootStore.editStore.PerformAction({
@@ -294,6 +294,48 @@ class TagStore {
     this.ClearEditedItem();
   }
 
+  AddTrack({trackType="tags", key, label, description, color}) {
+    const trackId = this.rootStore.trackStore.NextId();
+    this.rootStore.editStore.PerformAction({
+      label: "Add Category",
+      type: trackType,
+      action: "create",
+      modifiedItem: { trackId, trackType, key, label, description, color},
+      Action: () => this.rootStore.trackStore.AddTrack({
+        trackId,
+        key,
+        label,
+        description,
+        color,
+        type: trackType
+      }),
+      Undo: () => this.rootStore.trackStore.DeleteTrack({trackId})
+    });
+
+    this.SetSelectedTrack(trackId);
+  }
+
+  DeleteTrack({trackId}) {
+    const originalTrack = this.rootStore.trackStore.Track(trackId);
+    const originalTags = this.rootStore.trackStore.tags[trackId];
+
+    if(!originalTrack) { return; }
+
+    this.rootStore.editStore.PerformAction({
+      label: "Remove Category",
+      type: originalTrack.trackType,
+      action: "create",
+      modifiedItem: originalTrack,
+      Action: () => this.rootStore.trackStore.DeleteTrack({trackId}),
+      Undo: () => this.rootStore.trackStore.AddTrack({
+        ...originalTrack,
+        tags: originalTags,
+      }),
+    });
+
+    this.ClearSelectedTrack();
+  }
+
   AddTag({trackId, tagType="metadata", startTime, endTime, text}) {
     const track = this.rootStore.trackStore.Track(trackId);
 
@@ -315,7 +357,7 @@ class TagStore {
     this.rootStore.editStore.PerformAction({
       label: "Add Tag",
       type: "tag",
-      action: "delete",
+      action: "create",
       modifiedItem: tag,
       Action: () => this.rootStore.trackStore.AddTag({trackId, tag}),
       Undo: () => this.rootStore.trackStore.DeleteTag({trackId, tagId: tag.tagId})

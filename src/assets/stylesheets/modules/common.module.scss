@@ -167,7 +167,6 @@
   position: relative;
 
   &__label {
-    background-color: var(--background-modal);
     border-radius: 10px 0;
     color: var(--text-tertiary);
     font-size: 12px;
@@ -177,6 +176,10 @@
     position: absolute;
     top: 1px;
     z-index: 1;
+
+    &--textarea {
+      background-color: var(--background-modal);
+    }
   }
 
   &__input {

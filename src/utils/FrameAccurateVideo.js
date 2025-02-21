@@ -127,6 +127,8 @@ class FrameAccurateVideo {
   }
 
   FrameToTime(frame) {
+    if(frame === 0) { return 0; }
+
     return Fraction(frame).div(this.frameRate).valueOf();
   }
 
@@ -285,7 +287,7 @@ class FrameAccurateVideo {
       string += `${minutes}m `;
     }
 
-    if(seconds > 0) {
+    if(!string || seconds > 0) {
       if(includeFractionalSeconds) {
         string += `${parseFloat(seconds.valueOf().toFixed(4))}s`;
       } else {

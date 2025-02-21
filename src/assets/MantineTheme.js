@@ -1,4 +1,4 @@
-import {createTheme, em, Tooltip} from "@mantine/core";
+import {createTheme, em, Modal, Tooltip} from "@mantine/core";
 
 import MantineStyles from "@/assets/stylesheets/modules/mantine.module.scss";
 
@@ -22,6 +22,11 @@ const MantineTheme = createTheme({
       classNames: {
         tooltip: MantineStyles["__mantine--tooltip"],
         arrow: MantineStyles["__mantine--tooltip__arrow"],
+      }
+    }),
+    Modal: Modal.extend({
+      classNames: {
+        body: MantineStyles["__mantine--modal__body"]
       }
     })
   }

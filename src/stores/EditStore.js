@@ -26,11 +26,12 @@ class EditStore {
   }
 
   PerformAction({label, Action, Undo, ...attrs}) {
-    console.log("PA", label, Action, Undo, attrs);
-    Action();
+    const result = Action();
 
     this.undoStack.push({label, Action, Undo, ...attrs});
     this.position++;
+
+    return result;
   }
 
   Undo() {

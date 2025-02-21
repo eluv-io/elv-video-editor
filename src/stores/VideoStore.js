@@ -718,11 +718,15 @@ class VideoStore {
     return this.TimeToProgress(this.FrameToTime(frame));
   }
 
-  FrameToTime(frame) {
-    if(!this.videoHandler) { return 0; }
+  FrameToTime(frame, roundUp=true) {
+    if(!this.videoHandler || frame === 0) { return 0; }
 
-    // Pad number to ensure its rounded up
-    return Number((this.videoHandler.FrameToTime(frame) + 0.00051).toFixed(3));
+    const result = this.videoHandler.FrameToTime(frame);
+
+    return !roundUp ?
+      result :
+      // Pad number to ensure its rounded up
+      Number((result + 0.00051).toFixed(3));
   }
 
   FrameToSMPTE(frame) {

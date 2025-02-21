@@ -151,6 +151,73 @@
   }
 }
 
+.form {
+  &__inputs {
+    display: grid;
+    gap: 3px;
+    width: 100%;
+  }
+
+  &__input-container {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    width: 100%;
+  }
+
+  &__input {
+    flex-grow: 1;
+    width: 100%;
+  }
+
+  &__input-actions {
+    align-items: center;
+    display: flex;
+    gap: 5px;
+    justify-content: flex-end;
+    padding-right: 10px;
+    width: 100%;
+
+    button {
+      color: var(--text-tertiary);
+      height: 20px;
+      min-height: 20px;
+      min-width: 20px;
+      width: 20px;
+    }
+  }
+
+  &__input-note {
+    display: flex;
+    font-size: 11px;
+    gap: 5px;
+    justify-content: flex-end;
+    padding-right: 10px;
+  }
+
+  &__actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+  }
+
+
+  &__action {
+    align-items: center;
+    border-radius: 6px;
+    display: flex;
+    font-size: 14px;
+    font-weight: 600;
+    height: 40px;
+    justify-content: center;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    width: 150px;
+  }
+}
+
 .ellipsis {
   overflow: hidden;
   text-overflow: ellipsis;
