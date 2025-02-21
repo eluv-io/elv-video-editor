@@ -8,13 +8,32 @@ class EditStore {
   saveFailed = false;
   position = 0;
 
-  undoStack = [];
-  redoStack = [];
+  undoStacks = {
+    tags: [],
+    clips: []
+  };
+
+  redoStacks = {
+    tags: [],
+    clips: []
+  };
 
   constructor(rootStore) {
     makeAutoObservable(this);
 
     this.rootStore = rootStore;
+  }
+
+  get page() {
+    return this.rootStore.view;
+  }
+
+  get undoStack() {
+    return this.undoStacks[this.page] || [];
+  }
+
+  get redoStack() {
+    return this.redoStacks[this.page] || [];
   }
 
   get nextUndoAction() {
