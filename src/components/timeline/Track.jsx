@@ -10,6 +10,9 @@ import {trackStore, videoStore, tagStore} from "@/stores/index.js";
 import {CreateModuleClassMatcher} from "@/utils/Utils";
 import {Tooltip} from "@mantine/core";
 
+import TrackWorker from "../../workers/TrackWorker.js?worker";
+import AudioTrackWorker from "../../workers/AudioTrackWorker.js?worker";
+
 const S = CreateModuleClassMatcher(TrackStyles);
 
 // X position of mouse over canvas (as percent)
@@ -262,15 +265,12 @@ const Track = observer(({track, noActive}) => {
   useEffect(() => {
     if(!canvas) { return; }
 
-    const trackWorker = new Worker(
-      new URL(
-        track.trackType === "audio" ?
-          "../../workers/AudioTrackWorker.js" :
-          "../../workers/TrackWorker.js",
-        import.meta.url
-      ),
-      { type: "module" }
-    );
+    let trackWorker;
+    if(track.trackType === "audio") {
+      trackWorker = new AudioTrackWorker();
+    } else {
+      trackWorker = new TrackWorker();
+    }
 
     trackWorker.postMessage({
       operation: "Initialize",
