@@ -188,9 +188,13 @@ class EditStore {
     const {startTime, endTime} = this.rootStore.trackStore.ClipInfo();
 
     const startFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(startTime);
-    const startTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(startFrame);
     const endFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(endTime);
+
+    const startTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(startFrame);
     const endTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(endFrame);
+
+    const startTimeSMPTE = this.rootStore.videoStore.videoHandler.FrameToSMPTE(startFrame);
+    const endTimeSMPTE = this.rootStore.videoStore.videoHandler.FrameToSMPTE(endFrame);
 
     const offering = this.rootStore.videoStore.metadata.offerings[this.rootStore.videoStore.offeringKey];
 
@@ -198,10 +202,10 @@ class EditStore {
 
     return {
       clipChanged,
-      endTimeRat,
       startTimeRat,
-      entryRevised: this.rootStore.videoStore.TimeToSMPTE(FrameAccurateVideo.ParseRat(startTimeRat)),
-      exitRevised: this.rootStore.videoStore.TimeToSMPTE(FrameAccurateVideo.ParseRat(endTimeRat)),
+      endTimeRat,
+      entryRevised: startTimeSMPTE,
+      exitRevised: endTimeSMPTE,
       durationUntrimmed: this.rootStore.videoStore.scaleMaxSMPTE,
       durationTrimmed: this.rootStore.videoStore.TimeToSMPTE(FrameAccurateVideo.ParseRat(endTimeRat) - FrameAccurateVideo.ParseRat(startTimeRat))
     };
