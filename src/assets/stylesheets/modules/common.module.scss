@@ -187,10 +187,28 @@
     font-size: 14px;
     height: 57px;
     padding-top: 20px;
+
+    &:disabled {
+      color: var(--text-secondary);
+    }
   }
 
   &__textarea {
     padding-top: 30px;
+  }
+
+  &__color-section {
+    bottom: 0;
+    height: calc(100% - 20px);
+    top: unset;
+  }
+
+  &__color-preview {
+    height: 15px;
+    margin-left: 5px;
+    min-height: 10px;
+    min-width: 10px;
+    width: 15px;
   }
 }
 

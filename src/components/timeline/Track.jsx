@@ -42,7 +42,7 @@ const Click = ({canvas, clientX, trackId}) => {
 
 const Hover = ({canvas, clientX, trackId}) => {
   // All tags within 1 pixel of current position
-  const tags = [-1, 0, 1]
+  const tags = [0]
     .map(offset => Search({trackId, time: TimeAt({canvas, clientX: clientX + offset})}))
     .flat()
     .filter((v, i, s) => s.indexOf(v) === i);
@@ -55,25 +55,9 @@ const ClearHover = () => {
 };
 
 const InitializeTrackReactions = ({track, worker}) => {
-  // Update less often when there are many tags to improve performance
-  let reactionDisposals = [];
+  // React to changes in scale, playback position, filter and hover state with debounced/delayed update
 
-  // Update when tags change
-  reactionDisposals.push(
-    reaction(
-      () => ({
-        version: track.version
-      }),
-      () => {
-        worker.postMessage({
-          operation: "SetTags",
-          trackId: track.trackId,
-          tags: toJS(trackStore.TrackTags(track.trackId))
-        });
-      },
-      {delay: 25 * trackStore.uiUpdateDelayFactor}
-    )
-  );
+  let reactionDisposals = [];
 
   // Update on scale change
   reactionDisposals.push(
@@ -258,13 +242,31 @@ const Track = observer(({track, noActive}) => {
   }, [canvasDimensions, canvas, worker]);
 
   useEffect(() => {
+    // Update track color
+    worker?.postMessage({
+      operation: "SetColor",
+      trackId: track.trackId,
+      color: toJS(track.color)
+    });
+  }, [worker, track.color]);
+
+  useEffect(() => {
+    // Update track tags
+    worker?.postMessage({
+      operation: "SetTags",
+      trackId: track.trackId,
+      tags: toJS(trackStore.TrackTags(track.trackId))
+    });
+  }, [worker, track.version]);
+
+  useEffect(() => {
     if(!canvas) { return; }
 
     const trackWorker = new Worker(
       new URL(
         track.trackType === "audio" ?
           "../../workers/AudioTrackWorker.js" :
-        "../../workers/TrackWorker.js",
+          "../../workers/TrackWorker.js",
         import.meta.url
       ),
       { type: "module" }
@@ -277,7 +279,7 @@ const Track = observer(({track, noActive}) => {
       color: toJS(track.color),
       width: canvasDimensions.width,
       height: canvasDimensions.height,
-      tags: toJS(trackStore.TrackTags(track.trackId)),
+      tags: {},
       noActive,
       scale: {
         scale: 100,

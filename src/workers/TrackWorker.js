@@ -152,6 +152,10 @@ self.addEventListener(
         worker.activeTagIds = data.activeTagIds;
         break;
 
+      case "SetColor":
+        worker.color = data.color;
+        break;
+
       case "Resize":
         if(data.width === worker.width && data.height === worker.height) {
           return;

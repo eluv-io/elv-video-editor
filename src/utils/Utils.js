@@ -142,3 +142,17 @@ export const Copy = async (value) => {
     document.execCommand("copy");
   }
 };
+
+export const ConvertColor = ({hex, rgb, alpha}) => {
+  if(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16),
+      a: alpha
+    } : null;
+  } else {
+    return `#${rgb.r.toString(16).padStart(2, "0")}${rgb.g.toString(16).padStart(2, "0")}${rgb.b.toString(16).padStart(2, "0")}`;
+  }
+};

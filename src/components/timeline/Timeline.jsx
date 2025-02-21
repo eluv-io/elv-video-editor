@@ -2,9 +2,9 @@ import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
 
 import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react";
-import {rootStore, trackStore, videoStore} from "@/stores";
+import {editStore, rootStore, tagStore, trackStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
-import {IconButton, SMPTEInput, SwitchInput} from "@/components/common/Common";
+import {IconButton, Linkish, SMPTEInput, SwitchInput} from "@/components/common/Common";
 import MarkedSlider from "@/components/common/MarkedSlider";
 
 import ThumbnailTrack from "@/components/timeline/ThumbnailTrack.jsx";
@@ -14,7 +14,7 @@ import {
   FrameDisplay,
   FrameForward10Button,
   FrameForward1Button,
-  PlaySelectedTagButton
+  PlayCurrentClipButton
 } from "@/components/video/VideoControls.jsx";
 import KeyboardControls from "@/components/timeline/KeyboardControls.jsx";
 import Download from "@/components/download/Download.jsx";
@@ -22,10 +22,9 @@ import Track from "@/components/timeline/Track.jsx";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
-import AddUserIcon from "@/assets/icons/v2/add-user.svg";
 
 import AddNewItemIcon from "@/assets/icons/v2/add-new-item.svg";
-import SplitIcon from "@/assets/icons/v2/split.svg";
+import TrackIcon from "@/assets/icons/v2/track.svg";
 import ClipInIcon from "@/assets/icons/v2/clip-start.svg";
 import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
 
@@ -39,11 +38,31 @@ const TimelineTopBar = observer(() => {
   return (
     <div className={S("toolbar", "timeline-section__top-bar")}>
       <div className={S("toolbar__controls-group", "left")}>
-        <IconButton icon={UndoIcon} label="Undo" onClick={() => {}} />
-        <IconButton icon={RedoIcon} label="Redo" onClick={() => {}} />
+        <IconButton
+          icon={UndoIcon}
+          label={`Undo ${editStore.nextUndoAction?.label || ""}`}
+          disabled={!editStore.nextUndoAction}
+          onClick={() => editStore.Undo()}
+        />
+        <IconButton
+          icon={RedoIcon}
+          label={`Redo ${editStore.nextRedoAction?.label || ""}`}
+          disabled={!editStore.nextRedoAction}
+          onClick={() => editStore.Redo()}
+        />
         <div className={S("toolbar__separator")} />
-        <IconButton icon={AddUserIcon} label="Add User" onClick={() => {}} />
-        <Download />
+        <IconButton icon={TrackIcon} label="Add Category" onClick={() => {}} />
+        <IconButton
+          icon={AddNewItemIcon}
+          disabled={!tagStore.selectedTrack}
+          label={`Add New ${rootStore.view === "tags" ? "Tag" : "Clip"}`}
+          onClick={() =>
+            tagStore.AddTag({
+              trackId: tagStore.selectedTrackId,
+              text: "<New Tag>"
+            })
+          }
+        />
         <div className={S("toolbar__separator")} />
         <div className={S("jump-to")}>
           <label>Jump to</label>
@@ -63,9 +82,8 @@ const TimelineTopBar = observer(() => {
         <FrameForward10Button />
       </div>
       <div className={S("toolbar__controls-group", "right")}>
-        <PlaySelectedTagButton />
-        <IconButton icon={AddNewItemIcon} label="Add New Item" onClick={() => {}} />
-        <IconButton icon={SplitIcon} label="Split" onClick={() => {}} />
+        <PlayCurrentClipButton />
+        <Download />
         <div className={S("toolbar__separator")} />
         <IconButton icon={ClipInIcon} label="Set Clip In to Current Frame" onClick={() => videoStore.SetClipMark({inFrame: videoStore.frame})} />
         <SMPTEInput
@@ -325,15 +343,23 @@ const TagTimelineContent = observer(() => {
         style={
           track.trackType !== "metadata" ||
           !trackStore.tracksSelected ||
-          trackStore.selectedTracks[track.key] ?
+          trackStore.activeTracks[track.key] ?
             {} :
             {display: "none"}
         }
-        className={S("timeline-row")}
+        className={S("timeline-row", track.trackId === tagStore.selectedTrackId ? "timeline-row--selected" : "")}
       >
-        <div className={S("timeline-row__label")}>
+        <Linkish
+          onClick={
+            track.trackType !== "metadata" ? undefined :
+              () => tagStore.selectedTrackId === track.trackId ?
+                tagStore.ClearSelectedTrack() :
+                tagStore.SetSelectedTrack(track.trackId)
+          }
+          className={S("timeline-row__label")}
+        >
           {track.label}
-        </div>
+        </Linkish>
         <div className={S("timeline-row__content")}>
           <Track track={track} />
         </div>
@@ -357,20 +383,31 @@ const ClipTimelineContent = observer(() => {
           style={
             track.trackType === "primary-content" ||
             !trackStore.clipTracksSelected ||
-            trackStore.selectedClipTracks[track.key] ?
+            trackStore.activeClipTracks[track.key] ?
               {} :
               {display: "none"}
           }
-          className={S("timeline-row")}
+          className={S("timeline-row", track.trackId === tagStore.selectedTrackId ? "timeline-row--selected" : "")}
         >
-          <div className={S("timeline-row__label")}>
+          <Linkish
+            onClick={
+              track.trackType === "primary-content" ? undefined :
+                () => tagStore.selectedTrackId === track.trackId ?
+                  tagStore.ClearSelectedTrack() :
+                  tagStore.SetSelectedTrack(track.trackId)
+            }
+            className={S("timeline-row__label")}
+          >
             {track.label}
-            <IconButton
-              icon={QuestionMarkIcon}
-              label="The primary content tag allows you to modify the start and end times for the default video playout for this offering"
-              className={S("timeline-row__icon")}
-            />
-          </div>
+            {
+              track.trackType !== "primary-content" ? null :
+                <IconButton
+                  icon={QuestionMarkIcon}
+                  label="The primary content tag allows you to modify the start and end times for the default video playout for this offering"
+                  className={S("timeline-row__icon")}
+                />
+            }
+          </Linkish>
           <div className={S("timeline-row__content")}>
             <Track track={track} />
           </div>
@@ -466,9 +503,7 @@ const Timeline = observer(({content}) => {
               </div>
             </div>
         }
-        {
-          content
-        }
+        { content }
         <TimelineScaleBar hoverSeek={hoverSeek} />
       </div>
 

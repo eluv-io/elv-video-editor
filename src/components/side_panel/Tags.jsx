@@ -2,8 +2,8 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react";
-import {tagStore, trackStore, videoStore} from "@/stores/index.js";
-import {Tooltip} from "@mantine/core";
+import {editStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
+import {Text, Tooltip} from "@mantine/core";
 import {FormTextArea, IconButton, SMPTEInput} from "@/components/common/Common.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
@@ -15,10 +15,14 @@ import BackIcon from "@/assets/icons/v2/back.svg";
 import TimeIcon from "@/assets/icons/Clock.svg";
 import MarkInIcon from "@/assets/icons/marker-in.svg";
 import MarkOutIcon from "@/assets/icons/marker-out.svg";
+import XIcon from "@/assets/icons/X.svg";
+import TrashIcon from "@/assets/icons/trash.svg";
+import {modals} from "@mantine/modals";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
-const TagTextarea = observer(({tag, setTag}) => {
+const TagTextarea = observer(() => {
+  const tag = tagStore.editedItem;
   const [error, setError] = useState(null);
   const [input, setInput] = useState("");
 
@@ -37,22 +41,18 @@ const TagTextarea = observer(({tag, setTag}) => {
   return (
     <FormTextArea
       label="Content"
-      autosize
-      maxRows={10}
-      minRows={3}
       error={error}
-      resize="vertical"
       value={input}
       onChange={event => setInput(event.target.value)}
       onBlur={() => {
         if(!tag.content) {
-          setTag({...tag, textList: [input]});
+          tagStore.UpdateEditedItem({...tag, textList: [input]});
           return;
         }
 
         try {
           setError(undefined);
-          setTag({...tag, content: JSON.parse(input)});
+          tagStore.UpdateEditedItem({...tag, content: JSON.parse(input)});
         } catch(error) {
           setError(error.toString());
         }
@@ -67,10 +67,15 @@ const TagActions = observer(({tag, track}) => {
     <div className={S("tag-details__actions")}>
       <div className={S("tag-details__left-actions")}>
         <IconButton
+          label={
+            tagStore.editing ?
+              "Save changes and return to tag details" :
+              "Return to tag list"
+          }
           icon={BackIcon}
           onClick={() =>
-            tagStore.editingTag ?
-              tagStore.SetEditing(undefined) :
+            tagStore.editing ?
+              tagStore.ClearEditing() :
               tagStore.ClearSelectedTag()
           }
         />
@@ -84,15 +89,40 @@ const TagActions = observer(({tag, track}) => {
       </div>
       <div className={S("tag-details__right-actions")}>
         <IconButton
+          label="Play this Tag"
           icon={PlayIcon}
           onClick={() => tagStore.PlayTag(tag)}
         />
         {
-          tagStore.editingTag ? null :
+          tagStore.editing ?
             <IconButton
-              icon={EditIcon}
-              onClick={() => tagStore.SetEditing(tag.tagId)}
-            />
+              label="Discard Changes"
+              icon={XIcon}
+              onClick={() => tagStore.ClearEditing(false)}
+            /> :
+            <>
+              <IconButton
+                label="Edit Tag"
+                icon={EditIcon}
+                onClick={() => tagStore.SetEditing(tag.tagId, "tag")}
+              />
+              <IconButton
+                label="Remove Tag"
+                icon={TrashIcon}
+                onClick={() =>
+                  modals.openConfirmModal({
+                    title: "Remove Tag",
+                    centered: true,
+                    children: <Text fz="sm">Are you sure you want to remove this tag?</Text>,
+                    labels: { confirm: "Remove", cancel: "Cancel" },
+                    onConfirm: () => {
+                      tagStore.DeleteTag({trackId: track.trackId, tag});
+                      tagStore.ClearSelectedTag();
+                    }
+                  })
+                }
+              />
+            </>
         }
       </div>
     </div>
@@ -100,7 +130,7 @@ const TagActions = observer(({tag, track}) => {
 });
 
 const TagForm = observer(() => {
-  const [tag, setTag] = useState({...tagStore.selectedTag});
+  const tag = tagStore.editedItem;
   const track = tagStore.selectedTagTrack;
 
   const duration = parseFloat(tag.endTime - tag.startTime);
@@ -125,14 +155,14 @@ const TagForm = observer(() => {
       }
     }
 
-    setTag(updatedTag);
+    tagStore.UpdateEditedItem(updatedTag);
   };
 
   return (
     <form
       key={`tag-form-${tag.tagId}`}
       onSubmit={event => event.preventDefault()}
-      className={S("side-panel-modal", "tag-details", "tag-form")}
+      className={S("tag-details", "tag-form")}
     >
       <TagActions tag={tag} track={track} />
 
@@ -174,7 +204,7 @@ const TagForm = observer(() => {
       }
       <div className={S("tag-form__inputs")}>
         <div className={S("tag-form__input-container")}>
-          <TagTextarea tag={tag} setTag={setTag}/>
+          <TagTextarea />
         </div>
         <div className={S("tag-form__input-container")}>
           <SMPTEInput
@@ -237,6 +267,13 @@ export const TagDetails = observer(() => {
   const tag = tagStore.selectedTag;
   const track = tagStore.selectedTagTrack;
 
+  useEffect(() => {
+    if(!tag || !track) {
+      tagStore.ClearEditing();
+      tagStore.ClearSelectedTag();
+    }
+  }, [tag, track]);
+
   if(!tag || !track) {
     return null;
   }
@@ -246,7 +283,7 @@ export const TagDetails = observer(() => {
 
   return (
     <>
-      <div key={`tag-details-${tag.tagId}`} className={S("side-panel-modal", "tag-details")}>
+      <div key={`tag-details-${tag.tagId}`} className={S("tag-details")}>
         <TagActions tag={tag} track={track}/>
         {
           !trackStore.thumbnailStatus.available ? null :
@@ -287,8 +324,10 @@ export const TagDetails = observer(() => {
         </div>
       </div>
       {
-        !tagStore.editingTag ? null :
-          <TagForm/>
+        !tagStore.editing ? null :
+          <div className={S("side-panel-modal")}>
+            <TagForm/>
+          </div>
       }
     </>
   );
@@ -361,7 +400,7 @@ const Tag = observer(({track, tag}) => {
           onClick={event => {
             event.stopPropagation();
             tagStore.SetTags(track.trackId, tag.tagId, tag.startTime);
-            tagStore.SetEditing(tag.tagId);
+            tagStore.SetEditing(tag.tagId, "tag");
           }}
           className={S("tag__action")}
         />
@@ -407,9 +446,10 @@ export const TagsList = observer(({mode="tags"}) => {
           trackStore.tracks.length,
           tagStore.filter,
           tagStore.selectedTagIds,
-          Object.keys(trackStore.selectedTracks).length,
-          Object.keys(trackStore.selectedClipTracks).length,
-          trackStore.showPrimaryContent
+          Object.keys(trackStore.activeTracks).length,
+          Object.keys(trackStore.visibleClipTracks).length,
+          trackStore.showPrimaryContent,
+          editStore.position
         ]}
         className={S("tags")}
         Update={limit => {

@@ -2,7 +2,7 @@ import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
 import React, {forwardRef, useEffect, useRef, useState} from "react";
 import {Copy, CreateModuleClassMatcher, JoinClassNames, TextWidth} from "@/utils/Utils.js";
-import {Button, Modal as MantineModal, Select, Switch, Textarea, TextInput, Tooltip} from "@mantine/core";
+import {Button, ColorInput, Modal as MantineModal, Select, Switch, Textarea, TextInput, Tooltip} from "@mantine/core";
 import SVG from "react-inlinesvg";
 import {observer} from "mobx-react";
 import {Link} from "wouter";
@@ -148,11 +148,14 @@ export const IconButton = ({
   icon,
   active=false,
   disabled=false,
-  tooltipProps={openDelay: 500},
+  tooltipProps={},
   unstyled=false,
   children,
+  openDelay=500,
   ...props
 }) => {
+  tooltipProps = {openDelay, ...tooltipProps};
+
   if(props.disabled) {
     props.onClick = undefined;
   }
@@ -186,7 +189,6 @@ export const IconButton = ({
   return (
     <Tooltip
       {...tooltipProps}
-      openDelay={0}
       withinPortal
       label={label}
       events={{ hover: true, focus: true, touch: false }}
@@ -314,11 +316,28 @@ export const FormTextInput = observer(props =>
 // Form styled inputs
 export const FormTextArea = observer(props =>
   <Textarea
+    autosize
+    maxRows={10}
+    minRows={3}
+    resize="vertical"
     {...props}
     classNames={{
       root: S("form-input"),
       label: S("form-input__label"),
       input: S("form-input__input", "form-input__textarea")
+    }}
+  />
+);
+
+export const FormColorInput = observer(props =>
+  <ColorInput
+    {...props}
+    classNames={{
+      root: S("form-input"),
+      label: S("form-input__label"),
+      input: S("form-input__input"),
+      section: S("form-input__color-section"),
+      colorPreview: S("form-input__color-preview")
     }}
   />
 );

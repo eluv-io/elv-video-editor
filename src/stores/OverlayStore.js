@@ -9,7 +9,6 @@ const FormatName = (name) => {
 };
 
 class OverlayStore {
-  trackMap = {};
   overlayEnabled = false;
   enabledOverlayTracks = {};
   trackInfo = {};
@@ -22,7 +21,7 @@ class OverlayStore {
 
     let visibleTracks = {};
     Object.keys(this.enabledOverlayTracks).forEach(key =>
-      visibleTracks[key] = this.rootStore.trackStore.selectedTracks[key]
+      visibleTracks[key] = this.rootStore.trackStore.activeTracks[key]
     );
 
     return visibleTracks;
@@ -105,7 +104,6 @@ class OverlayStore {
 
         if(metadataTrack) {
           metadataTrack.hasOverlay = true;
-          this.trackMap[trackKey] = metadataTrack.trackId;
         }
       });
 
@@ -119,14 +117,6 @@ class OverlayStore {
       console.error(error);
     }
   });
-
-  ToggleOverlay(enabled) {
-    this.overlayEnabled = enabled;
-  }
-
-  ToggleOverlayTrack(trackKey, enabled) {
-    this.enabledOverlayTracks[trackKey] = enabled;
-  }
 
   SetOverlayCanvasDimensions(dimensions) {
     this.overlayCanvasDimensions = dimensions;

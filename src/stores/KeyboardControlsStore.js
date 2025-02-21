@@ -135,9 +135,11 @@ class ControlStore {
   }
 
   Undo() {
+    this.rootStore.editStore.Undo();
   }
 
   Redo() {
+    this.rootStore.editStore.Redo();
   }
 
   SeekFrames({frames, seconds}) {
@@ -191,7 +193,9 @@ class ControlStore {
   }
 
   ShowAllTracks() {
-    this.rootStore.trackStore.ResetSelectedTracks();
+    this.rootStore.view === "clips" ?
+      this.rootStore.trackStore.ResetActiveClipTracks() :
+      this.rootStore.trackStore.ResetActiveTracks();
   }
 
   PlayClip() {

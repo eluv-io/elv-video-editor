@@ -83,6 +83,12 @@
     }
   }
 
+  &--selected {
+    .timeline-row__label {
+      background-color: var(--background-toolbar--active);
+    }
+  }
+
   &__label {
     align-items: center;
     background-color: var(--background-toolbar);
@@ -93,6 +99,7 @@
     padding-inline: var(--content-inline-padding);
     position: relative;
     text-align: left;
+    transition: background-color 0.25s ease;
   }
 
   &__icon {

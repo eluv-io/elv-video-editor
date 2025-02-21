@@ -6,11 +6,51 @@ import FrameAccurateVideo from "@/utils/FrameAccurateVideo";
 class EditStore {
   saving = false;
   saveFailed = false;
+  position = 0;
+
+  undoStack = [];
+  redoStack = [];
 
   constructor(rootStore) {
     makeAutoObservable(this);
 
     this.rootStore = rootStore;
+  }
+
+  get nextUndoAction() {
+    return this.undoStack.slice(-1)[0];
+  }
+
+  get nextRedoAction() {
+    return this.redoStack.slice(-1)[0];
+  }
+
+  PerformAction({label, Action, Undo, ...attrs}) {
+    console.log("PA", label, Action, Undo, attrs);
+    Action();
+
+    this.undoStack.push({label, Action, Undo, ...attrs});
+    this.position++;
+  }
+
+  Undo() {
+    if(this.undoStack.length === 0) { return; }
+
+    const action = this.undoStack.pop();
+
+    action.Undo();
+
+    this.redoStack.push(action);
+
+    this.position--;
+  }
+
+  Redo() {
+    if(this.redoStack.length === 0) { return; }
+
+    const action = this.redoStack.pop();
+
+    this.PerformAction(action);
   }
 
   Reset() {

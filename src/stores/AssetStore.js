@@ -4,7 +4,7 @@ import {Capitalize} from "@/utils/Utils.js";
 
 class AssetStore {
   filter = "";
-  selectedTracks = {};
+  activeTracks = {};
 
   constructor(rootStore) {
     makeAutoObservable(this);
@@ -31,15 +31,15 @@ class AssetStore {
       // Remove quotes from start and end
       .map(token => token.replace(/^"(.+)"$/, "$1"));
 
-    const selectedTracks = Object.keys(this.selectedTracks);
+    const activeTracks = Object.keys(this.activeTracks);
     return this.assetList
       .filter(asset =>
         // If tag categories are selected, filter only assets that are tagged with one or more of those categories
-        selectedTracks.length === 0 ?
+        activeTracks.length === 0 ?
           true :
           Object.keys(asset.image_tags || {})
             .find(key =>
-              this.selectedTracks[key] &&
+              this.activeTracks[key] &&
               asset.image_tags[key]?.tags?.length > 0
             )
       )
@@ -51,7 +51,7 @@ class AssetStore {
             asset.image_tags &&
             Object.keys(asset.image_tags || {}).length > 0 &&
             Object.keys(asset.image_tags)
-              .filter(category => selectedTracks.length === 0 || selectedTracks.includes(category))
+              .filter(category => activeTracks.length === 0 || activeTracks.includes(category))
               .find(category =>
                 (((asset.image_tags[category] || {}).tags) || [])
                   .find(tag => (tag.text || "").toLowerCase().includes(term))
@@ -62,7 +62,7 @@ class AssetStore {
   }
 
   get tracksSelected() {
-    return Object.keys(this.selectedTracks).length > 0;
+    return Object.keys(this.activeTracks).length > 0;
   }
 
   get assetTracks() {
@@ -134,10 +134,10 @@ class AssetStore {
   }
 
   ToggleTrackSelected(key) {
-    if(this.selectedTracks[key]) {
-      delete this.selectedTracks[key];
+    if(this.activeTracks[key]) {
+      delete this.activeTracks[key];
     } else {
-      this.selectedTracks[key] = true;
+      this.activeTracks[key] = true;
     }
   }
 }

@@ -5,6 +5,7 @@ import IntervalTree from "node-interval-tree";
 import {Parser as HLSParser} from "m3u8-parser";
 import UrlJoin from "url-join";
 import {Utils} from "@eluvio/elv-client-js";
+import {ConvertColor} from "@/utils/Utils.js";
 
 /*
  * Track Types:
@@ -17,16 +18,6 @@ import {Utils} from "@eluvio/elv-client-js";
  * vtt - VTT Subtitles
  */
 
-const HexToRGB = (hex, a) => {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? {
-    r: parseInt(result[1], 16),
-    g: parseInt(result[2], 16),
-    b: parseInt(result[3], 16),
-    a
-  } : null;
-};
-
 const colors = [
   "#FFFFFF",
   "#19ded3",
@@ -37,7 +28,7 @@ const colors = [
   "#405ff5",
   "#be6ef6",
   "#fb8e3e"
-].map(color => HexToRGB(color, 150));
+].map(color => ConvertColor({hex: color, alpha: 100}));
 
 class TrackStore {
   tags = {};
@@ -52,8 +43,8 @@ class TrackStore {
   tracks = [];
   audioTracks = [];
   selectedTrack;
-  selectedTracks = {};
-  selectedClipTracks = {};
+  activeTracks = {};
+  activeClipTracks = {};
   editingTrack = false;
   audioLoading = false;
   audioSupported = true;
@@ -91,13 +82,13 @@ class TrackStore {
   }
 
   get tracksSelected() {
-    return Object.keys(this.selectedTracks).length > 0;
+    return Object.keys(this.activeTracks).length > 0;
   }
 
-  get activeMetadataTracks() {
+  get visibleMetadataTracks() {
     return !this.tracksSelected ?
       this.metadataTracks :
-      this.metadataTracks.filter(track => this.selectedTracks[track.key]);
+      this.metadataTracks.filter(track => this.activeTracks[track.key]);
   }
 
   get metadataTracks() {
@@ -112,13 +103,13 @@ class TrackStore {
   }
 
   get clipTracksSelected() {
-    return Object.keys(this.selectedClipTracks).length > 0;
+    return Object.keys(this.activeClipTracks).length > 0;
   }
 
-  get activeClipTracks() {
+  get visibleClipTracks() {
     return !this.clipTracksSelected ?
       this.clipTracks :
-      this.clipTracks.filter(track => this.selectedClipTracks[track.key]);
+      this.clipTracks.filter(track => this.activeClipTracks[track.key]);
   }
 
   get clipTracks() {
@@ -143,6 +134,61 @@ class TrackStore {
     const index = key.split("").reduce((acc, v, i) => acc + v.charCodeAt(0) * i, 0) % colors.length;
 
     return colors[index];
+  }
+
+  Track(trackId) {
+    const trackIndex = this.tracks.findIndex(track => track.trackId === trackId);
+
+    return trackIndex >= 0 ? this.tracks[trackIndex] : undefined;
+  }
+
+  ModifyTrack(modifiedTrack) {
+    const trackIndex = this.tracks.findIndex(track => track.trackId === modifiedTrack.trackId);
+
+    this.tracks[trackIndex] = modifiedTrack;
+  }
+
+  AddTag({trackId, tag}) {
+    if(!tag.tagId) {
+      tag.tagId = Id.next();
+    }
+
+    this.tags[trackId][tag.tagId] = JSON.parse(JSON.stringify(tag));
+
+    this.__UpdateTrackVersion(trackId);
+  }
+
+  ModifyTag({trackId, modifiedTag}) {
+    if(!this.tags[trackId]) { return; }
+
+    this.tags[trackId][modifiedTag.tagId] = JSON.parse(JSON.stringify(modifiedTag));
+
+    this.__UpdateTrackVersion(trackId);
+  }
+
+  DeleteTag({trackId, tagId}) {
+    delete this.tags[trackId][tagId];
+
+    // Unselect deleted tags
+    this.rootStore.tagStore.selectedTagIds =
+      this.rootStore.tagStore.selectedTagIds
+        .filter(selectedTagId => selectedTagId !== tagId);
+
+    this.__UpdateTrackVersion(trackId);
+  }
+
+  __UpdateTrackVersion(trackId) {
+    const trackIndex = this.tracks.findIndex(track => track.trackId === trackId);
+    const track = this.tracks[trackIndex];
+
+    // Rebuild interval tree in case tag start/end times changed
+    this.intervalTrees[trackId] = this.CreateTrackIntervalTree(
+      this.TrackTags(trackId),
+      trackId,
+      track.label || track.key
+    );
+
+    this.tracks[trackIndex].version++;
   }
 
   /* HLS Playlist Parsing */
@@ -228,8 +274,14 @@ class TrackStore {
     return vttTracks;
   });
 
-  AddTrack({label, key, type, tags, color}) {
+  AddTrack({label, key, type, tags={}, color}) {
     const trackId = Id.next();
+
+    let updatedTags = {};
+    Object.keys(tags).forEach(key =>
+      updatedTags[key] = { trackId, ...tags[key] }
+    );
+
     this.tracks.push({
       trackId,
       color: color || this.TrackColor(key),
@@ -239,7 +291,7 @@ class TrackStore {
       trackType: type
     });
 
-    this.tags[trackId] = tags;
+    this.tags[trackId] = updatedTags;
     this.intervalTrees[trackId] = this.CreateTrackIntervalTree(tags, label);
 
     return trackId;
@@ -774,27 +826,27 @@ class TrackStore {
 
   /* User Actions */
 
-  ResetSelectedTracks() {
-    this.selectedTracks = {};
+  ResetActiveTracks() {
+    this.activeTracks = {};
   }
 
   ToggleTrackSelected(key) {
-    if(this.selectedTracks[key]) {
-      delete this.selectedTracks[key];
+    if(this.activeTracks[key]) {
+      delete this.activeTracks[key];
     } else {
-      this.selectedTracks[key] = true;
+      this.activeTracks[key] = true;
     }
   }
 
-  ResetSelectedClipTracks() {
-    this.selectedClipTracks = {};
+  ResetActiveClipTracks() {
+    this.activeClipTracks = {};
   }
 
   ToggleClipTrackSelected(key) {
-    if(this.selectedClipTracks[key]) {
-      delete this.selectedClipTracks[key];
+    if(this.activeClipTracks[key]) {
+      delete this.activeClipTracks[key];
     } else {
-      this.selectedClipTracks[key] = true;
+      this.activeClipTracks[key] = true;
     }
   }
 
@@ -805,15 +857,6 @@ class TrackStore {
     } else {
       this[`show${type}`] = visible;
     }
-  }
-
-  AddTag({trackId, text, startTime, endTime}) {
-    const track = this.tracks.find(track => track.trackId === trackId);
-    const cue = this.Cue({tagType: "metadata", text, startTime, endTime});
-
-    this.tags[track.trackId][cue.tagId] = cue;
-
-    return cue.tagId;
   }
 
   ClipInfo() {

@@ -2,7 +2,7 @@ import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react";
-import {tagStore, videoStore} from "@/stores";
+import {videoStore} from "@/stores";
 import {CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
 import {IconButton, Input, SelectInput} from "@/components/common/Common";
 import Fraction from "fraction.js";
@@ -331,10 +331,9 @@ export const FrameDisplay = observer(() => {
   );
 });
 
-export const PlaySelectedTagButton = observer(() => {
+export const PlayCurrentClipButton = observer(() => {
   return (
     <IconButton
-      disabled={!tagStore.selectedTagId}
       icon={PlayClipIcon}
       label="Play Current Selection"
       onClick={() => videoStore.PlaySegment(videoStore.clipInFrame, videoStore.clipOutFrame)}

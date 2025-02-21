@@ -6,10 +6,11 @@ import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Input} from "@/components/common/Common.jsx";
 import {useDebouncedState} from "@mantine/hooks";
 import {assetStore, rootStore, tagStore, trackStore} from "@/stores/index.js";
-
-import SearchIcon from "@/assets/icons/v2/search.svg";
 import {TagDetails, TagsList} from "@/components/side_panel/Tags.jsx";
 import Assets from "@/components/side_panel/Assets.jsx";
+import {TrackDetails} from "@/components/side_panel/Tracks.jsx";
+
+import SearchIcon from "@/assets/icons/v2/search.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -66,20 +67,20 @@ const TrackSelection = observer(({mode="tags"}) => {
   const willScroll = contentHeight > 140;
   const willScrollExpanded = contentHeight > rootStore.sidePanelDimensions.height * 0.3;
 
-  let tracks, selectedTracks, Toggle;
+  let tracks, activeTracks, Toggle;
   switch(mode) {
     case "tags":
-      selectedTracks = trackStore.selectedTracks;
+      activeTracks = trackStore.activeTracks;
       Toggle = key => trackStore.ToggleTrackSelected(key);
       tracks = trackStore.metadataTracks;
       break;
     case "clips":
-      selectedTracks = trackStore.selectedClipTracks;
+      activeTracks = trackStore.activeClipTracks;
       Toggle = key => trackStore.ToggleClipTrackSelected(key);
       tracks = trackStore.clipTracks;
       break;
     case "assets":
-      selectedTracks = assetStore.selectedTracks;
+      activeTracks = assetStore.activeTracks;
       Toggle = key => assetStore.ToggleTrackSelected(key);
       tracks = assetStore.assetTracks;
       break;
@@ -100,9 +101,9 @@ const TrackSelection = observer(({mode="tags"}) => {
         {
           tracks.map(track =>
             <button
-              key={`track-${track.key}`}
+              key={`track-${track.trackId}`}
               onClick={() => Toggle(track.key)}
-              className={S("track", selectedTracks[track.key] ? "track--selected" : "")}
+              className={S("track", activeTracks[track.key] ? "track--selected" : "")}
             >
               <div
                 style={{backgroundColor: `rgb(${track.color.r} ${track.color.g} ${track.color.b}`}}
@@ -128,8 +129,14 @@ export const TagSidePanel = observer(() => {
         <TagsList mode="tags" />
 
         {
-          !tagStore.selectedTagId ? null :
-            <TagDetails />
+          !tagStore.selectedTrackId && !tagStore.selectedTagId ? null :
+            <div className={S("side-panel-modal")}>
+              {
+                tagStore.selectedTrackId ?
+                  <TrackDetails /> :
+                  <TagDetails />
+              }
+            </div>
         }
       </div>
     </div>
@@ -145,8 +152,14 @@ export const ClipSidePanel = observer(() => {
         <TagsList mode="clips" />
 
         {
-          !tagStore.selectedTagId ? null :
-            <TagDetails />
+          !tagStore.selectedTrackId && !tagStore.selectedTagId ? null :
+            <div className={S("side-panel-modal")}>
+              {
+                tagStore.selectedTrackId ?
+                  <TrackDetails /> :
+                  <TagDetails />
+              }
+            </div>
         }
       </div>
     </div>

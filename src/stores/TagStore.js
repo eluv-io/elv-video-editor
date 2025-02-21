@@ -1,7 +1,8 @@
-import { makeAutoObservable } from "mobx";
-import Id from "@/utils/Id";
+import {makeAutoObservable} from "mobx";
 
 class TagStore {
+  selectedTrackId;
+
   selectedTime;
   selectedTagIds = [];
   selectedTagId;
@@ -11,9 +12,11 @@ class TagStore {
   hoverTrack;
   hoverTime;
 
+  editedItem;
+
   filter = "";
 
-  editingTag = false;
+  editing = false;
 
   constructor(rootStore) {
     makeAutoObservable(this);
@@ -32,11 +35,29 @@ class TagStore {
       }));
   }
 
+  get selectedTrack() {
+    return this.rootStore.view === "clips" ?
+      this.rootStore.trackStore.clipTracks.find(track => track.trackId === this.selectedTrackId) :
+      this.rootStore.trackStore.metadataTracks.find(track => track.trackId === this.selectedTrackId);
+  }
+
   get selectedTag() {
-    return this.rootStore.trackStore.TrackTags(this.selectedTagTrackId)[this.selectedTagId];
+    if(typeof this.selectedTagTrackId === "undefined" || typeof this.selectedTagId === "undefined") {
+      return undefined;
+    }
+
+    // Note: this.editing argument is to force selectedTag to recompute when editing is toggled
+    return this.rootStore.trackStore.TrackTags(
+      this.selectedTagTrackId,
+      this.rootStore.editStore.position
+    )[this.selectedTagId];
   }
 
   get selectedTags() {
+    if(typeof this.selectedTagTrackId === "undefined" || typeof this.selectedTagId === "undefined") {
+      return [];
+    }
+
     return this.selectedTagIds.map(tagId =>
       this.rootStore.trackStore.TrackTags(this.selectedTagTrackId)[tagId]
     );
@@ -46,11 +67,11 @@ class TagStore {
     return this.rootStore.trackStore.tracks.find(track => track.trackId === this.selectedTagTrackId);
   }
 
-
   Reset() {
+    this.ClearSelectedTrack();
     this.ClearTags();
     this.ClearHoverTags();
-    this.SetEditing(false);
+    this.ClearEditing();
     this.filter = "";
   }
 
@@ -81,35 +102,6 @@ class TagStore {
       .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
   }
 
-  PlayCurrentTag() {
-    this.selectedTag && this.PlayTag(this.selectedTag);
-  }
-
-  PlayTag(tag) {
-    if(!tag) { return; }
-
-    this.rootStore.videoStore.PlaySegment(
-      this.rootStore.videoStore.TimeToFrame(tag.startTime),
-      this.rootStore.videoStore.TimeToFrame(tag.endTime)
-    );
-  }
-
-  SetSelectedTag(tagId) {
-    this.selectedTagId = tagId;
-
-    this.SetEditing(false);
-  }
-
-  ClearSelectedTag() {
-    this.selectedTagId = undefined;
-
-    if(this.selectedTagIds.length === 1) {
-      this.ClearTags();
-    }
-
-    this.SetEditing(false);
-  }
-
   Tags({mode="tags", startFrame=0, endFrame, limit=100, selectedOnly=false}={}) {
     const startTime = startFrame && this.rootStore.videoStore.FrameToTime(startFrame);
     const endTime = endFrame && this.rootStore.videoStore.FrameToTime(endFrame);
@@ -120,14 +112,14 @@ class TagStore {
 
       if(this.rootStore.trackStore.tracksSelected) {
         // Selected tracks only
-        tracks = tracks.filter(track => this.rootStore.trackStore.selectedTracks[track.key]);
+        tracks = tracks.filter(track => this.rootStore.trackStore.activeTracks[track.key]);
       }
     } else {
       tracks = this.rootStore.trackStore.clipTracks;
 
       if(this.rootStore.trackStore.clipTracksSelected) {
         // Selected tracks only
-        tracks = tracks.filter(track => this.rootStore.trackStore.selectedClipTracks[track.key]);
+        tracks = tracks.filter(track => this.rootStore.trackStore.activeClipTracks[track.key]);
       }
 
       if(!this.rootStore.trackStore.showPrimaryContent) {
@@ -161,7 +153,49 @@ class TagStore {
     return { tags, total };
   }
 
+  PlayCurrentTag() {
+    this.selectedTag && this.PlayTag(this.selectedTag);
+  }
+
+  PlayTag(tag) {
+    if(!tag) { return; }
+
+    this.rootStore.videoStore.PlaySegment(
+      this.rootStore.videoStore.TimeToFrame(tag.startTime),
+      this.rootStore.videoStore.TimeToFrame(tag.endTime)
+    );
+  }
+
+  SetSelectedTrack(trackId) {
+    this.ClearTags();
+    this.selectedTrackId = trackId;
+  }
+
+  ClearSelectedTrack() {
+    this.selectedTrackId = undefined;
+  }
+
+  SetSelectedTag(tagId) {
+    this.ClearSelectedTrack();
+
+    this.selectedTagId = tagId;
+
+    this.ClearEditing();
+  }
+
+  ClearSelectedTag() {
+    this.selectedTagId = undefined;
+
+    if(this.selectedTagIds.length === 1) {
+      this.ClearTags();
+    }
+
+    this.ClearEditing();
+  }
+
   SetTags(trackId, tags=[], time) {
+    this.ClearEditing();
+    this.ClearSelectedTrack();
     this.ClearSelectedTag();
 
     if(!Array.isArray(tags)) {
@@ -177,7 +211,7 @@ class TagStore {
       this.selectedTagIds = tags;
     }
 
-    this.SetEditing(false);
+    this.ClearEditing();
   }
 
   SetHoverTags(tags, trackId, time) {
@@ -193,27 +227,131 @@ class TagStore {
   }
 
   ClearTags() {
+    this.ClearEditing();
+
     this.selectedTagIds = [];
     this.selectedTagId = undefined;
     this.selectedTime = undefined;
     this.selectedTagTrackId = undefined;
   }
 
-  SetEditing(tagId) {
-    if(!tagId) {
-      this.editingTag = false;
+  SetEditing(id, type="tag") {
+    if(!id) {
+      this.editing = false;
       return;
     }
 
-    this.SetSelectedTag(tagId);
+    if(type === "tag") {
+      this.SetSelectedTag(id);
 
-    this.editingTag = true;
+      this.editedItem = {...this.selectedTag};
+    } else {
+      this.SetSelectedTrack(id);
+
+      this.editedItem = {...this.selectedTrack};
+    }
+
+    this.editing = true;
   }
 
+  ClearEditing(save=true) {
+    if(this.editing && this.editedItem && save) {
+      if(this.selectedTrackId) {
+        const originalTrack = {...this.selectedTrack};
+        const modifiedTrack = {...this.editedItem};
+
+        if(JSON.stringify(originalTrack) !== JSON.stringify(modifiedTrack)) {
+          this.rootStore.editStore.PerformAction({
+            label: "Modify category",
+            type: "track",
+            action: "modify",
+            modifiedItem: modifiedTrack,
+            Action: () => this.rootStore.trackStore.ModifyTrack(modifiedTrack),
+            Undo: () => this.rootStore.trackStore.ModifyTrack(originalTrack)
+          });
+        }
+      } else if(this.selectedTagId) {
+        const trackId = this.selectedTagTrackId;
+        const originalTag = {...this.selectedTag};
+        const modifiedTag = {...this.editedItem};
+
+        if(JSON.stringify(originalTag) !== JSON.stringify(modifiedTag)) {
+          // TODO: Tag/clip
+          this.rootStore.editStore.PerformAction({
+            label: "Modify Tag",
+            type: "tag",
+            action: "modify",
+            modifiedItem: modifiedTag,
+            Action: () => this.rootStore.trackStore.ModifyTag({trackId, modifiedTag}),
+            Undo: () => this.rootStore.trackStore.ModifyTag({trackId, modifiedTag: originalTag})
+          });
+        }
+      }
+    }
+
+    this.editing = false;
+
+    this.ClearEditedItem();
+  }
+
+  AddTag({trackId, tagType="metadata", startTime, endTime, text}) {
+    const track = this.rootStore.trackStore.Track(trackId);
+
+    if(!track) { return; }
+
+    startTime = startTime || this.rootStore.videoStore.currentTime;
+    const tag = this.rootStore.trackStore.Cue({
+      trackId,
+      trackKey: track.key,
+      startTime,
+      endTime: endTime || startTime + 5,
+      tagType,
+      text,
+      textList: [
+        text
+      ],
+    });
+
+    this.rootStore.editStore.PerformAction({
+      label: "Add Tag",
+      type: "tag",
+      action: "delete",
+      modifiedItem: tag,
+      Action: () => this.rootStore.trackStore.AddTag({trackId, tag}),
+      Undo: () => this.rootStore.trackStore.DeleteTag({trackId, tagId: tag.tagId})
+    });
+
+    this.SetTags(trackId, [tag.tagId], startTime);
+    this.SetSelectedTag(tag.tagId);
+    this.SetEditing(tag.tagId, tagType === "metadata" ? "tag" : "clip");
+  }
+
+  DeleteTag({trackId, tag}) {
+    const originalTag = {...tag};
+
+    this.rootStore.editStore.PerformAction({
+      label: "Delete Tag",
+      type: "tag",
+      action: "delete",
+      modifiedItem: tag,
+      Action: () => this.rootStore.trackStore.DeleteTag({trackId, tagId: originalTag.tagId}),
+      Undo: () => this.rootStore.trackStore.AddTag({trackId, tag: originalTag})
+    });
+  }
+
+  UpdateEditedItem(item) {
+    this.editedItem = item;
+  }
+
+  ClearEditedItem() {
+    this.editedItem = undefined;
+  }
+
+  /*
   CreateTag() {
     const tagId = Id.next();
 
-    this.SetEditing(tagId);
+    this.SetEditing(tagId, "tag");
   }
 
   ModifyTag({tagId, textList, startTime, endTime}) {
@@ -235,7 +373,7 @@ class TagStore {
     });
 
     this.SetSelectedTag(tagId);
-    this.SetEditing(false);
+    this.ClearEditing();
   }
 
   RemoveTag(tagId) {
@@ -249,6 +387,8 @@ class TagStore {
       delete this.rootStore.trackStore.TrackTags(track.trackId)[tagId];
     });
   }
+
+   */
 }
 
 export default TagStore;

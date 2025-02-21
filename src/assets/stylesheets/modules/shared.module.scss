@@ -151,6 +151,12 @@
   }
 }
 
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @container toolbar (width < 900px) {
   .toolbar__description {
     max-width: 30%;

@@ -55,7 +55,7 @@ const AssetsList = observer(() => {
       <InfiniteScroll
         watchList={[
           assetStore.filter,
-          Object.keys(assetStore.selectedTracks).length
+          Object.keys(assetStore.activeTracks).length
         ]}
         batchSize={60}
         className={S("assets")}

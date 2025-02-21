@@ -26,6 +26,10 @@
   inset: 0;
   position: absolute;
   z-index: 10;
+
+  & > div {
+    animation: var(--animation-fadein) 0.35s ease;
+  }
 }
 
 .search {
@@ -318,6 +322,11 @@
   padding: 0 15px 30px;
   width: 100%;
 
+  &--track {
+    display: grid;
+    gap: 5px;
+  }
+
   &__thumbnail-container {
     background-color: black;
     margin-bottom: 10px;
@@ -361,6 +370,7 @@
     display: flex;
     justify-content: center;
     margin-bottom: 20px;
+    max-width: 100%;
     padding: 10px 0;
     position: sticky;
     top: 0;
@@ -389,6 +399,8 @@
     font-size: 14px;
     font-weight: 600;
     gap: 10px;
+    justify-content: center;
+    width: 100%;
   }
 
   &__track-color {
@@ -396,12 +408,20 @@
     height: 8px;
     width: 8px;
   }
+
+  &__track-label {
+    max-width: calc(100% - 220px);
+    overflow-x: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .tag-form {
   &__inputs {
     display: grid;
     gap: 5px;
+    width: 100%;
   }
 
   &__input-container {
