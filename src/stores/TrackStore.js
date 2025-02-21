@@ -1,5 +1,4 @@
 import {flow, makeAutoObservable, runInAction, toJS} from "mobx";
-import {WebVTT} from "vtt.js";
 import Id from "@/utils/Id";
 import IntervalTree from "node-interval-tree";
 import {Parser as HLSParser} from "m3u8-parser";
@@ -562,24 +561,27 @@ class TrackStore {
     });
   }
 
-  ParseVTTTrack(track) {
-    const vttParser = new WebVTT.Parser(window, WebVTT.StringDecoder());
+  async ParseVTTTrack(track) {
+    const videoElement = document.createElement("video");
+    const trackElement = document.createElement("track");
+
+    const dataURL = "data:text/plain;base64," + this.rootStore.client.utils.B64(track.vttData);
+
+    const textTrack = trackElement.track;
+
+    videoElement.append(trackElement);
+    trackElement.src = dataURL;
+
+    textTrack.mode = "hidden";
+
+    await new Promise(resolve => setTimeout(resolve, 250));
 
     let cues = {};
-    vttParser.oncue = cue => {
-      const parsedCue = this.FormatVTTCue(track.label, cue);
-      cues[parsedCue.tagId] = parsedCue;
-    };
-
-    try {
-      vttParser.parse(track.vttData);
-      vttParser.flush();
-    } catch(error) {
-      // eslint-disable-next-line no-console
-      console.error(`VTT cue parse failure on track ${track.label}: `);
-      // eslint-disable-next-line no-console
-      console.error(error);
-    }
+    Array.from(textTrack.cues)
+      .forEach(cue => {
+        const parsedCue = this.FormatVTTCue(track.label, cue);
+        cues[parsedCue.tagId] = parsedCue;
+      });
 
     return cues;
   }
@@ -606,25 +608,27 @@ class TrackStore {
       const subtitleTracks = yield this.SubtitleTracksFromHLSPlaylist();
 
       // Initialize video WebVTT tracks by fetching and parsing the VTT file
-      subtitleTracks.map(track => {
-        try {
-          const tags = this.ParseVTTTrack(track);
+      yield Promise.all(
+        subtitleTracks.map(async track => {
+          try {
+            const tags = await this.ParseVTTTrack(track);
 
-          this.totalTags += Object.keys(tags).length;
+            this.totalTags += Object.keys(tags).length;
 
-          this.AddTrack({
-            ...track,
-            key: track.label,
-            type: "vtt",
-            tags
-          });
-        } catch(error) {
-          // eslint-disable-next-line no-console
-          console.error("Error parsing VTT track:");
-          // eslint-disable-next-line no-console
-          console.error(error);
-        }
-      });
+            this.AddTrack({
+              ...track,
+              key: track.label,
+              type: "vtt",
+              tags
+            });
+          } catch(error) {
+            // eslint-disable-next-line no-console
+            console.error("Error parsing VTT track:");
+            // eslint-disable-next-line no-console
+            console.error(error);
+          }
+        })
+      );
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error("Failed to load subtitle tracks:");
@@ -750,7 +754,7 @@ class TrackStore {
 
     const vttData = yield (yield fetch(this.rootStore.videoStore.thumbnailTrackUrl)).text();
 
-    let tags = this.ParseVTTTrack({label: "Thumbnails", vttData});
+    let tags = yield this.ParseVTTTrack({label: "Thumbnails", vttData});
 
     let imageUrls = {};
     Object.keys(tags).map(id => {
