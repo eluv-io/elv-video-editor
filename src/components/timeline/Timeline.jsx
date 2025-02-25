@@ -52,12 +52,13 @@ const TimelineTopBar = observer(() => {
         <CreateTrackButton />
         <IconButton
           icon={AddNewItemIcon}
-          disabled={!tagStore.selectedTrack || tagStore.selectedTrack?.trackType === "primary-content"}
+          disabled={trackStore.viewTracks.length === 0}
           label={`Add New ${rootStore.view === "tags" ? "Tag" : "Clip"}`}
           onClick={() =>
             tagStore.AddTag({
               trackId: tagStore.selectedTrackId,
-              text: "<New Tag>"
+              text: "<New Tag>",
+              tagType: rootStore.view === "clips" ? "clip" : "metadata"
             })
           }
         />
@@ -401,7 +402,7 @@ const ClipTimelineContent = observer(() => {
               track.trackType !== "primary-content" ? null :
                 <IconButton
                   icon={QuestionMarkIcon}
-                  label="The primary content tag allows you to modify the start and end times for the default video playout for this offering"
+                  label="Modifying the primary content tag allows you to specify the start and end times for this offering"
                   className={S("timeline-row__icon")}
                 />
             }

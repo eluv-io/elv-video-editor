@@ -54,7 +54,7 @@ const TrackActions = observer(({track}) => {
                     <IconButton
                       label="Edit Category"
                       icon={EditIcon}
-                      onClick={() => tagStore.SetEditing(track.trackId, "track")}
+                      onClick={() => tagStore.SetEditing({id: track.trackId, type: "track"})}
                     />
                     <IconButton
                       label="Remove Category"
@@ -80,7 +80,7 @@ const TrackActions = observer(({track}) => {
 });
 
 const TrackForm = observer(() => {
-  const track = tagStore.editedItem;
+  const track = tagStore.editedTrack;
 
   return (
     <form
@@ -97,7 +97,7 @@ const TrackForm = observer(() => {
               label="Label"
               data-autofocus
               value={track.label || ""}
-              onChange={event => tagStore.UpdateEditedItem({...track, label: event.target.value})}
+              onChange={event => tagStore.UpdateEditedTrack({...track, label: event.target.value})}
               className={S("form__input")}
             />
           </div>
@@ -106,7 +106,7 @@ const TrackForm = observer(() => {
               label="Metadata Key"
               disabled
               value={track.key || ""}
-              onChange={event => tagStore.UpdateEditedItem({...track, key: event.target.value})}
+              onChange={event => tagStore.UpdateEditedTrack({...track, key: event.target.value})}
               className={S("form__input")}
             />
           </div>
@@ -114,7 +114,7 @@ const TrackForm = observer(() => {
             <FormColorInput
               label="Color"
               value={track.color}
-              onChange={rgb => tagStore.UpdateEditedItem({...track, color: {...rgb, a: track.color.a}})}
+              onChange={rgb => tagStore.UpdateEditedTrack({...track, color: {...rgb, a: track.color.a}})}
               className={S("form__input")}
             />
           </div>
@@ -122,7 +122,7 @@ const TrackForm = observer(() => {
             <FormTextArea
               label="Description"
               value={track.description || ""}
-              onChange={event => tagStore.UpdateEditedItem({...track, description: event.target.value})}
+              onChange={event => tagStore.UpdateEditedTrack({...track, description: event.target.value})}
               className={S("form__input")}
             />
           </div>
@@ -165,7 +165,7 @@ export const TrackDetails = observer(() => {
             </div>
         }
         <div className={S("tag-details__detail")}>
-          <label>Tags:</label>
+          <label>{ track.trackType === "metadata" ? "Tags:" : "Clips:"}</label>
           <span>{Object.keys(trackStore.TrackTags(track.trackId) || {}).length}</span>
         </div>
       </div>

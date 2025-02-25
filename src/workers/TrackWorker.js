@@ -15,6 +15,11 @@ const activeColor = {
   a: 150
 };
 
+const editingColor = {
+  ...activeColor,
+  a: 255
+};
+
 class TrackWorker {
   constructor({trackId, trackLabel, color, height, width, tags, scale, duration, noActive}) {
     this.trackId = trackId;
@@ -32,6 +37,8 @@ class TrackWorker {
     this.activeTagIds = [];
     this.hoverTagIds = [];
     this.selectedTagIds = [];
+
+    this.editedTag = undefined;
   }
 
   Draw() {
@@ -57,8 +64,13 @@ class TrackWorker {
     tags = tags.filter(tag =>
       tag.endTime >= startTime.valueOf() &&
       tag.startTime <= endTime.valueOf() &&
-      (!filter || formatString(tag.textList.join(" ")).includes(filter))
+      (!filter || formatString(tag.textList.join(" ")).includes(filter)) &&
+      (!this.editedTag || tag.tagId !== this.editedTag.tagId)
     );
+
+    if(this.editedTag) {
+      tags.push(this.editedTag);
+    }
 
     const widthRatio = this.width / visibleDuration;
     const tagHeight = Math.ceil(this.height * 1);
@@ -69,7 +81,9 @@ class TrackWorker {
       const endPixel = Math.floor((tag.endTime - startTime) * widthRatio);
 
       let color = this.color;
-      if(this.selectedTagId === tag.tagId) {
+      if(this.editedTag?.tagId === tag.tagId) {
+        color = editingColor;
+      } else if(this.selectedTagId === tag.tagId) {
         // Currently shown tag
         //context.fillStyle = color;
         color = selectedColor;
@@ -154,6 +168,14 @@ self.addEventListener(
 
       case "SetColor":
         worker.color = data.color;
+        break;
+
+      case "SetEditedTag":
+        worker.editedTag = data.editedTag;
+        break;
+
+      case "ClearEditedTag":
+        worker.editedTag = undefined;
         break;
 
       case "Resize":

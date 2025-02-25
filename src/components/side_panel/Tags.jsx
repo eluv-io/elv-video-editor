@@ -4,7 +4,7 @@ import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react";
 import {editStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
 import {FocusTrap, Text, Tooltip} from "@mantine/core";
-import {FormTextArea, IconButton, SMPTEInput} from "@/components/common/Common.jsx";
+import {FormSelect, FormTextArea, IconButton, SMPTEInput} from "@/components/common/Common.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
@@ -22,7 +22,7 @@ import {modals} from "@mantine/modals";
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
 const TagTextarea = observer(() => {
-  const tag = tagStore.editedItem;
+  const tag = tagStore.editedTag;
   const [error, setError] = useState(null);
   const [input, setInput] = useState("");
 
@@ -47,13 +47,13 @@ const TagTextarea = observer(() => {
       onChange={event => setInput(event.target.value)}
       onBlur={() => {
         if(!tag.content) {
-          tagStore.UpdateEditedItem({...tag, textList: [input]});
+          tagStore.UpdateEditedTag({...tag, textList: [input]});
           return;
         }
 
         try {
           setError(undefined);
-          tagStore.UpdateEditedItem({...tag, content: JSON.parse(input)});
+          tagStore.UpdateEditedTag({...tag, content: JSON.parse(input)});
         } catch(error) {
           setError(error.toString());
         }
@@ -105,7 +105,7 @@ const TagActions = observer(({tag, track}) => {
               <IconButton
                 label="Edit Tag"
                 icon={EditIcon}
-                onClick={() => tagStore.SetEditing(tag.tagId, "tag")}
+                onClick={() => tagStore.SetEditing({id: tag.tagId, type: "tag"})}
               />
               {
                 track.trackType === "primary-content" ? null :
@@ -134,7 +134,7 @@ const TagActions = observer(({tag, track}) => {
 });
 
 const TagForm = observer(() => {
-  const tag = tagStore.editedItem;
+  const tag = tagStore.editedTag;
   const track = tagStore.selectedTagTrack;
 
   const duration = parseFloat(tag.endTime - tag.startTime);
@@ -171,7 +171,7 @@ const TagForm = observer(() => {
       }
     }
 
-    tagStore.UpdateEditedItem(updatedTag);
+    tagStore.UpdateEditedTag(updatedTag);
   };
 
   return (
@@ -202,6 +202,30 @@ const TagForm = observer(() => {
       }
       <FocusTrap active>
         <div className={S("form__inputs")}>
+          {
+            !tag.isNew ? null :
+              <div className={S("form__input-container")}>
+                <FormSelect
+                  label="Category"
+                  value={tag.trackId.toString()}
+                  options={
+                    trackStore.viewTracks
+                      .map(track => ({
+                        label: track.label,
+                        value: track.trackId.toString()
+                      })
+                    )
+                  }
+                  onChange={trackId =>
+                    tagStore.UpdateEditedTag({
+                      ...tag,
+                      trackId: parseInt(trackId),
+                      trackKey: trackStore.Track(parseInt(trackId))?.key
+                    })}
+                  className={S("form__input")}
+                />
+              </div>
+          }
           <div className={S("form__input-container")}>
             <TagTextarea/>
           </div>
@@ -264,8 +288,8 @@ const TagForm = observer(() => {
 });
 
 export const TagDetails = observer(() => {
-  const tag = tagStore.selectedTag;
-  const track = tagStore.selectedTagTrack;
+  const tag = tagStore.editedTag || tagStore.selectedTag;
+  const track = trackStore.Track(tag?.trackId);
 
   useEffect(() => {
     if(!tag || !track) {
@@ -389,7 +413,7 @@ const Tag = observer(({track, tag}) => {
             {track.label}
           </div>
           <div className={S("tag__time")}>
-            <span>{videoStore.TimeToString(parseFloat((tag.endTime - tag.startTime)), true)}</span>
+            <span>{videoStore.TimeToSMPTE(tag.startTime)}</span> | <span>{videoStore.TimeToString(parseFloat((tag.endTime - tag.startTime)), true)}</span>
           </div>
         </div>
       </div>
@@ -400,7 +424,7 @@ const Tag = observer(({track, tag}) => {
           onClick={event => {
             event.stopPropagation();
             tagStore.SetTags(track.trackId, tag.tagId, tag.startTime);
-            tagStore.SetEditing(tag.tagId, "tag");
+            tagStore.SetEditing({id: tag.tagId, type: "tag"});
           }}
           className={S("tag__action")}
         />

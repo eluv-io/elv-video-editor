@@ -119,6 +119,10 @@ class TrackStore {
       .sort((a, b) => (a.label > b.label ? 1 : -1));
   }
 
+  get viewTracks() {
+    return this.rootStore.view === "clips" ? this.clipTracks : this.metadataTracks;
+  }
+
   NextId() {
     return Id.next();
   }
@@ -304,9 +308,13 @@ class TrackStore {
   }
 
   DeleteTrack({trackId}) {
+    const trackKey = this.Track(trackId)?.key;
+
     delete this.tags[trackId];
     this.tracks = this.tracks.filter(track => track.trackId !== trackId);
     delete this.intervalTrees[trackId];
+
+    delete this.activeTracks[trackKey];
   }
 
   TrackTags(trackId) {

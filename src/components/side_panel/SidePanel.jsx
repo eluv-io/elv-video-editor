@@ -1,11 +1,11 @@
 import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss";
 
-import React, {useEffect, useRef, useState} from "react";
+import React, {useEffect} from "react";
 import {observer} from "mobx-react";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Input} from "@/components/common/Common.jsx";
 import {useDebouncedState} from "@mantine/hooks";
-import {assetStore, rootStore, tagStore, trackStore} from "@/stores/index.js";
+import {assetStore, tagStore, trackStore} from "@/stores/index.js";
 import {TagDetails, TagsList} from "@/components/side_panel/Tags.jsx";
 import Assets from "@/components/side_panel/Assets.jsx";
 import {TrackDetails} from "@/components/side_panel/Tracks.jsx";
@@ -36,37 +36,6 @@ const SidebarFilter = observer(({store, label}) => {
 });
 
 const TrackSelection = observer(({mode="tags"}) => {
-  const ref = useRef(null);
-  const [contentHeight, setContentHeight] = useState(0);
-  const [hovering, setHovering] = useDebouncedState(false, 250);
-  const [showScroll, setShowScroll] = useState(false);
-
-  useEffect(() => {
-    if(!ref?.current) { return; }
-
-    const resizeObserver = new ResizeObserver(() => {
-      setContentHeight(ref.current.getBoundingClientRect().height + 55);
-    });
-
-    resizeObserver.observe(ref.current);
-
-    return () => resizeObserver.disconnect();
-  }, [ref]);
-
-  useEffect(() => {
-    if(hovering) {
-      const showScrollTimeout = setTimeout(() => setShowScroll(true), 100);
-
-      return () => clearTimeout(showScrollTimeout);
-    } else {
-      ref?.current?.parentElement?.scrollTo({top: 0});
-      setShowScroll(false);
-    }
-  }, [ref, hovering]);
-
-  const willScroll = contentHeight > 140;
-  const willScrollExpanded = contentHeight > rootStore.sidePanelDimensions.height * 0.3;
-
   let tracks, activeTracks, Toggle;
   switch(mode) {
     case "tags":
@@ -87,17 +56,8 @@ const TrackSelection = observer(({mode="tags"}) => {
   }
 
   return (
-    <div
-      style={{"--content-height": `${contentHeight}px`}}
-      className={S("tracks", willScroll && hovering ? "tracks--hover" : "", willScrollExpanded && showScroll ? "tracks--show-scroll" : "")}
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
-    >
-      {
-        !willScroll ? null :
-          <div className={S("tracks__cover")} />
-      }
-      <div ref={ref} className={S("tracks__content")}>
+    <div className={S("tracks")}>
+      <div className={S("tracks__content")}>
         {
           tracks.map(track =>
             <button

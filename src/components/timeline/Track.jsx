@@ -44,11 +44,19 @@ const Click = ({canvas, clientX, trackId}) => {
 };
 
 const Hover = ({canvas, clientX, trackId}) => {
-  // All tags within 1 pixel of current position
-  const tags = [0]
-    .map(offset => Search({trackId, time: TimeAt({canvas, clientX: clientX + offset})}))
-    .flat()
+  const time = TimeAt({canvas, clientX});
+
+  let tags = Search({trackId, time})
     .filter((v, i, s) => s.indexOf(v) === i);
+
+  // When editing tags, remove tag being edited and check if edited tag should be displayed
+  if(tagStore.editedTag && tagStore.editedTag.trackId === trackId) {
+    tags = tags.filter(tagId => tagId !== tagStore.editedTag?.tagId);
+
+    if(time >= tagStore.editedTag.startTime && time <= tagStore.editedTag.endTime) {
+      tags.push("edited");
+    }
+  }
 
   tagStore.SetHoverTags(tags, trackId, videoStore.TimeToSMPTE(TimeAt({canvas, clientX})));
 };
@@ -103,6 +111,51 @@ const InitializeTrackReactions = ({track, worker}) => {
           trackId: track.trackId,
           filter: tagStore.filter
         });
+      },
+      {delay: 100 * trackStore.uiUpdateDelayFactor}
+    )
+  );
+
+  // Update on edited track change
+  reactionDisposals.push(
+    reaction(
+      () => ({
+        filter: tagStore.editedTrack
+      }),
+      () => {
+        if(tagStore.editedTrack?.trackId !== track.trackId){
+          return;
+        }
+
+        worker.postMessage({
+          operation: "SetColor",
+          trackId: track.trackId,
+          color: toJS(tagStore.editedTrack.color)
+        });
+      },
+      {delay: 100 * trackStore.uiUpdateDelayFactor}
+    )
+  );
+
+  // Update on edited tag change
+  reactionDisposals.push(
+    reaction(
+      () => ({
+        filter: tagStore.editedTag
+      }),
+      () => {
+        if(tagStore.editedTag?.trackId === track.trackId) {
+          worker.postMessage({
+            operation: "SetEditedTag",
+            trackId: track.trackId,
+            editedTag: JSON.parse(JSON.stringify(tagStore.editedTag))
+          });
+        } else {
+          worker.postMessage({
+            operation: "ClearEditedTag",
+            trackId: track.trackId
+          });
+        }
       },
       {delay: 100 * trackStore.uiUpdateDelayFactor}
     )
@@ -179,7 +232,9 @@ const TooltipOverlay = observer(({trackId, ...props}) => {
     const filter = formatString(tagStore.filter);
 
     const newHoverTags = tagStore.hoverTags.map(tagId => {
-      const tag = trackStore.TrackTags(trackId)[tagId];
+      const tag = tagId === "edited" ?
+        tagStore.editedTag :
+        trackStore.TrackTags(trackId)[tagId];
 
       if(!tag) {
         return null;

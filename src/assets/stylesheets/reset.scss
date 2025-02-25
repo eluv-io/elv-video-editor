@@ -89,6 +89,8 @@ u {
 
 * {
   -webkit-overflow-scrolling: touch;
+  scrollbar-color: var(--background-switch-active) var(--background-secondary);
+  scrollbar-width: thin;
 
   ::-webkit-scrollbar {
     opacity: 1;

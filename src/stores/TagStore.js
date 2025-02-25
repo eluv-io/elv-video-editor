@@ -12,7 +12,8 @@ class TagStore {
   hoverTrack;
   hoverTime;
 
-  editedItem;
+  editedTag;
+  editedTrack;
 
   filter = "";
 
@@ -134,9 +135,13 @@ class TagStore {
       .map(track => {
         let trackTags = Object.values(this.rootStore.trackStore.TrackTags(track.trackId) || {})
           .filter(tag =>
-            (!startTime || tag.startTime >= startTime) &&
-            (!endTime || tag.endTime <= endTime) &&
+            // Include tags that end after start time
+            (!startTime || tag.endTime >= startTime) &&
+            // Include tags that start before end time
+            (!endTime || tag.startTime <= endTime) &&
+            // Text filter
             (!filter || (tag.textList?.join(" ") || JSON.stringify(tag.content || {})).toLowerCase().includes(filter)) &&
+            // Selected tags
             (!selectedOnly || this.selectedTagIds.length === 0 || this.selectedTagIds.includes(tag.tagId))
           )
           .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
@@ -235,30 +240,32 @@ class TagStore {
     this.selectedTagTrackId = undefined;
   }
 
-  SetEditing(id, type="tag") {
+  SetEditing({id, type="tag", item}) {
     if(!id) {
       this.editing = false;
       return;
     }
 
-    if(type === "tag") {
+    if(["tag", "clip"].includes(type)) {
       this.SetSelectedTag(id);
 
-      this.editedItem = {...this.selectedTag};
+      this.editedTag = {...(item || this.selectedTag)};
     } else {
       this.SetSelectedTrack(id);
 
-      this.editedItem = {...this.selectedTrack};
+      this.editedTrack = {...(item || this.selectedTrack)};
     }
 
     this.editing = true;
   }
 
   ClearEditing(save=true) {
-    if(this.editing && this.editedItem && save) {
-      if(this.selectedTrackId) {
+    if(this.editing && save) {
+      // Save edited item
+
+      if(this.editedTrack) {
         const originalTrack = {...this.selectedTrack};
-        const modifiedTrack = {...this.editedItem, label: this.editedItem.label || originalTrack.label};
+        const modifiedTrack = {...this.editedTrack, label: this.editedTrack.label || originalTrack.label};
 
         if(JSON.stringify(originalTrack) !== JSON.stringify(modifiedTrack)) {
           this.rootStore.editStore.PerformAction({
@@ -270,28 +277,46 @@ class TagStore {
             Undo: () => this.rootStore.trackStore.ModifyTrack(originalTrack)
           });
         }
-      } else if(this.selectedTagId) {
-        const trackId = this.selectedTagTrackId;
-        const originalTag = {...this.selectedTag};
-        const modifiedTag = {...this.editedItem};
+      } else if(this.editedTag) {
+        const tagType = this.editedTag.tagType === "clip" ? "Clip" : "Tag";
+        if(this.editedTag.isNew) {
+          const tag = {...this.editedTag};
+          delete tag.isNew;
 
-        if(JSON.stringify(originalTag) !== JSON.stringify(modifiedTag)) {
-          // TODO: Tag/clip
           this.rootStore.editStore.PerformAction({
-            label: "Modify Tag",
-            type: "tag",
-            action: "modify",
-            modifiedItem: modifiedTag,
-            Action: () => this.rootStore.trackStore.ModifyTag({trackId, modifiedTag}),
-            Undo: () => this.rootStore.trackStore.ModifyTag({trackId, modifiedTag: originalTag})
+            label: `Add ${tagType}`,
+            type: tagType.toLowerCase(),
+            action: "create",
+            modifiedItem: tag,
+            Action: () => this.rootStore.trackStore.AddTag({trackId: tag.trackId, tag}),
+            Undo: () => this.rootStore.trackStore.DeleteTag({trackId: tag.trackId, tagId: tag.tagId})
           });
+        } else {
+          // Change to editedTag.track id?
+          const originalTag = {...this.selectedTag};
+          const modifiedTag = {...this.editedTag};
+
+          if(JSON.stringify(originalTag) !== JSON.stringify(modifiedTag)) {
+            this.rootStore.editStore.PerformAction({
+              label: `Modify ${tagType}`,
+              type: tagType.toLowerCase(),
+              action: "modify",
+              modifiedItem: modifiedTag,
+              Action: () => this.rootStore.trackStore.ModifyTag({trackId: modifiedTag.trackId, modifiedTag}),
+              Undo: () => this.rootStore.trackStore.ModifyTag({trackId: modifiedTag.trackId, modifiedTag: originalTag})
+            });
+          }
         }
+
+        this.selectedTagId = this.editedTag.tagId;
+        this.selectedTagTrackId = this.editedTag.trackId;
+        this.selectedTime = this.editedTag.startTime;
       }
     }
 
+    this.ClearEditedTrack();
+    this.ClearEditedTag();
     this.editing = false;
-
-    this.ClearEditedItem();
   }
 
   AddTrack({trackType="tags", key, label, description, color}) {
@@ -337,7 +362,12 @@ class TagStore {
   }
 
   AddTag({trackId, tagType="metadata", startTime, endTime, text}) {
-    const track = this.rootStore.trackStore.Track(trackId);
+    let track = this.rootStore.trackStore.Track(trackId);
+
+    if(!["metadata", "clip"].includes(track?.trackType)) {
+      track = this.rootStore.trackStore.viewTracks[0];
+      trackId = track?.trackId;
+    }
 
     if(!track) { return; }
 
@@ -352,20 +382,16 @@ class TagStore {
       textList: [
         text
       ],
-    });
-
-    this.rootStore.editStore.PerformAction({
-      label: "Add Tag",
-      type: "tag",
-      action: "create",
-      modifiedItem: tag,
-      Action: () => this.rootStore.trackStore.AddTag({trackId, tag}),
-      Undo: () => this.rootStore.trackStore.DeleteTag({trackId, tagId: tag.tagId})
+      isNew: true
     });
 
     this.SetTags(trackId, [tag.tagId], startTime);
     this.SetSelectedTag(tag.tagId);
-    this.SetEditing(tag.tagId, tagType === "metadata" ? "tag" : "clip");
+    this.SetEditing({
+      id: tag.tagId,
+      type: tagType === "metadata" ? "tag" : "clip",
+      item: tag
+    });
   }
 
   DeleteTag({trackId, tag}) {
@@ -381,56 +407,21 @@ class TagStore {
     });
   }
 
-  UpdateEditedItem(item) {
-    this.editedItem = item;
+  UpdateEditedTrack(track) {
+    this.editedTrack = track;
   }
 
-  ClearEditedItem() {
-    this.editedItem = undefined;
+  ClearEditedTrack() {
+    this.editedTrack = undefined;
   }
 
-  /*
-  CreateTag() {
-    const tagId = Id.next();
-
-    this.SetEditing(tagId, "tag");
+  UpdateEditedTag(tag) {
+    this.editedTag = tag;
   }
 
-  ModifyTag({tagId, textList, startTime, endTime}) {
-    this.rootStore.trackStore.ModifyTrack(track => {
-      const tag = this.rootStore.trackStore.TrackTags(track.trackId)[tagId];
-
-      if(tag) {
-        tag.textList = textList;
-        tag.startTime = startTime;
-        tag.endTime = endTime;
-      } else {
-        tagId = this.rootStore.trackStore.AddTag({
-          trackId: track.trackId,
-          text: textList,
-          startTime,
-          endTime
-        });
-      }
-    });
-
-    this.SetSelectedTag(tagId);
-    this.ClearEditing();
+  ClearEditedTag() {
+    this.editedTag = undefined;
   }
-
-  RemoveTag(tagId) {
-    if(tagId === this.selectedTagId) {
-      this.ClearSelectedTag();
-      this.selectedTagIds = this.selectedTagIds.filter(id => id !== tagId);
-      this.hoverTags = this.hoverTags.filter(id => id !== tagId);
-    }
-
-    this.rootStore.trackStore.ModifyTrack(track => {
-      delete this.rootStore.trackStore.TrackTags(track.trackId)[tagId];
-    });
-  }
-
-   */
 }
 
 export default TagStore;
