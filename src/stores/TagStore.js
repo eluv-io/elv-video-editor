@@ -1,4 +1,4 @@
-import {makeAutoObservable} from "mobx";
+import {makeAutoObservable, toJS} from "mobx";
 
 class TagStore {
   selectedTrackId;
@@ -8,12 +8,17 @@ class TagStore {
   selectedTagId;
   selectedTagTrackId;
 
+  selectedOverlayTagFrame;
+  selectedOverlayTagIds = [];
+  selectedOverlayTagId;
+
   hoverTags = [];
   hoverTrack;
   hoverTime;
 
   editedTag;
   editedTrack;
+  editedOverlayTag;
 
   filter = "";
 
@@ -66,6 +71,16 @@ class TagStore {
 
   get selectedTagTrack() {
     return this.rootStore.trackStore.tracks.find(track => track.trackId === this.selectedTagTrackId);
+  }
+
+  get selectedOverlayTags() {
+    return this.rootStore.overlayStore.TagsAtFrame(this.selectedOverlayTagFrame)
+      .filter(tag => this.selectedOverlayTagIds.includes(tag.tagId));
+  }
+
+  get selectedOverlayTag() {
+    return this.rootStore.overlayStore.TagsAtFrame(this.selectedOverlayTagFrame)
+      .find(tag => tag.tagId === this.selectedOverlayTagId);
   }
 
   Reset() {
@@ -202,6 +217,7 @@ class TagStore {
     this.ClearEditing();
     this.ClearSelectedTrack();
     this.ClearSelectedTag();
+    this.ClearSelectedOverlayTags();
 
     if(!Array.isArray(tags)) {
       tags = [tags];
@@ -238,9 +254,56 @@ class TagStore {
     this.selectedTagId = undefined;
     this.selectedTime = undefined;
     this.selectedTagTrackId = undefined;
+
+    this.ClearSelectedOverlayTags();
   }
 
-  SetEditing({id, type="tag", item}) {
+  SetSelectedOverlayTags(frame, tagIds=[]) {
+    this.rootStore.videoStore.PlayPause(true);
+    this.rootStore.videoStore.ToggleVideoControls(false);
+    this.rootStore.videoStore.Seek(frame);
+    this.rootStore.keyboardControlStore.ToggleKeyboardControls(false);
+
+    this.ClearTags();
+
+    this.selectedOverlayTagFrame = frame;
+    this.selectedOverlayTagIds = tagIds;
+
+    if(!tagIds || tagIds.length === 0) {
+      this.ClearSelectedOverlayTags();
+    } else if(tagIds.length === 1) {
+      this.SetSelectedOverlayTag(frame, tagIds[0]);
+    }
+  }
+
+  ClearSelectedOverlayTags() {
+    this.selectedOverlayTagFrame = undefined;
+    this.selectedOverlayTagIds = [];
+    this.selectedOverlayTagId = undefined;
+
+    this.rootStore.videoStore.ToggleVideoControls(true);
+    this.rootStore.keyboardControlStore.ToggleKeyboardControls(true);
+  }
+
+  SetSelectedOverlayTag(frame, tagId) {
+    this.rootStore.videoStore.Seek(frame);
+    this.selectedOverlayTagFrame = frame;
+    this.selectedOverlayTagId = tagId;
+
+    this.rootStore.videoStore.PlayPause(true);
+    this.rootStore.videoStore.ToggleVideoControls(false);
+    this.rootStore.keyboardControlStore.ToggleKeyboardControls(false);
+  }
+
+  ClearSelectedOverlayTag() {
+    this.selectedOverlayTagId = undefined;
+
+    if(this.selectedOverlayTagIds.length === 1) {
+      this.ClearSelectedOverlayTags();
+    }
+  }
+
+  SetEditing({id, type="tag", frame, item}) {
     if(!id) {
       this.editing = false;
       return;
@@ -250,10 +313,17 @@ class TagStore {
       this.SetSelectedTag(id);
 
       this.editedTag = {...(item || this.selectedTag)};
-    } else {
+    } else if(type === "track") {
       this.SetSelectedTrack(id);
 
       this.editedTrack = {...(item || this.selectedTrack)};
+    } else if(type === "overlay") {
+      this.SetSelectedOverlayTag(frame, id);
+      this.editedOverlayTag = {...(item || this.selectedOverlayTag)};
+    } else {
+      // eslint-disable-next-line no-console
+      console.error("Unknown editing type: " + type);
+      return;
     }
 
     this.editing = true;
@@ -292,7 +362,6 @@ class TagStore {
             Undo: () => this.rootStore.trackStore.DeleteTag({trackId: tag.trackId, tagId: tag.tagId})
           });
         } else {
-          // Change to editedTag.track id?
           const originalTag = {...this.selectedTag};
           const modifiedTag = {...this.editedTag};
 
@@ -311,11 +380,47 @@ class TagStore {
         this.selectedTagId = this.editedTag.tagId;
         this.selectedTagTrackId = this.editedTag.trackId;
         this.selectedTime = this.editedTag.startTime;
+      } else if(this.editedOverlayTag) {
+        if(this.editedOverlayTag.isNew) {
+          /*
+          const tag = {...this.editedTag};
+          delete tag.isNew;
+
+          this.rootStore.editStore.PerformAction({
+            label: `Add ${tagType}`,
+            type: tagType.toLowerCase(),
+            action: "create",
+            modifiedItem: tag,
+            Action: () => this.rootStore.trackStore.AddTag({trackId: tag.trackId, tag}),
+            Undo: () => this.rootStore.trackStore.DeleteTag({trackId: tag.trackId, tagId: tag.tagId})
+          });
+
+           */
+        } else {
+          const originalTag = toJS({...this.selectedOverlayTag});
+          const modifiedTag = toJS({...this.editedOverlayTag});
+          const frame = modifiedTag.frame;
+
+          if(JSON.stringify(originalTag) !== JSON.stringify(modifiedTag)) {
+            this.rootStore.editStore.PerformAction({
+              label: "Modify Overlay Tag",
+              type: "overlay",
+              action: "modify",
+              modifiedItem: modifiedTag,
+              Action: () => this.rootStore.overlayStore.ModifyTag({frame, modifiedTag}),
+              Undo: () => this.rootStore.overlayStore.ModifyTag({frame, modifiedTag: originalTag})
+            });
+          }
+        }
+
+        this.selectedOverlayTagId = this.editedOverlayTag.tagId;
+        this.selectedOverlayTagFrame = this.editedOverlayTag.frame;
       }
     }
 
     this.ClearEditedTrack();
     this.ClearEditedTag();
+    this.ClearEditedOverlayTag();
     this.editing = false;
   }
 
@@ -407,6 +512,19 @@ class TagStore {
     });
   }
 
+  DeleteOverlayTag({frame, tag}) {
+    const originalTag = {...tag};
+
+    this.rootStore.editStore.PerformAction({
+      label: "Delete Tag",
+      type: "tag",
+      action: "delete",
+      modifiedItem: tag,
+      Action: () => this.rootStore.overlayStore.DeleteTag({frame, tagId: originalTag.tagId}),
+      Undo: () => this.rootStore.overlayStore.AddTag({frame, tag: originalTag})
+    });
+  }
+
   UpdateEditedTrack(track) {
     this.editedTrack = track;
   }
@@ -421,6 +539,14 @@ class TagStore {
 
   ClearEditedTag() {
     this.editedTag = undefined;
+  }
+
+  UpdateEditedOverlayTag(tag) {
+    this.editedOverlayTag = tag;
+  }
+
+  ClearEditedOverlayTag() {
+    this.editedOverlayTag = undefined;
   }
 }
 

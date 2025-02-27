@@ -98,7 +98,7 @@ const Video = observer(() => {
           className={S("video")}
         />
         {
-          !ready ? null :
+          !ready || !videoStore.showVideoControls ? null :
             <div className={S("video-controls")}>
               <div className={S("video-controls__left")}>
                 <PlayPauseButton/>

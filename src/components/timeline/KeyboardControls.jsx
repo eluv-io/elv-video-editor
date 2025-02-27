@@ -75,7 +75,7 @@ const KeyboardControlGroup = observer(({title, controls}) => {
 });
 
 const KeyboardControlsContent = observer(() =>
-  <>
+  <div className={S("controls")}>
     <div className={S("controls-row")}>
       <KeyboardControlGroup title="Playback" controls={keyboardControlsStore.controls.Playback}/>
       <div className={S("controls-row__separator")}/>
@@ -90,7 +90,7 @@ const KeyboardControlsContent = observer(() =>
       <div className={S("controls-row__separator")}/>
       <KeyboardControlGroup title="General" controls={keyboardControlsStore.controls.Editing}/>
     </div>
-  </>
+  </div>
 );
 
 const KeyboardControlsModal = observer((props) => {

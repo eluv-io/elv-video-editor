@@ -25,6 +25,7 @@ class VideoStore {
   isVideo = false;
   hasAssets = false;
   ready = false;
+  showVideoControls = true;
 
   consecutiveSegmentErrors = 0;
 
@@ -166,6 +167,7 @@ class VideoStore {
     this.frame = 0;
     this.totalFrames = 0;
     this.smpte = "00:00:00:00";
+    this.showVideoControls = true;
 
     this.playing = false;
     this.playbackRate = 1.0;
@@ -186,6 +188,10 @@ class VideoStore {
 
     this.rootStore.tagStore.ClearTags();
     this.rootStore.trackStore.Reset();
+  }
+
+  ToggleVideoControls(enable) {
+    this.showVideoControls = enable;
   }
 
   SetOffering = flow(function * (offeringKey) {
@@ -777,8 +783,8 @@ class VideoStore {
     }
   }
 
-  PlayPause() {
-    if(this.video.paused) {
+  PlayPause(pause) {
+    if(!pause && this.video.paused) {
       this.video.play();
     } else {
       this.video.pause();

@@ -46,7 +46,6 @@ const InfiniteScroll = observer(({watchList=[], children, batchSize=10, Update, 
     <div
       ref={ref}
       onScroll={CheckUpdate}
-
       className={className}
     >
       { children }

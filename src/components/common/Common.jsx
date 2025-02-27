@@ -2,7 +2,17 @@ import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
 import React, {forwardRef, useEffect, useRef, useState} from "react";
 import {ConvertColor, Copy, CreateModuleClassMatcher, JoinClassNames, TextWidth} from "@/utils/Utils.js";
-import {Button, ColorInput, Modal as MantineModal, Select, Switch, Textarea, TextInput, Tooltip} from "@mantine/core";
+import {
+  Button,
+  ColorInput,
+  Modal as MantineModal,
+  NumberInput,
+  Select,
+  Switch,
+  Textarea,
+  TextInput,
+  Tooltip
+} from "@mantine/core";
 import SVG from "react-inlinesvg";
 import {observer} from "mobx-react";
 import {Link} from "wouter";
@@ -305,6 +315,19 @@ export const SelectInput = observer(({label, options=[], autoWidth=true, ...prop
 export const FormTextInput = observer(props =>
   <TextInput
     {...props}
+    classNames={{
+      root: S("form-input"),
+      label: S("form-input__label"),
+      input: S("form-input__input")
+    }}
+  />
+);
+
+export const FormNumberInput = observer(props =>
+  <NumberInput
+    {...props}
+    min={0}
+    max={100}
     classNames={{
       root: S("form-input"),
       label: S("form-input__label"),

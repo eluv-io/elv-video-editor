@@ -8,6 +8,7 @@ import {FormSelect, FormTextArea, IconButton, SMPTEInput} from "@/components/com
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
+import {modals} from "@mantine/modals";
 
 import EditIcon from "@/assets/icons/Edit.svg";
 import PlayIcon from "@/assets/icons/Play.svg";
@@ -17,7 +18,7 @@ import MarkInIcon from "@/assets/icons/marker-in.svg";
 import MarkOutIcon from "@/assets/icons/marker-out.svg";
 import XIcon from "@/assets/icons/X.svg";
 import TrashIcon from "@/assets/icons/trash.svg";
-import {modals} from "@mantine/modals";
+import {OverlayTagsList} from "@/components/side_panel/OverlayTags.jsx";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -135,7 +136,7 @@ const TagActions = observer(({tag, track}) => {
 
 const TagForm = observer(() => {
   const tag = tagStore.editedTag;
-  const track = tagStore.selectedTagTrack;
+  const track = trackStore.Track(tag.trackId);
 
   const duration = parseFloat(tag.endTime - tag.startTime);
 
@@ -446,6 +447,10 @@ export const TagsList = observer(({mode="tags"}) => {
   const [tags, setTags] = useState([]);
   const [limit, setLimit] = useState(0);
   const [totalTags, setTotalTags] = useState(0);
+
+  if(tagStore.selectedOverlayTags.length > 0) {
+    return <OverlayTagsList />;
+  }
 
   let tracks = {};
 

@@ -164,7 +164,9 @@
 }
 
 .form-input {
+  flex-grow: 1;
   position: relative;
+  width: 100%;
 
   &__label {
     border-radius: 10px 0;

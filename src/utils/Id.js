@@ -1,5 +1,5 @@
 // Incremental numerical IDs
-let __id = 0;
+let __id = 1;
 export default {
   next: () => {
     __id++;

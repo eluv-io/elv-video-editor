@@ -11,6 +11,7 @@ import Assets from "@/components/side_panel/Assets.jsx";
 import {TrackDetails} from "@/components/side_panel/Tracks.jsx";
 
 import SearchIcon from "@/assets/icons/v2/search.svg";
+import {OverlayTagDetails} from "@/components/side_panel/OverlayTags.jsx";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -89,12 +90,14 @@ export const TagSidePanel = observer(() => {
         <TagsList mode="tags" />
 
         {
-          !tagStore.selectedTrackId && !tagStore.selectedTagId ? null :
+          !tagStore.selectedTrackId && !tagStore.selectedTagId && !tagStore.selectedOverlayTagId ? null :
             <div className={S("side-panel-modal")}>
               {
-                tagStore.selectedTrackId ?
-                  <TrackDetails /> :
-                  <TagDetails />
+                tagStore.selectedOverlayTagId ?
+                  <OverlayTagDetails /> :
+                  tagStore.selectedTrackId ?
+                    <TrackDetails /> :
+                    <TagDetails />
               }
             </div>
         }
@@ -115,9 +118,11 @@ export const ClipSidePanel = observer(() => {
           !tagStore.selectedTrackId && !tagStore.selectedTagId ? null :
             <div className={S("side-panel-modal")}>
               {
-                tagStore.selectedTrackId ?
-                  <TrackDetails /> :
-                  <TagDetails />
+                tagStore.selectedOverlayTagId ?
+                  <OverlayTagDetails /> :
+                  tagStore.selectedTrackId ?
+                    <TrackDetails /> :
+                    <TagDetails />
               }
             </div>
         }

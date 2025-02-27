@@ -435,7 +435,7 @@ const DownloadModalContent = observer(({setConfirming, Close}) => {
   };
 
   return (
-    <>
+    <div className={S("download-modal")}>
       <h1 className={S("header")}>
         <Icon icon={DownloadIcon}/>
         Generate and Download Clip
@@ -526,7 +526,7 @@ const DownloadModalContent = observer(({setConfirming, Close}) => {
           }
         </div>
       </div>
-    </>
+    </div>
   );
 });
 

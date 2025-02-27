@@ -1,10 +1,10 @@
 import OverlayStyles from "@/assets/stylesheets/modules/overlay.module.scss";
 
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react";
 import {reaction} from "mobx";
 import ResizeObserver from "resize-observer-polyfill";
-import {assetStore, overlayStore, trackStore, videoStore} from "@/stores/index.js";
+import {assetStore, overlayStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Tooltip} from "@mantine/core";
 
@@ -12,6 +12,347 @@ const frameSpread = 10;
 
 const S = CreateModuleClassMatcher(OverlayStyles);
 
+const selectedColor = {
+  r: 25,
+  g: 200,
+  b: 255,
+  a: 150
+};
+
+const editingColor = {
+  r: 50,
+  g: 255,
+  b: 0,
+  a: 255
+};
+
+const ReorderPoints = (points) => {
+  // Ensure points are sorted clockwise from top left
+  points = [...points].sort((a, b) => a[0] < b[0] ? -1 : 1);
+
+  return [
+    points[0].y < points[1].y ? points[0] : points[1],
+    points[2].y < points[3].y ? points[2] : points[3],
+    points[2].y < points[3].y ? points[3] : points[2],
+    points[0].y < points[1].y ? points[1] : points[0]
+  ];
+};
+
+const BoxToPoints = (box) => {
+  let {x1, x2, y1, y2, x3, y3, x4, y4} = box;
+
+  let points;
+  if(!x3) {
+    points = [[x1, y1], [x2, y1], [x2, y2], [x1, y2]];
+  } else {
+    points = [[x1, y1], [x2, y2], [x3, y3], [x4, y4]];
+  }
+
+  return ReorderPoints(points);
+};
+
+const PointsToBox = (points) => {
+  points = ReorderPoints(points);
+
+  const isRectangle =
+    points[0][0] === points[3][0] &&
+    points[1][0] === points[2][0];
+
+  if(isRectangle) {
+    return {
+      x1: points[0][0],
+      x2: points[2][0],
+      y1: points[0][1],
+      y2: points[2][1]
+    };
+  } else {
+    return {
+      x1: points[0][0], y1: points[0][1],
+      x2: points[1][0], y2: points[1][1],
+      x3: points[2][0], y3: points[2][1],
+      x4: points[3][0], y4: points[3][1],
+    };
+  }
+};
+
+const PointInPolygon = ([x, y], points) => {
+  let inside = false;
+  let p1 = points[0];
+  let p2;
+  for (let i=1; i <= points.length; i++) {
+      p2 = points[i % points.length];
+
+      if (y > Math.min(p1[1], p2[1])) {
+          if (y <= Math.max(p1[1], p2[1])) {
+              if (x <= Math.max(p1[0], p2[0])) {
+                  const x_intersection = ((y - p1[1]) * (p2[0] - p1[0])) / (p2[1] - p1[1]) + p1[0];
+
+                  if (p1[0] === p2[0] || x <= x_intersection) {
+                      inside = !inside;
+                  }
+              }
+          }
+      }
+
+      p1 = p2;
+  }
+
+  return inside;
+};
+
+const PolygonOverlayEdit = observer(({pos, points, setPoints}) => {
+  const pointSize = 10;
+  const canvasRef = useRef();
+  const canvasWidth = overlayStore.overlayCanvasDimensions.width;
+  const canvasHeight = overlayStore.overlayCanvasDimensions.height;
+  const [dragging, setDragging] = useState(false);
+
+  useEffect(() => {
+    if(!points || !canvasRef?.current) { return; }
+
+    const pxpts = points.map(point => [point[0] * canvasWidth, point[1] * canvasHeight]);
+
+    canvasRef.current.width = canvasWidth;
+    canvasRef.current.height = canvasHeight;
+    const context = canvasRef.current.getContext("2d");
+    context.strokeStyle = "#FFFFFF";
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(pxpts[0][0], pxpts[0][1]);
+    context.lineTo(pxpts[1][0], pxpts[1][1]);
+    context.lineTo(pxpts[2][0], pxpts[2][1]);
+    context.lineTo(pxpts[3][0], pxpts[3][1]);
+    context.closePath();
+    context.stroke();
+  }, [points]);
+
+  const StartDragging = (event, type) => {
+    setDragging(type);
+
+    event?.stopPropagation();
+    event?.preventDefault();
+    event.cancelBubble = true;
+    event.returnValue = false;
+
+    const StopDragging = () => {
+      setDragging(false);
+      window.removeEventListener("mouseup", StopDragging);
+    };
+
+    window.addEventListener("mouseup", StopDragging);
+  };
+
+  return (
+    <div
+      style={{width: `${overlayStore.overlayCanvasDimensions.width}px`}}
+      onMouseMove={event => {
+        if(!dragging) { return; }
+
+        let dx = Math.min(
+          canvasWidth - pos.maxX,
+          Math.max(-1 * pos.minX, event.movementX)
+        );
+        let dy = Math.min(
+          canvasHeight - pos.maxY,
+          Math.max(-1 * pos.minY, event.movementY)
+        );
+
+        if(dragging !== "whole") {
+          dx = Math.max(dx, (pos.minX + 25) - pos.maxX);
+          dy = Math.max(dy, (pos.minY + 25) - pos.maxY);
+        }
+
+        dx = dx / canvasWidth;
+        dy = dy / canvasHeight;
+
+        switch(dragging) {
+          case "whole":
+            setPoints(points.map(([x, y]) => [x + dx, y + dy]));
+            break;
+          default:
+            const index = parseInt(dragging);
+            let newPoints = [...points];
+            newPoints[index][0] += dx;
+            newPoints[index][1] += dy;
+            setPoints(newPoints);
+        }
+      }}
+      onMouseDown={event => {
+        const dimensions = event.currentTarget.getBoundingClientRect();
+        const posX = (event.clientX - dimensions.left) / dimensions.width;
+        const posY = (event.clientY - dimensions.top) / dimensions.height;
+
+        if(PointInPolygon([posX, posY], points)) {
+          StartDragging(event, "whole");
+        }
+      }}
+      className={S("overlay", "overlay-edit")}
+    >
+      <canvas ref={canvasRef} className={S("overlay-edit__canvas")} />
+      {
+        points?.map(([x, y], index) =>
+          <div
+            key={`point-${index}`}
+            onMouseDown={event => StartDragging(event, index.toString())}
+            style={{
+              height: `${pointSize}px`,
+              width: `${pointSize}px`,
+              top: `${y * canvasHeight - (pointSize / 2)}px`,
+              left: `${x * canvasWidth - (pointSize / 2)}px`,
+            }}
+            className={S("overlay-edit__point")}
+          />
+        )
+      }
+    </div>
+  );
+});
+
+const RectangleOverlayEdit = observer(({points, setPoints, pos}) => {
+  const [dragging, setDragging] = useState(false);
+
+  const canvasWidth = overlayStore.overlayCanvasDimensions.width;
+  const canvasHeight = overlayStore.overlayCanvasDimensions.height;
+
+  const StartDragging = (event, type) => {
+    setDragging(type);
+
+    event?.stopPropagation();
+    event?.preventDefault();
+    event.cancelBubble = true;
+    event.returnValue = false;
+
+    const StopDragging = () => {
+      setDragging(false);
+      window.removeEventListener("mouseup", StopDragging);
+    };
+
+    window.addEventListener("mouseup", StopDragging);
+  };
+
+  return (
+    <div
+      onMouseUp={() => setDragging(false)}
+      onMouseLeave={() => setDragging(false)}
+      onMouseMove={event => {
+        if(!dragging) { return; }
+
+        let dx = Math.min(
+          canvasWidth - pos.maxX,
+          Math.max(-1 * pos.minX, event.movementX)
+        );
+        let dy = Math.min(
+          canvasHeight - pos.maxY,
+          Math.max(-1 * pos.minY, event.movementY)
+        );
+
+        if(dragging !== "whole") {
+          dx = Math.max(dx, (pos.minX + 25) - pos.maxX);
+          dy = Math.max(dy, (pos.minY + 25) - pos.maxY);
+        }
+
+        dx = dx / canvasWidth;
+        dy = dy / canvasHeight;
+
+        switch(dragging) {
+          case "whole":
+            setPoints(
+              points.map(([x, y]) => [x + dx, y + dy])
+            );
+            break;
+          case "right":
+            setPoints([
+              points[0],
+              [points[1][0] + dx, points[1][1]],
+              [points[2][0] + dx, points[2][1]],
+              points[3]
+            ]);
+            break;
+          case "bottom":
+            setPoints([
+              points[0],
+              points[1],
+              [points[2][0], points[2][1] + dy],
+              [points[3][0], points[3][1] + dy]
+            ]);
+            break;
+          case "corner":
+            setPoints([
+              points[0],
+              [points[1][0] + dx, points[1][1]],
+              [points[2][0] + dx, points[2][1] + dy],
+              [points[3][0], points[3][1] + dy]
+            ]);
+        }
+      }}
+      style={{width: `${overlayStore.overlayCanvasDimensions.width}px`}}
+      className={S("overlay", "overlay-edit")}
+    >
+      <div
+        onMouseDown={event => StartDragging(event, "whole")}
+        style={{
+          width: `${pos.width}px`,
+          height: `${pos.height}px`,
+          top: `${pos.minY}px`,
+          left: `${pos.minX}px`,
+          resize: "both"
+        }}
+        className={S("overlay-edit__box")}
+      >
+        <div
+          onMouseDown={event => StartDragging(event, "right")}
+          className={S("overlay-edit__box-resize", dragging === "right" ? "overlay-edit__box-resize--active" : "", "overlay-edit__box-right")}
+        />
+        <div
+          onMouseDown={event => StartDragging(event, "bottom")}
+          className={S("overlay-edit__box-resize", dragging === "bottom" ? "overlay-edit__box-resize--active" : "", "overlay-edit__box-bottom")}
+        />
+        <div
+          onMouseDown={event => StartDragging(event, "corner")}
+          className={S("overlay-edit__box-resize", dragging === "corner" ? "overlay-edit__box-resize--active" : "", "overlay-edit__box-corner")}
+        />
+      </div>
+    </div>
+  );
+});
+
+const OverlayEdit = observer(({initalBox, onChange}) => {
+  const [points, setPoints] = useState(undefined);
+  const [dragging, setDragging] = useState(false);
+
+  const canvasWidth = overlayStore.overlayCanvasDimensions.width;
+  const canvasHeight = overlayStore.overlayCanvasDimensions.height;
+
+  useEffect(() => setPoints(BoxToPoints(initalBox)), []);
+
+  useEffect(() => {
+    points && onChange?.(PointsToBox(points));
+  }, [points]);
+
+  if(!points) { return; }
+
+  const isRectangle = false;
+    //points[0][0] === points[3][0] &&
+    //points[1][0] === points[2][0];
+
+    let pos = {minY: 10000, minX: 10000, maxY: 0, maxX: 0};
+  points
+    .map(point => [point[0] * canvasWidth, point[1] * canvasHeight])
+    .forEach(([x, y]) => {
+      pos.minX = Math.min(x, pos.minX);
+      pos.minY = Math.min(y, pos.minY);
+      pos.maxX = Math.max(x, pos.maxX);
+      pos.maxY = Math.max(y, pos.maxY);
+    });
+
+  pos.width = pos.maxX - pos.minX;
+  pos.height = pos.maxY - pos.minY;
+
+  console.log(isRectangle);
+  return isRectangle ?
+    <RectangleOverlayEdit pos={pos} points={points} setPoints={setPoints} /> :
+    <PolygonOverlayEdit pos={pos} points={points} setPoints={setPoints} />;
+});
 
 const AssetTags = ({asset, highlightTag}) => {
   let tags = [];
@@ -55,14 +396,14 @@ const Tags = () => {
 
   const tags = {};
 
-  let frame;
+  let overlayTags;
   for(let i = videoStore.frame; i > Math.max(0, videoStore.frame - frameSpread); i--) {
-    frame = overlayStore.overlayTrack[i.toString()];
+    overlayTags = overlayStore.overlayTags[i.toString()];
 
-    if(frame) {
-      Object.keys(frame).forEach(key => {
-        if(!tags[key] && typeof frame[key] === "object" && Object.keys(frame[key]).length > 0) {
-          tags[key] = frame[key];
+    if(overlayTags) {
+      Object.keys(overlayTags).forEach(key => {
+        if(!tags[key] && typeof overlayTags[key] === "object" && Object.keys(overlayTags[key]).length > 0) {
+          tags[key] = { ...(overlayTags[key] || {}) };
         }
       });
     }
@@ -72,7 +413,7 @@ const Tags = () => {
 
   let activeTags = [];
   trackStore.tracks
-    .filter(track => track.trackType === "metadata")
+    .filter(track => ["clips", "metadata"].includes(track.trackType))
     .forEach(track => {
       if(!overlayStore.visibleOverlayTracks[track.key]) { return; }
 
@@ -82,13 +423,11 @@ const Tags = () => {
       if(tags[track.key].activeTags) {
         boxes = tags[track.key].activeTags;
       } else {
-        Object.keys(tags[track.key]).map(text => {
-          if(typeof tags[track.key][text] !== "object") { return; }
+        if(typeof tags[track.key].tags !== "object") { return; }
 
-          tags[track.key][text].map(tag => {
-            boxes.push({
-              ...tag
-            });
+        tags[track.key].tags.map(tag => {
+          boxes.push({
+            ...tag
           });
         });
       }
@@ -127,7 +466,7 @@ const TagsAt = ({canvas, asset, clientX, clientY}) => {
     });
 };
 
-const Draw = ({canvas, tags, elementSize}) => {
+const Draw = ({canvas, tags, hoverTags, elementSize}) => {
   if(!canvas) { return; }
 
   canvas.width = elementSize.width;
@@ -149,7 +488,7 @@ const Draw = ({canvas, tags, elementSize}) => {
 
     let {x1, x2, y1, y2, x3, y3, x4, y4} = tag.box;
 
-    let points = [];
+    let points;
     if(!x3) {
       points = [[x1, y1], [x2, y1], [x2, y2], [x1, y2]];
     } else {
@@ -159,7 +498,17 @@ const Draw = ({canvas, tags, elementSize}) => {
 
     const toHex = n => n.toString(16).padStart(2, "0");
 
-    context.strokeStyle = `#${toHex(tag.color.r)}${toHex(tag.color.g)}${toHex(tag.color.b)}`;
+    let color = tag.color;
+    if(tagStore.editedOverlayTag?.tagId === tag.tagId) {
+      color = editingColor;
+    } else if(
+      hoverTags?.find(hoverTag => hoverTag.tagId === tag.tagId) ||
+      tagStore.selectedOverlayTagId === tag.tagId
+    ) {
+      color = selectedColor;
+    }
+
+    context.strokeStyle = `#${toHex(color.r)}${toHex(color.g)}${toHex(color.b)}`;
 
     context.beginPath();
     context.moveTo(points[0][0], points[0][1]);
@@ -174,6 +523,9 @@ const Draw = ({canvas, tags, elementSize}) => {
 const Overlay = observer(({element, asset, highlightTag}) => {
   const [canvas, setCanvas] = useState(undefined);
   const [hoverPosition, setHoverPosition] = useState({hovering: false, clientX: 0, clientY: 0});
+
+  const hoverTags = !hoverPosition.hovering ? [] :
+    TagsAt({canvas, asset, clientX: hoverPosition.clientX, clientY: hoverPosition.clientY});
 
   useEffect(() => {
     const resizeObserver = new ResizeObserver(() => {
@@ -210,6 +562,7 @@ const Overlay = observer(({element, asset, highlightTag}) => {
         tags: asset ?
           AssetTags({asset, highlightTag}) :
           Tags(),
+        hoverTags,
         elementSize: overlayStore.overlayCanvasDimensions
       });
 
@@ -218,6 +571,8 @@ const Overlay = observer(({element, asset, highlightTag}) => {
         enabled: overlayStore.overlayEnabled,
         frame: videoStore.frame,
         elementSize: overlayStore.overlayCanvasDimensions,
+        selectedOverlayTagIds: tagStore.selectedOverlayTagIds,
+        editingOverlayTagId: tagStore.editedOverlayTag?.tagId,
         enabledTracks: JSON.stringify(overlayStore.visibleOverlayTracks),
       }),
       Redraw,
@@ -230,12 +585,24 @@ const Overlay = observer(({element, asset, highlightTag}) => {
     Redraw();
 
     return () => DisposeDrawReaction && DisposeDrawReaction();
-  }, [canvas, highlightTag]);
+  }, [canvas, highlightTag, hoverTags]);
 
   if(!asset && !overlayStore.overlayEnabled) { return null; }
 
-  const hoverTags = !hoverPosition.hovering ? [] :
-    TagsAt({canvas, asset, clientX: hoverPosition.clientX, clientY: hoverPosition.clientY});
+
+  if(tagStore.editedOverlayTag) {
+    return (
+      <OverlayEdit
+        initalBox={tagStore.editedOverlayTag.box}
+        onChange={box =>
+          tagStore.UpdateEditedOverlayTag({
+            ...tagStore.editedOverlayTag,
+            box
+          })
+        }
+      />
+    );
+  }
 
   return (
     <div className={S("overlay")} style={{width: `${overlayStore.overlayCanvasDimensions.width}px`}}>
@@ -243,7 +610,6 @@ const Overlay = observer(({element, asset, highlightTag}) => {
         disabled={hoverTags.length === 0}
         position="bottom"
         offset={20}
-        withinPortal={!!asset}
         label={
           <div className={S("tooltip")}>
             {hoverTags.map((tag, index) =>
@@ -264,6 +630,15 @@ const Overlay = observer(({element, asset, highlightTag}) => {
       >
         <canvas
           ref={setCanvas}
+          onClick={event => {
+            const tags = TagsAt({canvas, clientX: event.clientX, clientY: event.clientY});
+
+            if(tags.length > 0) {
+              tagStore.SetSelectedOverlayTags(tags[0].frame, tags.map(tag => tag.tagId));
+            } else {
+              tagStore.ClearSelectedOverlayTags();
+            }
+          }}
           onMouseMove={event => setHoverPosition({hovering: true, clientX: event.clientX, clientY: event.clientY})}
           onMouseLeave={() => setHoverPosition({...hoverPosition, hovering: false})}
           className={S("overlay__canvas")}

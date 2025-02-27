@@ -1,17 +1,9 @@
 import { flow, makeAutoObservable } from "mobx";
-
-const FormatName = (name) => {
-  return (name || "")
-    .replace("-", " ")
-    .split(/[_, \s]/)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-};
+import Id from "@/utils/Id.js";
 
 class OverlayStore {
   overlayEnabled = false;
   enabledOverlayTracks = {};
-  trackInfo = {};
   overlayCanvasDimensions = {width: 0, height: 0};
 
   get visibleOverlayTracks() {
@@ -38,28 +30,48 @@ class OverlayStore {
     this.rootStore = rootStore;
   }
 
+  TagsAtFrame(frame) {
+    const overlayInfo = this.overlayTags?.[frame?.toString()];
+
+    let tags = [];
+    if(overlayInfo) {
+      Object.keys(overlayInfo).forEach(key =>
+        tags.push(overlayInfo[key]?.tags || [])
+      );
+    }
+
+    return tags.flat();
+  }
+
   Reset() {
-    this.overlayTrack = undefined;
+    this.overlayTags = undefined;
     this.overlayEnabled = false;
   }
 
-  TrackInfo(trackKey) {
-    if(!this.trackInfo[trackKey]) {
-      const track = this.rootStore.trackStore.tracks
-        .filter(track => track.trackType === "metadata")
-        .find(track => track.key === trackKey);
+  AddTag({frame, tag}) {
 
-      if(track) {
-        this.trackInfo[trackKey] = {label: track.label, color: track.color};
-      } else {
-        this.trackInfo[trackKey] = {
-          label: FormatName(trackKey),
-          color: this.rootStore.trackStore.TrackColor(trackKey)
-        };
+  }
+
+  ModifyTag({frame, modifiedTag}) {
+    const trackKey = this.rootStore.trackStore.Track(modifiedTag.trackId)?.key;
+
+    if(!trackKey) { return; }
+
+    this.overlayTags[frame.toString()][trackKey].tags = this.overlayTags[frame.toString()][trackKey].tags
+      .map(tag =>
+        tag.tagId === modifiedTag.tagId ?
+          { ...modifiedTag } :
+          tag
+      );
+  }
+
+  DeleteTag({frame, tagId}) {
+    Object.keys(this.overlayTags[frame?.toString()]).forEach(trackKey => {
+      if(this.overlayTags[frame.toString()][trackKey]?.tags) {
+        this.overlayTags[frame.toString()][trackKey].tags = this.overlayTags[frame.toString()][trackKey].tags
+          .filter(tag => tag.tagId !== tagId);
       }
-    }
-
-    return this.trackInfo[trackKey];
+    });
   }
 
   AddOverlayTracks = flow(function * () {
@@ -90,12 +102,35 @@ class OverlayStore {
       const overlayTags = Object.assign({}, ...overlayTagChunks);
       overlayTags.version = overlayTagVersion;
 
+      let trackIdMap = {};
+      this.rootStore.trackStore.tracks.forEach(track =>
+        trackIdMap[track.key] = track.trackId
+      );
 
       // Determine all tracks with overlay
       let availableOverlayTrackKeys = {};
-      Object.values(overlayTags).forEach(overlayTag => {
-        Object.keys(overlayTag).forEach(trackKey => availableOverlayTrackKeys[trackKey] = true);
-      });
+      Object.keys(overlayTags).forEach(frame =>
+        Object.keys(overlayTags[frame]).forEach(trackKey => {
+          availableOverlayTrackKeys[trackKey] = true;
+
+          if(typeof overlayTags[frame][trackKey] !== "object") {
+            return;
+          }
+
+          overlayTags[frame][trackKey].tags = (overlayTags[frame][trackKey]?.tags || [])
+            .map((tag, tagIndex) => ({
+              ...tag,
+              tagId: Id.next(),
+              frame,
+              trackId: trackIdMap[trackKey],
+              o: {
+                f: frame,
+                tk: trackKey,
+                i: tagIndex
+              }
+            }));
+        })
+      );
 
       Object.keys(availableOverlayTrackKeys).forEach(trackKey => {
         this.enabledOverlayTracks[trackKey] = true;
@@ -108,7 +143,7 @@ class OverlayStore {
       });
 
       // Overlay track is not observable for memory purposes
-      this.overlayTrack = overlayTags;
+      this.overlayTags = overlayTags;
       this.overlayEnabled = true;
     } catch(error) {
       // eslint-disable-next-line no-console

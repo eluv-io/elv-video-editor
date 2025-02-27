@@ -145,8 +145,10 @@ class TrackStore {
     return this.colors[index];
   }
 
-  Track(trackId) {
-    const trackIndex = this.tracks.findIndex(track => track.trackId === trackId);
+  Track(trackKeyOrId) {
+    const trackIndex = this.tracks.findIndex(track =>
+      track.trackId === trackKeyOrId || track.key === trackKeyOrId
+    );
 
     return trackIndex >= 0 ? this.tracks[trackIndex] : undefined;
   }
