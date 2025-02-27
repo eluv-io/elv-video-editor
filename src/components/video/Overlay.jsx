@@ -7,6 +7,7 @@ import ResizeObserver from "resize-observer-polyfill";
 import {assetStore, overlayStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Tooltip} from "@mantine/core";
+import {BoxToPoints, PointInPolygon, PointsToBox, ReorderPoints} from "@/utils/Geometry.js";
 
 const frameSpread = 10;
 
@@ -26,82 +27,8 @@ const editingColor = {
   a: 255
 };
 
-const ReorderPoints = (points) => {
-  // Ensure points are sorted clockwise from top left
-  points = [...points].sort((a, b) => a[0] < b[0] ? -1 : 1);
-
-  return [
-    points[0].y < points[1].y ? points[0] : points[1],
-    points[2].y < points[3].y ? points[2] : points[3],
-    points[2].y < points[3].y ? points[3] : points[2],
-    points[0].y < points[1].y ? points[1] : points[0]
-  ];
-};
-
-const BoxToPoints = (box) => {
-  let {x1, x2, y1, y2, x3, y3, x4, y4} = box;
-
-  let points;
-  if(!x3) {
-    points = [[x1, y1], [x2, y1], [x2, y2], [x1, y2]];
-  } else {
-    points = [[x1, y1], [x2, y2], [x3, y3], [x4, y4]];
-  }
-
-  return ReorderPoints(points);
-};
-
-const PointsToBox = (points) => {
-  points = ReorderPoints(points);
-
-  const isRectangle =
-    points[0][0] === points[3][0] &&
-    points[1][0] === points[2][0];
-
-  if(isRectangle) {
-    return {
-      x1: points[0][0],
-      x2: points[2][0],
-      y1: points[0][1],
-      y2: points[2][1]
-    };
-  } else {
-    return {
-      x1: points[0][0], y1: points[0][1],
-      x2: points[1][0], y2: points[1][1],
-      x3: points[2][0], y3: points[2][1],
-      x4: points[3][0], y4: points[3][1],
-    };
-  }
-};
-
-const PointInPolygon = ([x, y], points) => {
-  let inside = false;
-  let p1 = points[0];
-  let p2;
-  for (let i=1; i <= points.length; i++) {
-      p2 = points[i % points.length];
-
-      if (y > Math.min(p1[1], p2[1])) {
-          if (y <= Math.max(p1[1], p2[1])) {
-              if (x <= Math.max(p1[0], p2[0])) {
-                  const x_intersection = ((y - p1[1]) * (p2[0] - p1[0])) / (p2[1] - p1[1]) + p1[0];
-
-                  if (p1[0] === p2[0] || x <= x_intersection) {
-                      inside = !inside;
-                  }
-              }
-          }
-      }
-
-      p1 = p2;
-  }
-
-  return inside;
-};
-
 const PolygonOverlayEdit = observer(({pos, points, setPoints}) => {
-  const pointSize = 10;
+  const pointSize = 8;
   const canvasRef = useRef();
   const canvasWidth = overlayStore.overlayCanvasDimensions.width;
   const canvasHeight = overlayStore.overlayCanvasDimensions.height;
@@ -115,8 +42,13 @@ const PolygonOverlayEdit = observer(({pos, points, setPoints}) => {
     canvasRef.current.width = canvasWidth;
     canvasRef.current.height = canvasHeight;
     const context = canvasRef.current.getContext("2d");
-    context.strokeStyle = "#FFFFFF";
-    context.lineWidth = 2;
+    context.strokeStyle = "white";
+    context.lineWidth = 3;
+    context.shadowColor = "black";
+    context.shadowColor = "rgba(0,0,0,0.6)";
+    context.shadowOffsetX = 1;
+    context.shadowOffsetY = 1;
+
     context.beginPath();
     context.moveTo(pxpts[0][0], pxpts[0][1]);
     context.lineTo(pxpts[1][0], pxpts[1][1]);
@@ -124,7 +56,13 @@ const PolygonOverlayEdit = observer(({pos, points, setPoints}) => {
     context.lineTo(pxpts[3][0], pxpts[3][1]);
     context.closePath();
     context.stroke();
-  }, [points]);
+  }, [points, canvasWidth, canvasHeight]);
+
+  useEffect(() => {
+    if(dragging) { return; }
+
+    setPoints(ReorderPoints(points));
+  }, [dragging]);
 
   const StartDragging = (event, type) => {
     setDragging(type);
@@ -144,36 +82,30 @@ const PolygonOverlayEdit = observer(({pos, points, setPoints}) => {
 
   return (
     <div
-      style={{width: `${overlayStore.overlayCanvasDimensions.width}px`}}
+      style={{
+        width: `${overlayStore.overlayCanvasDimensions.width}px`,
+        height: `${overlayStore.overlayCanvasDimensions.height}px`
+      }}
       onMouseMove={event => {
-        if(!dragging) { return; }
-
-        let dx = Math.min(
-          canvasWidth - pos.maxX,
-          Math.max(-1 * pos.minX, event.movementX)
-        );
-        let dy = Math.min(
-          canvasHeight - pos.maxY,
-          Math.max(-1 * pos.minY, event.movementY)
-        );
-
-        if(dragging !== "whole") {
-          dx = Math.max(dx, (pos.minX + 25) - pos.maxX);
-          dy = Math.max(dy, (pos.minY + 25) - pos.maxY);
+        if(!dragging) {
+          return;
         }
 
-        dx = dx / canvasWidth;
-        dy = dy / canvasHeight;
+        const mx = event.movementX / canvasWidth;
+        const my = event.movementY / canvasHeight;
 
+        let dx, dy;
         switch(dragging) {
           case "whole":
+            dx = Math.min(1 - pos.maxX, Math.max(-1 * pos.minX, mx));
+            dy = Math.min(1 - pos.maxY, Math.max(-1 * pos.minY, my));
             setPoints(points.map(([x, y]) => [x + dx, y + dy]));
             break;
           default:
             const index = parseInt(dragging);
             let newPoints = [...points];
-            newPoints[index][0] += dx;
-            newPoints[index][1] += dy;
+            newPoints[index][0] = Math.min(1, Math.max(0, newPoints[index][0] + mx));
+            newPoints[index][1] = Math.min(1, Math.max(0, newPoints[index][1] + my));
             setPoints(newPoints);
         }
       }}
@@ -186,9 +118,9 @@ const PolygonOverlayEdit = observer(({pos, points, setPoints}) => {
           StartDragging(event, "whole");
         }
       }}
-      className={S("overlay", "overlay-edit")}
+      className={S("overlay-edit")}
     >
-      <canvas ref={canvasRef} className={S("overlay-edit__canvas")} />
+      <canvas ref={canvasRef} className={S("overlay-edit__canvas")}/>
       {
         points?.map(([x, y], index) =>
           <div
@@ -197,8 +129,8 @@ const PolygonOverlayEdit = observer(({pos, points, setPoints}) => {
             style={{
               height: `${pointSize}px`,
               width: `${pointSize}px`,
-              top: `${y * canvasHeight - (pointSize / 2)}px`,
               left: `${x * canvasWidth - (pointSize / 2)}px`,
+              top: `${y * canvasHeight - (pointSize / 2)}px`
             }}
             className={S("overlay-edit__point")}
           />
@@ -210,6 +142,12 @@ const PolygonOverlayEdit = observer(({pos, points, setPoints}) => {
 
 const RectangleOverlayEdit = observer(({points, setPoints, pos}) => {
   const [dragging, setDragging] = useState(false);
+
+  useEffect(() => {
+    if(dragging) { return; }
+
+    setPoints(ReorderPoints(points));
+  }, [dragging]);
 
   const canvasWidth = overlayStore.overlayCanvasDimensions.width;
   const canvasHeight = overlayStore.overlayCanvasDimensions.height;
@@ -237,91 +175,58 @@ const RectangleOverlayEdit = observer(({points, setPoints, pos}) => {
       onMouseMove={event => {
         if(!dragging) { return; }
 
-        let dx = Math.min(
-          canvasWidth - pos.maxX,
-          Math.max(-1 * pos.minX, event.movementX)
-        );
-        let dy = Math.min(
-          canvasHeight - pos.maxY,
-          Math.max(-1 * pos.minY, event.movementY)
-        );
+        const mx = event.movementX / canvasWidth;
+        const my = event.movementY / canvasHeight;
 
-        if(dragging !== "whole") {
-          dx = Math.max(dx, (pos.minX + 25) - pos.maxX);
-          dy = Math.max(dy, (pos.minY + 25) - pos.maxY);
-        }
-
-        dx = dx / canvasWidth;
-        dy = dy / canvasHeight;
-
+        let dx, dy;
         switch(dragging) {
           case "whole":
+            dx = Math.min(1 - pos.maxX, Math.max(-1 * pos.minX, mx));
+            dy = Math.min(1 - pos.maxY, Math.max(-1 * pos.minY, my));
             setPoints(
               points.map(([x, y]) => [x + dx, y + dy])
             );
             break;
-          case "right":
-            setPoints([
-              points[0],
-              [points[1][0] + dx, points[1][1]],
-              [points[2][0] + dx, points[2][1]],
-              points[3]
-            ]);
-            break;
-          case "bottom":
-            setPoints([
-              points[0],
-              points[1],
-              [points[2][0], points[2][1] + dy],
-              [points[3][0], points[3][1] + dy]
-            ]);
-            break;
           case "corner":
+            // Dragging from bottom right corner
+            dx = Math.min(1, Math.max(pos.minX + 0.03, pos.maxX + mx));
+            dy = Math.min(1, Math.max(pos.minY + 0.03, pos.maxY + my));
             setPoints([
               points[0],
-              [points[1][0] + dx, points[1][1]],
-              [points[2][0] + dx, points[2][1] + dy],
-              [points[3][0], points[3][1] + dy]
+              [dx, points[1][1]],
+              [dx, dy],
+              [points[3][0], dy]
             ]);
         }
       }}
-      style={{width: `${overlayStore.overlayCanvasDimensions.width}px`}}
-      className={S("overlay", "overlay-edit")}
+      style={{
+        width: `${overlayStore.overlayCanvasDimensions.width}px`,
+        height: `${overlayStore.overlayCanvasDimensions.height}px`
+      }}
+      className={S("overlay-edit")}
     >
       <div
         onMouseDown={event => StartDragging(event, "whole")}
         style={{
-          width: `${pos.width}px`,
-          height: `${pos.height}px`,
-          top: `${pos.minY}px`,
-          left: `${pos.minX}px`,
+          width: `${pos.width * canvasWidth}px`,
+          height: `${pos.height * canvasHeight}px`,
+          left: `${pos.minX * canvasWidth}px`,
+          top: `${pos.minY * canvasHeight}px`,
           resize: "both"
         }}
-        className={S("overlay-edit__box")}
+        className={S("overlay-edit__box", dragging ? "overlay-edit__box--active" : "")}
       >
         <div
-          onMouseDown={event => StartDragging(event, "right")}
-          className={S("overlay-edit__box-resize", dragging === "right" ? "overlay-edit__box-resize--active" : "", "overlay-edit__box-right")}
-        />
-        <div
-          onMouseDown={event => StartDragging(event, "bottom")}
-          className={S("overlay-edit__box-resize", dragging === "bottom" ? "overlay-edit__box-resize--active" : "", "overlay-edit__box-bottom")}
-        />
-        <div
           onMouseDown={event => StartDragging(event, "corner")}
-          className={S("overlay-edit__box-resize", dragging === "corner" ? "overlay-edit__box-resize--active" : "", "overlay-edit__box-corner")}
+          className={S("overlay-edit__box-resize", dragging === "corner" ? "overlay-edit__box-resize--active" : "")}
         />
       </div>
     </div>
   );
 });
 
-const OverlayEdit = observer(({initalBox, onChange}) => {
+const OverlayEdit = observer(({initalBox, mode="rectangle", onChange}) => {
   const [points, setPoints] = useState(undefined);
-  const [dragging, setDragging] = useState(false);
-
-  const canvasWidth = overlayStore.overlayCanvasDimensions.width;
-  const canvasHeight = overlayStore.overlayCanvasDimensions.height;
 
   useEffect(() => setPoints(BoxToPoints(initalBox)), []);
 
@@ -331,13 +236,8 @@ const OverlayEdit = observer(({initalBox, onChange}) => {
 
   if(!points) { return; }
 
-  const isRectangle = false;
-    //points[0][0] === points[3][0] &&
-    //points[1][0] === points[2][0];
-
-    let pos = {minY: 10000, minX: 10000, maxY: 0, maxX: 0};
+  let pos = {minY: 10000, minX: 10000, maxY: 0, maxX: 0};
   points
-    .map(point => [point[0] * canvasWidth, point[1] * canvasHeight])
     .forEach(([x, y]) => {
       pos.minX = Math.min(x, pos.minX);
       pos.minY = Math.min(y, pos.minY);
@@ -348,10 +248,18 @@ const OverlayEdit = observer(({initalBox, onChange}) => {
   pos.width = pos.maxX - pos.minX;
   pos.height = pos.maxY - pos.minY;
 
-  console.log(isRectangle);
-  return isRectangle ?
-    <RectangleOverlayEdit pos={pos} points={points} setPoints={setPoints} /> :
-    <PolygonOverlayEdit pos={pos} points={points} setPoints={setPoints} />;
+  return (
+    <div
+      style={{width: `${overlayStore.overlayCanvasDimensions.width}px`}}
+      className={S("overlay")}
+    >
+      {
+        mode === "rectangle" ?
+          <RectangleOverlayEdit pos={pos} points={points} setPoints={setPoints} /> :
+          <PolygonOverlayEdit pos={pos} points={points} setPoints={setPoints} />
+      }
+    </div>
+  );
 });
 
 const AssetTags = ({asset, highlightTag}) => {
@@ -392,12 +300,10 @@ const AssetTags = ({asset, highlightTag}) => {
 };
 
 const Tags = () => {
-  if(videoStore.frame === 0) { return []; }
-
   const tags = {};
 
   let overlayTags;
-  for(let i = videoStore.frame; i > Math.max(0, videoStore.frame - frameSpread); i--) {
+  for(let i = videoStore.frame; i >= Math.max(0, videoStore.frame - frameSpread); i--) {
     overlayTags = overlayStore.overlayTags[i.toString()];
 
     if(overlayTags) {
@@ -479,7 +385,7 @@ const Draw = ({canvas, tags, hoverTags, elementSize}) => {
 
   context.clearRect(0, 0, context.canvas.width, context.canvas.height);
   context.globalAlpha = 0.8;
-  context.lineWidth = 2;
+  context.lineWidth = 3;
 
   if(tags.length === 0) { return; }
 
@@ -593,6 +499,8 @@ const Overlay = observer(({element, asset, highlightTag}) => {
   if(tagStore.editedOverlayTag) {
     return (
       <OverlayEdit
+        key={tagStore.editedOverlayTag.mode}
+        mode={tagStore.editedOverlayTag.mode || "rectangle"}
         initalBox={tagStore.editedOverlayTag.box}
         onChange={box =>
           tagStore.UpdateEditedOverlayTag({

@@ -4,10 +4,10 @@ import React, {useEffect, useState} from "react";
 import TrackCanvas from "./TrackCanvas";
 import {observer} from "mobx-react";
 import Fraction from "fraction.js";
-import {reaction, toJS} from "mobx";
+import {reaction} from "mobx";
 import {trackStore, videoStore, tagStore} from "@/stores/index.js";
 
-import {CreateModuleClassMatcher} from "@/utils/Utils";
+import {CreateModuleClassMatcher, Unproxy} from "@/utils/Utils";
 import {Tooltip} from "@mantine/core";
 
 import TrackWorker from "../../workers/TrackWorker.js?worker";
@@ -130,7 +130,7 @@ const InitializeTrackReactions = ({track, worker}) => {
         worker.postMessage({
           operation: "SetColor",
           trackId: track.trackId,
-          color: toJS(tagStore.editedTrack.color)
+          color: Unproxy(tagStore.editedTrack.color)
         });
       },
       {delay: 100 * trackStore.uiUpdateDelayFactor}
@@ -170,9 +170,9 @@ const InitializeTrackReactions = ({track, worker}) => {
         selectedTag: tagStore.selectedTagId
       }),
       () => {
-        const selectedTagIds = toJS(tagStore.selectedTagIds);
-        const selectedTagId = toJS(tagStore.selectedTagId ? tagStore.selectedTagId : undefined);
-        const hoverTagIds = toJS(tagStore.hoverTags);
+        const selectedTagIds = Unproxy(tagStore.selectedTagIds);
+        const selectedTagId = Unproxy(tagStore.selectedTagId ? tagStore.selectedTagId : undefined);
+        const hoverTagIds = Unproxy(tagStore.hoverTags);
 
         worker.postMessage({
           operation: "SetSelected",
@@ -194,7 +194,7 @@ const InitializeTrackReactions = ({track, worker}) => {
         frame: videoStore.frame
       }),
       () => {
-        const currentActiveTagIds = toJS(
+        const currentActiveTagIds = Unproxy(
           trackStore.TrackTagIntervalTree(track.trackId)
             .search(videoStore.currentTime, videoStore.currentTime)
         ).sort();
@@ -304,7 +304,7 @@ const Track = observer(({track, noActive}) => {
     worker?.postMessage({
       operation: "SetColor",
       trackId: track.trackId,
-      color: toJS(track.color)
+      color: Unproxy(track.color)
     });
   }, [worker, track.color]);
 
@@ -313,7 +313,7 @@ const Track = observer(({track, noActive}) => {
     worker?.postMessage({
       operation: "SetTags",
       trackId: track.trackId,
-      tags: toJS(trackStore.TrackTags(track.trackId))
+      tags: Unproxy(trackStore.TrackTags(track.trackId))
     });
   }, [worker, track.version]);
 
@@ -331,7 +331,7 @@ const Track = observer(({track, noActive}) => {
       operation: "Initialize",
       trackId: track.trackId,
       trackLabel: track.label,
-      color: toJS(track.color),
+      color: Unproxy(track.color),
       width: canvasDimensions.width,
       height: canvasDimensions.height,
       tags: {},

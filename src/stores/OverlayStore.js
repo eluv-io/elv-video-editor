@@ -23,7 +23,7 @@ class OverlayStore {
     makeAutoObservable(
       this,
       {
-        overlayTrack: false
+        overlayTags: false
       }
     );
 
@@ -48,8 +48,22 @@ class OverlayStore {
     this.overlayEnabled = false;
   }
 
-  AddTag({frame, tag}) {
+  AddTag({frame, trackKey, tag}) {
+    if(!this.overlayTags[frame.toString()]) {
+      this.overlayTags[frame.toString()] = {
+        // timestamp sec is actually ms??
+        timestamp_sec: Math.floor(this.rootStore.videoStore.FrameToTime(frame) * 1000)
+      };
+    }
 
+    if(!this.overlayTags[frame.toString()][trackKey]) {
+      this.overlayTags[frame.toString()][trackKey] = { tags: [] };
+    }
+
+    this.overlayTags[frame.toString()][trackKey].tags = [
+      ...(this.overlayTags[frame.toString()][trackKey].tags || []),
+      tag
+    ];
   }
 
   ModifyTag({frame, modifiedTag}) {
@@ -121,7 +135,7 @@ class OverlayStore {
             .map((tag, tagIndex) => ({
               ...tag,
               tagId: Id.next(),
-              frame,
+              frame: parseInt(frame),
               trackId: trackIdMap[trackKey],
               o: {
                 f: frame,

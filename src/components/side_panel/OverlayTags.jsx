@@ -2,7 +2,7 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 
 import React, {useEffect} from "react";
 import {observer} from "mobx-react";
-import {tagStore, trackStore} from "@/stores/index.js";
+import {tagStore, trackStore, videoStore} from "@/stores/index.js";
 import {FocusTrap, Text, Tooltip} from "@mantine/core";
 import {
   FormNumberInput,
@@ -10,13 +10,14 @@ import {
   FormTextArea,
   IconButton,
 } from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {Capitalize, CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {modals} from "@mantine/modals";
 
 import EditIcon from "@/assets/icons/Edit.svg";
 import BackIcon from "@/assets/icons/v2/back.svg";
 import XIcon from "@/assets/icons/X.svg";
 import TrashIcon from "@/assets/icons/trash.svg";
+import {BoxToPolygon, BoxToRectangle} from "@/utils/Geometry.js";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -106,11 +107,12 @@ const OverlayTagForm = observer(() => {
                   value={tag.trackId.toString()}
                   options={
                     trackStore.viewTracks
+                      .filter(track => track.key !== "shot_detection")
                       .map(track => ({
-                        label: track.label,
-                        value: track.trackId.toString()
-                      })
-                    )
+                          label: track.label,
+                          value: track.trackId.toString()
+                        })
+                      )
                   }
                   onChange={trackId =>
                     tagStore.UpdateEditedOverlayTag({
@@ -135,6 +137,21 @@ const OverlayTagForm = observer(() => {
               label="Confidence"
               value={(tag.confidence || 1) * 100}
               onChange={value => tagStore.UpdateEditedOverlayTag({...tag, confidence: value / 100})}
+            />
+          </div>
+          <div className={S("form__input-container")}>
+            <FormSelect
+              label="Draw Mode"
+              value={Capitalize(tag.mode || "rectangle")}
+              options={["Rectangle", "Polygon"]}
+              onChange={mode => {
+                if(mode === "Rectangle") {
+                  tagStore.UpdateEditedOverlayTag({...tag, mode: "rectangle", box: BoxToRectangle(tag.box)});
+                } else {
+                  tagStore.UpdateEditedOverlayTag({...tag, mode: "polygon", box: BoxToPolygon(tag.box)});
+                }
+              }}
+              className={S("form__input")}
             />
           </div>
         </div>
@@ -163,7 +180,7 @@ export const OverlayTagDetails = observer(() => {
       <div key={`tag-details-${tag.tagId}-${!!tagStore.editedOverlayTag}`} className={S("tag-details")}>
         <OverlayTagActions tag={tag} track={track}/>
         <pre className={S("tag-details__content", tag.content ? "tag-details__content--json" : "")}>
-          { tag.text }
+          {tag.text}
         </pre>
         <div className={S("tag-details__detail")}>
           <label>Category:</label>
@@ -241,6 +258,13 @@ const OverlayTag = observer(({track, tag}) => {
 
 export const OverlayTagsList = observer(() => {
   const tags = tagStore.selectedOverlayTags;
+
+  useEffect(() => {
+    if(Math.abs(parseInt(videoStore.frame) - parseInt(tags[0]?.frame)) > 10) {
+      tagStore.ClearEditing(false);
+      tagStore.ClearTags();
+    }
+  }, [videoStore.frame]);
 
   return (
     <>

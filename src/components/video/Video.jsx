@@ -2,12 +2,17 @@ import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
 import React, {useState, useEffect} from "react";
 import {observer} from "mobx-react";
-import {rootStore, trackStore, videoStore} from "@/stores";
+import {rootStore, trackStore, videoStore, tagStore} from "@/stores";
 import {CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
 import {Loader} from "@/components/common/Common";
 import HLSPlayer from "hls.js";
 import {
-  DownloadFrameButton, FrameBack10Button, FrameBack1Button, FrameDisplay, FrameForward10Button, FrameForward1Button,
+  DownloadFrameButton,
+  FrameBack10Button,
+  FrameBack1Button,
+  FrameDisplay,
+  FrameForward10Button,
+  FrameForward1Button,
   FullscreenButton,
   PlayPauseButton,
   VideoTime,
@@ -84,7 +89,7 @@ const Video = observer(() => {
       <div className={S("video-wrapper")}>
         {
           !video || !trackStore.showOverlay ? null :
-            <Overlay element={video} />
+            <Overlay key={`overlay-${tagStore.editPosition}`} element={video} />
         }
         <video
           key={`video-${videoStore.source}`}

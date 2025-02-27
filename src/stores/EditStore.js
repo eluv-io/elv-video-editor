@@ -1,4 +1,4 @@
-import { flow, toJS, makeAutoObservable } from "mobx";
+import {flow, makeAutoObservable } from "mobx";
 import {diff} from "deep-object-diff";
 import {SortTags} from "@/utils/Utils";
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo";
@@ -44,11 +44,16 @@ class EditStore {
     return this.redoStack.slice(-1)[0];
   }
 
-  PerformAction({label, Action, Undo, ...attrs}) {
+  PerformAction({label, Action, Undo, ...attrs}, fromRedo=false) {
     const result = Action();
 
     this.undoStack.push({label, Action, Undo, ...attrs});
     this.position++;
+
+    // Undid action(s), but performed new action - Drop redo stack
+    if(!fromRedo) {
+      this.redoStacks[this.page] = [];
+    }
 
     return result;
   }
@@ -70,7 +75,7 @@ class EditStore {
 
     const action = this.redoStack.pop();
 
-    this.PerformAction(action);
+    this.PerformAction(action, true);
   }
 
   Reset() {
@@ -175,7 +180,7 @@ class EditStore {
           metadata_tags: newMetadata
         };
 
-        const data = (new TextEncoder()).encode(JSON.stringify(toJS(newMetadata)));
+        const data = (new TextEncoder()).encode(JSON.stringify(newMetadata));
         yield client.UploadFiles({
           libraryId,
           objectId,

@@ -4,7 +4,7 @@ import "@/assets/stylesheets/modules/shared.module.scss";
 
 import {observer} from "mobx-react";
 import React, {useEffect, useRef} from "react";
-import {keyboardControlsStore, rootStore, videoStore} from "@/stores";
+import {keyboardControlsStore, rootStore, tagStore, videoStore} from "@/stores";
 import {Linkish, Loader} from "@/components/common/Common";
 import {Redirect, Route, Switch, useParams, useRoute} from "wouter";
 import Browser from "@/components/nav/Browser";
@@ -22,6 +22,7 @@ const SetView = observer(() => {
     if(!videoStore.ready) { return; }
 
     rootStore.SetView(params?.view || "source");
+    tagStore.Reset();
   }, [params, videoStore.ready]);
 });
 

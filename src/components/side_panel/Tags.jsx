@@ -2,7 +2,7 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react";
-import {editStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
+import {tagStore, trackStore, videoStore} from "@/stores/index.js";
 import {FocusTrap, Text, Tooltip} from "@mantine/core";
 import {FormSelect, FormTextArea, IconButton, SMPTEInput} from "@/components/common/Common.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
@@ -478,7 +478,7 @@ export const TagsList = observer(({mode="tags"}) => {
           Object.keys(trackStore.activeTracks).length,
           Object.keys(trackStore.visibleClipTracks).length,
           trackStore.showPrimaryContent,
-          editStore.position
+          tagStore.editPosition
         ]}
         className={S("tags")}
         Update={limit => {

@@ -62,6 +62,17 @@ const TimelineTopBar = observer(() => {
             })
           }
         />
+        <IconButton
+          icon={AddNewItemIcon}
+          disabled={trackStore.viewTracks.length === 0}
+          label="Add New Overlay Tag"
+          onClick={() =>
+            tagStore.AddOverlayTag({
+              trackId: tagStore.selectedTrackId,
+              text: "<New Tag>"
+            })
+          }
+        />
         <div className={S("toolbar__separator")} />
         <div className={S("jump-to")}>
           <label>Jump to</label>

@@ -1,5 +1,16 @@
 import SharedStyles from "@/assets/stylesheets/modules/shared.module.scss";
 
+import {toJS} from "mobx";
+
+// toJS doesn't deeply remove proxies
+export const Unproxy = obj => {
+  try {
+    return JSON.parse(JSON.stringify(obj));
+  } catch(error) {
+    return toJS(obj);
+  }
+};
+
 export const JoinClassNames = (...cs) => cs.map(c => c || "").join(" ");
 
 export const CreateModuleClassMatcher = (...modules) => {

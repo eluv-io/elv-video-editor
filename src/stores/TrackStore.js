@@ -1,10 +1,10 @@
-import {flow, makeAutoObservable, runInAction, toJS} from "mobx";
+import {flow, makeAutoObservable, runInAction} from "mobx";
 import Id from "@/utils/Id";
 import IntervalTree from "node-interval-tree";
 import {Parser as HLSParser} from "m3u8-parser";
 import UrlJoin from "url-join";
 import {Utils} from "@eluvio/elv-client-js";
-import {ConvertColor} from "@/utils/Utils.js";
+import {ConvertColor, Unproxy} from "@/utils/Utils.js";
 
 /*
  * Track Types:
@@ -485,7 +485,7 @@ class TrackStore {
           startTime: millis ? (tag.start_time / 1000) : tag.start_time,
           endTime: millis ? (tag.end_time / 1000) : tag.end_time,
           text: tag.text,
-          tag: toJS(tag),
+          tag: Unproxy(tag),
           origin: {
             fi: tag.fi,
             tk: tag.tk,
@@ -531,8 +531,8 @@ class TrackStore {
       label,
       startTime,
       endTime,
-      textList: toJS(textList),
-      content: toJS(content),
+      textList: Unproxy(textList),
+      content: Unproxy(content),
       tag,
       ...extra
     };
@@ -655,7 +655,7 @@ class TrackStore {
           // eslint-disable-next-line no-console
           console.error("Invalid track:", track.key);
           // eslint-disable-next-line no-console
-          console.error(toJS(metadataTags[track.key]));
+          console.error(Unproxy(metadataTags[track.key]));
           return;
         }
 
