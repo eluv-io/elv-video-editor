@@ -2,7 +2,7 @@ import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
 import React, {useCallback, useEffect, useRef, useState} from "react";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import {Tooltip} from "@mantine/core";
 
 const S = CreateModuleClassMatcher(CommonStyles);

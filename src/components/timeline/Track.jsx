@@ -2,7 +2,7 @@ import TrackStyles from "@/assets/stylesheets/modules/track.module.scss";
 
 import React, {useEffect, useState} from "react";
 import TrackCanvas from "./TrackCanvas";
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import Fraction from "fraction.js";
 import {reaction} from "mobx";
 import {trackStore, videoStore, tagStore} from "@/stores/index.js";

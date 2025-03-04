@@ -1,7 +1,7 @@
 import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss";
 
 import React, {useEffect} from "react";
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import {tagStore, trackStore, videoStore} from "@/stores/index.js";
 import {FocusTrap, Text, Tooltip} from "@mantine/core";
 import {
@@ -10,7 +10,7 @@ import {
   FormTextArea,
   IconButton,
 } from "@/components/common/Common.jsx";
-import {Capitalize, CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {Capitalize, CreateModuleClassMatcher, FormatConfidence, Round} from "@/utils/Utils.js";
 import {modals} from "@mantine/modals";
 
 import EditIcon from "@/assets/icons/Edit.svg";
@@ -20,9 +20,6 @@ import TrashIcon from "@/assets/icons/trash.svg";
 import {BoxToPolygon, BoxToRectangle} from "@/utils/Geometry.js";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
-
-const FormatConfidence = confidence =>
-  `${parseFloat((parseFloat(confidence) * 100).toFixed(1))}%`;
 
 const OverlayTagActions = observer(({tag, track}) => {
   return (
@@ -135,8 +132,8 @@ const OverlayTagForm = observer(() => {
           <div className={S("form__input-container")}>
             <FormNumberInput
               label="Confidence"
-              value={(tag.confidence || 1) * 100}
-              onChange={value => tagStore.UpdateEditedOverlayTag({...tag, confidence: value / 100})}
+              value={Round((tag.confidence || 1) * 100, 0)}
+              onChange={value => tagStore.UpdateEditedOverlayTag({...tag, confidence: Round(value / 100, 4)})}
             />
           </div>
           <div className={S("form__input-container")}>
@@ -267,9 +264,16 @@ export const OverlayTagsList = observer(() => {
   }, [videoStore.frame]);
 
   return (
-    <>
+    <div className={S("selected-list")}>
+      <div className={S("selected-list__actions")}>
+        <IconButton
+          label="Return to all tags"
+          icon={BackIcon}
+          onClick={() => tagStore.ClearSelectedOverlayTags()}
+        />
+      </div>
       <div className={S("count")}>
-        { tags.length } overlay tags selected
+        {tags.length} overlay tag{tags.length === 1 ? "" : "s"} selected
       </div>
       <div className={S("tags")}>
         {
@@ -282,6 +286,6 @@ export const OverlayTagsList = observer(() => {
           )
         }
       </div>
-    </>
+    </div>
   );
 });

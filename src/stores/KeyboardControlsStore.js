@@ -87,6 +87,11 @@ class ControlStore {
   }
 
   HandleInput(event) {
+    // Controls only enabled on clips and tags view
+    if(!["clips", "tags"].includes(this.rootStore.page)) {
+      return;
+    }
+
     // Disable controls when using input element
     if(
       !this.keyboardControlsEnabled ||
@@ -193,7 +198,7 @@ class ControlStore {
   }
 
   ShowAllTracks() {
-    this.rootStore.view === "clips" ?
+    this.rootStore.page === "clips" ?
       this.rootStore.trackStore.ResetActiveClipTracks() :
       this.rootStore.trackStore.ResetActiveTracks();
   }

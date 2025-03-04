@@ -1,5 +1,5 @@
 import React, {useRef, useEffect} from "react";
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import {useDebouncedState} from "@mantine/hooks";
 
 // Infinite scroll

@@ -1,7 +1,7 @@
 import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss";
 
 import React, {useEffect, useState} from "react";
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import {tagStore, trackStore, videoStore} from "@/stores/index.js";
 import {FocusTrap, Text, Tooltip} from "@mantine/core";
 import {FormSelect, FormTextArea, IconButton, SMPTEInput} from "@/components/common/Common.jsx";
@@ -447,10 +447,6 @@ export const TagsList = observer(({mode="tags"}) => {
   const [tags, setTags] = useState([]);
   const [limit, setLimit] = useState(0);
   const [totalTags, setTotalTags] = useState(0);
-
-  if(tagStore.selectedOverlayTags.length > 0) {
-    return <OverlayTagsList />;
-  }
 
   let tracks = {};
 

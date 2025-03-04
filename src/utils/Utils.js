@@ -37,6 +37,13 @@ export const TextWidth = ({text, fontWeight="normal", fontSize=16}) => {
   return context.measureText(text).width;
 };
 
+export const FormatConfidence = confidence =>
+  `${parseFloat((parseFloat(confidence) * 100).toFixed(1))}%`;
+
+export const Round = (number, digits) => {
+  return parseFloat(parseFloat(number).toFixed(digits));
+};
+
 
 // onWheel is a passive event, which prevents disabling page scroll
 // React doesn't support marking callbacks as active, so we can use `ref` to attach the handler directly to the element to prevent scrolling instead

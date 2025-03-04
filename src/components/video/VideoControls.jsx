@@ -1,7 +1,7 @@
 import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
 import React, {useEffect, useState} from "react";
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import {videoStore} from "@/stores";
 import {CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
 import {IconButton, Input, SelectInput} from "@/components/common/Common";

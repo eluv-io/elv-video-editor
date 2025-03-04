@@ -89,7 +89,7 @@ class TrackStore {
   get visibleMetadataTracks() {
     return !this.tracksSelected ?
       this.metadataTracks :
-      this.metadataTracks.filter(track => this.activeTracks[track.key]);
+      this.metadataTracks.filter(track => this.IsTrackVisible(track.key));
   }
 
   get metadataTracks() {
@@ -120,11 +120,7 @@ class TrackStore {
   }
 
   get viewTracks() {
-    return this.rootStore.view === "clips" ? this.clipTracks : this.metadataTracks;
-  }
-
-  NextId() {
-    return Id.next();
+    return this.rootStore.page === "clips" ? this.clipTracks : this.metadataTracks;
   }
 
   Reset() {
@@ -153,6 +149,20 @@ class TrackStore {
     return trackIndex >= 0 ? this.tracks[trackIndex] : undefined;
   }
 
+  IsTrackVisible(trackKeyOrId) {
+    const track = this.Track(trackKeyOrId);
+
+    if(this.rootStore.page === "clips") {
+      return this.clipTracksSelected ?
+        this.activeClipTracks[track?.key] :
+        track.trackType === "clip";
+    } else {
+      return this.tracksSelected ?
+        this.activeTracks[track?.key] :
+        track.trackType === "metadata";
+    }
+  }
+
   ModifyTrack(modifiedTrack) {
     const trackIndex = this.tracks.findIndex(track => track.trackId === modifiedTrack.trackId);
 
@@ -161,7 +171,7 @@ class TrackStore {
 
   AddTag({trackId, tag}) {
     if(!tag.tagId) {
-      tag.tagId = this.NextId();
+      tag.tagId = this.rootStore.NextId();
     }
 
     this.tags[trackId][tag.tagId] = JSON.parse(JSON.stringify(tag));
@@ -286,7 +296,7 @@ class TrackStore {
   });
 
   AddTrack({trackId, label, key, type, tags={}, color, ...additional}) {
-    trackId = trackId || this.NextId();
+    trackId = trackId || this.rootStore.NextId();
 
     let updatedTags = {};
     Object.keys(tags).forEach(key =>
@@ -393,7 +403,7 @@ class TrackStore {
     yield Promise.all(
       audioTracks.map(async track => {
         try {
-          const trackId = this.NextId();
+          const trackId = this.rootStore.NextId();
 
           this.audioTracks.push({
             trackId,
@@ -526,7 +536,7 @@ class TrackStore {
     }
 
     return {
-      tagId: this.NextId(),
+      tagId: this.rootStore.NextId(),
       tagType,
       label,
       startTime,

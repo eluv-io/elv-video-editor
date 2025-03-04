@@ -1,4 +1,4 @@
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {
   FormColorInput,
@@ -16,7 +16,7 @@ import {Button, Tooltip} from "@mantine/core";
 const S = CreateModuleClassMatcher();
 
 const CreateTrackForm = observer(({Close}) => {
-  const trackType = rootStore.view === "tags" ? "metadata" : "clip";
+  const trackType = rootStore.page === "tags" ? "metadata" : "clip";
   const [track, setTrack] = useState({
     label: "",
     description: "",

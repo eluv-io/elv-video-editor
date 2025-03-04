@@ -1,15 +1,354 @@
 import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss";
 
-import {observer} from "mobx-react";
-import {Linkish, LoaderImage} from "@/components/common/Common.jsx";
+import {observer} from "mobx-react-lite";
+import {
+  FormNumberInput,
+  FormSelect,
+  FormTextArea, FormTextInput, Icon,
+  IconButton,
+  Linkish,
+  LoaderImage
+} from "@/components/common/Common.jsx";
 import UrlJoin from "url-join";
-import {assetStore, rootStore} from "@/stores/index.js";
+import {assetStore, rootStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
 import React, {useEffect, useState} from "react";
 import {useParams} from "wouter";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {Capitalize, CreateModuleClassMatcher, FormatConfidence, Round} from "@/utils/Utils.js";
+import {FocusTrap, Text, Tooltip} from "@mantine/core";
+import {modals} from "@mantine/modals";
+import {BoxToPolygon, BoxToRectangle} from "@/utils/Geometry.js";
+
+import EditIcon from "@/assets/icons/Edit.svg";
+import BackIcon from "@/assets/icons/v2/back.svg";
+import XIcon from "@/assets/icons/X.svg";
+import TrashIcon from "@/assets/icons/trash.svg";
+import PlusIcon from "@/assets/icons/plus-square.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
+
+const AssetTagActions = observer(({tag, track}) => {
+  return (
+    <div className={S("tag-details__actions")}>
+      <div className={S("tag-details__left-actions")}>
+        <IconButton
+          label={
+            tagStore.editing ?
+              "Save changes and return to tag details" :
+              "Return to tag list"
+          }
+          icon={BackIcon}
+          onClick={() =>
+            tagStore.editing ?
+              tagStore.ClearEditing() :
+              assetStore.ClearSelectedTag()
+          }
+        />
+      </div>
+      <div className={S("tag-details__track")}>
+        <div
+          style={{backgroundColor: `rgb(${track.color.r} ${track.color.g} ${track.color.b}`}}
+          className={S("tag-details__track-color")}
+        />
+        <div className={S("tag-details__track-label")}>{track.label}</div>
+      </div>
+      <div className={S("tag-details__right-actions")}>
+        {
+          tagStore.editing ?
+            <IconButton
+              label="Discard Changes"
+              icon={XIcon}
+              onClick={() => tagStore.ClearEditing(false)}
+            /> :
+            <>
+              <IconButton
+                label="Edit Tag"
+                icon={EditIcon}
+                onClick={() => tagStore.SetEditing({id: tag.tagId, item: tag, type: "assetTag"})}
+              />
+              <IconButton
+                label="Remove Tag"
+                icon={TrashIcon}
+                onClick={() =>
+                  modals.openConfirmModal({
+                    title: "Remove Tag",
+                    centered: true,
+                    children: <Text fz="sm">Are you sure you want to remove this tag?</Text>,
+                    labels: { confirm: "Remove", cancel: "Cancel" },
+                    onConfirm: () => {
+                      tagStore.DeleteAssetTag(tag);
+                      tagStore.ClearSelectedOverlayTag();
+                    }
+                  })
+                }
+              />
+            </>
+        }
+      </div>
+    </div>
+  );
+});
+
+
+const AssetTagForm = observer(() => {
+  const tag = tagStore.editedAssetTag;
+  const track = assetStore.AssetTrack(tag.trackKey);
+
+  return (
+    <form
+      key={`form-${tag.tagId}`}
+      onSubmit={event => event.preventDefault()}
+      className={S("tag-details", "form")}
+    >
+      <AssetTagActions tag={tag} track={track} />
+      <FocusTrap active>
+        <div className={S("form__inputs")}>
+          {
+            !tag.isNew ? null :
+              <div className={S("form__input-container")}>
+                <FormSelect
+                  label="Category"
+                  value={tag.trackKey.toString()}
+                  options={
+                    assetStore.tracks
+                      .map(track => ({
+                        label: track.label,
+                        value: track.key
+                      }))
+                  }
+                  onChange={trackKey =>
+                    tagStore.UpdateEditedAssetTag({
+                      ...tag,
+                      trackKey
+                    })}
+                  className={S("form__input")}
+                />
+              </div>
+          }
+          <div className={S("form__input-container")}>
+            <FormTextArea
+              label="Text"
+              value={tag.text}
+              placeholder="Text"
+              onChange={event => tagStore.UpdateEditedAssetTag({...tag, text: event.target.value})}
+            />
+          </div>
+          <div className={S("form__input-container")}>
+            <FormNumberInput
+              label="Confidence"
+              value={Round((tag.confidence || 1) * 100, 3)}
+              onChange={value => tagStore.UpdateEditedAssetTag({...tag, confidence: Round(value / 100, 3)})}
+            />
+          </div>
+          <div className={S("form__input-container")}>
+            <FormSelect
+              label="Draw Mode"
+              value={Capitalize(tag.mode || "rectangle")}
+              options={["Rectangle", "Polygon"]}
+              onChange={mode => {
+                if(mode === "Rectangle") {
+                  tagStore.UpdateEditedAssetTag({...tag, mode: "rectangle", box: BoxToRectangle(tag.box)});
+                } else {
+                  tagStore.UpdateEditedAssetTag({...tag, mode: "polygon", box: BoxToPolygon(tag.box)});
+                }
+              }}
+              className={S("form__input")}
+            />
+          </div>
+        </div>
+      </FocusTrap>
+    </form>
+  );
+});
+
+export const AssetTagDetails = observer(() => {
+  const tag = assetStore.selectedTag;
+  const track = assetStore.AssetTrack(tag?.trackKey);
+
+  useEffect(() => {
+    if(!tag || !track) {
+      tagStore.ClearEditing();
+      assetStore.ClearSelectedTag();
+    }
+  }, [tag, track]);
+
+  if(!tag || !track) {
+    return null;
+  }
+
+  return (
+    <>
+      <div key={`tag-details-${tag.tagId}-${!!tagStore.editedOverlayTag}`} className={S("tag-details")}>
+        <AssetTagActions tag={tag} track={track}/>
+        <pre className={S("tag-details__content", tag.content ? "tag-details__content--json" : "")}>
+          {tag.text}
+        </pre>
+        <div className={S("tag-details__detail")}>
+          <label>Category:</label>
+          <span>{track.label || track.trackKey}</span>
+        </div>
+        <div className={S("tag-details__detail")}>
+          <label>Confidence:</label>
+          <span>{FormatConfidence(tag.confidence)}</span>
+        </div>
+      </div>
+      {
+        !tagStore.editedAssetTag ? null :
+          <div className={S("side-panel-modal")}>
+            <AssetTagForm />
+          </div>
+      }
+    </>
+  );
+});
+
+const AssetTag = observer(({tag}) => {
+  const track = assetStore.AssetTrack(tag.trackKey);
+
+  if(!track) { return null; }
+
+  return (
+    <button
+      onClick={() => assetStore.SetSelectedTag(tag)}
+      className={S("tag")}
+    >
+      <div
+        style={{backgroundColor: `rgb(${track.color?.r} ${track.color?.g} ${track.color?.b}`}}
+        className={S("tag__color")}
+      />
+      <div className={S("tag__left")}>
+        <div className={S("tag__text")}>
+          <Tooltip
+            position="top"
+            openDelay={500}
+            offset={20}
+            label={<div className={S("tag__tooltip")}>{tag.text}</div>}
+          >
+            <div className={S("tag__content")}>
+              { tag.text }
+            </div>
+          </Tooltip>
+          <div className={S("tag__track")}>
+            {track.label}
+          </div>
+          <div className={S("tag__time")}>
+            <label>Confidence:</label>
+            <span>{FormatConfidence(tag.confidence)}</span>
+          </div>
+        </div>
+      </div>
+      <div className={S("tag__actions")}>
+        <IconButton
+          label="Edit Tag"
+          icon={EditIcon}
+          onClick={event => {
+            event.stopPropagation();
+            tagStore.SetTags(track.trackId, tag.tagId, tag.startTime);
+            tagStore.SetEditing({id: tag.tagId, type: "assetTag", item: tag});
+          }}
+          className={S("tag__action")}
+        />
+      </div>
+    </button>
+  );
+});
+
+export const AssetTagsList = observer(() => {
+  const tags = assetStore.selectedTags;
+
+  return (
+    <div className={S("selected-list")}>
+      <div className={S("selected-list__actions")}>
+        <IconButton
+          label="Return to all assets"
+          icon={BackIcon}
+          onClick={() => assetStore.ClearSelectedTags()}
+        />
+      </div>
+      <div className={S("count")}>
+        {tags.length} tag{tags.length === 1 ? "" : "s"} selected
+      </div>
+      <div className={S("tags")}>
+        {tags.map(tag => <AssetTag key={`tag-${tag.tagId}`} tag={tag}/>)}
+      </div>
+    </div>
+  );
+});
+
+const AssetFormActions = observer(({asset}) => {
+  return (
+    <div className={S("tag-details__actions")}>
+      <div className={S("tag-details__left-actions")}>
+        <IconButton
+          label="Save changes and return to assets"
+          icon={BackIcon}
+          onClick={() => {
+            tagStore.ClearEditing();
+
+            rootStore.Navigate(
+              UrlJoin(
+                window.location.pathname.split("/assets")[0],
+                "assets",
+                rootStore.client.utils.B64(asset.key)
+              )
+            );
+            rootStore.SetExpandedPanel();
+          }}
+        />
+      </div>
+      <div className={S("tag-details__track")}>
+        { asset.key || "<Asset>" }
+      </div>
+      <div className={S("tag-details__right-actions")}>
+        <IconButton
+          label="Discard Changes"
+          icon={XIcon}
+          onClick={() => tagStore.ClearEditing(false)}
+        />
+        <IconButton
+          label="Remove Asset"
+          icon={TrashIcon}
+          onClick={() =>
+            modals.openConfirmModal({
+              title: "Remove Asset",
+              centered: true,
+              children: <Text fz="sm">Are you sure you want to remove this asset?</Text>,
+              labels: { confirm: "Remove", cancel: "Cancel" },
+              onConfirm: () => tagStore.DeleteAsset(asset)
+            })
+          }
+        />
+      </div>
+    </div>
+  );
+});
+
+const AssetForm = observer(() => {
+  const asset = tagStore.editedAsset;
+
+  return (
+    <form
+      key={`form-${asset.assetId}`}
+      onSubmit={event => event.preventDefault()}
+      className={S("tag-details", "form")}
+    >
+      <AssetFormActions asset={asset} />
+      <FocusTrap active>
+        <div className={S("form__inputs")}>
+          <div className={S("form__input-container")}>
+            <FormTextInput
+              disabled={!asset.isNew}
+              label="Name"
+              value={asset.key}
+              placeholder="Name"
+              onChange={event => tagStore.UpdateEditedAsset({...asset, key: event.target.value})}
+            />
+          </div>
+        </div>
+      </FocusTrap>
+    </form>
+  );
+});
 
 const Asset = observer(({asset, selected}) => {
   return (
@@ -22,6 +361,7 @@ const Asset = observer(({asset, selected}) => {
         lazy={false}
         loaderDelay={0}
         loaderAspectRatio={1}
+        showWithoutSource
         src={assetStore.AssetLink(asset.key, {width: 400})}
         className={S("asset__image")}
       />
@@ -55,6 +395,8 @@ const AssetsList = observer(() => {
       <InfiniteScroll
         watchList={[
           assetStore.filter,
+          assetStore.assets.length,
+          tagStore.editedAsset,
           Object.keys(assetStore.activeTracks).length
         ]}
         batchSize={60}
@@ -66,6 +408,11 @@ const AssetsList = observer(() => {
           setLimit(Math.min(assets.length, limit));
         }}
       >
+        <Tooltip openDelay={500} label="Add New Asset">
+          <button onClick={() => tagStore.AddAsset()} className={S("add-asset")}>
+            <Icon icon={PlusIcon} className={S("add-asset__icon")} />
+          </button>
+        </Tooltip>
         {
           assets.map(asset =>
             <Asset
@@ -79,6 +426,13 @@ const AssetsList = observer(() => {
           )
         }
       </InfiniteScroll>
+
+      {
+        !tagStore.editedAsset ? null :
+          <div className={S("side-panel-modal")}>
+            <AssetForm />
+          </div>
+      }
     </>
   );
 });

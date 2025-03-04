@@ -1,20 +1,23 @@
 import AssetStyles from "@/assets/stylesheets/modules/assets.module.scss";
 
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import React, {useState} from "react";
 import PanelView from "@/components/side_panel/PanelView.jsx";
-import {useParams} from "wouter";
 import {CreateModuleClassMatcher, DownloadFromUrl} from "@/utils/Utils.js";
-import {assetStore} from "@/stores/index.js";
-import {Icon, LoaderImage} from "@/components/common/Common.jsx";
+import {assetStore, editStore, tagStore} from "@/stores/index.js";
+import {Icon, IconButton, LoaderImage} from "@/components/common/Common.jsx";
+import {Tooltip} from "@mantine/core";
+import Overlay from "@/components/video/Overlay.jsx";
 
 import DownloadIcon from "@/assets/icons/download.svg";
-import Overlay from "@/components/video/Overlay.jsx";
-import {Tooltip} from "@mantine/core";
+import UndoIcon from "@/assets/icons/v2/undo.svg";
+import RedoIcon from "@/assets/icons/v2/redo.svg";
+import AddTagIcon from "@/assets/icons/v2/add-new-item.svg";
+import EditIcon from "@/assets/icons/Edit.svg";
 
 const S = CreateModuleClassMatcher(AssetStyles);
 
-const AssetTags = observer(({asset, setHoverTag, selectedTag, setSelectedTag}) => {
+const AssetTags = observer(({asset, setHoverTag}) => {
   if(!asset) {
     return null;
   }
@@ -68,13 +71,13 @@ const AssetTags = observer(({asset, setHoverTag, selectedTag, setSelectedTag}) =
                     >
                       <button
                         onClick={() =>
-                          tag === selectedTag ?
-                            setSelectedTag(undefined) :
-                            setSelectedTag(tag)
+                          tag.tagId === assetStore.selectedTag?.tagId ?
+                            assetStore.ClearSelectedTags() :
+                            assetStore.SetSelectedTags([tag], true)
                         }
                         onMouseEnter={() => setHoverTag(tag)}
                         onMouseLeave={() => setHoverTag(undefined)}
-                        className={S("asset-tag", tag === selectedTag ? "asset-tag--selected" : "")}
+                        className={S("asset-tag", tag.tagId === assetStore.selectedTag?.tagId ? "asset-tag--selected" : "")}
                       >
                         <div
                           style={{backgroundColor: `rgb(${track.color.r} ${track.color.g} ${track.color.b}`}}
@@ -124,6 +127,33 @@ const AssetContent = observer(({asset, hoverTag}) => {
         }
       </div>
       <div className={S("asset__toolbar")}>
+        <IconButton
+          icon={UndoIcon}
+          label={`Undo ${editStore.nextUndoAction?.label || ""}`}
+          disabled={!editStore.nextUndoAction}
+          onClick={() => editStore.Undo()}
+        />
+        <IconButton
+          icon={RedoIcon}
+          label={`Redo ${editStore.nextRedoAction?.label || ""}`}
+          disabled={!editStore.nextRedoAction}
+          onClick={() => editStore.Redo()}
+        />
+        <div className={S("toolbar__separator")}/>
+        <IconButton
+          icon={AddTagIcon}
+          label="Add New Tag"
+          onClick={() => tagStore.AddAssetTag({asset})}
+        />
+        <div className={S("toolbar__spacer")} />
+        <IconButton
+          icon={EditIcon}
+          label="Edit Asset"
+          onClick={() => {
+            assetStore.ClearSelectedTags();
+            tagStore.SetEditing({type: "asset", id: asset.assetId, item: asset});
+          }}
+        />
         <button
           onClick={() => DownloadFromUrl(assetStore.AssetLink(asset.key), asset.key, {target: "_blank"})}
           className={S("asset__download")}
@@ -138,28 +168,18 @@ const AssetContent = observer(({asset, hoverTag}) => {
   );
 });
 
-const AssetDetails = observer(({asset, selectedTag, setSelectedTag, setHoverTag}) => {
+const AssetDetails = observer(({asset, setHoverTag}) => {
   return (
     <div className={S("asset-details")}>
       <AssetTags
         asset={asset}
         setHoverTag={setHoverTag}
-        selectedTag={selectedTag}
-        setSelectedTag={setSelectedTag}
       />
-      {
-        !selectedTag ? null :
-          <pre key={selectedTag.text} className={S("asset-details__tag-details")}>
-            { selectedTag.text  }
-          </pre>
-      }
     </div>
   );
 });
 
-const SelectedAsset = observer(() => {
-  const {assetKey} = useParams();
-  const [selectedTag, setSelectedTag] = useState(undefined);
+const SelectedAsset = observer(({assetKey}) => {
   const [hoverTag, setHoverTag] = useState(undefined);
 
   const asset = assetStore.Asset(assetKey);
@@ -177,13 +197,14 @@ const SelectedAsset = observer(() => {
       <PanelView
         isSubpanel
         mainPanelContent={
-          <AssetContent asset={asset} hoverTag={hoverTag || selectedTag} />
+          <AssetContent
+            asset={asset}
+            hoverTag={hoverTag}
+          />
         }
         bottomPanelContent={
           <AssetDetails
             asset={asset}
-            selectedTag={selectedTag}
-            setSelectedTag={setSelectedTag}
             setHoverTag={setHoverTag}
           />
         }

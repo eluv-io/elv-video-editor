@@ -1,6 +1,6 @@
 import KeyboardControlsStyles from "@/assets/stylesheets/modules/keyboard-controls.module.scss";
 import React, {useState} from "react";
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import {Icon, IconButton, Modal} from "@/components/common/Common.jsx";
 import {keyboardControlsStore} from "@/stores/index.js";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";

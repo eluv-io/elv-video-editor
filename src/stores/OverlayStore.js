@@ -1,23 +1,8 @@
 import { flow, makeAutoObservable } from "mobx";
-import Id from "@/utils/Id.js";
 
 class OverlayStore {
   overlayEnabled = false;
-  enabledOverlayTracks = {};
   overlayCanvasDimensions = {width: 0, height: 0};
-
-  get visibleOverlayTracks() {
-    if(!this.rootStore.trackStore.tracksSelected) {
-      return this.enabledOverlayTracks;
-    }
-
-    let visibleTracks = {};
-    Object.keys(this.enabledOverlayTracks).forEach(key =>
-      visibleTracks[key] = this.rootStore.trackStore.activeTracks[key]
-    );
-
-    return visibleTracks;
-  }
 
   constructor(rootStore) {
     makeAutoObservable(
@@ -134,7 +119,7 @@ class OverlayStore {
           overlayTags[frame][trackKey].tags = (overlayTags[frame][trackKey]?.tags || [])
             .map((tag, tagIndex) => ({
               ...tag,
-              tagId: Id.next(),
+              tagId: this.rootStore.NextId(),
               frame: parseInt(frame),
               trackId: trackIdMap[trackKey],
               o: {
@@ -145,16 +130,6 @@ class OverlayStore {
             }));
         })
       );
-
-      Object.keys(availableOverlayTrackKeys).forEach(trackKey => {
-        this.enabledOverlayTracks[trackKey] = true;
-
-        const metadataTrack = this.rootStore.trackStore.tracks.find(track => track.key === trackKey);
-
-        if(metadataTrack) {
-          metadataTrack.hasOverlay = true;
-        }
-      });
 
       // Overlay track is not observable for memory purposes
       this.overlayTags = overlayTags;

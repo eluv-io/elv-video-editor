@@ -116,6 +116,15 @@
   }
 }
 
+.selected-list {
+  display: grid;
+  gap: 5px;
+
+  &__actions {
+    padding: 8px 10px;
+  }
+}
+
 .list,
 .tags {
   align-content: start;
@@ -294,8 +303,9 @@
   max-width: 100%;
   min-height: 0;
   overflow: hidden auto;
-  padding: 0 15px 30px;
+  padding: 0 10px 30px;
   width: 100%;
+  max-width: 800px;
 
   &--track {
     display: grid;
@@ -389,5 +399,17 @@
     overflow-x: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+}
+
+.add-asset {
+  border: 1px solid var(--text-tertiary);
+  border-radius: 3px;
+  margin: 10px 10px 0;
+  aspect-ratio: 1;
+  transition: box-shadow 0.15s ease;
+
+  &:hover {
+    box-shadow: 0 0 5px var(--text-tertiary);
   }
 }

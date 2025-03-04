@@ -14,7 +14,7 @@ import {
   Tooltip
 } from "@mantine/core";
 import SVG from "react-inlinesvg";
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import {Link} from "wouter";
 import {keyboardControlsStore, videoStore} from "@/stores/index.js";
 

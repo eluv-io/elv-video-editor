@@ -1,4 +1,4 @@
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import React, {useEffect, useRef, useState} from "react";
 import {ResizeHandle} from "@/components/common/Common.jsx";
 import {rootStore} from "@/stores/index.js";

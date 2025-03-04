@@ -20,6 +20,8 @@ class TagStore {
   editedTag;
   editedTrack;
   editedOverlayTag;
+  editedAsset;
+  editedAssetTag;
 
   filter = "";
 
@@ -50,7 +52,7 @@ class TagStore {
   get selectedTrack() {
     this.editPosition;
 
-    return this.rootStore.view === "clips" ?
+    return this.rootStore.page === "clips" ?
       this.rootStore.trackStore.clipTracks.find(track => track.trackId === this.selectedTrackId) :
       this.rootStore.trackStore.metadataTracks.find(track => track.trackId === this.selectedTrackId);
   }
@@ -137,19 +139,9 @@ class TagStore {
 
     let tracks;
     if(mode === "tags") {
-      tracks = this.rootStore.trackStore.metadataTracks;
-
-      if(this.rootStore.trackStore.tracksSelected) {
-        // Selected tracks only
-        tracks = tracks.filter(track => this.rootStore.trackStore.activeTracks[track.key]);
-      }
+      tracks = this.rootStore.trackStore.visibleMetadataTracks;
     } else {
-      tracks = this.rootStore.trackStore.clipTracks;
-
-      if(this.rootStore.trackStore.clipTracksSelected) {
-        // Selected tracks only
-        tracks = tracks.filter(track => this.rootStore.trackStore.activeClipTracks[track.key]);
-      }
+      tracks = this.rootStore.trackStore.visibleClipTracks;
 
       if(!this.rootStore.trackStore.showPrimaryContent) {
         tracks = tracks.filter(track => track.key !== "primary-content");
@@ -317,6 +309,8 @@ class TagStore {
   }
 
   SetEditing({id, type="tag", frame, item}) {
+    this.ClearEditing();
+
     if(!id) {
       this.editing = false;
       return;
@@ -335,6 +329,12 @@ class TagStore {
       let tag = Unproxy(item || this.selectedOverlayTag);
       tag.mode = typeof tag.box.x3 === "undefined" ? "rectangle" : "polygon";
       this.editedOverlayTag = tag;
+    } else if(type === "asset") {
+      this.editedAsset = Unproxy(item || this.rootStore.assetStore.selectedAsset || {});
+    } else if(type === "assetTag") {
+      let tag = Unproxy(item || this.rootStore.assetStore.selectedTag);
+      tag.mode = typeof tag.box?.x3 === "undefined" ? "rectangle" : "polygon";
+      this.editedAssetTag = tag;
     } else {
       // eslint-disable-next-line no-console
       console.error("Unknown editing type: " + type);
@@ -436,17 +436,83 @@ class TagStore {
 
         this.selectedOverlayTagId = this.editedOverlayTag.tagId;
         this.selectedOverlayTagFrame = this.editedOverlayTag.frame;
+      } else if(this.editedAsset) {
+        // Asset
+        if(this.editedAsset.isNew) {
+          const asset = Unproxy(this.editedAsset);
+          delete asset.isNew;
+
+          this.rootStore.editStore.PerformAction({
+            label: "Add Asset",
+            type: "asset",
+            action: "create",
+            modifiedItem: asset,
+            Action: () => this.rootStore.assetStore.AddAsset(asset),
+            Undo: () => this.rootStore.assetStore.DeleteAsset(asset)
+          });
+        } else {
+          const originalAsset = Unproxy(this.rootStore.assetStore.selectedAsset);
+          const modifiedAsset = Unproxy(this.editedAsset);
+
+          if(JSON.stringify(originalAsset) !== JSON.stringify(modifiedAsset)) {
+            this.rootStore.editStore.PerformAction({
+              label: "Modify Asset",
+              type: "asset",
+              action: "modify",
+              modifiedItem: modifiedAsset,
+              Action: () => this.rootStore.assetStore.ModifyAsset(modifiedAsset),
+              Undo: () => this.rootStore.assetStore.ModifyAsset(originalAsset)
+            });
+          }
+        }
+      } else if(this.editedAssetTag) {
+        // Asset
+        if(this.editedAssetTag.isNew) {
+          const tag = Unproxy(this.editedAssetTag);
+          delete tag.isNew;
+          delete tag.mode;
+
+          const track = this.rootStore.assetStore.AssetTrack(tag.trackKey);
+
+          if(!track) { return; }
+
+          this.rootStore.editStore.PerformAction({
+            label: "Add Asset Tag",
+            type: "assetTag",
+            action: "create",
+            modifiedItem: tag,
+            Action: () => this.rootStore.assetStore.AddAssetTag(tag),
+            Undo: () => this.rootStore.assetStore.DeleteAssetTag(tag)
+          });
+        } else {
+          const originalTag = Unproxy(this.rootStore.assetStore.selectedTag);
+          const modifiedTag = Unproxy(this.editedAssetTag);
+          delete modifiedTag.mode;
+
+          if(JSON.stringify(originalTag) !== JSON.stringify(modifiedTag)) {
+            this.rootStore.editStore.PerformAction({
+              label: "Modify Asset Tag",
+              type: "assetTag",
+              action: "modify",
+              modifiedItem: modifiedTag,
+              Action: () => this.rootStore.assetStore.ModifyAssetTag(modifiedTag),
+              Undo: () => this.rootStore.assetStore.ModifyAssetTag(originalTag)
+            });
+          }
+        }
       }
     }
 
     this.ClearEditedTrack();
     this.ClearEditedTag();
     this.ClearEditedOverlayTag();
+    this.ClearEditedAsset();
+    this.ClearEditedAssetTag();
     this.editing = false;
   }
 
   AddTrack({trackType="tags", key, label, description, color}) {
-    const trackId = this.rootStore.trackStore.NextId();
+    const trackId = this.rootStore.NextId();
     this.rootStore.editStore.PerformAction({
       label: "Add Category",
       type: trackType,
@@ -546,7 +612,7 @@ class TagStore {
 
     const tag = {
       trackId,
-      tagId: this.rootStore.trackStore.NextId(),
+      tagId: this.rootStore.NextId(),
       text,
       confidence: 1,
       frame,
@@ -570,7 +636,9 @@ class TagStore {
   }
 
   DeleteOverlayTag({frame, tag}) {
-    const originalTag = {...tag};
+    const originalTag = Unproxy(tag);
+
+    const trackKey = this.rootStore.trackStore.Track(tag.trackId)?.key;
 
     this.rootStore.editStore.PerformAction({
       label: "Delete Tag",
@@ -578,7 +646,79 @@ class TagStore {
       action: "delete",
       modifiedItem: tag,
       Action: () => this.rootStore.overlayStore.DeleteTag({frame, tagId: originalTag.tagId}),
-      Undo: () => this.rootStore.overlayStore.AddTag({frame, tag: originalTag})
+      Undo: () => this.rootStore.overlayStore.AddTag({frame, trackKey, tag: originalTag})
+    });
+  }
+
+  AddAsset() {
+    const asset = {
+      assetId: this.rootStore.NextId(),
+      asset_type: "Image",
+      attachment_content_type: "image",
+      file: undefined,
+      key: "",
+      image_tags: {},
+      isNew: true
+    };
+
+    this.SetEditing({
+      id: asset.assetId,
+      type: "asset",
+      item: asset
+    });
+  }
+
+  DeleteAsset(asset) {
+    const originalAsset = Unproxy(asset);
+
+    this.rootStore.editStore.PerformAction({
+      label: "Delete Asset",
+      type: "asset",
+      action: "delete",
+      modifiedItem: asset,
+      Action: () => this.rootStore.assetStore.DeleteAsset(asset),
+      Undo: () => this.rootStore.assetStore.AddAsset(originalAsset)
+    });
+  }
+
+  AddAssetTag({asset}) {
+    const track = this.rootStore.assetStore.tracks[0];
+
+    if(!track) { return; }
+
+    const tag = {
+      assetKey: asset.key,
+      trackKey: track.key,
+      tagId: this.rootStore.NextId(),
+      text: "<New Tag>",
+      confidence: 1,
+      box: {
+        x1: 0.25,
+        y1: 0.25,
+        x2: 0.75,
+        y2: 0.75
+      },
+      isNew: true
+    };
+
+    this.rootStore.assetStore.SetSelectedTags([tag], true);
+    this.SetEditing({
+      id: tag.tagId,
+      type: "assetTag",
+      item: tag
+    });
+  }
+
+  DeleteAssetTag(tag) {
+    const originalTag = Unproxy(tag);
+
+    this.rootStore.editStore.PerformAction({
+      label: "Delete Asset Tag",
+      type: "assetTag",
+      action: "delete",
+      modifiedItem: tag,
+      Action: () => this.rootStore.assetStore.DeleteAssetTag(tag),
+      Undo: () => this.rootStore.assetStore.AddAssetTag(originalTag)
     });
   }
 
@@ -604,6 +744,22 @@ class TagStore {
 
   ClearEditedOverlayTag() {
     this.editedOverlayTag = undefined;
+  }
+
+  UpdateEditedAsset(asset) {
+    this.editedAsset = asset;
+  }
+
+  ClearEditedAsset() {
+    this.editedAsset = undefined;
+  }
+
+  UpdateEditedAssetTag(tag) {
+    this.editedAssetTag = tag;
+  }
+
+  ClearEditedAssetTag() {
+    this.editedAssetTag = undefined;
   }
 }
 

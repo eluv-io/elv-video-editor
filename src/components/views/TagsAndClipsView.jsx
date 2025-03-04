@@ -1,4 +1,4 @@
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import React from "react";
 import {ClipSidePanel, TagSidePanel} from "@/components/side_panel/SidePanel.jsx";
 import VideoSection from "@/components/video/VideoSection.jsx";

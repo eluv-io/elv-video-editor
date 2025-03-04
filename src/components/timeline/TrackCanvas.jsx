@@ -1,6 +1,6 @@
 import React, {useEffect, useRef} from "react";
 import ResizeObserver from "resize-observer-polyfill";
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 
 const TrackCanvas = observer(({onResize, setCanvas, containerClassName="", className="", ...props}) => {
   const ref = useRef();

@@ -8,15 +8,8 @@ class EditStore {
   saveFailed = false;
   position = 0;
 
-  undoStacks = {
-    tags: [],
-    clips: []
-  };
-
-  redoStacks = {
-    tags: [],
-    clips: []
-  };
+  _actionStack = [];
+  _redoStack = [];
 
   constructor(rootStore) {
     makeAutoObservable(this);
@@ -25,15 +18,21 @@ class EditStore {
   }
 
   get page() {
-    return this.rootStore.view;
+    return this.rootStore.page;
   }
 
   get undoStack() {
-    return this.undoStacks[this.page] || [];
+    return this._actionStack.filter(action =>
+      action.page === this.rootStore.page &&
+      action.subpage === this.rootStore.subpage
+    );
   }
 
   get redoStack() {
-    return this.redoStacks[this.page] || [];
+    return this._redoStack.filter(action =>
+      action.page === this.rootStore.page &&
+      action.subpage === this.rootStore.subpage
+    );
   }
 
   get nextUndoAction() {
@@ -47,12 +46,25 @@ class EditStore {
   PerformAction({label, Action, Undo, ...attrs}, fromRedo=false) {
     const result = Action();
 
-    this.undoStack.push({label, Action, Undo, ...attrs});
+    this._actionStack.push({
+      id: rootStore.NextId(),
+      label,
+      Action,
+      Undo,
+      page: this.rootStore.page,
+      subpage: this.rootStore.subpage,
+      addedAt: Date.now(),
+      ...attrs
+    });
+
     this.position++;
 
-    // Undid action(s), but performed new action - Drop redo stack
+    // Undid action(s), but performed new action - Drop redo stack for this context
     if(!fromRedo) {
-      this.redoStacks[this.page] = [];
+      this._redoStack = this._redoStack.filter(action =>
+        action.page !== this.rootStore.page ||
+        action.subpage !== this.rootStore.subpage
+      );
     }
 
     return result;
@@ -61,11 +73,12 @@ class EditStore {
   Undo() {
     if(this.undoStack.length === 0) { return; }
 
-    const action = this.undoStack.pop();
+    const action = this.nextUndoAction;
+    this._actionStack = this._actionStack.filter(otherAction => otherAction.id !== action.id)
 
     action.Undo();
 
-    this.redoStack.push(action);
+    this._redoStack.push(action);
 
     this.position--;
   }
@@ -73,7 +86,8 @@ class EditStore {
   Redo() {
     if(this.redoStack.length === 0) { return; }
 
-    const action = this.redoStack.pop();
+    const action = this.nextRedoAction;
+    this._redoStack = this._redoStack.filter(otherAction => otherAction.id !== action.id)
 
     this.PerformAction(action, true);
   }

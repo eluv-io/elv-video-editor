@@ -1,7 +1,7 @@
 import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
 
 import React, {useEffect, useRef, useState} from "react";
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import {editStore, rootStore, tagStore, trackStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
 import {IconButton, Linkish, SMPTEInput, SwitchInput} from "@/components/common/Common";
@@ -48,17 +48,17 @@ const TimelineTopBar = observer(() => {
           disabled={!editStore.nextRedoAction}
           onClick={() => editStore.Redo()}
         />
-        <div className={S("toolbar__separator")} />
-        <CreateTrackButton />
+        <div className={S("toolbar__separator")}/>
+        <CreateTrackButton/>
         <IconButton
           icon={AddNewItemIcon}
           disabled={trackStore.viewTracks.length === 0}
-          label={`Add New ${rootStore.view === "tags" ? "Tag" : "Clip"}`}
+          label={`Add New ${rootStore.page === "tags" ? "Tag" : "Clip"}`}
           onClick={() =>
             tagStore.AddTag({
               trackId: tagStore.selectedTrackId,
               text: "<New Tag>",
-              tagType: rootStore.view === "clips" ? "clip" : "metadata"
+              tagType: rootStore.page === "clips" ? "clip" : "metadata"
             })
           }
         />
@@ -73,7 +73,7 @@ const TimelineTopBar = observer(() => {
             })
           }
         />
-        <div className={S("toolbar__separator")} />
+        <div className={S("toolbar__separator")}/>
         <div className={S("jump-to")}>
           <label>Jump to</label>
           <SMPTEInput
@@ -127,7 +127,7 @@ const TimelineBottomBar = observer(() => {
         onChange={event => trackStore.ToggleTrackType({type: "Thumbnails", visible: event.currentTarget.checked})}
       />
       {
-        rootStore.view === "tags" ?
+        rootStore.page === "tags" ?
           //Tags
           <>
             <SwitchInput
@@ -354,8 +354,7 @@ const TagTimelineContent = observer(() => {
         key={`track-${track.trackId || i}`}
         style={
           track.trackType !== "metadata" ||
-          !trackStore.tracksSelected ||
-          trackStore.activeTracks[track.key] ?
+          trackStore.IsTrackVisible(track.trackId) ?
             {} :
             {display: "none"}
         }

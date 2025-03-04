@@ -2,11 +2,11 @@
 import "@/assets/stylesheets/modules/common.module.scss";
 import "@/assets/stylesheets/modules/shared.module.scss";
 
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import React, {useEffect, useRef} from "react";
 import {keyboardControlsStore, rootStore, tagStore, videoStore} from "@/stores";
 import {Linkish, Loader} from "@/components/common/Common";
-import {Redirect, Route, Switch, useParams, useRoute} from "wouter";
+import {Redirect, Route, Switch, useLocation, useParams, useRoute} from "wouter";
 import Browser from "@/components/nav/Browser";
 import UrlJoin from "url-join";
 import Nav from "@/components/nav/Nav.jsx";
@@ -17,11 +17,13 @@ import AssetsView from "@/components/views/AssetsView.jsx";
 const SetView = observer(() => {
   // eslint-disable-next-line no-unused-vars
   const [_, params] = useRoute("/:objectId/:libraryId/:view/*?");
+  const [location, navigate] = useLocation();
 
   useEffect(() => {
     if(!videoStore.ready) { return; }
 
-    rootStore.SetView(params?.view || "source");
+    rootStore.SetNavigation(location, navigate);
+    rootStore.SetPage(params?.view || "source");
     tagStore.Reset();
   }, [params, videoStore.ready]);
 });

@@ -261,6 +261,10 @@ class VideoStore {
       this.isVideo = videoObject.isVideo;
       this.hasAssets = Object.keys((videoObject.metadata || {}).assets || {}).length > 0;
 
+      if(this.hasAssets) {
+        this.rootStore.assetStore.SetAssets(videoObject.metadata.assets);
+      }
+
       this.LoadDownloadJobInfo();
 
       let metadataTags = {};
@@ -784,10 +788,10 @@ class VideoStore {
   }
 
   PlayPause(pause) {
-    if(!pause && this.video.paused) {
-      this.video.play();
+    if(!pause && this.video?.paused) {
+      this.video?.play();
     } else {
-      this.video.pause();
+      this.video?.pause();
     }
   }
 

@@ -9,7 +9,7 @@ import OverlayStore from "./OverlayStore";
 import TagStore from "./TagStore.js";
 import TrackStore from "./TrackStore";
 import VideoStore from "./VideoStore";
-
+import Id from "@/utils/Id.js";
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
 
 if(window.location.hash) {
@@ -28,7 +28,8 @@ configure({
 class RootStore {
   client;
   initialized = false;
-  view = "source";
+  page = "source";
+  subpage = undefined;
   sidePanelDimensions = {};
   expandedPanel = undefined;
   errorMessage = undefined;
@@ -61,8 +62,22 @@ class RootStore {
       .forEach(store => store.Reset());
   }
 
-  SetView(view) {
-    this.view = view;
+  Navigate(to) {
+    this.navigate(to);
+  }
+
+  SetNavigation(location, navigate) {
+    this.navigate = navigate;
+    this.location = location;
+  }
+
+  SetPage(page) {
+    this.page = page;
+    this.subpage = undefined;
+  }
+
+  SetSubpage(subpage) {
+    this.subpage = subpage;
   }
 
   async InitializeClient() {
@@ -104,6 +119,10 @@ class RootStore {
 
   SetExpandedPanel(panel) {
     this.expandedPanel = panel;
+  }
+
+  NextId() {
+    return Id.next();
   }
 }
 

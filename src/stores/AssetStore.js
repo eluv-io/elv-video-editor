@@ -1,25 +1,20 @@
 import {makeAutoObservable} from "mobx";
 import UrlJoin from "url-join";
-import {Capitalize} from "@/utils/Utils.js";
+import {Capitalize, Unproxy} from "@/utils/Utils.js";
 
 class AssetStore {
   filter = "";
+  tracks = [];
   activeTracks = {};
+  assets = [];
+
+  _selectedTags = [];
+  _selectedTag;
 
   constructor(rootStore) {
     makeAutoObservable(this);
 
     this.rootStore = rootStore;
-  }
-
-  get assetList() {
-    const assetMap = this.rootStore.videoStore.metadata?.assets || {};
-
-    return Object.keys(assetMap).map((key, index) => ({
-      ...assetMap[key],
-      key,
-      index
-    }));
   }
 
   get filteredAssetList() {
@@ -32,7 +27,7 @@ class AssetStore {
       .map(token => token.replace(/^"(.+)"$/, "$1"));
 
     const activeTracks = Object.keys(this.activeTracks);
-    return this.assetList
+    return this.assets
       .filter(asset =>
         // If tag categories are selected, filter only assets that are tagged with one or more of those categories
         activeTracks.length === 0 ?
@@ -61,28 +56,96 @@ class AssetStore {
       );
   }
 
-  get tracksSelected() {
-    return Object.keys(this.activeTracks).length > 0;
+  get selectedAsset() {
+    return this.Asset(this.rootStore.subpage);
   }
 
-  get assetTracks() {
-    let tracks = {};
-    this.assetList.forEach(asset =>
-      Object.keys(asset.image_tags || {}).forEach(trackKey =>
-        tracks[trackKey] = true
+  // Actual tag info must be pulled from asset
+  get selectedTags() {
+    if(this.rootStore.tagStore.editedAssetTag) {
+      return [ this.rootStore.tagStore.editedAssetTag ];
+    }
+
+    return this._selectedTags
+      .map(tag =>
+        this.Asset(tag.assetKey)?.image_tags?.[tag.trackKey]?.tags
+          ?.find(t => t.tagId === tag.tagId)
       )
-    );
+      .filter(tag => tag);
+  }
 
-    Object.keys(tracks).forEach(trackKey =>
-      tracks[trackKey] = this.__CreateAssetTrack(trackKey)
-    );
+  get selectedTag() {
+    return this.Asset(this._selectedTag?.assetKey)
+      ?.image_tags
+      ?.[this._selectedTag.trackKey]?.tags
+      ?.find(t => t.tagId === this._selectedTag?.tagId) ||
+      this.rootStore.tagStore.editedAssetTag;
+  }
 
-    return Object.values(tracks);
+  SetSelectedTags(tags=[], autoselectSingle=false) {
+    this.ClearSelectedTags();
+
+    this._selectedTags = Unproxy(tags);
+
+    if(tags.length === 1 && autoselectSingle) {
+      this.SetSelectedTag(tags[0]);
+    }
+  }
+
+  ClearSelectedTags() {
+    this.ClearSelectedTag();
+
+    this._selectedTags = [];
+  }
+
+  SetSelectedTag(tag) {
+    this._selectedTag = Unproxy(tag);
+  }
+
+  ClearSelectedTag() {
+    this._selectedTag = undefined;
+
+    if(this._selectedTags.length === 1) {
+      this._selectedTags = [];
+    }
+  }
+
+  SetAssets(assets={}) {
+    let tagTracks = {};
+    this.assets = Object.keys(assets).sort().map(key => {
+      let assetId = this.rootStore.NextId();
+      let tags = assets[key].image_tags || {};
+      Object.keys(tags).forEach(trackKey => {
+        if(!tags[trackKey]?.tags) { return; }
+
+        tagTracks[trackKey] = true;
+
+        tags[trackKey].tags = tags[trackKey].tags.map(tag => ({
+          ...tag,
+          assetKey: key,
+          assetId,
+          trackKey,
+          tagId: this.rootStore.NextId()
+        }));
+      });
+
+      return {
+        ...assets[key],
+        assetId,
+        image_tags: tags,
+        key
+      };
+    });
+
+    this.tracks = Object.keys(tagTracks)
+      .sort()
+      .map(key => this.__CreateAssetTrack(key));
   }
 
   __CreateAssetTrack(key) {
     return {
       key,
+      trackId: this.rootStore.NextId(),
       color: this.rootStore.trackStore.TrackColor(key),
       label: key
         .split("_")
@@ -91,29 +154,24 @@ class AssetStore {
     };
   }
 
-  AssetTrack(key) {
+  AssetTrack(trackKeyOrId) {
     return (
-      this.assetTracks.find(track => track.key === key) ||
-      this.__CreateAssetTrack(key)
+      this.tracks.find(track => track.key === trackKeyOrId || track.trackId === trackKeyOrId) ||
+      this.__CreateAssetTrack(trackKeyOrId)
     );
   }
 
   Asset(key) {
-    const asset =
-      this.rootStore.videoStore.metadata.assets?.[key] ||
-      this.rootStore.videoStore.metadata.assets?.[key && this.rootStore.client.utils.FromB64(key)];
-
-    if(asset) {
-      asset.key = key;
-    }
-
-    return asset;
+    return this.assets.find(asset =>
+      asset.key === key ||
+      this.rootStore.client.utils.B64(asset.key) === key
+    );
   }
 
   AssetLink(assetKey, options={}) {
     const asset = this.Asset(assetKey);
 
-    if(!asset) { return ""; }
+    if(!asset || !asset.file) { return ""; }
 
     const filePath = asset.file?.["/"].split("/files/").slice(1).join("/");
 
@@ -127,6 +185,71 @@ class AssetStore {
     }
 
     return url.toString();
+  }
+
+  AddAsset(addedAsset) {
+    this.assets.push(addedAsset);
+  }
+
+  DeleteAsset(deletedAsset) {
+    this.assets = this.assets.filter(asset => asset.assetId !== deletedAsset.assetId);
+  }
+
+  AddAssetTag(addedTag) {
+    const assetIndex = this.assets.findIndex(asset => asset.key === addedTag.assetKey);
+
+    if(assetIndex < 0) {
+      return;
+    }
+
+    this.assets[assetIndex].image_tags = this.assets[assetIndex].image_tags || {};
+    this.assets[assetIndex].image_tags[addedTag.trackKey] =
+      this.assets[assetIndex].image_tags[addedTag.trackKey] || { tags: [] };
+    this.assets[assetIndex].image_tags[addedTag.trackKey].tags =
+      this.assets[assetIndex].image_tags[addedTag.trackKey].tags || [];
+
+    this.assets[assetIndex].image_tags[addedTag.trackKey].tags.push(addedTag);
+  }
+
+  DeleteAssetTag(deletedTag) {
+    const assetIndex = this.assets.findIndex(asset => asset.key === deletedTag.assetKey);
+
+    if(assetIndex < 0) {
+      return;
+    }
+
+    this.assets[assetIndex].image_tags[deletedTag.trackKey].tags =
+      this.assets[assetIndex].image_tags[deletedTag.trackKey].tags
+        .filter(tag => tag.tagId !== deletedTag.tagId);
+
+    this.SetSelectedTags(
+      this._selectedTags.filter(tag => tag.tagId !== deletedTag.tagId)
+    );
+  }
+
+  ModifyAsset(modifiedAsset) {
+    const assetIndex = this.assets.findIndex(asset => asset.assetId === modifiedAsset.assetId);
+
+    if(assetIndex < 0) {
+      return;
+    }
+
+    this.assets[assetIndex] = Unproxy(modifiedAsset);
+  }
+
+  ModifyAssetTag(modifiedTag) {
+    const assetIndex = this.assets.findIndex(asset => asset.key === modifiedTag.assetKey);
+
+    if(assetIndex < 0) {
+      return;
+    }
+
+    this.assets[assetIndex].image_tags[modifiedTag.trackKey].tags =
+      this.assets[assetIndex].image_tags[modifiedTag.trackKey].tags
+        .map(tag =>
+          tag.tagId === modifiedTag.tagId ?
+            modifiedTag : tag
+        );
   }
 
   SetFilter(filter) {

@@ -1,7 +1,7 @@
 import NavStyles from "@/assets/stylesheets/modules/nav.module.scss";
 
 import React from "react";
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import {rootStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {IconButton} from "@/components/common/Common";
@@ -22,7 +22,7 @@ const Nav = observer(() => {
       key: "source",
       to: "/",
       icon: SourceIcon,
-      active: !rootStore.view || rootStore.view === "source"
+      active: !rootStore.page || rootStore.page === "source"
     },
     {
       label: "Tags",
@@ -30,7 +30,7 @@ const Nav = observer(() => {
       disabled: !objectId || (videoStore.ready && !videoStore.isVideo),
       to: !objectId ? "/" : UrlJoin("/", libraryId, objectId, "tags"),
       icon: TagIcon,
-      active: rootStore.view === "tags"
+      active: rootStore.page === "tags"
     },
     {
       label: "Clips",
@@ -38,7 +38,7 @@ const Nav = observer(() => {
       disabled: !objectId || (videoStore.ready && !videoStore.isVideo),
       to: !objectId ? "/" : UrlJoin("/", libraryId, objectId, "clips"),
       icon: ClipIcon,
-      active: rootStore.view === "clips"
+      active: rootStore.page === "clips"
     },
     {
       label: "Assets",
@@ -46,7 +46,7 @@ const Nav = observer(() => {
       disabled: !objectId || (videoStore.ready && !videoStore.hasAssets),
       to: !objectId ? "/" : UrlJoin("/", libraryId, objectId, "assets"),
       icon: AssetIcon,
-      active: rootStore.view === "assets"
+      active: rootStore.page === "assets"
     }
   ];
 

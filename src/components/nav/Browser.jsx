@@ -1,7 +1,7 @@
 import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 
 import React, {useState, useEffect, useRef} from "react";
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import {browserStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {IconButton, Linkish, Loader} from "@/components/common/Common";

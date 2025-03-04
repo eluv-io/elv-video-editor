@@ -1,7 +1,7 @@
 import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss";
 
 import React, {useEffect} from "react";
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import {tagStore, trackStore} from "@/stores/index.js";
 import {FormColorInput, FormTextArea, FormTextInput, IconButton} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";

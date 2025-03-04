@@ -1,7 +1,7 @@
 import DownloadStyles from "@/assets/stylesheets/modules/download.module.scss";
 
 import React, {useEffect, useState} from "react";
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {
   AsyncButton,

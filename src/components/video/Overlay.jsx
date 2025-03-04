@@ -1,10 +1,10 @@
 import OverlayStyles from "@/assets/stylesheets/modules/overlay.module.scss";
 
 import React, {useEffect, useRef, useState} from "react";
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import {reaction} from "mobx";
 import ResizeObserver from "resize-observer-polyfill";
-import {assetStore, overlayStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
+import {rootStore, assetStore, editStore, overlayStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Tooltip} from "@mantine/core";
 import {BoxToPoints, PointInPolygon, PointsToBox, ReorderPoints} from "@/utils/Geometry.js";
@@ -13,14 +13,14 @@ const frameSpread = 10;
 
 const S = CreateModuleClassMatcher(OverlayStyles);
 
-const selectedColor = {
+const hoverColor = {
   r: 25,
   g: 200,
   b: 255,
   a: 150
 };
 
-const editingColor = {
+const selectedColor = {
   r: 50,
   g: 255,
   b: 0,
@@ -319,9 +319,9 @@ const Tags = () => {
 
   let activeTags = [];
   trackStore.tracks
-    .filter(track => ["clips", "metadata"].includes(track.trackType))
+    .filter(track => ["clip", "metadata"].includes(track.trackType))
     .forEach(track => {
-      if(!overlayStore.visibleOverlayTracks[track.key]) { return; }
+      if(!trackStore.IsTrackVisible(track.key)) { return; }
 
       if(!tags[track.key] || typeof tags[track.key] !== "object") { return; }
 
@@ -405,11 +405,11 @@ const Draw = ({canvas, tags, hoverTags, elementSize}) => {
     const toHex = n => n.toString(16).padStart(2, "0");
 
     let color = tag.color;
-    if(tagStore.editedOverlayTag?.tagId === tag.tagId) {
-      color = editingColor;
+    if(hoverTags?.find(hoverTag => hoverTag.tagId === tag.tagId)) {
+      color = hoverColor;
     } else if(
-      hoverTags?.find(hoverTag => hoverTag.tagId === tag.tagId) ||
-      tagStore.selectedOverlayTagId === tag.tagId
+      (tagStore.selectedOverlayTag && tagStore.selectedOverlayTagId === tag.tagId) ||
+      !!assetStore.selectedTags.find(selectedTag => tag.tagId === selectedTag.tagId)
     ) {
       color = selectedColor;
     }
@@ -474,12 +474,17 @@ const Overlay = observer(({element, asset, highlightTag}) => {
 
     const DisposeDrawReaction = reaction(
       () => ({
+        page: rootStore.page,
         enabled: overlayStore.overlayEnabled,
         frame: videoStore.frame,
         elementSize: overlayStore.overlayCanvasDimensions,
         selectedOverlayTagIds: tagStore.selectedOverlayTagIds,
+        selectedAssetTags: assetStore.selectedTags.map(tag => tag.tagId),
         editingOverlayTagId: tagStore.editedOverlayTag?.tagId,
-        enabledTracks: JSON.stringify(overlayStore.visibleOverlayTracks),
+        editingAssetTagId: tagStore.editedAssetTag?.tagId,
+        enabledTracks: Object.keys(trackStore.activeTracks),
+        enabledClipTracks: Object.keys(trackStore.activeClipTracks),
+        editPosition: editStore.position
       }),
       Redraw,
       {
@@ -505,6 +510,22 @@ const Overlay = observer(({element, asset, highlightTag}) => {
         onChange={box =>
           tagStore.UpdateEditedOverlayTag({
             ...tagStore.editedOverlayTag,
+            box
+          })
+        }
+      />
+    );
+  }
+
+  if(tagStore.editedAssetTag) {
+    return (
+      <OverlayEdit
+        key={tagStore.editedAssetTag.mode}
+        mode={tagStore.editedAssetTag.mode || "rectangle"}
+        initalBox={tagStore.editedAssetTag.box}
+        onChange={box =>
+          tagStore.UpdateEditedAssetTag({
+            ...tagStore.editedAssetTag,
             box
           })
         }
@@ -539,12 +560,16 @@ const Overlay = observer(({element, asset, highlightTag}) => {
         <canvas
           ref={setCanvas}
           onClick={event => {
-            const tags = TagsAt({canvas, clientX: event.clientX, clientY: event.clientY});
+            const tags = TagsAt({canvas, asset, clientX: event.clientX, clientY: event.clientY});
 
-            if(tags.length > 0) {
-              tagStore.SetSelectedOverlayTags(tags[0].frame, tags.map(tag => tag.tagId));
+            if(asset) {
+              assetStore.SetSelectedTags(tags, true);
             } else {
-              tagStore.ClearSelectedOverlayTags();
+              if(tags.length > 0) {
+                tagStore.SetSelectedOverlayTags(tags[0].frame, tags.map(tag => tag.tagId));
+              } else {
+                tagStore.ClearSelectedOverlayTags();
+              }
             }
           }}
           onMouseMove={event => setHoverPosition({hovering: true, clientX: event.clientX, clientY: event.clientY})}

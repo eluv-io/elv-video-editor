@@ -1,17 +1,17 @@
 import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss";
 
 import React, {useEffect} from "react";
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Input} from "@/components/common/Common.jsx";
 import {useDebouncedState} from "@mantine/hooks";
 import {assetStore, tagStore, trackStore} from "@/stores/index.js";
 import {TagDetails, TagsList} from "@/components/side_panel/Tags.jsx";
-import Assets from "@/components/side_panel/Assets.jsx";
+import Assets, {AssetTagDetails, AssetTagsList} from "@/components/side_panel/Assets.jsx";
 import {TrackDetails} from "@/components/side_panel/Tracks.jsx";
 
 import SearchIcon from "@/assets/icons/v2/search.svg";
-import {OverlayTagDetails} from "@/components/side_panel/OverlayTags.jsx";
+import {OverlayTagDetails, OverlayTagsList} from "@/components/side_panel/OverlayTags.jsx";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -52,7 +52,7 @@ const TrackSelection = observer(({mode="tags"}) => {
     case "assets":
       activeTracks = assetStore.activeTracks;
       Toggle = key => assetStore.ToggleTrackSelected(key);
-      tracks = assetStore.assetTracks;
+      tracks = assetStore.tracks;
       break;
   }
 
@@ -90,6 +90,12 @@ export const TagSidePanel = observer(() => {
         <TagsList mode="tags" />
 
         {
+          tagStore.selectedOverlayTags.length === 0 ? null :
+            <div className={S("side-panel-modal")}>
+              <OverlayTagsList />
+            </div>
+        }
+        {
           !tagStore.selectedTrackId && !tagStore.selectedTagId && !tagStore.selectedOverlayTagId ? null :
             <div className={S("side-panel-modal")}>
               {
@@ -119,10 +125,10 @@ export const ClipSidePanel = observer(() => {
             <div className={S("side-panel-modal")}>
               {
                 tagStore.selectedOverlayTagId ?
-                  <OverlayTagDetails /> :
+                  <OverlayTagDetails/> :
                   tagStore.selectedTrackId ?
-                    <TrackDetails /> :
-                    <TagDetails />
+                    <TrackDetails/> :
+                    <TagDetails/>
               }
             </div>
         }
@@ -139,6 +145,19 @@ export const AssetSidePanel = observer(() => {
         <TrackSelection mode="assets" />
         <Assets />
       </div>
+
+      {
+        assetStore.selectedTags.length === 0 ? null :
+          <div className={S("side-panel-modal")}>
+            <AssetTagsList />
+          </div>
+      }
+      {
+        !assetStore.selectedTag ? null :
+          <div className={S("side-panel-modal")}>
+            <AssetTagDetails />
+          </div>
+      }
     </div>
   );
 });

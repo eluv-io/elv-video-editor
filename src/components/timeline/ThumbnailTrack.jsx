@@ -1,7 +1,7 @@
 import TrackStyles from "@/assets/stylesheets/modules/track.module.scss";
 
 import React, {useEffect, useRef, useState} from "react";
-import {observer} from "mobx-react";
+import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {videoStore, trackStore} from "@/stores/index.js";
 import {Button, Tooltip, Text, Progress} from "@mantine/core";
