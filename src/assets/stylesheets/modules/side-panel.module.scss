@@ -265,6 +265,7 @@
   flex-direction: column;
   gap: 7px;
   padding: 10px;
+  position: relative;
   transition: background-color 0.25s ease, color 0.25s ease;
 
   &:hover {
@@ -300,12 +301,11 @@
   display: block;
   gap: 3px;
   height: 100%;
-  max-width: 100%;
+  max-width: min(100%, 800px);
   min-height: 0;
   overflow: hidden auto;
   padding: 0 10px 30px;
   width: 100%;
-  max-width: 800px;
 
   &--track {
     display: grid;
@@ -403,10 +403,10 @@
 }
 
 .add-asset {
+  aspect-ratio: 1;
   border: 1px solid var(--text-tertiary);
   border-radius: 3px;
   margin: 10px 10px 0;
-  aspect-ratio: 1;
   transition: box-shadow 0.15s ease;
 
   &:hover {

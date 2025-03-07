@@ -18,7 +18,7 @@ import MarkInIcon from "@/assets/icons/marker-in.svg";
 import MarkOutIcon from "@/assets/icons/marker-out.svg";
 import XIcon from "@/assets/icons/X.svg";
 import TrashIcon from "@/assets/icons/trash.svg";
-import {OverlayTagsList} from "@/components/side_panel/OverlayTags.jsx";
+import CheckmarkIcon from "@/assets/icons/check-circle.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -74,7 +74,7 @@ const TagActions = observer(({tag, track}) => {
               "Save changes and return to tag details" :
               "Return to tag list"
           }
-          icon={BackIcon}
+          icon={tagStore.editing ? CheckmarkIcon : BackIcon}
           onClick={() =>
             tagStore.editing ?
               tagStore.ClearEditing() :

@@ -1,3 +1,6 @@
+/* 👇 Make sure the styles are applied in the correct order */
+@layer mantine-core, mantine-datatable;
+
 body {
   background: var(--background-primary);
   color: var(--text-secondary);

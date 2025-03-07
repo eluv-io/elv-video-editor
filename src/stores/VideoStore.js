@@ -257,6 +257,8 @@ class VideoStore {
         filePath: "/"
       });
 
+      this.rootStore.signedToken = new URL(this.baseFileUrl).searchParams.get("authorization");
+
       this.metadata = videoObject.metadata;
       this.isVideo = videoObject.isVideo;
       this.hasAssets = Object.keys((videoObject.metadata || {}).assets || {}).length > 0;

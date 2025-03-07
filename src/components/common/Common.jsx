@@ -114,6 +114,23 @@ export const LoaderImage = observer(({
   );
 });
 
+export const LocalizeString = (text="", variables={}, options={reactNode: false}) => {
+  let result = text
+    .split(/{(\w+)}/)
+    .filter(s => s)
+    .map(token => typeof variables[token] !== "undefined" ? variables[token] : token);
+
+  if(!options.reactNode) {
+    return result.join("");
+  }
+
+  return (
+    <>
+      {result}
+    </>
+  );
+};
+
 // Buttons
 
 export const Linkish = forwardRef(function Linkish({
@@ -140,7 +157,7 @@ export const Linkish = forwardRef(function Linkish({
   }
 
   if(onClick || props.type === "submit") {
-    return <button onClick={onClick} ref={ref} {...props} />;
+    return <button disabled={disabled} onClick={onClick} ref={ref} {...props} />;
   }
 
   return <div ref={ref} {...props} />;
@@ -156,10 +173,12 @@ export const Icon = ({
 export const IconButton = ({
   label,
   icon,
+  Icon,
   active=false,
   disabled=false,
   tooltipProps={},
   unstyled=false,
+  loading=false,
   children,
   openDelay=500,
   ...props
@@ -168,6 +187,23 @@ export const IconButton = ({
 
   if(props.disabled) {
     props.onClick = undefined;
+  }
+
+  let content;
+  if(loading) {
+    content = <Loader className={S("icon-button__loader")} />;
+  } else {
+    content = (
+      <>
+        {
+          Icon ? <Icon /> :
+            typeof icon === "string" ?
+              <SVG src={icon} /> :
+              icon
+        }
+        { children }
+      </>
+    );
   }
 
   const button = (
@@ -183,12 +219,7 @@ export const IconButton = ({
         )
       }
     >
-      {
-        typeof icon === "string" ?
-          <SVG src={icon} /> :
-          icon
-      }
-      { children }
+      {content }
     </Linkish>
   );
 

@@ -1,5 +1,5 @@
 import SharedStyles from "@/assets/stylesheets/modules/shared.module.scss";
-
+import {Utils} from "@eluvio/elv-client-js";
 import {toJS} from "mobx";
 
 // toJS doesn't deeply remove proxies
@@ -181,3 +181,69 @@ export const Slugify = str =>
     .replace(/ /g, "-")
     .replace(/[^a-z0-9-]/g,"")
     .replace(/-+/g, "_");
+
+export const ScaleImage = (url, width) => {
+  if(!url) { return ""; }
+
+  if(url.includes(".svg")) {
+    return url;
+  }
+
+  url = new URL(url);
+  url.searchParams.set("width", width);
+
+  return url.toString();
+};
+
+export const StorageHandler = ({
+  get: ({type, key, json, b64}) => {
+    try {
+      const storage = type === "session" ? sessionStorage : localStorage;
+
+      let value = storage.getItem(key);
+
+      if(!value) { return; }
+
+      if(b64) {
+        value = Utils.FromB64(value);
+      }
+
+      if(json) {
+        value = JSON.parse(value);
+      }
+
+      return value;
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.log(error);
+    }
+  },
+  set: ({type, key, value, json, b64}) => {
+    try {
+      const storage = type === "session" ? sessionStorage : localStorage;
+
+      if(json) {
+        value = JSON.stringify(value);
+      }
+
+      if(b64) {
+        value = Utils.B64(value);
+      }
+
+      storage.setItem(key, value);
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.log(error);
+    }
+  },
+  remove: ({type, key}) => {
+    try {
+      const storage = type === "session" ? sessionStorage : localStorage;
+
+      storage.removeItem(key);
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.log(error);
+    }
+  }
+});

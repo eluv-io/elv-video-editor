@@ -10,15 +10,17 @@ import {
   LoaderImage
 } from "@/components/common/Common.jsx";
 import UrlJoin from "url-join";
-import {assetStore, rootStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
+import {assetStore, rootStore, tagStore, videoStore} from "@/stores/index.js";
 import React, {useEffect, useState} from "react";
 import {useParams} from "wouter";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
-import {Capitalize, CreateModuleClassMatcher, FormatConfidence, Round} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, FormatConfidence, Round} from "@/utils/Utils.js";
 import {FocusTrap, Text, Tooltip} from "@mantine/core";
 import {modals} from "@mantine/modals";
 import {BoxToPolygon, BoxToRectangle} from "@/utils/Geometry.js";
+import {FileBrowserButton} from "@/components/common/FileBrowser.jsx";
 
+import CheckmarkIcon from "@/assets/icons/check-circle.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
 import BackIcon from "@/assets/icons/v2/back.svg";
 import XIcon from "@/assets/icons/X.svg";
@@ -37,7 +39,7 @@ const AssetTagActions = observer(({tag, track}) => {
               "Save changes and return to tag details" :
               "Return to tag list"
           }
-          icon={BackIcon}
+          icon={tagStore.editing ? CheckmarkIcon : BackIcon}
           onClick={() =>
             tagStore.editing ?
               tagStore.ClearEditing() :
@@ -143,8 +145,12 @@ const AssetTagForm = observer(() => {
           <div className={S("form__input-container")}>
             <FormSelect
               label="Draw Mode"
-              value={Capitalize(tag.mode || "rectangle")}
-              options={["Rectangle", "Polygon"]}
+              disabled={false}
+              value={tag.mode || "rectangle"}
+              options={[
+                {label: "Rectangle", value: "rectangle"},
+                {label: "Polygon", value: "polygon"},
+              ]}
               onChange={mode => {
                 if(mode === "Rectangle") {
                   tagStore.UpdateEditedAssetTag({...tag, mode: "rectangle", box: BoxToRectangle(tag.box)});
@@ -276,12 +282,24 @@ export const AssetTagsList = observer(() => {
 });
 
 const AssetFormActions = observer(({asset}) => {
+  const existingAsset = assetStore.Asset(asset.key);
+
+  let error;
+  if(!asset.key) {
+    error = "Asset key is required";
+  } else if(!asset.file) {
+    error = "Asset file is required";
+  } else if(existingAsset && existingAsset.assetId !== asset.assetId) {
+    error = "An asset with this key already exists";
+  }
+
   return (
     <div className={S("tag-details__actions")}>
       <div className={S("tag-details__left-actions")}>
         <IconButton
-          label="Save changes and return to assets"
-          icon={BackIcon}
+          disabled={!!error}
+          label={error || "Save changes and return to assets"}
+          icon={CheckmarkIcon}
           onClick={() => {
             tagStore.ClearEditing();
 
@@ -305,19 +323,22 @@ const AssetFormActions = observer(({asset}) => {
           icon={XIcon}
           onClick={() => tagStore.ClearEditing(false)}
         />
-        <IconButton
-          label="Remove Asset"
-          icon={TrashIcon}
-          onClick={() =>
-            modals.openConfirmModal({
-              title: "Remove Asset",
-              centered: true,
-              children: <Text fz="sm">Are you sure you want to remove this asset?</Text>,
-              labels: { confirm: "Remove", cancel: "Cancel" },
-              onConfirm: () => tagStore.DeleteAsset(asset)
-            })
-          }
-        />
+        {
+          asset.isNew ? null :
+            <IconButton
+              label="Remove Asset"
+              icon={TrashIcon}
+              onClick={() =>
+                modals.openConfirmModal({
+                  title: "Remove Asset",
+                  centered: true,
+                  children: <Text fz="sm">Are you sure you want to remove this asset?</Text>,
+                  labels: { confirm: "Remove", cancel: "Cancel" },
+                  onConfirm: () => tagStore.DeleteAsset(asset)
+                })
+              }
+            />
+        }
       </div>
     </div>
   );
@@ -325,6 +346,15 @@ const AssetFormActions = observer(({asset}) => {
 
 const AssetForm = observer(() => {
   const asset = tagStore.editedAsset;
+
+  useEffect(() => {
+    if(asset.key || !asset.file || !asset.file?.["/"]) { return; }
+
+    tagStore.UpdateEditedAsset({
+      ...asset,
+      key: asset.file["/"].split("/").slice(-1)[0] || ""
+    });
+  }, [asset.file]);
 
   return (
     <form
@@ -338,10 +368,42 @@ const AssetForm = observer(() => {
           <div className={S("form__input-container")}>
             <FormTextInput
               disabled={!asset.isNew}
-              label="Name"
+              label="Key"
               value={asset.key}
-              placeholder="Name"
+              placeholder="Key"
               onChange={event => tagStore.UpdateEditedAsset({...asset, key: event.target.value})}
+            />
+          </div>
+          <div className={S("form__input-container")}>
+            <FormTextInput
+              disabled
+              label="Asset File"
+              value={asset.file?.["/"]?.split("./files")[1] || ""}
+            />
+          </div>
+          <div className={S("form__input-container")}>
+            <FileBrowserButton
+              fileBrowserProps={{
+                objectId: videoStore.videoObject.objectId,
+                extensions: "image",
+                title: "Select an Asset",
+                Submit: ({fullPath}) => {
+                  tagStore.UpdateEditedAsset({
+                    ...asset,
+                    file: {
+                      "/": UrlJoin("./files", fullPath)
+                    }
+                  });
+                }
+              }}
+            >
+              Select Asset File
+            </FileBrowserButton>
+          </div>
+          <div style={{marginTop: 20}} className={S("form__input-container")}>
+            <LoaderImage
+              src={assetStore.AssetLink("edited")}
+              width={300}
             />
           </div>
         </div>
@@ -358,7 +420,7 @@ const Asset = observer(({asset, selected}) => {
       className={S("asset", selected ? "asset--selected" : "")}
     >
       <LoaderImage
-        lazy={false}
+        lazy={true}
         loaderDelay={0}
         loaderAspectRatio={1}
         showWithoutSource
@@ -380,7 +442,7 @@ const AssetsList = observer(() => {
   const { assetKey } = useParams();
 
   useEffect(() => {
-    rootStore.SetExpandedPanel("sidePanel");
+    //rootStore.SetExpandedPanel("sidePanel");
   }, []);
 
   return (
@@ -402,7 +464,8 @@ const AssetsList = observer(() => {
         batchSize={60}
         className={S("assets")}
         Update={limit => {
-          const assets = assetStore.filteredAssetList;
+          const assets = assetStore.filteredAssetList
+            .sort((a, b) => a.key < b.key ? -1 : 1);
           setAssets(assets.slice(0, limit));
           setTotalAssets(assets.length);
           setLimit(Math.min(assets.length, limit));

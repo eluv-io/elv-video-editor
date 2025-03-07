@@ -1,6 +1,4 @@
-// TODO: Rename trackStore
-
-import { configure, runInAction, makeAutoObservable } from "mobx";
+import {configure, runInAction, makeAutoObservable, flow} from "mobx";
 import AssetStore from "@/stores/AssetStore.js";
 import BrowserStore from "./BrowserStore";
 import EditStore from "./EditStore";
@@ -9,8 +7,12 @@ import OverlayStore from "./OverlayStore";
 import TagStore from "./TagStore.js";
 import TrackStore from "./TrackStore";
 import VideoStore from "./VideoStore";
+import FileBrowserStore from "./FileBrowserStore.js";
 import Id from "@/utils/Id.js";
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
+
+import LocalizationEN from "@/assets/localizations/en.yml";
+import UrlJoin from "url-join";
 
 if(window.location.hash) {
   const path = `/${window.location.hash.replace("#", "")}`.replace("//", "/");
@@ -33,6 +35,10 @@ class RootStore {
   sidePanelDimensions = {};
   expandedPanel = undefined;
   errorMessage = undefined;
+  l10n = LocalizationEN;
+
+  libraryIds = {};
+  versionHashes = {};
 
   constructor() {
     makeAutoObservable(this);
@@ -45,6 +51,7 @@ class RootStore {
     this.trackStore = new TrackStore(this);
     this.videoStore = new VideoStore(this);
     this.assetStore = new AssetStore(this);
+    this.fileBrowserStore = new FileBrowserStore(this);
 
     this.InitializeClient();
 
@@ -80,7 +87,7 @@ class RootStore {
     this.subpage = subpage;
   }
 
-  async InitializeClient() {
+  InitializeClient = flow(function * () {
     // Contained in IFrame
     const client = new FrameClient({
       target: window.parent,
@@ -107,6 +114,70 @@ class RootStore {
         UpdatePage();
       }
     }, 1000);
+
+    this.address = yield this.client.CurrentAccountAddress();
+    this.network = (yield this.client.NetworkInfo()).name;
+    this.publicToken = client.utils.B64(JSON.stringify({qspace_id: yield this.client.ContentSpaceId()}));
+  });
+
+  FabricUrl({libraryId, objectId, writeToken, versionHash, noWriteToken=false, path="", auth, resolve=true, width}) {
+    let url = new URL(
+      this.network === "main" ?
+        "https://main.net955305.contentfabric.io" :
+        "https://demov3.net955210.contentfabric.io"
+    );
+
+    if(!noWriteToken && editStore.writeInfo[objectId]) {
+      writeToken = editStore.writeInfo[objectId].writeToken || writeToken;
+      const fabricNodeUrl = editStore.writeInfo[objectId]?.fabricNodeUrl;
+
+      if(!fabricNodeUrl) {
+        return "";
+      }
+
+      url = new URL(fabricNodeUrl);
+    }
+    let urlPath = UrlJoin("s", this.network);
+    if(auth === "private") {
+      urlPath = UrlJoin("t", this.signedToken);
+    }
+
+    if(versionHash) {
+      objectId = this.client.utils.DecodeVersionHash(versionHash).objectId;
+    } else {
+      // Ensure library ID is loaded for this object
+      this.LibraryId({objectId});
+      libraryId = libraryId || this.libraryIds[objectId];
+    }
+
+    if(objectId && !versionHash) {
+      // Ensure version hash is loaded for this object
+      if(!this.versionHashes[objectId]) {
+        this.VersionHash({objectId});
+      }
+
+      versionHash = this.versionHashes[objectId]?.versionHash;
+    }
+
+    if(path?.startsWith("/qfab")) {
+      urlPath = UrlJoin(urlPath, path.replace(/^\/qfab/, "q"));
+    } else if(versionHash) {
+      urlPath = UrlJoin(urlPath, "q", writeToken || versionHash, path);
+    } else {
+      urlPath = UrlJoin(urlPath, "qlibs", libraryId, "q", writeToken || objectId, path);
+    }
+
+    url.pathname = urlPath;
+
+    if(resolve) {
+      url.searchParams.set("resolve", "true");
+    }
+
+    if(width && !path.endsWith(".svg")) {
+      url.searchParams.set("width", width);
+    }
+
+    return url.toString();
   }
 
   SetSidePanelDimensions(dimensions) {
@@ -124,6 +195,35 @@ class RootStore {
   NextId() {
     return Id.next();
   }
+
+  LibraryId = flow(function * ({objectId, versionHash}) {
+    if(!objectId && !versionHash) { return; }
+
+    if(versionHash) {
+      objectId = this.utils.DecodeVersionHash(versionHash).objectId;
+    }
+
+    if(!this.libraryIds[objectId]) {
+      this.libraryIds[objectId] = yield this.client.ContentObjectLibraryId({objectId});
+    }
+
+    return this.libraryIds[objectId];
+  });
+
+  VersionHash = flow(function * ({objectId, versionHash, force}) {
+    if(versionHash) {
+      objectId = this.utils.DecodeVersionHash(versionHash).objectId;
+    }
+
+    if(force || !this.versionHashes[objectId] || Date.now() - this.versionHashes[objectId].retrievedAt > 30000) {
+      this.versionHashes[objectId] = {
+        versionHash: yield this.client.LatestVersionHash({objectId}),
+        retrievedAt: Date.now()
+      };
+    }
+
+    return this.versionHashes[objectId].versionHash;
+  });
 }
 
 const root = new RootStore();
@@ -137,3 +237,4 @@ export const overlayStore = rootStore.overlayStore;
 export const trackStore = rootStore.trackStore;
 export const videoStore = rootStore.videoStore;
 export const assetStore = rootStore.assetStore;
+export const fileBrowserStore = rootStore.fileBrowserStore;

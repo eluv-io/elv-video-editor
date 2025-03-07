@@ -1,9 +1,10 @@
 import {flow, makeAutoObservable } from "mobx";
 import {diff} from "deep-object-diff";
-import {SortTags} from "@/utils/Utils";
+import {SortTags, StorageHandler} from "@/utils/Utils";
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo";
 
 class EditStore {
+  writeInfo = {};
   saving = false;
   saveFailed = false;
   position = 0;
@@ -15,6 +16,10 @@ class EditStore {
     makeAutoObservable(this);
 
     this.rootStore = rootStore;
+  }
+
+  get client() {
+    return this.rootStore.client;
   }
 
   get page() {
@@ -74,7 +79,7 @@ class EditStore {
     if(this.undoStack.length === 0) { return; }
 
     const action = this.nextUndoAction;
-    this._actionStack = this._actionStack.filter(otherAction => otherAction.id !== action.id)
+    this._actionStack = this._actionStack.filter(otherAction => otherAction.id !== action.id);
 
     action.Undo();
 
@@ -87,7 +92,7 @@ class EditStore {
     if(this.redoStack.length === 0) { return; }
 
     const action = this.nextRedoAction;
-    this._redoStack = this._redoStack.filter(otherAction => otherAction.id !== action.id)
+    this._redoStack = this._redoStack.filter(otherAction => otherAction.id !== action.id);
 
     this.PerformAction(action, true);
   }
@@ -478,6 +483,64 @@ class EditStore {
       versionHash: hash
     });
   });
+
+
+
+  WriteToken({objectId}) {
+    return this.writeInfo[objectId]?.writeToken;
+  }
+
+  DiscardWriteToken({objectId}) {
+    delete this.writeInfo[objectId];
+  }
+
+  InitializeWrite = flow(function * ({objectId}) {
+    if(this.WriteToken({objectId})) {
+      return this.WriteToken({objectId});
+    }
+
+    const libraryId = yield this.rootStore.LibraryId({objectId});
+
+    const { writeToken } = yield this.client.EditContentObject({
+      libraryId,
+      objectId
+    });
+
+    this.writeInfo[objectId] = {
+      writeToken,
+      fabricNodeUrl: yield this.client.WriteTokenNodeUrl({writeToken})
+    };
+
+    this.SaveWriteInfo();
+
+    return writeToken;
+  });
+
+  Finalize = flow(function * ({objectId, commitMessage}) {
+    const libraryId = yield this.rootStore.LibraryId({objectId});
+
+    const writeInfo = this.writeInfo[objectId];
+
+    if(!writeInfo) {
+      return;
+    }
+
+    const response = yield this.client.FinalizeContentObject({
+      libraryId,
+      objectId,
+      writeToken: writeInfo.writeToken,
+      commitMessage
+    });
+
+    delete this.writeInfo[objectId];
+    this.SaveWriteInfo();
+
+    return response;
+  });
+
+  SaveWriteInfo() {
+    StorageHandler.set({type: "local", key: "write-info", value: { ...this.writeInfo }, b64: true, json: true});
+  }
 }
 
 export default EditStore;

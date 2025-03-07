@@ -1,0 +1,64 @@
+components:
+  actions:
+    back: Back
+    back_to: Back to {target}
+    done: Done
+    submit: Submit
+    confirm: Confirm
+    cancel: Cancel
+    delete: Delete
+    upload: Upload
+    remove: Remove
+    edit: Edit
+    save: Save
+    undo: Undo
+    undo_action: Undo {action}
+    redo: Redo
+    redo_action: Redo {action}
+    scan_content: Scan for Content
+  file_browser:
+    browse_files: Browse Files
+    create_directory: Create Directory
+    select_object: Select Object
+    download: Download {filename}
+    copy_link: Copy Link to {filename}
+    rename: Rename {filename}
+    delete: Delete {filename}
+    remove_selection: Remove selection {filename}
+    delete_confirm: Are you sure you want to delete this file?
+    directory_name: Directory Name
+    new_filename: New Filename
+    upload_files: Upload files to {path}
+    upload_instructions_drag: Drag files here
+    upload_instructions_click: or click to select files
+    directory_back: Back to previous directory
+    browsing: Browsing '{label}'
+    allowed_extensions: "Allowed Extensions: {extensions}"
+    columns:
+      actions: Actions
+      filename: Filename
+      progress: Progress
+      size: Size
+      type: Type
+    validation:
+      filename_must_be_specified: Filename must be specified
+  fabric_browser:
+    select_library: Select Library
+    select_object: Select Object
+    title_with_label: Select {item}
+    show_preview: Show Video Preview
+    hide_preview: Hide Video Preview
+    filter: Filter
+    select: Select {item}
+    content_id: Content ID
+    link_at_latest: Link is at latest version
+    update_link: Update Link to {item}
+    update_link_confirm: Are you sure you want to update the link to {item}?
+    direct_selection_placeholder: Object ID, version hash or contract address
+    back_to_library_selection: Back to library selection
+    columns:
+      name: Name
+      library_id: Library ID
+      object_id: Object ID
+    validation:
+      invalid_content_id: Invalid Content ID

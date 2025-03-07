@@ -1,6 +1,12 @@
 import "@/assets/stylesheets/reset.scss";
 
+import "@mantine/core/styles.layer.css";
 import "@mantine/core/styles.css";
+import "@mantine/dropzone/styles.css";
+
+import "mantine-datatable/styles.css";
+import "mantine-datatable/styles.layer.css";
+
 import "@/assets/stylesheets/variables.scss";
 import "@/assets/stylesheets/base.scss";
 

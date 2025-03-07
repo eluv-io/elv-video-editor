@@ -1,12 +1,13 @@
-import { defineConfig, splitVendorChunkPlugin } from "vite";
+import { defineConfig } from "vite";
 import { fileURLToPath, URL } from "url";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import react from "@vitejs/plugin-react-swc";
+import ViteYaml from "@modyfi/vite-plugin-yaml";
 
 export default defineConfig(() => {
   let plugins = [
     react(),
-    splitVendorChunkPlugin(),
+    ViteYaml(),
     viteStaticCopy({
       targets: [
         {
@@ -37,7 +38,8 @@ export default defineConfig(() => {
         "@/components": fileURLToPath(new URL("./src/components", import.meta.url)),
         "@/stores": fileURLToPath(new URL("./src/stores", import.meta.url)),
         "@/utils": fileURLToPath(new URL("./src/utils", import.meta.url)),
-        "@/workers": fileURLToPath(new URL("./src/utils", import.meta.url))
+        "@/workers": fileURLToPath(new URL("./src/utils", import.meta.url)),
+        "@tabler/icons-react": "@tabler/icons-react/dist/esm/icons/index.mjs",
       }
     },
     build: {

@@ -169,14 +169,14 @@ class AssetStore {
   }
 
   AssetLink(assetKey, options={}) {
-    const asset = this.Asset(assetKey);
+    const asset = assetKey === "edited" ? this.rootStore.tagStore.editedAsset : this.Asset(assetKey);
 
-    if(!asset || !asset.file) { return ""; }
+    if(!asset || !asset.file || !asset.file["/"]) { return ""; }
 
-    const filePath = asset.file?.["/"].split("/files/").slice(1).join("/");
+    const filePath = asset.file?.["/"]?.split("/files/").slice(1).join("/");
 
     const url = new URL(this.rootStore.videoStore.baseStateChannelUrl);
-    url.pathname = UrlJoin(url.pathname, "rep", "thumbnail", "files", filePath);
+    url.pathname = UrlJoin(url.pathname, "rep", "thumbnail", "files", filePath || "");
 
     if(options) {
       Object.keys(options).forEach(key =>

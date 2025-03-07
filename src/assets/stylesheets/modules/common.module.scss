@@ -106,6 +106,17 @@
   &--disabled {
     opacity: 0.5;
   }
+
+  &__loader {
+    height: 100%;
+    width: 100%;
+
+    * {
+      --spinner-width: 3px;
+
+      min-height: 15px;
+    }
+  }
 }
 
 .copy-button {

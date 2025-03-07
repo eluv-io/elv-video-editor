@@ -10,14 +10,15 @@ import {
   FormTextArea,
   IconButton,
 } from "@/components/common/Common.jsx";
-import {Capitalize, CreateModuleClassMatcher, FormatConfidence, Round} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, FormatConfidence, Round} from "@/utils/Utils.js";
 import {modals} from "@mantine/modals";
+import {BoxToPolygon, BoxToRectangle} from "@/utils/Geometry.js";
 
 import EditIcon from "@/assets/icons/Edit.svg";
 import BackIcon from "@/assets/icons/v2/back.svg";
 import XIcon from "@/assets/icons/X.svg";
 import TrashIcon from "@/assets/icons/trash.svg";
-import {BoxToPolygon, BoxToRectangle} from "@/utils/Geometry.js";
+import CheckmarkIcon from "@/assets/icons/check-circle.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -31,7 +32,7 @@ const OverlayTagActions = observer(({tag, track}) => {
               "Save changes and return to tag details" :
               "Return to tag list"
           }
-          icon={BackIcon}
+          icon={tagStore.editing ? CheckmarkIcon : BackIcon}
           onClick={() =>
             tagStore.editing ?
               tagStore.ClearEditing() :
@@ -139,8 +140,11 @@ const OverlayTagForm = observer(() => {
           <div className={S("form__input-container")}>
             <FormSelect
               label="Draw Mode"
-              value={Capitalize(tag.mode || "rectangle")}
-              options={["Rectangle", "Polygon"]}
+              value={tag.mode || "rectangle"}
+              options={[
+                {label: "Rectangle", value: "rectangle"},
+                {label: "Polygon", value: "polygon"},
+              ]}
               onChange={mode => {
                 if(mode === "Rectangle") {
                   tagStore.UpdateEditedOverlayTag({...tag, mode: "rectangle", box: BoxToRectangle(tag.box)});
