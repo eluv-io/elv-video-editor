@@ -23,7 +23,7 @@ import Overlay from "@/components/video/Overlay.jsx";
 const S = CreateModuleClassMatcher(VideoStyles);
 
 
-const Video = observer(({store, showOverlay, className=""}) => {
+const Video = observer(({store, showOverlay, showFrameDownload, fullscreenContainer, className=""}) => {
   const [ready, setReady] = useState(false);
   const [hlsPlayer, setHLSPlayer] = useState(undefined);
   const [video, setVideo] = useState(undefined);
@@ -34,7 +34,7 @@ const Video = observer(({store, showOverlay, className=""}) => {
       return;
     }
 
-    video.__containerElement = document.querySelector(`#video-container-${videoId}`);
+    video.__containerElement = fullscreenContainer || document.querySelector(`#video-container-${videoId}`);
 
     setReady(false);
 
@@ -133,8 +133,11 @@ const Video = observer(({store, showOverlay, className=""}) => {
                   </div>
               }
               <div className={S("video-controls__right")}>
-                <DownloadFrameButton store={store}/>
-                <FullscreenButton store={store}/>
+                {
+                  !showFrameDownload ? null :
+                    <DownloadFrameButton store={store}/>
+                }
+                <FullscreenButton store={store} />
               </div>
             </div>
         }

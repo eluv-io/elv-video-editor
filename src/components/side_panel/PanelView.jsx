@@ -15,6 +15,7 @@ export const PanelView = observer(({
     bottomPanel: 0
   },
   initialSidePanelProportion=0.3,
+  initialTopPanelProportion=0.5,
   isSubpanel=false
 }) => {
   const contentPanelRef = useRef(null);
@@ -100,6 +101,23 @@ export const PanelView = observer(({
       return;
     } else if(rootStore.expandedPanel === "bottomPanel") {
       setHeights({top: 0, bottom: containerHeight});
+    } else if(
+      !rootStore.expandedPanel &&
+      (!bottomPanelHidden && !(contentPanelHidden && sidePanelHidden)) &&
+      (heights.top === 0 || heights.bottom === 0)
+    ) {
+      // Content shown in both places but height is 0 for one of them - re-initialize heights
+      const topPanelHeight = Math.floor(containerHeight * initialTopPanelProportion);
+      setHeights({
+        top: topPanelHeight,
+        bottom: containerHeight - topPanelHeight,
+        container: containerHeight
+      });
+      return;
+    }
+
+    if(!deltaY && heights.container === containerHeight) {
+      return;
     }
 
     const topHeight = topPanel.getBoundingClientRect().height;
@@ -116,7 +134,8 @@ export const PanelView = observer(({
 
     setHeights({
       top: newTopHeight,
-      bottom: newBottomHeight
+      bottom: newBottomHeight,
+      container: containerHeight
     });
 
     if(!isSubpanel) {
@@ -175,20 +194,22 @@ export const PanelView = observer(({
 
           if(sidePanelContent) {
             setWidths({
-              sidePanel: parentSize.width * 0.3,
-              contentPanel: parentSize.width - (parentSize.width * 0.3)
+              sidePanel: parentSize.width * initialSidePanelProportion,
+              contentPanel: parentSize.width - (parentSize.width * initialSidePanelProportion),
+              container: parentSize.width
             });
           } else {
-            setWidths({sidePanel: 0, contentPanel: parentSize.width});
+            setWidths({sidePanel: 0, contentPanel: parentSize.width, container: parentSize.width});
           }
 
           if(bottomPanelContent) {
             setHeights({
-              top: parentSize.height * 0.5,
-              bottom: parentSize.height - (parentSize.height * 0.5)
+              top: Math.floor(parentSize.height * initialTopPanelProportion),
+              bottom: parentSize.height - Math.floor(parentSize.height * initialTopPanelProportion),
+              container: parentSize.height
             });
           } else {
-            setHeights({top: parentSize.height, bottom: 0});
+            setHeights({top: parentSize.height, bottom: 0, container: parentSize.height});
           }
         }}
       >

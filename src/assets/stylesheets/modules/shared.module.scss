@@ -98,6 +98,10 @@
     }
   }
 
+  input {
+    font-size: 12px;
+  }
+
   @media screen and (width <= 1600px) {
     justify-content: space-between;
 
@@ -109,10 +113,6 @@
         position: relative;
         right: unset;
       }
-    }
-
-    input {
-      font-size: 12px;
     }
   }
 }
@@ -210,6 +210,22 @@
     justify-content: center;
     transition: background-color 0.15s ease, color 0.15s ease;
     width: 150px;
+  }
+}
+
+.thumbnail-hover {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  &__image {
+    width: 200px;
+  }
+
+  &__text {
+    font-family: var(--font-monospace);
+    font-size: 14px;
+    text-align: center;
   }
 }
 

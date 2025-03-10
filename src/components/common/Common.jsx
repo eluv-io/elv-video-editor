@@ -182,6 +182,7 @@ export const IconButton = ({
   children,
   openDelay=500,
   highlight,
+  withinPortal=false,
   ...props
 }) => {
   tooltipProps = {openDelay, ...tooltipProps};
@@ -236,7 +237,7 @@ export const IconButton = ({
   return (
     <Tooltip
       {...tooltipProps}
-      withinPortal
+      withinPortal={withinPortal}
       label={label}
       events={{ hover: true, focus: true, touch: false }}
     >

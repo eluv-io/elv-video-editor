@@ -1,13 +1,14 @@
 import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
-import React, {useEffect} from "react";
+import React, {useEffect, useRef} from "react";
 import {observer} from "mobx-react-lite";
-import {compositionStore, keyboardControlsStore, videoStore} from "@/stores";
+import {compositionStore, keyboardControlsStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {
   AudioControls,
   OfferingControls,
-  PlaybackRateControl, PlayCurrentClipButton,
+  PlaybackRateControl,
+  PlayCurrentClipButton,
   SubtitleControls,
 } from "@/components/video/VideoControls";
 import Video from "@/components/video/Video";
@@ -16,7 +17,7 @@ import {IconButton} from "@/components/common/Common.jsx";
 
 import ZoomInIcon from "@/assets/icons/v2/zoom-in.svg";
 import ZoomOutIcon from "@/assets/icons/v2/zoom-out.svg";
-import ClipIcon from "@/assets/icons/v2/add-new-item.svg";
+import ClipIcon from "@/assets/icons/v2/clip-return.svg";
 import ClipInIcon from "@/assets/icons/v2/clip-start.svg";
 import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
 
@@ -33,13 +34,13 @@ const ClipControls = observer(() => {
     <div className={S("toolbar", "clip-toolbar")}>
       <div className={S("toolbar__controls-group")}>
         <IconButton
-          label="Zoom out"
+          label="Zoom Out"
           icon={ZoomOutIcon}
-          disabled={store.scaleMin === 0}
+          disabled={store.scaleMin === 0 && store.scaleMax === 100}
           onClick={() => store.SetScale(store.scaleMin - 0.5, store.scaleMax + 0.5)}
         />
         <IconButton
-          label="Reset View"
+          label="Reset View to Selected Clip"
           icon={ClipIcon}
           onClick={() => {
             let clipInProgress = 100 * (store.clipInFrame || 0) / store.totalFrames;
@@ -53,7 +54,7 @@ const ClipControls = observer(() => {
           }}
         />
         <IconButton
-          label="Zoom in"
+          label="Zoom In"
           icon={ZoomInIcon}
           disabled={store.scaleMagnitude < 0.5}
           onClick={() => store.SetScale(store.scaleMin + 0.5, store.scaleMax - 0.5)}
@@ -62,12 +63,14 @@ const ClipControls = observer(() => {
       <div className={S("toolbar__separator")}/>
       <div className={S("toolbar__controls-group")}>
         <IconButton
-          label="Set clip in to current frame"
+          label="Set Clip In to Current Frame"
+          highlight
           icon={ClipInIcon}
           onClick={() => store.SetClipMark({inFrame: store.frame})}
         />
         <IconButton
-          label="Set clip out to current frame"
+          label="Set Clip Out to Current Frame"
+          highlight
           icon={ClipOutIcon}
           onClick={() => store.SetClipMark({outFrame: store.frame})}
         />
@@ -114,10 +117,20 @@ const ClipSeekBar = observer(() => {
       topMarks
       nMarks={store.sliderMarks}
       majorMarksEvery={store.majorMarksEvery}
-      RenderText={progress => {
-
-        return store.ProgressToSMPTE(progress);
-      }}
+      RenderText={progress => store.ProgressToSMPTE(progress)}
+      RenderHover={
+        !store.thumbnailStore.thumbnailStatus.available ? undefined :
+          progress => (
+            <div className={S("thumbnail-hover")}>
+              <img
+                src={store.thumbnailStore.ThumbnailImage(store.ProgressToTime(progress))}
+                style={{aspectRatio: store.aspectRatio}}
+                className={S("thumbnail-hover__image")}
+              />
+              <div className={S("thumbnail-hover__text")}>{store.ProgressToSMPTE(progress)}</div>
+            </div>
+          )
+      }
       onChange={progress => store.Seek(store.ProgressToFrame(progress), false)}
       className={S("seek-bar")}
     />
@@ -126,6 +139,8 @@ const ClipSeekBar = observer(() => {
 
 
 const CompositionVideoSection = observer(({store, clip=false}) => {
+  const sectionRef = useRef(null);
+
   useEffect(() => {
     keyboardControlsStore.ToggleKeyboardControls(true);
 
@@ -149,6 +164,7 @@ const CompositionVideoSection = observer(({store, clip=false}) => {
 
   return (
     <div
+      ref={sectionRef}
       onScroll={event => {
         event.preventDefault();
         event.stopPropagation();
@@ -166,17 +182,19 @@ const CompositionVideoSection = observer(({store, clip=false}) => {
           return;
         }
 
-        const { left, width } = event.target.getBoundingClientRect();
-        const position = (event.clientX - left) / width;
-
-        store.ScrollScale(position, event.deltaY);
+        store.ScrollScale(0.5, event.deltaY);
       }}
       className={S("content-block", "video-section")}
     >
       <h1 className={S("video-section__title")}>
-        {store.name}
+        <div className={S("ellipsis")}>
+          {store.name}
+        </div>
       </h1>
-      <Video store={store} />
+      {
+        !sectionRef?.current ? null :
+          <Video store={store} fullscreenContainer={sectionRef.current} />
+      }
       {
         !clip ? null :
           <>
@@ -188,9 +206,14 @@ const CompositionVideoSection = observer(({store, clip=false}) => {
         <div className={S("toolbar__spacer")}/>
         <div className={S("toolbar__controls-group")}>
           <PlaybackRateControl store={store}/>
-          <OfferingControls store={store}/>
-          <SubtitleControls store={store}/>
-          <AudioControls store={store}/>
+          {
+            !clip ? null :
+              <>
+                <OfferingControls store={store}/>
+                <SubtitleControls store={store}/>
+                <AudioControls store={store}/>
+              </>
+          }
         </div>
       </div>
     </div>

@@ -30,6 +30,10 @@ export const SubtitleControls = observer(({store}) => {
     value: track.id.toString()
   }));
 
+  if(tracks.length === 0) {
+    return;
+  }
+
   return (
     <SelectInput
       label="Subtitles"
@@ -145,10 +149,11 @@ export const PlaybackRateControl = observer(({store}) => {
 export const FullscreenButton = observer(({store}) => {
   return (
     <IconButton
-      label={store.fullscreen ? "Exit Full Screen" : "Full Screen"}
+      key={`fullscreen-button-${store.fullScreen}`}
+      label={store.fullScreen ? "Exit Full Screen" : "Full Screen"}
       onClick={() => store.ToggleFullscreen()}
       unstyled
-      icon={store.fullscreen ? MinimizeIcon : FullscreenIcon}
+      icon={store.fullScreen ? MinimizeIcon : FullscreenIcon}
       className={S("video-controls__button")}
     />
   );

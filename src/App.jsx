@@ -32,7 +32,6 @@ const SetView = observer(() => {
 // All routes after content is selected - route will contain /:libraryId/:objectId
 const DefaultContentRoutes = observer(() => {
   const { objectId } = useParams();
-  console.log("DCR", objectId);
 
   useEffect(() => {
     if(objectId && !videoStore.loading && videoStore.videoObject?.objectId !== objectId) {

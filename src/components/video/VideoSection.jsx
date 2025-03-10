@@ -21,10 +21,7 @@ import DescriptionIcon from "@/assets/icons/v2/description.svg";
 
 const S = CreateModuleClassMatcher(VideoStyles);
 
-
-const VideoSection = observer(({store, showOverlay}) => {
-  store = store || videoStore;
-
+const VideoSection = observer(() => {
   useEffect(() => {
     keyboardControlsStore.ToggleKeyboardControls(true);
 
@@ -34,27 +31,29 @@ const VideoSection = observer(({store, showOverlay}) => {
   return (
     <div className={S("content-block", "video-section")}>
       <h1 className={S("video-section__title")}>
-        {store.name}
+        <div className={S("ellipsis")}>
+          {videoStore.name}
+        </div>
       </h1>
-      <Video store={store} showOverlay={showOverlay} />
+      <Video store={videoStore} showOverlay showFrameDownload />
       <div className={S("toolbar")}>
-        <Tooltip label={store.videoObject.description} w={500} multiline openDelay={1000}>
+        <Tooltip label={videoStore.videoObject.description} w={500} multiline openDelay={1000}>
           <div className={S("toolbar__description")}>
             <SVG src={DescriptionIcon} className={S("icon", "toolbar__description-icon")} />
             <div className={S("toolbar__description-text")}>
-              { store.videoObject.description }
+              { videoStore.videoObject.description }
             </div>
           </div>
         </Tooltip>
         <div className={S("toolbar__spacer")} />
         <div className={S("toolbar__controls-group", "toolbar__controls-group--tight")}>
-          <PlaybackRateControl store={store} />
-          <FrameRateControls store={store} />
-          <DropFrameControls store={store} />
-          <OfferingControls store={store} />
-          <QualityControls store={store} />
-          <SubtitleControls store={store} />
-          <AudioControls store={store} />
+          <PlaybackRateControl store={videoStore} />
+          <FrameRateControls store={videoStore} />
+          <DropFrameControls store={videoStore} />
+          <OfferingControls store={videoStore} />
+          <QualityControls store={videoStore} />
+          <SubtitleControls store={videoStore} />
+          <AudioControls store={videoStore} />
         </div>
       </div>
     </div>

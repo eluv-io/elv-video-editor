@@ -13,7 +13,7 @@ import {
   Modal
 } from "@/components/common/Common.jsx";
 import {Button, Tabs, Text} from "@mantine/core";
-import {trackStore, videoStore} from "@/stores/index.js";
+import {videoStore} from "@/stores/index.js";
 import {modals} from "@mantine/modals";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 

@@ -9,7 +9,13 @@ class CompositionStore {
   selectedClipKey;
 
   constructor(rootStore) {
-    makeAutoObservable(this);
+    makeAutoObservable(
+      this,
+      {
+        videoStore: false,
+        clipStores: false
+      }
+    );
 
     this.rootStore = rootStore;
     this.videoStore = new VideoStore(this.rootStore, {tags: false});

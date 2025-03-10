@@ -92,16 +92,26 @@ const TimelineTopBar = observer(() => {
         <FrameForward10Button store={videoStore} />
       </div>
       <div className={S("toolbar__controls-group", "right")}>
-        <IconButton icon={ClipInIcon} label="Set Clip In to Current Frame"
-                    onClick={() => videoStore.SetClipMark({inFrame: videoStore.frame})}/>
+        <IconButton
+          highlight
+          icon={ClipInIcon}
+          label="Set Clip In to Current Frame"
+          onClick={() => videoStore.SetClipMark({inFrame: videoStore.frame})}
+        />
         <SMPTEInput
+          highlight
           label="Clip Start"
           value={videoStore.FrameToSMPTE(videoStore.clipInFrame) || "00:00:00:00"}
           onChange={({frame}) => videoStore.SetClipMark({inFrame: frame})}
         />
-        <IconButton icon={ClipOutIcon} label="Set Clip Out to Current Frame"
-                    onClick={() => videoStore.SetClipMark({outFrame: videoStore.frame})}/>
+        <IconButton
+          highlight
+          icon={ClipOutIcon}
+          label="Set Clip Out to Current Frame"
+          onClick={() => videoStore.SetClipMark({outFrame: videoStore.frame})}
+        />
         <SMPTEInput
+          highlight
           label="Clip End"
           value={videoStore.FrameToSMPTE(videoStore.clipOutFrame) || "00:00:00:00"}
           onChange={({frame}) => videoStore.SetClipMark({outFrame: frame})}

@@ -1,4 +1,4 @@
-import { action, flow, makeAutoObservable } from "mobx";
+import {action, flow, makeAutoObservable} from "mobx";
 import FrameAccurateVideo, {FrameRateDenominator, FrameRateNumerator, FrameRates} from "@/utils/FrameAccurateVideo";
 import UrlJoin from "url-join";
 import HLS from "hls.js";
@@ -118,7 +118,8 @@ class VideoStore {
     makeAutoObservable(
       this,
       {
-        metadata: false
+        metadata: false,
+        thumbnailStore: false
       }
     );
 
@@ -128,6 +129,8 @@ class VideoStore {
     this.initialClipPoints = options.initialClipPoints;
 
     this.Update = this.Update.bind(this);
+
+    addEventListener("fullscreenchange", () => this.SetFullscreen());
   }
 
   Reset() {
@@ -408,9 +411,6 @@ class VideoStore {
     this.videoHandler = videoHandler;
 
     video.load();
-
-    // Attach fullscreen state handling to video container
-    video.__containerElement.onfullscreenchange = action(() => this.fullScreen = !this.fullScreen);
 
     this.volume = video.volume;
     this.muted = video.muted;
@@ -916,8 +916,12 @@ class VideoStore {
     }
   }
 
+  SetFullscreen() {
+    this.fullScreen = !!document.fullscreenElement;
+  }
+
   ToggleFullscreen() {
-    if(this.fullScreen) {
+    if(document.fullscreenElement) {
       if (document.exitFullscreen) {
         document.exitFullscreen();
       } else if (document.webkitExitFullscreen) {

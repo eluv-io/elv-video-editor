@@ -4,7 +4,6 @@ import {ClipSidePanel, TagSidePanel} from "@/components/side_panel/SidePanel.jsx
 import VideoSection from "@/components/video/VideoSection.jsx";
 import {ClipTimeline, TagTimeline} from "@/components/timeline/Timeline.jsx";
 import PanelView from "@/components/side_panel/PanelView.jsx";
-import {videoStore} from "@/stores/index.js";
 
 const TagsAndClipsView = observer(({mode}) => {
   return (
@@ -15,10 +14,7 @@ const TagsAndClipsView = observer(({mode}) => {
         <ClipSidePanel />
       }
       mainPanelContent={
-        <VideoSection
-          store={videoStore}
-          showOverlay
-        />
+        <VideoSection />
       }
       bottomPanelContent={
         mode === "tags" ?

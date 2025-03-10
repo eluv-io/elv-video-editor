@@ -1,7 +1,6 @@
 import {observer} from "mobx-react-lite";
 import React from "react";
 import {ClipSidePanel, TagSidePanel} from "@/components/side_panel/SidePanel.jsx";
-import VideoSection from "@/components/video/VideoSection.jsx";
 import PanelView from "@/components/side_panel/PanelView.jsx";
 import {compositionStore} from "@/stores/index.js";
 import CompositionTimeline from "@/components/compositions/CompositionTimeline.jsx";
@@ -27,6 +26,7 @@ const CompositionsView = observer(({mode}) => {
         />
       }
       bottomPanelContent={<CompositionTimeline />}
+      initialTopPanelProportion={0.6}
       minSizes={{
         mainPanel: 700,
         sidePanel: 350,

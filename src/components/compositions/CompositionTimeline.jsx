@@ -2,9 +2,9 @@ import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
 
 import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react-lite";
-import {editStore, rootStore, tagStore, trackStore, compositionStore} from "@/stores";
+import {editStore, rootStore, compositionStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
-import {IconButton, Linkish, SMPTEInput, SwitchInput} from "@/components/common/Common";
+import {IconButton, SMPTEInput} from "@/components/common/Common";
 import MarkedSlider from "@/components/common/MarkedSlider";
 
 import {

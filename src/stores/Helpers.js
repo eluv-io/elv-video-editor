@@ -143,8 +143,8 @@ export const Cue = ({store, tagType, label, startTime, endTime, text, tag, ...ex
   const isSMPTE = typeof startTime === "string" && startTime.split(":").length > 1;
 
   if(isSMPTE) {
-    startTime = rootStore.videoStore.videoHandler.SMPTEToTime(startTime);
-    endTime = rootStore.videoStore.videoHandler.SMPTEToTime(endTime);
+    startTime = store.videoHandler.SMPTEToTime(startTime);
+    endTime = store.videoHandler.SMPTEToTime(endTime);
   }
 
   let textList, content;
