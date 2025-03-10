@@ -1,5 +1,7 @@
 /* Video Section */
 .video-section {
+  display: flex;
+  flex-direction: column;
   height: 100%;
   max-height: 100%;
   overflow: hidden;
@@ -14,6 +16,15 @@
   }
 }
 
+.clip-toolbar {
+  background-color: var(--background-secondary);
+
+  .toolbar__controls-group {
+    flex: 1 1 auto;
+    justify-content: space-around;
+  }
+}
+
 /* Player */
 
 .video-container {
@@ -21,7 +32,8 @@
   background: var(--background-secondary);
   display: flex;
   flex: 1 1 0;
-  height: calc(100% - 90px);
+
+  //height: calc(100% - 90px);
   justify-content: center;
   max-height: calc(100% - 90px);
   overflow: hidden;

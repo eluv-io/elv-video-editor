@@ -4,6 +4,7 @@ import {Parser as HLSParser} from "m3u8-parser";
 import UrlJoin from "url-join";
 import {Utils} from "@eluvio/elv-client-js";
 import {ConvertColor, Unproxy} from "@/utils/Utils.js";
+import {ParseVTTTrack, Cue, CreateTrackIntervalTree} from "@/stores/Helpers.js";
 
 /*
  * Track Types:
@@ -23,10 +24,6 @@ class TrackStore {
   intervalTrees = {};
 
   initialized = false;
-
-  thumbnails = false;
-  thumbnailStatus = { loaded: false };
-  thumbnailImages = {};
 
   tracks = [];
   audioTracks = [];
@@ -66,8 +63,7 @@ class TrackStore {
       this,
       {
         tags: false,
-        intervalTrees: false,
-        thumbnails: false
+        intervalTrees: false
       }
     );
 
@@ -129,9 +125,6 @@ class TrackStore {
     this.editingTrack = false;
     this.audioLoading = false;
     this.initialized = false;
-    this.thumbnails = false;
-    this.thumbnailImages = { loaded: false };
-    this.thumbnailImages = {};
   }
 
   TrackColor(key) {
@@ -202,7 +195,7 @@ class TrackStore {
     const track = this.tracks[trackIndex];
 
     // Rebuild interval tree in case tag start/end times changed
-    this.intervalTrees[trackId] = this.CreateTrackIntervalTree(
+    this.intervalTrees[trackId] = CreateTrackIntervalTree(
       this.TrackTags(trackId),
       trackId,
       track.label || track.key
@@ -214,12 +207,12 @@ class TrackStore {
   /* HLS Playlist Parsing */
 
   BasePlayoutUrl() {
-    return this.rootStore.videoStore.source.split("?")[0].replace("playlist.m3u8", "");
+    return this.rootStore.videoStore.playoutUrl.split("?")[0].replace("playlist.m3u8", "");
   }
 
   // TODO: Try switching to hls-parser
   async ParsedHLSPlaylist(playlistUrl) {
-    if(!playlistUrl) { playlistUrl = this.rootStore.videoStore.source; }
+    if(!playlistUrl) { playlistUrl = this.rootStore.videoStore.playoutUrl; }
 
     const playlist = await (await fetch(playlistUrl)).text();
     const parser = new HLSParser();
@@ -313,7 +306,7 @@ class TrackStore {
     });
 
     this.tags[trackId] = updatedTags;
-    this.intervalTrees[trackId] = this.CreateTrackIntervalTree(tags, label);
+    this.intervalTrees[trackId] = CreateTrackIntervalTree(tags, label);
 
     return trackId;
   }
@@ -488,7 +481,7 @@ class TrackStore {
       let tags = {};
       const millis = metadataTags[key].version > 0;
       metadataTags[key].tags.forEach(tag => {
-        const parsedTag = this.Cue({
+        const parsedTag = Cue({
           trackKey: key,
           tagType: "metadata",
           startTime: millis ? (tag.start_time / 1000) : tag.start_time,
@@ -516,112 +509,6 @@ class TrackStore {
     return metadataTracks;
   };
 
-  Cue({tagType, label, startTime, endTime, text, tag, ...extra}) {
-    const isSMPTE = typeof startTime === "string" && startTime.split(":").length > 1;
-
-    if(isSMPTE) {
-      startTime = this.rootStore.videoStore.videoHandler.SMPTEToTime(startTime);
-      endTime = this.rootStore.videoStore.videoHandler.SMPTEToTime(endTime);
-    }
-
-    let textList, content;
-    if(Array.isArray(text)) {
-      textList = text;
-    } else if(typeof text === "object") {
-      content = text;
-      textList = [];
-    } else {
-      textList = [text];
-    }
-
-    return {
-      tagId: this.rootStore.NextId(),
-      tagType,
-      label,
-      startTime,
-      endTime,
-      textList: Unproxy(textList),
-      content: Unproxy(content),
-      tag,
-      ...extra
-    };
-  }
-
-  FormatVTTCue(label, cue) {
-    // VTT Cues are weird about being inspected and copied
-    // Manually copy all relevant values
-    const cueAttributes = [
-      "align",
-      "endTime",
-      "id",
-      "line",
-      "lineAlign",
-      "position",
-      "positionAlign",
-      "region",
-      "size",
-      "snapToLines",
-      "startTime",
-      "text",
-      "vertical"
-    ];
-
-    const cueCopy = {};
-    cueAttributes.forEach(attr => cueCopy[attr] = cue[attr]);
-
-    return this.Cue({
-      tagType: "vtt",
-      label,
-      startTime: cue.startTime,
-      endTime: cue.endTime,
-      text: cue.text,
-      textList: [cue.text],
-      tag: cueCopy
-    });
-  }
-
-  async ParseVTTTrack(track) {
-    const videoElement = document.createElement("video");
-    const trackElement = document.createElement("track");
-
-    const dataURL = "data:text/plain;base64," + this.rootStore.client.utils.B64(track.vttData);
-
-    const textTrack = trackElement.track;
-
-    videoElement.append(trackElement);
-    trackElement.src = dataURL;
-
-    textTrack.mode = "hidden";
-
-    await new Promise(resolve => setTimeout(resolve, 250));
-
-    let cues = {};
-    Array.from(textTrack.cues)
-      .forEach(cue => {
-        const parsedCue = this.FormatVTTCue(track.label, cue);
-        cues[parsedCue.tagId] = parsedCue;
-      });
-
-    return cues;
-  }
-
-  CreateTrackIntervalTree(tags, label) {
-    const intervalTree = new IntervalTree();
-
-    Object.values(tags).forEach(tag => {
-      try {
-        intervalTree.insert(tag.startTime, tag.endTime, tag.tagId);
-      } catch(error) {
-        // eslint-disable-next-line no-console
-        console.warn(`Invalid tag in track '${label}'`);
-        // eslint-disable-next-line no-console
-        console.warn(JSON.stringify(tag, null, 2));
-      }
-    });
-
-    return intervalTree;
-  }
-
   AddSubtitleTracks = flow(function * () {
     try {
       const subtitleTracks = yield this.SubtitleTracksFromHLSPlaylist();
@@ -630,7 +517,7 @@ class TrackStore {
       yield Promise.all(
         subtitleTracks.map(async track => {
           try {
-            const tags = await this.ParseVTTTrack(track);
+            const tags = await ParseVTTTrack({track, store: this.rootStore.videoStore});
 
             this.totalTags += Object.keys(tags).length;
 
@@ -704,7 +591,7 @@ class TrackStore {
 
         let segments = {};
         sources.forEach(({timeline_start, timeline_end, source}) => {
-          let segment = this.Cue({
+          let segment = Cue({
             tagType: "segment",
             startTime: parseFloat(timeline_start.float.toFixed(2)),
             endTime: parseFloat(timeline_end.float.toFixed(2)),
@@ -738,7 +625,7 @@ class TrackStore {
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    const clip = this.Cue({
+    const clip = Cue({
       trackKey: "primary-content",
       tagType: "clip",
       startTime: this.rootStore.videoStore.primaryContentStartTime,
@@ -760,91 +647,6 @@ class TrackStore {
     });
   }
 
-  LoadThumbnails = flow(function * () {
-    if(!this.rootStore.videoStore.thumbnailTrackUrl) {
-      this.thumbnailStatus = {
-        loaded: true,
-        available: false,
-        status: (yield this.ThumbnailGenerationStatus()) || {}
-      };
-
-      return;
-    }
-
-    const vttData = yield (yield fetch(this.rootStore.videoStore.thumbnailTrackUrl)).text();
-
-    let tags = yield this.ParseVTTTrack({label: "Thumbnails", vttData});
-
-    let imageUrls = {};
-    Object.keys(tags).map(id => {
-      const [path, rest] = tags[id].tag.text.split("\n")[0].split("?");
-      const [query, hash] = rest.split("#");
-      const positionParams = hash.split("=")[1].split(",").map(n => parseInt(n));
-      const queryParams = new URLSearchParams(`?${query}`);
-      const url = new URL(this.rootStore.videoStore.thumbnailTrackUrl);
-      url.pathname = UrlJoin(url.pathname.split("/").slice(0, -1).join("/"), path);
-      queryParams.forEach((key, value) =>
-        url.searchParams.set(key, value)
-      );
-
-      tags[id].imageUrl = url.toString();
-      tags[id].thumbnailPosition = positionParams;
-
-      imageUrls[url.toString()] = true;
-
-      delete tags[id].tag.text;
-      delete tags[id].textList;
-    });
-
-    yield Promise.all(
-      Object.keys(imageUrls).map(async url => {
-        const image = new Image();
-
-        await new Promise(resolve => {
-          image.src = url;
-          image.crossOrigin = "anonymous";
-          image.onload = () => {
-            resolve();
-          };
-        });
-
-        imageUrls[url] = image;
-      })
-    );
-
-    this.thumbnailImages = imageUrls;
-    this.thumbnails = tags;
-    this.intervalTrees.thumbnails = this.CreateTrackIntervalTree(tags, "Thumbnails");
-    this.thumbnailStatus = { loaded: true, available: true };
-  });
-
-  ThumbnailImage(time) {
-    if(!this.thumbnailStatus.available) { return; }
-
-    let thumbnailIndex = this.intervalTrees?.thumbnails?.search(time, time + 10)[0];
-    const tag = this.thumbnails?.[thumbnailIndex?.toString()];
-
-    if(!tag) { return; }
-
-    if(!tag.thumbnailUrl) {
-      if(!this.thumbnailCanvas) {
-        this.thumbnailCanvas = document.createElement("canvas");
-      }
-
-      const image = this.thumbnailImages[tag?.imageUrl];
-
-      if(image) {
-        const [x, y, w, h] = tag.thumbnailPosition;
-        this.thumbnailCanvas.height = h;
-        this.thumbnailCanvas.width = w;
-        const context = this.thumbnailCanvas.getContext("2d");
-        context.drawImage(image, x, y, w, h, 0, 0, w, h);
-        tag.thumbnailUrl = this.thumbnailCanvas.toDataURL("image/png");
-      }
-    }
-
-    return tag.thumbnailUrl;
-  }
 
   InitializeTracks = flow(function * (metadataTags) {
     if(this.initialized) { return; }
@@ -856,8 +658,6 @@ class TrackStore {
     yield this.AddMetadataTracks(metadataTags);
     yield this.AddSegmentTracks();
     yield this.rootStore.overlayStore.AddOverlayTracks();
-
-    this.LoadThumbnails();
   });
 
   /* User Actions */
@@ -899,104 +699,6 @@ class TrackStore {
     const clipTrack = this.tracks.find(track => track.trackType === "clip");
     return Object.values(this.tags[clipTrack.trackId])[0];
   }
-
-  /* Video thumbnails creation */
-
-  GenerateVideoThumbnails = flow(function * ({options={}}={}) {
-    try {
-      this.thumbnailStatus.status = { state: "started" };
-
-      const {libraryId, objectId} = this.rootStore.videoStore.videoObject;
-      const {writeToken} = yield this.rootStore.client.EditContentObject({
-        libraryId,
-        objectId
-      });
-
-      const {data} = yield this.rootStore.client.CallBitcodeMethod({
-        libraryId,
-        objectId,
-        writeToken,
-        method: "/media/thumbnails/create",
-        constant: false,
-        body: {
-          async: true,
-          frame_interval: Math.ceil(this.rootStore.videoStore.frameRate) * 6,
-          add_thumb_track: true,
-          generate_storyboards: true,
-          ...options
-        }
-      });
-
-      const nodeUrl = yield this.rootStore.client.WriteTokenNodeUrl({writeToken});
-
-      yield this.rootStore.client.walletClient.SetProfileMetadata({
-        type: "app",
-        appId: "video-editor",
-        mode: "private",
-        key: `thumbnail-job-${objectId}`,
-        value: JSON.stringify({writeToken, lroId: data, nodeUrl})
-      });
-    } catch(error) {
-      // eslint-disable-next-line no-console
-      console.error(error);
-      this.thumbnailStatus.status = { state: "failed" };
-    }
-  });
-
-  ThumbnailGenerationStatus = flow(function * ({finalize=false}={}) {
-    const { libraryId, objectId } = this.rootStore.videoStore.videoObject;
-    const info = yield this.rootStore.client.walletClient.ProfileMetadata({
-      type: "app",
-      appId: "video-editor",
-      mode: "private",
-      key: `thumbnail-job-${objectId}`
-    });
-
-    if(!info) { return; }
-
-    try {
-      const {writeToken, lroId, nodeUrl} = JSON.parse(info);
-
-      if(nodeUrl) {
-        this.rootStore.client.RecordWriteToken({writeToken, fabricNodeUrl: nodeUrl});
-      }
-
-      const response = yield this.rootStore.client.CallBitcodeMethod({
-        libraryId,
-        objectId,
-        writeToken,
-        method: UrlJoin("/media/thumbnails/status", lroId),
-        constant: true
-      });
-
-      if(response.data.custom.run_state === "finished" && finalize) {
-        yield this.rootStore.client.FinalizeContentObject({
-          libraryId,
-          objectId,
-          writeToken,
-          commitMessage: "Eluvio Video Editor: Generate video thumbnails"
-        });
-
-        yield this.rootStore.client.walletClient.RemoveProfileMetadata({
-          type: "app",
-          appId: "video-editor",
-          mode: "private",
-          key: `thumbnail-job-${objectId}`
-        });
-      }
-
-      this.thumbnailStatus.status = {
-        state: response?.data?.custom?.run_state,
-        progress: response?.data?.custom?.progress?.percentage || 0,
-        ...response
-      };
-
-      return this.thumbnailStatus.status;
-    } catch(error) {
-      // eslint-disable-next-line no-console
-      console.log(error);
-    }
-  });
 }
 
 export default TrackStore;

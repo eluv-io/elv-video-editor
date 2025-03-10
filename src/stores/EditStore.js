@@ -256,7 +256,10 @@ class EditStore {
       this.rootStore.menuStore.UpdateVersionHash(hash);
 
       yield this.rootStore.videoStore.ReloadMetadata();
-      this.rootStore.videoStore.SetOfferingClipDetails();
+      this.rootStore.videoStore.availableOfferings = this.rootStore.videoStore.SetOfferingClipDetails({
+        metadata: this.rootStore.videoStore.metadata,
+        availableOfferings: this.rootStore.videoStore.availableOfferings,
+      });
 
       this.saveFailed = false;
     } catch(error) {

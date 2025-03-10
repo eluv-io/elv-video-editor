@@ -85,11 +85,11 @@ const TimelineTopBar = observer(() => {
         </div>
       </div>
       <div className={S("toolbar__controls-group", "center", "frame-controls")}>
-        <FrameBack10Button />
-        <FrameBack1Button />
-        <FrameDisplay />
-        <FrameForward1Button />
-        <FrameForward10Button />
+        <FrameBack10Button store={videoStore} />
+        <FrameBack1Button store={videoStore} />
+        <FrameDisplay store={videoStore} />
+        <FrameForward1Button store={videoStore} />
+        <FrameForward10Button store={videoStore} />
       </div>
       <div className={S("toolbar__controls-group", "right")}>
         <IconButton icon={ClipInIcon} label="Set Clip In to Current Frame"
@@ -107,7 +107,7 @@ const TimelineTopBar = observer(() => {
           onChange={({frame}) => videoStore.SetClipMark({outFrame: frame})}
         />
         <div className={S("toolbar__separator")}/>
-        <PlayCurrentClipButton/>
+        <PlayCurrentClipButton store={videoStore}/>
         <Download/>
       </div>
     </div>
@@ -504,7 +504,7 @@ const Timeline = observer(({content}) => {
       >
         <TimelineSeekBar hoverSeek={hoverSeek} />
         {
-          !videoStore.initialized || !trackStore.thumbnailStatus.loaded || !trackStore.showThumbnails ? null :
+          !videoStore.initialized || !videoStore.thumbnailStore.thumbnailStatus.loaded || !trackStore.showThumbnails ? null :
             <div className={S("timeline-row", "timeline-row--thumbnails")}>
               <div className={S("timeline-row__label")}>
                 Thumbnails

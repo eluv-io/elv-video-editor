@@ -2,10 +2,12 @@ import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 
 import React, {useState, useEffect, useRef} from "react";
 import {observer} from "mobx-react-lite";
-import {browserStore} from "@/stores";
+import {rootStore, browserStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {IconButton, Linkish, Loader} from "@/components/common/Common";
 import SVG from "react-inlinesvg";
+import {useLocation, useParams} from "wouter";
+import UrlJoin from "url-join";
 
 import LibraryIcon from "@/assets/icons/v2/library.svg";
 import ObjectIcon from "@/assets/icons/file.svg";
@@ -15,12 +17,8 @@ import FirstPageIcon from "@/assets/icons/DoubleBackward.svg";
 import LastPageIcon from "@/assets/icons/DoubleForward.svg";
 import PageForwardIcon from "@/assets/icons/Forward.svg";
 import PageBackIcon from "@/assets/icons/Backward.svg";
-import {useLocation, useParams} from "wouter";
-import UrlJoin from "url-join";
-
 
 const S = CreateModuleClassMatcher(BrowserStyles);
-
 
 const PageControls = observer(({currentPage, pages, maxSpread=15, SetPage}) => {
   const ref = useRef();
@@ -102,21 +100,7 @@ const SearchBar = observer(({filter, setFilter, delay=500}) => {
   useEffect(() => {
     clearTimeout(updateTimeout);
 
-    setUpdateTimeout(
-      setTimeout(async () => {
-        if(["ilib", "iq__", "hq__", "0x"].find(prefix => input.trim().startsWith(prefix))) {
-          const result = await browserStore.LookupContent(input);
-
-          if(result.objectId) {
-            navigate(`/${result.libraryId}/${result.objectId}`);
-          } else if(result.libraryId) {
-            navigate(`/${result.libraryId}`);
-          }
-        } else {
-          setFilter(input);
-        }
-      }, delay)
-    );
+    setUpdateTimeout(setTimeout(() => setFilter(input), delay));
   }, [input]);
 
   return (
@@ -124,6 +108,19 @@ const SearchBar = observer(({filter, setFilter, delay=500}) => {
       value={input}
       placeholder="Search"
       onChange={event => setInput(event.target.value)}
+      onKeyDown={async event => {
+        if(event.key !== "Enter") { return; }
+
+        if(["ilib", "iq__", "hq__", "0x"].find(prefix => event.target.value.trim().startsWith(prefix))) {
+          const result = await browserStore.LookupContent(event.target.value);
+
+          if(result.objectId) {
+            navigate(`/${result.libraryId}/${result.objectId}`);
+          } else if(result.libraryId) {
+            navigate(`/${result.libraryId}`);
+          }
+        }
+      }}
       className={S("search-bar")}
     />
   );
@@ -310,6 +307,10 @@ const LibraryBrowser = observer(() => {
 
 const Browser = observer(() => {
   const { libraryId } = useParams();
+
+  useEffect(() => {
+    rootStore.SetPage("source");
+  }, []);
 
   return libraryId ?
     <ObjectBrowser key={`browser-${libraryId}`} libraryId={libraryId} />:

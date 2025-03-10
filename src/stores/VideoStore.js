@@ -3,11 +3,15 @@ import FrameAccurateVideo, {FrameRateDenominator, FrameRateNumerator, FrameRates
 import UrlJoin from "url-join";
 import HLS from "hls.js";
 import {DownloadFromUrl} from "@/utils/Utils.js";
+import {LoadVideo} from "@/stores/Helpers.js";
+import ThumbnailStore from "@/stores/ThumbnailStore.js";
 
 // How far the scale can be zoomed, as a percentage
 const MIN_SCALE = 0.2;
 
 class VideoStore {
+  tags = false;
+
   videoKey = 0;
 
   primaryContentStartTime = 0;
@@ -23,7 +27,6 @@ class VideoStore {
   loading = false;
   initialized = false;
   isVideo = false;
-  hasAssets = false;
   ready = false;
   showVideoControls = true;
 
@@ -38,12 +41,10 @@ class VideoStore {
   subtitleTracks = [];
   currentSubtitleTrack = -1;
 
-  source;
+  playoutUrl;
   baseUrl = undefined;
   baseStateChannelUrl = undefined;
   baseFileUrl = undefined;
-  previewSupported = false;
-  downloadUrl;
 
   dropFrame = false;
   frameRateKey = "NTSC";
@@ -59,7 +60,7 @@ class VideoStore {
   duration;
   durationSMPTE;
   playing = false;
-  playbackRate = 2.0;
+  playbackRate = 1.0;
   fullScreen = false;
   volume = 1;
   muted = false;
@@ -113,7 +114,7 @@ class VideoStore {
     }
   }
 
-  constructor(rootStore) {
+  constructor(rootStore, options={clipKey: "", tags: true}) {
     makeAutoObservable(
       this,
       {
@@ -122,15 +123,19 @@ class VideoStore {
     );
 
     this.rootStore = rootStore;
+    this.thumbnailStore = new ThumbnailStore(this);
+    this.tags = typeof options.tags !== "undefined" ? options.tags : true;
+    this.initialClipPoints = options.initialClipPoints;
 
     this.Update = this.Update.bind(this);
   }
 
   Reset() {
+    this.clipStores = {};
+
     this.loading = true;
     this.initialized = false;
     this.isVideo = false;
-    this.hasAssets = false;
 
     this.video = undefined;
     this.player = undefined;
@@ -152,10 +157,9 @@ class VideoStore {
     this.offeringKey = "default";
     this.availableOfferings = {};
 
-    this.source = undefined;
+    this.playoutUrl = undefined;
     this.baseFileUrl = undefined;
     this.baseUrl = undefined;
-    this.previewSupported = false;
 
     this.dropFrame = false;
     this.frameRateKey = "NTSC";
@@ -186,8 +190,10 @@ class VideoStore {
     this.clipInFrame = undefined;
     this.clipOutFrame = undefined;
 
-    this.rootStore.tagStore.ClearTags();
-    this.rootStore.trackStore.Reset();
+    if(this.tags) {
+      this.rootStore.tagStore.ClearTags();
+      this.rootStore.trackStore.Reset();
+    }
   }
 
   ToggleVideoControls(enable) {
@@ -198,45 +204,19 @@ class VideoStore {
     yield this.SetVideo({...this.videoObject, preferredOfferingKey: offeringKey});
   });
 
-  SetVideo = flow(function * ({libraryId, objectId, preferredOfferingKey="default"}) {
+  SetVideo = flow(function * ({objectId, preferredOfferingKey="default"}) {
     this.loading = true;
     this.ready = false;
     this.rootStore.SetError(undefined);
 
+    if(this.videoObject?.objectId !== objectId) {
+      this.Reset();
+    }
+
     try {
-      this.rootStore.Reset();
       this.selectedObject = undefined;
 
-      if(!libraryId) {
-        libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
-      }
-
-      const versionHash = yield this.rootStore.client.LatestVersionHash({objectId});
-
-      const metadata = yield this.rootStore.client.ContentObjectMetadata({
-        versionHash,
-        resolveLinks: true,
-        resolveIgnoreErrors: true,
-        linkDepthLimit: 1,
-        select: [
-          "public/name",
-          "public/description",
-          "offerings",
-          "video_tags",
-          "mime_types",
-          "assets"
-        ]
-      });
-
-      const videoObject = {
-        libraryId,
-        objectId,
-        versionHash,
-        name: metadata.public && metadata.public.name || metadata.name || versionHash,
-        description: metadata.public && metadata.public.description || metadata.description,
-        metadata,
-        isVideo: metadata.offerings
-      };
+      const videoObject = yield LoadVideo({objectId, preferredOfferingKey});
 
       this.videoObject = videoObject;
 
@@ -261,12 +241,56 @@ class VideoStore {
 
       this.metadata = videoObject.metadata;
       this.isVideo = videoObject.isVideo;
-      this.hasAssets = Object.keys((videoObject.metadata || {}).assets || {}).length > 0;
+      this.playoutUrl = videoObject.playoutUrl;
+      this.availableOfferings = videoObject.availableOfferings;
+      this.offeringKey = videoObject.offeringKey;
+      this.thumbnailTrackUrl = videoObject.thumbnailTrackUrl;
 
-      if(this.hasAssets) {
-        this.rootStore.assetStore.SetAssets(videoObject.metadata.assets);
+      try {
+        videoObject.primaryContentStartTime = 0;
+
+        const offering = videoObject.metadata.offerings[videoObject.offeringKey];
+        const offeringOptions = offering.media_struct.streams || {};
+
+        let rate;
+        if(offeringOptions.video) {
+          rate = offeringOptions.video.rate;
+        } else {
+          const videoKey = Object.keys(offeringOptions).find(key => key.startsWith("video"));
+          rate = offeringOptions[videoKey].rate;
+        }
+
+        videoObject.frameRateSpecified = true;
+        videoObject.rate = rate;
+
+        this.SetFrameRate({rateRat: rate});
+
+        if(offering.tag_point_rat) {
+          this.primaryContentStartTime = FrameAccurateVideo.ParseRat(offering.tag_point_rat);
+        }
+
+        if(offering.exit_point_rat) {
+          // End time is end of specified frame
+          this.primaryContentEndTime = Number((FrameAccurateVideo.ParseRat(offering.exit_point_rat)).toFixed(3));
+        }
+      } catch(error) {
+        // eslint-disable-next-line no-console
+        console.error("Unable to determine frame rate");
       }
 
+      if(this.thumbnailTrackUrl) {
+        this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl);
+      }
+
+      if(!this.tags) {
+        this.initialized = true;
+        this.ready = true;
+        return;
+      }
+
+
+      // Load tags and assets
+      this.rootStore.assetStore.SetAssets(videoObject.metadata.assets);
       this.LoadDownloadJobInfo();
 
       let metadataTags = {};
@@ -274,70 +298,6 @@ class VideoStore {
         this.initialized = true;
         this.ready = true;
       } else {
-        this.availableOfferings = yield this.rootStore.client.AvailableOfferings({
-          versionHash: videoObject.versionHash
-        });
-
-        if(this.availableOfferings?.default) {
-          this.availableOfferings.default.display_name = "Default Offering";
-        }
-
-        this.SetOfferingClipDetails();
-
-        const browserSupportedDrms = (yield this.rootStore.client.AvailableDRMs() || []).filter(drm => ["clear", "aes-128"].includes(drm));
-        const { playoutOptions, offeringKey } = yield this.GetSupportedOffering({
-          versionHash: videoObject.versionHash,
-          browserSupportedDrms,
-          preferredOfferingKey
-        });
-
-        this.offeringKey = offeringKey;
-
-        // Specify playout for full, untrimmed content
-        const playoutMethods = playoutOptions["hls"].playoutMethods;
-
-        this.drm = playoutMethods.clear ? "clear" : "aes-128";
-
-        const source = new URL((playoutMethods.clear || playoutMethods["aes-128"]).playoutUrl);
-        source.searchParams.set("ignore_trimming", true);
-        source.searchParams.set("player_profile", "hls-js-2441");
-
-        const thumbnailTrackUrl = (playoutMethods.clear || playoutMethods["aes-128"]).thumbnailTrack;
-
-        this.source = source.toString();
-        this.thumbnailTrackUrl = thumbnailTrackUrl;
-
-        try {
-          this.primaryContentStartTime = 0;
-
-          const offering = this.metadata.offerings[this.offeringKey];
-          const offeringOptions = offering.media_struct.streams || {};
-
-          let rate;
-          if(offeringOptions.video) {
-            rate = offeringOptions.video.rate;
-          } else {
-            const videoKey = Object.keys(offeringOptions).find(key => key.startsWith("video"));
-            rate = offeringOptions[videoKey].rate;
-          }
-
-          this.frameRateSpecified = true;
-
-          this.SetFrameRate({rateRat: rate});
-
-          if(offering.tag_point_rat) {
-            this.primaryContentStartTime = FrameAccurateVideo.ParseRat(offering.tag_point_rat);
-          }
-
-          if(offering.exit_point_rat) {
-            // End time is end of specified frame
-            this.primaryContentEndTime = Number((FrameAccurateVideo.ParseRat(offering.exit_point_rat)).toFixed(3));
-          }
-        } catch(error) {
-          // eslint-disable-next-line no-console
-          console.error("Unable to determine frame rate");
-        }
-
         // Tags
         if(this.metadata.video_tags && this.metadata.video_tags.metadata_tags) {
           if(this.metadata.video_tags.metadata_tags["/"]) {
@@ -406,76 +366,6 @@ class VideoStore {
       this.loading = false;
     }
   });
-
-  GetSupportedOffering = flow(function * ({versionHash, browserSupportedDrms, preferredOfferingKey}) {
-    const offeringPlayoutOptions = {};
-
-    const offeringKeys = Object.keys(this.availableOfferings)
-      .sort((a, b) => {
-        // Prefer 'default', then anything including 'default', then alphabetically
-        if(a === "default") {
-          return -1;
-        } else if(b === "default") {
-          return 1;
-        } else if(a.includes("default")) {
-          return b.includes("default") ? 0 : -1;
-        } else if(b.includes("default")) {
-          return 1;
-        }
-
-        return a < b ? -1 : 1;
-      });
-
-    let offeringKey;
-    for(let offering of offeringKeys) {
-      offeringPlayoutOptions[offering] = yield this.rootStore.client.PlayoutOptions({
-        versionHash,
-        protocols: ["hls"],
-        drms: browserSupportedDrms,
-        hlsjsProfile: false,
-        offering
-      });
-
-      const playoutMethods = offeringPlayoutOptions[offering].hls.playoutMethods;
-
-      if(!(playoutMethods["aes-128"] || playoutMethods["clear"])) {
-        this.availableOfferings[offering].disabled = true;
-      } else {
-        if(!offeringKey || offering === preferredOfferingKey) {
-          offeringKey = offering;
-        }
-      }
-    }
-
-    const hasHlsOfferings = Object.values(this.availableOfferings).some(offering => !offering.disabled);
-
-    if(!hasHlsOfferings) { throw Error("No offerings with HLS Clear or AES-128 playout found."); }
-
-    return {
-      playoutOptions: offeringPlayoutOptions[offeringKey],
-      offeringKey
-    };
-  });
-
-  SetOfferingClipDetails = () => {
-    Object.keys(this.metadata.offerings || {}).map(offeringKey => {
-      const tagPointRat = this.metadata.offerings[offeringKey].tag_point_rat;
-      const exitPointRat = this.metadata.offerings[offeringKey].exit_point_rat;
-      let tagPoint = null, exitPoint = null;
-
-      if(tagPointRat) {
-        tagPoint = FrameAccurateVideo.ParseRat(tagPointRat);
-      }
-
-      if(exitPointRat) {
-        exitPoint = FrameAccurateVideo.ParseRat(exitPointRat);
-      }
-
-      this.availableOfferings[offeringKey].tag = tagPoint;
-      this.availableOfferings[offeringKey].exit = exitPoint;
-      this.availableOfferings[offeringKey].durationTrimmed = (tagPoint === null || exitPoint === null) ? null : (exitPoint - tagPoint);
-    });
-  };
 
   ReloadMetadata = flow(function * () {
     const versionHash = this.rootStore.menuStore.selectedObject.versionHash;
@@ -560,7 +450,7 @@ class VideoStore {
 
         // Give up and show an error message after several failures
         if(this.consecutiveSegmentErrors >= 3) {
-          this.rootStore.menuStore.SetErrorMessage("Playback Error");
+          this.rootStore.SetError("Playback Error");
           this.Reset();
         }
       }
@@ -600,11 +490,11 @@ class VideoStore {
       }
     }));
 
-    const loadedSource = this.source;
+    const loadedSource = this.playoutUrl;
 
     // When sufficiently loaded, update video info and mark video as initialized
     const InitializeDuration = action(() => {
-      if(this.initialized || this.source !== loadedSource) { return; }
+      if(this.initialized || this.playoutUrl !== loadedSource) { return; }
 
       if(this.video.readyState > 2 && this.video.duration > 3 && isFinite(this.video.duration)) {
         videoHandler.Update();
@@ -614,8 +504,14 @@ class VideoStore {
           this.primaryContentEndTime = Number((this.video.duration).toFixed(3));
         }
 
-        this.clipInFrame = 0;
-        this.clipOutFrame = this.videoHandler.TotalFrames() - 1;
+        this.SetClipMark({
+          inFrame: 0,
+          outFrame: this.videoHandler.TotalFrames() - 1
+        });
+
+        if(this.initialClipPoints) {
+          this.SetClipMark(this.initialClipPoints);
+        }
 
         this.aspectRatio = this.video.videoWidth / this.video.videoHeight;
       }
@@ -649,14 +545,21 @@ class VideoStore {
     }
   }
 
-  SetClipMark({inFrame, outFrame, inProgress, outProgress}) {
+  SetClipMark({inFrame, outFrame, inProgress, outProgress, inTime, outTime}) {
     if(typeof inProgress !== "undefined" && inProgress >= 0) {
       inFrame = this.ProgressToFrame(inProgress);
+    } else if(typeof inTime!== "undefined" && inTime >= 0) {
+      inFrame = this.TimeToFrame(inTime);
     }
 
     if(typeof outProgress !== "undefined" && outProgress <= 100) {
       outFrame = this.ProgressToFrame(outProgress);
+    } else if(typeof outTime !== "undefined") {
+      outFrame = this.TimeToFrame(outTime);
     }
+
+    inFrame = typeof inFrame === "undefined" ? this.clipInFrame : inFrame;
+    outFrame = typeof outFrame === "undefined" ? this.clipOutFrame : outFrame;
 
     const inFrameChanged = inFrame !== this.clipInFrame;
     const outFrameChanged = outFrame !== this.clipOutFrame;
@@ -915,9 +818,13 @@ class VideoStore {
     }
   }
 
-  PlaySegment(startFrame, endFrame) {
+  SetSegment(startFrame, endFrame) {
     this.Seek(startFrame);
     this.segmentEnd = endFrame;
+  }
+
+  PlaySegment(startFrame, endFrame) {
+    this.SetSegment(startFrame, endFrame);
     this.video.play();
   }
 
@@ -1358,7 +1265,7 @@ class VideoStore {
 
       this.downloadedJobs[jobId] = true;
     } catch(error) {
-      this.rootStore.menuStore.SetErrorMessage("Unable to download");
+      this.rootStore.SetError("Unable to download");
       // eslint-disable-next-line no-console
       console.error("Invalid URL or failed to download", error);
     }

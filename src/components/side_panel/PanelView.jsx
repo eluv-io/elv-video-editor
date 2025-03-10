@@ -2,6 +2,7 @@ import {observer} from "mobx-react-lite";
 import React, {useEffect, useRef, useState} from "react";
 import {ResizeHandle} from "@/components/common/Common.jsx";
 import {rootStore} from "@/stores/index.js";
+import ResizeObserver from "resize-observer-polyfill";
 
 let timeout;
 export const PanelView = observer(({
@@ -13,16 +14,17 @@ export const PanelView = observer(({
     mainPanel: 0,
     bottomPanel: 0
   },
+  initialSidePanelProportion=0.3,
   isSubpanel=false
 }) => {
   const contentPanelRef = useRef(null);
   const [topPanel, setTopPanel] = useState(undefined);
   const [heights, setHeights] = useState({top: 0, bottom: 0});
-  const [widths, setWidths] = useState({sidePanel: 0, contentPanel: 0});
+  const [widths, setWidths] = useState({sidePanel: 0, contentPanel: 0, container: 0});
 
-  let sidePanelHidden = ["contentPanel", "bottomPanel"].includes(rootStore.expandedPanel);
-  let contentPanelHidden = ["sidePanel", "bottomPanel"].includes(rootStore.expandedPanel);
-  let bottomPanelHidden = ["sidePanel", "contentPanel"].includes(rootStore.expandedPanel);
+  let sidePanelHidden = !sidePanelContent || ["contentPanel", "bottomPanel"].includes(rootStore.expandedPanel);
+  let contentPanelHidden = !mainPanelContent || ["sidePanel", "bottomPanel"].includes(rootStore.expandedPanel);
+  let bottomPanelHidden = !bottomPanelContent || ["sidePanel", "contentPanel"].includes(rootStore.expandedPanel);
 
   const ResizePanelWidth = ({deltaX}) => {
     const contentPanel = contentPanelRef?.current;
@@ -33,10 +35,27 @@ export const PanelView = observer(({
 
     // Expanded panel or no side panel content
     if(!sidePanelContent || rootStore.expandedPanel === "contentPanel") {
-      setWidths({sidePanel: 0, contentPanel: containerWidth});
+      setWidths({sidePanel: 0, contentPanel: containerWidth, container: containerWidth});
       return;
     } else if(rootStore.expandedPanel === "sidePanel") {
-      setWidths({sidePanel: containerWidth, contentPanel: 0});
+      setWidths({sidePanel: containerWidth, contentPanel: 0, container: containerWidth});
+      return;
+    } else if(
+      !rootStore.expandedPanel &&
+      !(sidePanelHidden && !contentPanelHidden) &&
+      (widths.contentPanel === 0 || widths.sidePanel === 0)
+    ) {
+      // Content shown in both places but width is 0 for one of them - re-initialize widths
+      const sidePanelWidth = Math.floor(containerWidth * initialSidePanelProportion);
+      setWidths({
+        sidePanel: sidePanelWidth,
+        contentPanel: containerWidth - sidePanelWidth,
+        container: containerWidth
+      });
+      return;
+    }
+
+    if(!deltaX && widths.container === containerWidth) {
       return;
     }
 
@@ -45,17 +64,18 @@ export const PanelView = observer(({
     const newContentPanelWidth = Math.min(
       Math.max(
         contentPanelWidth - deltaX,
-        containerWidth * 0.5,
+        containerWidth * 0.3,
         minSizes.mainPanel || 0
       ),
-      containerWidth * 0.8,
+      containerWidth * 0.9,
       containerWidth - (minSizes.sidePanel || 0)
     );
     const newSidePanelWidth = containerWidth - newContentPanelWidth;
 
     setWidths({
       sidePanel: newSidePanelWidth,
-      contentPanel: newContentPanelWidth
+      contentPanel: newContentPanelWidth,
+      container: containerWidth
     });
 
     if(!isSubpanel) {
@@ -112,15 +132,20 @@ export const PanelView = observer(({
   };
 
   useEffect(() => {
+    if(!topPanel) {
+      return;
+    }
+
     const HandleResize = () => {
       ResizePanelWidth({deltaX: 0});
       ResizePanelHeight({deltaY: 0});
     };
 
-    window.addEventListener("resize", HandleResize);
+    const resizeObserver = new ResizeObserver(HandleResize);
+    resizeObserver.observe(topPanel.parentElement);
 
-    return () => window.removeEventListener("resize", HandleResize);
-  }, [topPanel, contentPanelRef]);
+    return () => resizeObserver.disconnect();
+  }, [topPanel, contentPanelRef, sidePanelHidden, contentPanelHidden, bottomPanelHidden]);
 
   useEffect(() => {
     ResizePanelWidth({deltaX: -1 * window.innerWidth * 0.65});
@@ -137,7 +162,7 @@ export const PanelView = observer(({
           minHeight: heights.top,
           "--panel-height": `${heights.top}px`,
           "--panel-width": `${widths.sidePanel}px`,
-          paddingBottom: bottomPanelContent ? 0 : "var(--gutter-size-y)"
+          paddingBottom: isSubpanel || bottomPanelContent ? 0 : "var(--gutter-size-y)"
         }}
         ref={element => {
           if(!element || heights.top) {
@@ -168,7 +193,7 @@ export const PanelView = observer(({
         }}
       >
         {
-          !sidePanelContent ? null :
+          sidePanelHidden ? null :
             <div
               className={`side-panel ${sidePanelHidden ? "hidden-panel" : ""}`}
               style={{width: widths.sidePanel, maxWidth: widths.sidePanel}}
@@ -188,12 +213,12 @@ export const PanelView = observer(({
           { mainPanelContent }
         </div>
         {
-          !bottomPanelContent || bottomPanelHidden ? null :
+          bottomPanelHidden ? null :
             <ResizeHandle variant="vertical" onMove={ResizePanelHeight}/>
         }
       </div>
       {
-        !bottomPanelContent ? null :
+        bottomPanelHidden ? null :
           <div
             className={`bottom  ${bottomPanelHidden ? "hidden-panel" : ""}`}
             style={{height: heights.bottom, maxHeight: heights.bottom}}

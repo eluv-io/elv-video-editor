@@ -117,6 +117,10 @@
       min-height: 15px;
     }
   }
+
+  &--highlight {
+    color: var(--text-highlight);
+  }
 }
 
 .copy-button {
@@ -130,6 +134,8 @@
 }
 
 .input {
+  border-radius: 5px;
+
   &__input {
     background: var(--background-input);
     border: 0;
@@ -146,6 +152,10 @@
 
   &__icon {
     height: 20px;
+  }
+
+  &--highlight {
+    border: 1px solid var(--text-highlight);
   }
 }
 

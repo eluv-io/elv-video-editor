@@ -2,20 +2,23 @@ import NavStyles from "@/assets/stylesheets/modules/nav.module.scss";
 
 import React from "react";
 import {observer} from "mobx-react-lite";
-import {rootStore, videoStore} from "@/stores";
+import {compositionStore, rootStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {IconButton} from "@/components/common/Common";
+import UrlJoin from "url-join";
 
 import SourceIcon from "@/assets/icons/v2/source.svg";
 import TagIcon from "@/assets/icons/v2/tag.svg";
 import ClipIcon from "@/assets/icons/v2/clip.svg";
 import AssetIcon from "@/assets/icons/v2/asset.svg";
-import UrlJoin from "url-join";
+import CompositionIcon from "@/assets/icons/v2/play-clip.svg";
 
 const S = CreateModuleClassMatcher(NavStyles);
 
 const Nav = observer(() => {
   const { libraryId, objectId } = videoStore.videoObject || {};
+  const compositionObject = compositionStore.videoObject;
+
   const pages = [
     {
       label: "Source",
@@ -23,6 +26,15 @@ const Nav = observer(() => {
       to: "/",
       icon: SourceIcon,
       active: !rootStore.page || rootStore.page === "source"
+    },
+    {
+      label: "Compositions",
+      key: "compositions",
+      //to: !compositionObject?.objectId ? "/" : UrlJoin("/compositions", objectId),
+      // TODO: Change
+      to: "/compositions/iq__3QhxBgWHZDkcN87irAYqf5hSGdya",
+      icon: CompositionIcon,
+      active: !rootStore.page || rootStore.page === "compositions"
     },
     {
       label: "Tags",
@@ -43,7 +55,7 @@ const Nav = observer(() => {
     {
       label: "Assets",
       key: "assets",
-      disabled: !objectId || (videoStore.ready && !videoStore.hasAssets),
+      disabled: !objectId || (videoStore.ready),
       to: !objectId ? "/" : UrlJoin("/", libraryId, objectId, "assets"),
       icon: AssetIcon,
       active: rootStore.page === "assets"

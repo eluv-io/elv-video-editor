@@ -183,13 +183,13 @@ const TagForm = observer(() => {
     >
       <TagActions tag={tag} track={track} />
       {
-        !trackStore.thumbnailStatus.available ? null :
+        !videoStore.thumbnailStore.thumbnailStatus.available ? null :
           <div style={{aspectRatio: videoStore.aspectRatio}} className={S("tag-details__thumbnail-container")}>
             {
               duration < 10 ?
                 <img
                   key={`preview-${tag.startTime}-${tag.endTime}`}
-                  src={trackStore.ThumbnailImage(tag.startTime)}
+                  src={videoStore.thumbnailStore.ThumbnailImage(tag.startTime)}
                   className={S("tag-details__thumbnail")}
                 /> :
                 <PreviewThumbnail
@@ -311,12 +311,12 @@ export const TagDetails = observer(() => {
       <div key={`tag-details-${tag.tagId}`} className={S("tag-details")}>
         <TagActions tag={tag} track={track}/>
         {
-          !trackStore.thumbnailStatus.available ? null :
+          !videoStore.thumbnailStore.thumbnailStatus.available ? null :
             <div className={S("tag-details__thumbnail-container")}>
               {
                 duration < 10 ?
                   <img
-                    src={trackStore.ThumbnailImage(tag.startTime)}
+                    src={videoStore.thumbnailStore.ThumbnailImage(tag.startTime)}
                     style={{aspectRatio: videoStore.aspectRatio}}
                     className={S("tag-details__thumbnail")}
                   /> :
@@ -372,7 +372,7 @@ const Tag = observer(({track, tag}) => {
       className={
         S(
           "tag",
-          trackStore.thumbnailStatus.available ? "tag--thumbnail" : "",
+          videoStore.thumbnailStore.thumbnailStatus.available ? "tag--thumbnail" : "",
           tagStore.selectedTagIds.includes(tag.tagId) ? "tag--selected" : "",
           tagStore.hoverTags.includes(tag.tagId) ? "tag--hover" : ""
         )
@@ -384,9 +384,9 @@ const Tag = observer(({track, tag}) => {
       />
       <div className={S("tag__left")}>
         {
-          !trackStore.thumbnailStatus.available ? null :
+          !videoStore.thumbnailStore.thumbnailStatus.available ? null :
             <img
-              src={trackStore.ThumbnailImage(tag.startTime)}
+              src={videoStore.thumbnailStore.ThumbnailImage(tag.startTime)}
               style={{aspectRatio: videoStore.aspectRatio}}
               className={S("tag__image")}
             />

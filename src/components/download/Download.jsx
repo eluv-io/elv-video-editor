@@ -195,13 +195,13 @@ const JobStatusTable = observer(({jobs, representations, audioRepresentations, s
             className={
               S(
                 "history-row",
-                trackStore.thumbnailStatus.available ? "history-row--thumbnail" : "",
+                videoStore.thumbnailStore.thumbnailStatus.available ? "history-row--thumbnail" : "",
                 job.highlighted ? "history-row--highlighted" : ""
               )
             }
           >
             {
-              !trackStore.thumbnailStatus.available ? null :
+              !videoStore.thumbnailStore.thumbnailStatus.available ? null :
                 <div style={{aspectRatio: videoStore.aspectRatio}} className={S("history-row__thumbnail-container")}>
                   <PreviewThumbnail
                     startFrame={startFrame}
@@ -445,7 +445,7 @@ const DownloadModalContent = observer(({setConfirming, Close}) => {
           <div className={S("preview__header")}>Preview</div>
           <div className={S("preview__container")}>
             {
-              !trackStore.thumbnailStatus.available ? null :
+              !videoStore.thumbnailStore.thumbnailStatus.available ? null :
                 <div className={S("preview__thumbnail-container")}>
                   <PreviewThumbnail
                     startFrame={videoStore.clipInFrame}

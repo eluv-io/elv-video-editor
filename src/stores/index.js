@@ -8,6 +8,7 @@ import TagStore from "./TagStore.js";
 import TrackStore from "./TrackStore";
 import VideoStore from "./VideoStore";
 import FileBrowserStore from "./FileBrowserStore.js";
+import CompositionStore from "@/stores/CompositionStore.js";
 import Id from "@/utils/Id.js";
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
 
@@ -50,6 +51,7 @@ class RootStore {
     this.overlayStore = new OverlayStore(this);
     this.trackStore = new TrackStore(this);
     this.videoStore = new VideoStore(this);
+    this.compositionStore = new CompositionStore(this);
     this.assetStore = new AssetStore(this);
     this.fileBrowserStore = new FileBrowserStore(this);
 
@@ -236,5 +238,6 @@ export const browserStore = rootStore.browserStore;
 export const overlayStore = rootStore.overlayStore;
 export const trackStore = rootStore.trackStore;
 export const videoStore = rootStore.videoStore;
+export const compositionStore = rootStore.compositionStore;
 export const assetStore = rootStore.assetStore;
 export const fileBrowserStore = rootStore.fileBrowserStore;

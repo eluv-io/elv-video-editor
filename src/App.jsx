@@ -4,7 +4,7 @@ import "@/assets/stylesheets/modules/shared.module.scss";
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useRef} from "react";
-import {keyboardControlsStore, rootStore, tagStore, videoStore} from "@/stores";
+import {compositionStore, keyboardControlsStore, rootStore, tagStore, videoStore} from "@/stores";
 import {Linkish, Loader} from "@/components/common/Common";
 import {Redirect, Route, Switch, useLocation, useParams, useRoute} from "wouter";
 import Browser from "@/components/nav/Browser";
@@ -12,6 +12,7 @@ import UrlJoin from "url-join";
 import Nav from "@/components/nav/Nav.jsx";
 import TagsAndClipsView from "@/components/views/TagsAndClipsView.jsx";
 import AssetsView from "@/components/views/AssetsView.jsx";
+import CompositionsView from "@/components/views/CompositionsView.jsx";
 
 // Keep track of the current page
 const SetView = observer(() => {
@@ -29,12 +30,13 @@ const SetView = observer(() => {
 });
 
 // All routes after content is selected - route will contain /:libraryId/:objectId
-const ContentRoutes = observer(() => {
-  const { libraryId, objectId } = useParams();
+const DefaultContentRoutes = observer(() => {
+  const { objectId } = useParams();
+  console.log("DCR", objectId);
 
   useEffect(() => {
-    if(libraryId && objectId && !videoStore.loading && videoStore.videoObject?.objectId !== objectId) {
-      videoStore.SetVideo({libraryId, objectId});
+    if(objectId && !videoStore.loading && videoStore.videoObject?.objectId !== objectId) {
+      videoStore.SetVideo({objectId});
     }
   }, [objectId]);
 
@@ -52,6 +54,9 @@ const ContentRoutes = observer(() => {
 
   return (
     <Switch>
+      <Route path="/compositions">
+        <CompositionsView />
+      </Route>
       <Route path="/tags">
         <TagsAndClipsView mode="tags" />
       </Route>
@@ -63,6 +68,40 @@ const ContentRoutes = observer(() => {
       </Route>
       <Route>
         <Redirect to={videoStore.isVideo ? "/tags" : "/assets"} replace />
+      </Route>
+    </Switch>
+  );
+});
+
+// All routes after content is selected - route will contain /:libraryId/:objectId
+const CompositionRoutes = observer(() => {
+  const { objectId } = useParams();
+
+  useEffect(() => {
+    rootStore.SetPage("compositions");
+    rootStore.SetSubpage(objectId);
+
+    if(objectId && !compositionStore.loading && compositionStore.videoObject?.objectId !== objectId) {
+      compositionStore.SetVideo({objectId});
+    }
+  }, [objectId]);
+
+  if(rootStore.errorMessage) {
+    return (
+      <div className="error">
+        <div>Unable to load content: </div>
+        <div>{rootStore.errorMessage}</div>
+        <Linkish to="~/" styled>Return to Content Browser</Linkish>
+      </div>
+    );
+  } else if(!compositionStore.ready) {
+    return <Loader />;
+  }
+
+  return (
+    <Switch>
+      <Route path="">
+        <CompositionsView />
       </Route>
     </Switch>
   );
@@ -117,11 +156,14 @@ const App = observer(() => {
           !rootStore.initialized ?
             <Loader /> :
             <Switch>
+              <Route path="/compositions/:objectId?">
+                <CompositionRoutes />
+              </Route>
               <Route path="/:libraryId?">
                 <Browser />
               </Route>
               <Route path="/:libraryId/:objectId" nest>
-                <ContentRoutes />
+                <DefaultContentRoutes />
               </Route>
               <Route>
                 <Redirect to="/" />

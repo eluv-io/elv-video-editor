@@ -2,7 +2,6 @@ import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
-import {videoStore} from "@/stores";
 import {CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
 import {IconButton, Input, SelectInput} from "@/components/common/Common";
 import Fraction from "fraction.js";
@@ -25,8 +24,8 @@ import FrameForward1 from "@/assets/icons/v2/frame-forward-1.svg";
 import FrameForward10 from "@/assets/icons/v2/frame-forward-10.svg";
 import PlayClipIcon from "@/assets/icons/v2/play-clip.svg";
 
-export const SubtitleControls = observer(() => {
-  const tracks = videoStore.subtitleTracks.map(track => ({
+export const SubtitleControls = observer(({store}) => {
+  const tracks = store.subtitleTracks.map(track => ({
     label: track.name || track.lang,
     value: track.id.toString()
   }));
@@ -34,19 +33,19 @@ export const SubtitleControls = observer(() => {
   return (
     <SelectInput
       label="Subtitles"
-      key={`subtitles-${videoStore.currentSubtitleTrack}`}
-      value={videoStore.currentSubtitleTrack?.toString() || "-1"}
+      key={`subtitles-${store.currentSubtitleTrack}`}
+      value={store.currentSubtitleTrack?.toString() || "-1"}
       options={[
         { label: "Subtitles Off", value: "-1"},
         ...tracks
       ]}
-      onChange={value => value && videoStore.SetSubtitleTrack(value)}
+      onChange={value => value && store.SetSubtitleTrack(value)}
     />
   );
 });
 
-export const AudioControls = observer(() => {
-  const tracks = videoStore.audioTracks.map(track => ({
+export const AudioControls = observer(({store}) => {
+  const tracks = store.audioTracks.map(track => ({
     label: track.name || track.lang,
     value: track.id.toString()
   }));
@@ -54,17 +53,17 @@ export const AudioControls = observer(() => {
   return (
     <SelectInput
       label="Audio"
-      key={`audio-${videoStore.currentAudioTrack}`}
-      value={videoStore.currentAudioTrack?.toString() || "-1"}
+      key={`audio-${store.currentAudioTrack}`}
+      value={store.currentAudioTrack?.toString() || "-1"}
       options={tracks}
-      onChange={value => value && videoStore.SetAudioTrack(value)}
+      onChange={value => value && store.SetAudioTrack(value)}
     />
   );
 });
 
-export const QualityControls = observer(() => {
-  const levels = Object.keys(videoStore.levels).map(levelIndex => {
-    const level = videoStore.levels[levelIndex];
+export const QualityControls = observer(({store}) => {
+  const levels = Object.keys(store.levels).map(levelIndex => {
+    const level = store.levels[levelIndex];
 
     return ({
       label: `${level.attrs.RESOLUTION} (${(level.bitrate / 1000 / 1000).toFixed(1)}Mbps)`,
@@ -75,59 +74,59 @@ export const QualityControls = observer(() => {
   return (
     <SelectInput
       label="Video Quality"
-      value={videoStore.currentLevel?.toString()}
+      value={store.currentLevel?.toString()}
       options={levels}
-      onChange={value => value && videoStore.SetPlaybackLevel(value)}
+      onChange={value => value && store.SetPlaybackLevel(value)}
     />
   );
 });
 
-export const OfferingControls = observer(() => {
-  let offerings = Object.keys(videoStore.availableOfferings)
+export const OfferingControls = observer(({store}) => {
+  let offerings = Object.keys(store.availableOfferings)
     .sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: "base"}))
     .map(offeringKey => ({
       value: offeringKey,
-      label: videoStore.availableOfferings[offeringKey].display_name || offeringKey,
-      disabled: videoStore.availableOfferings[offeringKey].disabled || false
+      label: store.availableOfferings[offeringKey].display_name || offeringKey,
+      disabled: store.availableOfferings[offeringKey].disabled || false
     }));
 
 
   return (
     <SelectInput
       label="Offering"
-      value={videoStore.offeringKey}
+      value={store.offeringKey}
       options={offerings}
-      onChange={value => value && videoStore.SetOffering(value)}
+      onChange={value => value && store.SetOffering(value)}
     />
   );
 });
 
-export const DropFrameControls = observer(() => {
+export const DropFrameControls = observer(({store}) => {
   return (
     <SelectInput
       label="Drop Frame Notation"
-      value={videoStore.dropFrame ? "DF" : "NDF"}
+      value={store.dropFrame ? "DF" : "NDF"}
       options={["NDF", "DF"]}
-      onChange={value => videoStore.SetDropFrame(value === "DF")}
+      onChange={value => store.SetDropFrame(value === "DF")}
     />
   );
 });
 
-export const FrameRateControls = observer(() => {
+export const FrameRateControls = observer(({store}) => {
   const RateToString = rate => rate.toString().replace("(", "").replace(")", "");
 
   return (
     <SelectInput
-      label={`Frame Rate: ${videoStore.frameRateKey} (${RateToString(FrameRates[videoStore.frameRateKey])} FPS)`}
-      disabled={videoStore.frameRateSpecified}
-      value={videoStore.frameRateKey}
+      label={`Frame Rate: ${store.frameRateKey} (${RateToString(FrameRates[store.frameRateKey])} FPS)`}
+      disabled={store.frameRateSpecified}
+      value={store.frameRateKey}
       options={Object.keys(FrameRates)}
-      onChange={value => videoStore.SetFrameRate({rateKey: value})}
+      onChange={value => store.SetFrameRate({rateKey: value})}
     />
   );
 });
 
-export const PlaybackRateControl = observer(() => {
+export const PlaybackRateControl = observer(({store}) => {
   // 0.1 intervals from 0.1x to 4x
   const rates = [...Array(40)]
     .map((_, i) => Fraction(i + 1).div(10).toString())
@@ -136,48 +135,48 @@ export const PlaybackRateControl = observer(() => {
   return (
     <SelectInput
       label="Playback Rate"
-      value={Fraction(videoStore.playbackRate).toString()}
+      value={Fraction(store.playbackRate).toString()}
       options={rates}
-      onChange={value => videoStore.SetPlaybackRate(value)}
+      onChange={value => store.SetPlaybackRate(value)}
     />
   );
 });
 
-export const FullscreenButton = observer(() => {
+export const FullscreenButton = observer(({store}) => {
   return (
     <IconButton
-      label={videoStore.fullscreen ? "Exit Full Screen" : "Full Screen"}
-      onClick={() => videoStore.ToggleFullscreen()}
+      label={store.fullscreen ? "Exit Full Screen" : "Full Screen"}
+      onClick={() => store.ToggleFullscreen()}
       unstyled
-      icon={videoStore.fullscreen ? MinimizeIcon : FullscreenIcon}
+      icon={store.fullscreen ? MinimizeIcon : FullscreenIcon}
       className={S("video-controls__button")}
     />
   );
 });
 
-export const DownloadFrameButton = observer(() => {
+export const DownloadFrameButton = observer(({store}) => {
   return (
     <IconButton
       label="Download Current Frame"
       icon={FrameIcon}
       unstyled
-      onClick={() => videoStore.SaveFrame()}
+      onClick={() => store.SaveFrame()}
       className={S("video-controls__button")}
     />
   );
 });
 
-export const VideoTime = observer(() => {
+export const VideoTime = observer(({store}) => {
   return (
     <div className={S("video-time")}>
       <span className={S("video-time__time", "video-time__time--current")}>
-        {videoStore.smpte}
+        {store.smpte}
       </span>
       <span className={S("video-time__separator")}>
         /
       </span>
       <span className={S("video-time__time", "video-time__time--total")}>
-        {videoStore.durationSMPTE}
+        {store.durationSMPTE}
       </span>
     </div>
   );
@@ -188,23 +187,23 @@ export const VolumeSliderKeydown = () =>
     switch(event.key) {
       case "ArrowLeft":
         event.preventDefault();
-        videoStore.SetVolume(videoStore.volume - 0.05);
+        store.SetVolume(store.volume - 0.05);
         break;
       case "ArrowRight":
         event.preventDefault();
-        if(videoStore.muted) {
-          videoStore.SetVolume(0.05);
+        if(store.muted) {
+          store.SetVolume(0.05);
         } else {
-          videoStore.SetVolume(videoStore.volume + 0.05);
+          store.SetVolume(store.volume + 0.05);
         }
         break;
     }
   };
 
 
-export const VolumeControls = observer(() => {
-  const icon = (videoStore.muted || videoStore.volume === 0) ? VolumeOffIcon :
-    videoStore.volume < 0.5 ? VolumeLowIcon : VolumeHighIcon;
+export const VolumeControls = observer(({store}) => {
+  const icon = (store.muted || store.volume === 0) ? VolumeOffIcon :
+    store.volume < 0.5 ? VolumeLowIcon : VolumeHighIcon;
 
   return (
     <div
@@ -213,10 +212,10 @@ export const VolumeControls = observer(() => {
       className={S("volume-controls")}
     >
       <IconButton
-        label={videoStore.muted ? "Unmute" : "Mute"}
+        label={store.muted ? "Unmute" : "Mute"}
         icon={icon}
         unstyled
-        onClick={() => videoStore.SetMuted(!videoStore.muted)}
+        onClick={() => store.SetMuted(!store.muted)}
         className={S("video-controls__button", "volume-controls__toggle")}
       />
       <div className={S("volume-controls__slider")}>
@@ -226,15 +225,15 @@ export const VolumeControls = observer(() => {
           min={0}
           max={1}
           step={0.001}
-          value={videoStore.muted ? 0 : videoStore.volume}
-          onInput={event => videoStore.SetVolume(event.target.value)}
-          onChange={event => videoStore.SetVolume(event.target.value)}
+          value={store.muted ? 0 : store.volume}
+          onInput={event => store.SetVolume(event.target.value)}
+          onChange={event => store.SetVolume(event.target.value)}
           onKeyDown={VolumeSliderKeydown()}
           className={S("volume-controls__slider-input")}
         />
         <progress
           max={1}
-          value={videoStore.muted ? 0 : videoStore.volume}
+          value={store.muted ? 0 : store.volume}
           className={S("volume-controls__slider-progress")}
         />
       </div>
@@ -242,13 +241,13 @@ export const VolumeControls = observer(() => {
   );
 });
 
-export const PlayPauseButton = observer(() => {
+export const PlayPauseButton = observer(({store}) => {
   return (
     <IconButton
-      label={videoStore.paused ? "Play" : "Pause"}
-      onClick={() => videoStore.PlayPause()}
+      label={store.paused ? "Play" : "Pause"}
+      onClick={() => store.PlayPause()}
       unstyled
-      className={S("video-controls__button", "play-pause", videoStore.playing ? "play-pause--playing" : "play-pause--paused")}
+      className={S("video-controls__button", "play-pause", store.playing ? "play-pause--playing" : "play-pause--paused")}
     >
       <SVG src={PlayIcon} className={S("play-pause__icon", "play-pause__play")} />
       <SVG src={PauseIcon} className={S("play-pause__icon", "play-pause__pause")} />
@@ -256,87 +255,87 @@ export const PlayPauseButton = observer(() => {
   );
 });
 
-export const FrameBack10Button = observer(() => {
+export const FrameBack10Button = observer(({store}) => {
   return (
     <IconButton
       label="Back 10 Frames"
-      onClick={() => videoStore.SeekFrames({frames: -10})}
+      onClick={() => store.SeekFrames({frames: -10})}
       icon={FrameBack10}
       className={S("video-controls__button")}
     />
   );
 });
 
-export const FrameBack1Button = observer(() => {
+export const FrameBack1Button = observer(({store}) => {
   return (
     <IconButton
       label="Back 1 Frame"
-      onClick={() => videoStore.SeekFrames({frames: -1})}
+      onClick={() => store.SeekFrames({frames: -1})}
       icon={FrameBack1}
       className={S("video-controls__button")}
     />
   );
 });
 
-export const FrameForward1Button = observer(() => {
+export const FrameForward1Button = observer(({store}) => {
   return (
     <IconButton
       label="Forward 1 Frame"
-      onClick={() => videoStore.SeekFrames({frames: 1})}
+      onClick={() => store.SeekFrames({frames: 1})}
       icon={FrameForward1}
       className={S("video-controls__button")}
     />
   );
 });
 
-export const FrameForward10Button = observer(() => {
+export const FrameForward10Button = observer(({store}) => {
   return (
     <IconButton
       label="Forward 10 Frames"
-      onClick={() => videoStore.SeekFrames({frames: 10})}
+      onClick={() => store.SeekFrames({frames: 10})}
       icon={FrameForward10}
       className={S("video-controls__button")}
     />
   );
 });
 
-export const FrameDisplay = observer(() => {
-  const [frameInput, setFrameInput] = useState(videoStore.frame);
+export const FrameDisplay = observer(({store}) => {
+  const [frameInput, setFrameInput] = useState(store.frame);
 
   useEffect(() => {
-    setFrameInput(videoStore.frame);
-  }, [videoStore.frame]);
+    setFrameInput(store.frame);
+  }, [store.frame]);
 
   return (
     <div className={S("frame-display")}>
       <Input
         label="Current Frame"
         monospace
-        disabled={videoStore.playing}
+        disabled={store.playing}
         type="number"
         min={0}
-        max={videoStore.totalFrames}
+        max={store.totalFrames}
         step={1}
         w={100}
         value={frameInput}
         onKeyDown={event => {
           if(event.key !== "Enter") { return; }
 
-          videoStore.Seek(frameInput);
+          store.Seek(frameInput);
         }}
         onChange={event => setFrameInput(parseInt(event.target.value) || 0)}
-        onBlur={() => frameInput !== videoStore.frame && videoStore.Seek(frameInput)}
+        onBlur={() => frameInput !== store.frame && store.Seek(frameInput)}
       />
     </div>
   );
 });
 
-export const PlayCurrentClipButton = observer(() => {
+export const PlayCurrentClipButton = observer(({store}) => {
   return (
     <IconButton
       icon={PlayClipIcon}
       label="Play Current Selection"
-      onClick={() => videoStore.PlaySegment(videoStore.clipInFrame, videoStore.clipOutFrame)}
+      onClick={() => store.PlaySegment(store.clipInFrame, store.clipOutFrame)}
     />
   );
 });

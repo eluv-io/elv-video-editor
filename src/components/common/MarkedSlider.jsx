@@ -20,7 +20,7 @@ const Handle = observer(({
   EndDrag,
   HandleChange
 }) => {
-  if(handle.position < min || handle.position > max) { return null; }
+  //if(handle.position < min || handle.position > max) { return null; }
 
   let style = {left: `${PositionToPixels(handle.position) - (handle.style === "end" ? 4 : 1)}px`};
   if(handle.opacity) {
@@ -41,28 +41,31 @@ const Handle = observer(({
         !connectTo ? null :
           <div style={connectStyle} className={S("slider__connection")} />
       }
-      <Tooltip label={handle.tooltip} disabled={!handle.tooltip}>
-        <div
-          style={style}
-          className={
-            JoinClassNames(
-              S(
-                "slider__handle",
-                `slider__handle--${handle.style || "line"}`,
-                handle.disabled ? "slider__handle--disabled" : "",
-                dragging ? "slider-handle__active" : ""
-              ),
-              handle.className || ""
-            )
-          }
-          onMouseDown={handle.disabled ? undefined : event => StartDrag(event, index)}
-          onMouseUp={handle.disabled ? undefined :EndDrag}
-          onClick={handle.disabled ? undefined : HandleChange}
-          {...(handle.additionalProps || {})}
-        >
-          { handle.style === "arrow" ? "▼" : null }
-        </div>
-      </Tooltip>
+      {
+        handle.position < min || handle.position > max ? null :
+          <Tooltip label={handle.tooltip} disabled={!handle.tooltip}>
+            <div
+              style={style}
+              className={
+                JoinClassNames(
+                  S(
+                    "slider__handle",
+                    `slider__handle--${handle.style || "line"}`,
+                    handle.disabled ? "slider__handle--disabled" : "",
+                    dragging ? "slider-handle__active" : ""
+                  ),
+                  handle.className || ""
+                )
+              }
+              onMouseDown={handle.disabled ? undefined : event => StartDrag(event, index)}
+              onMouseUp={handle.disabled ? undefined :EndDrag}
+              onClick={handle.disabled ? undefined : HandleChange}
+              {...(handle.additionalProps || {})}
+            >
+              { handle.style === "arrow" ? "▼" : null }
+            </div>
+          </Tooltip>
+      }
     </>
   );
 });

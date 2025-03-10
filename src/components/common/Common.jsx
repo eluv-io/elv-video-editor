@@ -181,6 +181,7 @@ export const IconButton = ({
   loading=false,
   children,
   openDelay=500,
+  highlight,
   ...props
 }) => {
   tooltipProps = {openDelay, ...tooltipProps};
@@ -213,8 +214,13 @@ export const IconButton = ({
       aria-label={props["aria-label"] || label || ""}
       className={
         JoinClassNames(
-          !unstyled && S("icon-button", active ? "icon-button--active" : ""),
-          !unstyled && S("icon-button", disabled ? "icon-button--disabled" : ""),
+          unstyled ? "" :
+            S(
+              "icon-button",
+              active ? "icon-button--active" : "",
+              disabled ? "icon-button--disabled" : "",
+              highlight ? "icon-button--highlight" : "",
+            ),
           props.className || ""
         )
       }
@@ -425,19 +431,21 @@ export const FormSelect = observer(props =>
   />
 );
 
-const FormatSMPTE = ({originalValue, smpte, setSMPTEInput}) => {
-  try {
-    const frame = videoStore.SMPTEToFrame(smpte);
-
-    return { frame, smpte };
-  } catch(error) {
-    setSMPTEInput(originalValue);
-    return { frame: videoStore.SMPTEToFrame(originalValue) , smpte: originalValue };
-  }
-};
-
-export const SMPTEInput = observer(({value, onChange, formInput=false,  ...props}) => {
+export const SMPTEInput = observer(({store, value, onChange, formInput=false, highlight, ...props}) => {
   const [smpteInput, setSMPTEInput] = useState(value);
+
+  const FormatSMPTE = ({originalValue, smpte, setSMPTEInput}) => {
+    store = store || videoStore;
+
+    try {
+      const frame = store.SMPTEToFrame(smpte);
+
+      return { frame, smpte };
+    } catch(error) {
+      setSMPTEInput(originalValue);
+      return { frame: store.SMPTEToFrame(originalValue) , smpte: originalValue };
+    }
+};
 
   let Component = formInput ? FormTextInput : Input;
 
@@ -456,16 +464,16 @@ export const SMPTEInput = observer(({value, onChange, formInput=false,  ...props
           onChange?.(FormatSMPTE({originalValue: value, smpte: smpteInput, setSMPTEInput}));
         } else if(event.key === "ArrowUp") {
           const { frame } = FormatSMPTE({originalValue: value, smpte: smpteInput, setSMPTEInput});
-          const newSMPTE = videoStore.FrameToSMPTE(Math.min(frame + 1, videoStore.totalFrames));
+          const newSMPTE = store.FrameToSMPTE(Math.min(frame + 1, store.totalFrames));
           onChange?.(FormatSMPTE({originalValue: value, smpte: newSMPTE, setSMPTEInput}));
         } else if(event.key === "ArrowDown") {
           const { frame } = FormatSMPTE({originalValue: value, smpte: smpteInput, setSMPTEInput});
-          const newSMPTE = videoStore.FrameToSMPTE(Math.max(frame - 1, 0));
+          const newSMPTE = store.FrameToSMPTE(Math.max(frame - 1, 0));
           onChange?.(FormatSMPTE({originalValue: value, smpte: newSMPTE, setSMPTEInput}));
         }
       }}
       onBlur={() => onChange?.(FormatSMPTE({originalValue: value, smpte: smpteInput, setSMPTEInput}))}
-      className={JoinClassNames(S("smpte-input", props.className))}
+      className={JoinClassNames(S("smpte-input", highlight ? "input--highlight" : ""), props.className)}
       {...props}
     />
   );
@@ -515,6 +523,10 @@ export const ResizeHandle = observer(({onMove, variant="both"}) => {
     <div className={S("resize-handle", `resize-handle--${variant}`, dragging ? "resize-handle--active" : "")}>
       <div
         ref={handleRef}
+        onClick={event => {
+          event.preventDefault();
+          event.stopPropagation();
+        }}
         draggable
         onDragStart={() => setDragging(true)}
         onDragEnd={() => setDragging(false)}

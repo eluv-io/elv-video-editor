@@ -22,7 +22,9 @@ import DescriptionIcon from "@/assets/icons/v2/description.svg";
 const S = CreateModuleClassMatcher(VideoStyles);
 
 
-const VideoSection = observer(() => {
+const VideoSection = observer(({store, showOverlay}) => {
+  store = store || videoStore;
+
   useEffect(() => {
     keyboardControlsStore.ToggleKeyboardControls(true);
 
@@ -32,27 +34,27 @@ const VideoSection = observer(() => {
   return (
     <div className={S("content-block", "video-section")}>
       <h1 className={S("video-section__title")}>
-        {videoStore.name}
+        {store.name}
       </h1>
-      <Video/>
+      <Video store={store} showOverlay={showOverlay} />
       <div className={S("toolbar")}>
-        <Tooltip label={videoStore.videoObject.description} w={500} multiline openDelay={1000}>
+        <Tooltip label={store.videoObject.description} w={500} multiline openDelay={1000}>
           <div className={S("toolbar__description")}>
             <SVG src={DescriptionIcon} className={S("icon", "toolbar__description-icon")} />
             <div className={S("toolbar__description-text")}>
-              { videoStore.videoObject.description }
+              { store.videoObject.description }
             </div>
           </div>
         </Tooltip>
         <div className={S("toolbar__spacer")} />
         <div className={S("toolbar__controls-group", "toolbar__controls-group--tight")}>
-          <PlaybackRateControl />
-          <FrameRateControls />
-          <DropFrameControls />
-          <OfferingControls />
-          <QualityControls />
-          <SubtitleControls />
-          <AudioControls />
+          <PlaybackRateControl store={store} />
+          <FrameRateControls store={store} />
+          <DropFrameControls store={store} />
+          <OfferingControls store={store} />
+          <QualityControls store={store} />
+          <SubtitleControls store={store} />
+          <AudioControls store={store} />
         </div>
       </div>
     </div>

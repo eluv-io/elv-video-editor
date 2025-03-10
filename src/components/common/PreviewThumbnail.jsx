@@ -2,7 +2,7 @@ import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useRef, useState} from "react";
-import {trackStore, videoStore} from "@/stores/index.js";
+import {videoStore} from "@/stores/index.js";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 
 const S = CreateModuleClassMatcher(CommonStyles);
@@ -28,7 +28,7 @@ const PreviewThumbnail = observer(({startFrame, endFrame, ...props}) => {
     let thumbnailMap = {};
     let thumbnailList = [];
     while(startTime < endTime) {
-      const thumbnailUrl = trackStore.ThumbnailImage(startTime);
+      const thumbnailUrl = videoStore.thumbnailStore.ThumbnailImage(startTime);
 
       if(!thumbnailMap[thumbnailUrl]) {
         thumbnailList.push(thumbnailUrl);
@@ -39,7 +39,7 @@ const PreviewThumbnail = observer(({startFrame, endFrame, ...props}) => {
     }
 
     setThumbnails(thumbnailList);
-  }, [trackStore.thumbnailStatus.available]);
+  }, [videoStore.thumbnailStore.thumbnailStatus.available]);
 
   useEffect(() => {
     if(!ref?.current) { return; }
@@ -65,7 +65,7 @@ const PreviewThumbnail = observer(({startFrame, endFrame, ...props}) => {
     });
   }, [ref, clientX]);
 
-  if(!trackStore.thumbnailStatus.available || !thumbnails) {
+  if(!videoStore.thumbnailStore.thumbnailStatus.available || !thumbnails) {
     return null;
   }
 

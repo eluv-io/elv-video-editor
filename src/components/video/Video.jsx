@@ -2,8 +2,8 @@ import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
 import React, {useState, useEffect} from "react";
 import {observer} from "mobx-react-lite";
-import {rootStore, trackStore, videoStore, tagStore} from "@/stores";
-import {CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
+import {rootStore, trackStore, tagStore} from "@/stores";
+import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
 import {Loader} from "@/components/common/Common";
 import HLSPlayer from "hls.js";
 import {
@@ -23,17 +23,18 @@ import Overlay from "@/components/video/Overlay.jsx";
 const S = CreateModuleClassMatcher(VideoStyles);
 
 
-const Video = observer(() => {
+const Video = observer(({store, showOverlay, className=""}) => {
   const [ready, setReady] = useState(false);
   const [hlsPlayer, setHLSPlayer] = useState(undefined);
   const [video, setVideo] = useState(undefined);
+  const [videoId] = useState(rootStore.NextId());
 
   useEffect(() => {
-    if(!video || !videoStore.source || !videoStore.isVideo) {
+    if(!video || !store.playoutUrl || !store.isVideo) {
       return;
     }
 
-    video.__containerElement = document.querySelector("#video-container");
+    video.__containerElement = document.querySelector(`#video-container-${videoId}`);
 
     setReady(false);
 
@@ -62,10 +63,10 @@ const Video = observer(() => {
 
     setHLSPlayer(player);
 
-    player.loadSource(videoStore.source);
+    player.loadSource(store.playoutUrl);
     player.attachMedia(video);
 
-    videoStore.Initialize(video, player);
+    store.Initialize(video, player);
 
     window.player = hlsPlayer;
   }, [video]);
@@ -85,46 +86,55 @@ const Video = observer(() => {
   }, [hlsPlayer]);
 
   return (
-    <div id="video-container" className={S("video-container", videoStore.fullScreen ? "video-container--fullscreen" : "")}>
+    <div
+      id={`video-container-${videoId}`}
+      className={JoinClassNames(
+        S(
+          "video-container",
+          store.fullScreen ? "video-container--fullscreen" : ""
+        ),
+        className
+      )}
+    >
       <div className={S("video-wrapper")}>
         {
-          !video || !trackStore.showOverlay ? null :
+          !showOverlay || !video || !trackStore.showOverlay ? null :
             <Overlay key={`overlay-${tagStore.editPosition}`} element={video} />
         }
         <video
-          key={`video-${videoStore.source}`}
+          key={`video-${store.playoutUrl}`}
           ref={setVideo}
           crossOrigin="anonymous"
           muted={true}
           autoPlay={false}
           controls={false}
           preload="auto"
-          onWheel={({deltaY}) => videoStore.ScrollVolume(deltaY)}
+          onWheel={({deltaY}) => store.ScrollVolume(deltaY)}
           className={S("video")}
         />
         {
-          !ready || !videoStore.showVideoControls ? null :
+          !ready || !store.showVideoControls ? null :
             <div className={S("video-controls")}>
               <div className={S("video-controls__left")}>
-                <PlayPauseButton/>
-                <VolumeControls/>
-                <VideoTime/>
+                <PlayPauseButton store={store}/>
+                <VolumeControls store={store}/>
+                <VideoTime store={store}/>
               </div>
               <div className={S("video-controls__spacer")}/>
               {
-                !videoStore.fullScreen ? null :
+                !store.fullScreen ? null :
                   <div className={S("video-controls__center")}>
-                    <FrameBack10Button />
-                    <FrameBack1Button />
-                    <FrameDisplay />
-                    <FrameForward1Button />
-                    <FrameForward10Button />
+                    <FrameBack10Button store={store} />
+                    <FrameBack1Button store={store} />
+                    <FrameDisplay store={store} />
+                    <FrameForward1Button store={store} />
+                    <FrameForward10Button store={store} />
                     <div className={S("video-controls__spacer")}/>
                   </div>
               }
               <div className={S("video-controls__right")}>
-                <DownloadFrameButton/>
-                <FullscreenButton/>
+                <DownloadFrameButton store={store}/>
+                <FullscreenButton store={store}/>
               </div>
             </div>
         }
