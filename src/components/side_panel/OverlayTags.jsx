@@ -2,7 +2,7 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 
 import React, {useEffect} from "react";
 import {observer} from "mobx-react-lite";
-import {tagStore, trackStore, videoStore} from "@/stores/index.js";
+import {rootStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
 import {FocusTrap, Text, Tooltip} from "@mantine/core";
 import {
   FormNumberInput,
@@ -130,13 +130,16 @@ const OverlayTagForm = observer(() => {
               onChange={event => tagStore.UpdateEditedOverlayTag({...tag, text: event.target.value})}
             />
           </div>
-          <div className={S("form__input-container")}>
-            <FormNumberInput
-              label="Confidence"
-              value={Round((tag.confidence || 1) * 100, 0)}
-              onChange={value => tagStore.UpdateEditedOverlayTag({...tag, confidence: Round(value / 100, 4)})}
-            />
-          </div>
+          {
+            rootStore.page !== "tags" ? null :
+              <div className={S("form__input-container")}>
+                <FormNumberInput
+                  label="Confidence"
+                  value={Round((tag.confidence || 1) * 100, 0)}
+                  onChange={value => tagStore.UpdateEditedOverlayTag({...tag, confidence: Round(value / 100, 4)})}
+                />
+              </div>
+          }
           <div className={S("form__input-container")}>
             <FormSelect
               label="Draw Mode"
@@ -183,14 +186,13 @@ export const OverlayTagDetails = observer(() => {
         <pre className={S("tag-details__content", tag.content ? "tag-details__content--json" : "")}>
           {tag.text}
         </pre>
-        <div className={S("tag-details__detail")}>
-          <label>Category:</label>
-          <span>{track.label || track.trackKey}</span>
-        </div>
-        <div className={S("tag-details__detail")}>
-          <label>Confidence:</label>
-          <span>{FormatConfidence(tag.confidence)}</span>
-        </div>
+        {
+          rootStore.page !== "tags" ? null :
+            <div className={S("tag-details__detail")}>
+              <label>Confidence:</label>
+              <span>{FormatConfidence(tag.confidence)}</span>
+            </div>
+        }
       </div>
       {
         !tagStore.editing ? null :

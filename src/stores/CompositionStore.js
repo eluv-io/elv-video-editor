@@ -34,6 +34,7 @@ class CompositionStore {
 
     this.rootStore = rootStore;
     this.videoStore = new VideoStore(this.rootStore, {tags: false});
+    this.videoStore.id = "Composition Store";
   }
 
   get nextUndoAction() {
@@ -358,11 +359,10 @@ class CompositionStore {
     this.selectedClipId = clipId;
   }
 
-  ModifySelectedClip({clipId, ...attrs}) {
-    this.selectedClip = {
-      ...this.selectedClip,
-      ...attrs,
-      clipId
+  ModifySelectedClip({...attrs}) {
+    this.clips[this.selectedClipId] = {
+      ...this.clips[this.selectedClipId],
+      ...attrs
     };
   }
 
@@ -383,6 +383,7 @@ class CompositionStore {
         }
       );
 
+      clipStore.id = `Clip Store ${key}`;
       clipStore.sliderMarks = 20;
       clipStore.majorMarksEvery = 5;
 

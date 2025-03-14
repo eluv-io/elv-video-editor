@@ -32,48 +32,53 @@ import {CreateTrackButton} from "@/components/forms/CreateTrack.jsx";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
-const TimelineTopBar = observer(() => {
+const TimelineTopBar = observer(({simple}) => {
   return (
     <div className={S("toolbar", "timeline-section__top-bar")}>
       <div className={S("toolbar__controls-group", "left")}>
-        <IconButton
-          icon={UndoIcon}
-          label={`Undo ${editStore.nextUndoAction?.label || ""}`}
-          disabled={!editStore.nextUndoAction}
-          onClick={() => editStore.Undo()}
-        />
-        <IconButton
-          icon={RedoIcon}
-          label={`Redo ${editStore.nextRedoAction?.label || ""}`}
-          disabled={!editStore.nextRedoAction}
-          onClick={() => editStore.Redo()}
-        />
-        <div className={S("toolbar__separator")}/>
-        <CreateTrackButton/>
-        <IconButton
-          icon={AddNewItemIcon}
-          disabled={trackStore.viewTracks.length === 0}
-          label={`Add New ${rootStore.page === "tags" ? "Tag" : "Clip"}`}
-          onClick={() =>
-            tagStore.AddTag({
-              trackId: tagStore.selectedTrackId,
-              text: "<New Tag>",
-              tagType: rootStore.page === "clips" ? "clip" : "metadata"
-            })
-          }
-        />
-        <IconButton
-          icon={AddNewItemIcon}
-          disabled={trackStore.viewTracks.length === 0}
-          label="Add New Overlay Tag"
-          onClick={() =>
-            tagStore.AddOverlayTag({
-              trackId: tagStore.selectedTrackId,
-              text: "<New Tag>"
-            })
-          }
-        />
-        <div className={S("toolbar__separator")}/>
+        {
+          simple ? null :
+            <>
+              <IconButton
+                icon={UndoIcon}
+                label={`Undo ${editStore.nextUndoAction?.label || ""}`}
+                disabled={!editStore.nextUndoAction}
+                onClick={() => editStore.Undo()}
+              />
+              <IconButton
+                icon={RedoIcon}
+                label={`Redo ${editStore.nextRedoAction?.label || ""}`}
+                disabled={!editStore.nextRedoAction}
+                onClick={() => editStore.Redo()}
+              />
+              <div className={S("toolbar__separator")}/>
+              <CreateTrackButton/>
+              <IconButton
+                icon={AddNewItemIcon}
+                disabled={trackStore.viewTracks.length === 0}
+                label={`Add New ${rootStore.page === "tags" ? "Tag" : "Clip"}`}
+                onClick={() =>
+                  tagStore.AddTag({
+                    trackId: tagStore.selectedTrackId,
+                    text: "<New Tag>",
+                    tagType: rootStore.page === "clips" ? "clip" : "metadata"
+                  })
+                }
+              />
+              <IconButton
+                icon={AddNewItemIcon}
+                disabled={trackStore.viewTracks.length === 0}
+                label="Add New Overlay Tag"
+                onClick={() =>
+                  tagStore.AddOverlayTag({
+                    trackId: tagStore.selectedTrackId,
+                    text: "<New Tag>"
+                  })
+                }
+              />
+              <div className={S("toolbar__separator")}/>
+            </>
+        }
         <div className={S("jump-to")}>
           <label>Jump to</label>
           <SMPTEInput
@@ -124,54 +129,63 @@ const TimelineTopBar = observer(() => {
   );
 });
 
-const TimelineBottomBar = observer(() => {
+const TimelineBottomBar = observer(({simple}) => {
   return (
     <div className={S("toolbar", "timeline-section__bottom-bar")}>
-      <IconButton icon={UploadIcon} label="Upload" onClick={() => {}}/>
-      <IconButton icon={SaveIcon} label="Save Changes" onClick={() => {}}/>
+      {
+        simple ? null :
+          <>
+            <IconButton icon={UploadIcon} label="Upload" onClick={() => {}}/>
+            <IconButton icon={SaveIcon} label="Save Changes" onClick={() => {}}/>
+          </>
+      }
       <KeyboardControls />
       <div className={S("toolbar__separator")}/>
-      <SwitchInput
-        label="Show Thumbnails"
-        checked={trackStore.showThumbnails}
-        onChange={event => trackStore.ToggleTrackType({type: "Thumbnails", visible: event.currentTarget.checked})}
-      />
       {
-        rootStore.page === "tags" ?
-          //Tags
-          <>
-            <SwitchInput
-              label="Show Tags"
-              checked={trackStore.showTags}
-              onChange={event => trackStore.ToggleTrackType({type: "Tags", visible: event.currentTarget.checked})}
-            />
-            <SwitchInput
-              label="Show Bounding Boxes"
-              checked={trackStore.showOverlay}
-              onChange={event => trackStore.ToggleTrackType({type: "Overlay", visible: event.currentTarget.checked})}
-            />
-            <SwitchInput
-              label="Show Subtitles"
-              checked={trackStore.showSubtitles}
-              onChange={event => trackStore.ToggleTrackType({type: "Subtitles", visible: event.currentTarget.checked})}
-            />
-            <SwitchInput
-              label="Show Segments"
-              checked={trackStore.showSegments}
-              onChange={event => trackStore.ToggleTrackType({type: "Segments", visible: event.currentTarget.checked})}
-            />
-            <SwitchInput
-              label="Show Audio"
-              checked={trackStore.showAudio}
-              onChange={event => trackStore.ToggleTrackType({type: "Audio", visible: event.currentTarget.checked})}
-            />
-          </> :
-          // Clips
+        simple ? null :
           <SwitchInput
-            label="Show Primary Content"
-            checked={trackStore.showPrimaryContent}
-            onChange={event => trackStore.ToggleTrackType({type: "PrimaryContent", visible: event.currentTarget.checked})}
+            label="Show Thumbnails"
+            checked={trackStore.showThumbnails}
+            onChange={event => trackStore.ToggleTrackType({type: "Thumbnails", visible: event.currentTarget.checked})}
           />
+      }
+      {
+        simple ? null :
+          rootStore.page === "tags" ?
+            //Tags
+            <>
+              <SwitchInput
+                label="Show Tags"
+                checked={trackStore.showTags}
+                onChange={event => trackStore.ToggleTrackType({type: "Tags", visible: event.currentTarget.checked})}
+              />
+              <SwitchInput
+                label="Show Bounding Boxes"
+                checked={trackStore.showOverlay}
+                onChange={event => trackStore.ToggleTrackType({type: "Overlay", visible: event.currentTarget.checked})}
+              />
+              <SwitchInput
+                label="Show Subtitles"
+                checked={trackStore.showSubtitles}
+                onChange={event => trackStore.ToggleTrackType({type: "Subtitles", visible: event.currentTarget.checked})}
+              />
+              <SwitchInput
+                label="Show Segments"
+                checked={trackStore.showSegments}
+                onChange={event => trackStore.ToggleTrackType({type: "Segments", visible: event.currentTarget.checked})}
+              />
+              <SwitchInput
+                label="Show Audio"
+                checked={trackStore.showAudio}
+                onChange={event => trackStore.ToggleTrackType({type: "Audio", visible: event.currentTarget.checked})}
+              />
+            </> :
+            // Clips
+            <SwitchInput
+              label="Show Primary Content"
+              checked={trackStore.showPrimaryContent}
+              onChange={event => trackStore.ToggleTrackType({type: "PrimaryContent", visible: event.currentTarget.checked})}
+            />
       }
       <div className={S("toolbar__spacer")}/>
     </div>
@@ -203,7 +217,7 @@ const TimelineSeekBar = observer(({hoverSeek}) => {
   }
 
   return (
-     <div className={S("timeline-row", "timeline-row--seek", "seek-bar-container")}>
+    <div className={S("timeline-row", "timeline-row--seek", "seek-bar-container")}>
       <div className={S("timeline-row__label", "seek-bar-container__spacer")} />
       <MarkedSlider
         min={videoStore.scaleMin}
@@ -313,6 +327,28 @@ const TimelinePlayheadIndicator = observer(({value, timelineRef, className=""}) 
   );
 });
 
+const TimelineThumbnailTrack = observer(() => {
+  if(!videoStore.initialized || !videoStore.thumbnailStore.thumbnailStatus.loaded || !trackStore.showThumbnails) {
+    return null;
+  }
+
+  return (
+    <div className={S("timeline-row", "timeline-row--thumbnails")}>
+      <div className={S("timeline-row__label")}>
+        Thumbnails
+      </div>
+      <div className={S("timeline-row__content")}>
+        <ThumbnailTrack
+          store={videoStore}
+          allowCreation
+          onClick={progress => videoStore.SeekPercentage(progress)}
+          className={S("track-container")}
+        />
+      </div>
+    </div>
+  );
+});
+
 const TagTimelineContent = observer(() => {
   let tracks = [];
   if(trackStore.showTags) {
@@ -359,33 +395,38 @@ const TagTimelineContent = observer(() => {
   }
 
   return (
-    tracks.map((track, i) =>
-      <div
-        key={`track-${track.trackId || i}`}
-        style={
-          track.trackType !== "metadata" ||
-          trackStore.IsTrackVisible(track.trackId) ?
-            {} :
-            {display: "none"}
-        }
-        className={S("timeline-row", track.trackId === tagStore.selectedTrackId ? "timeline-row--selected" : "")}
-      >
-        <Linkish
-          onClick={
-            track.trackType !== "metadata" ? undefined :
-              () => tagStore.selectedTrackId === track.trackId ?
-                tagStore.ClearSelectedTrack() :
-                tagStore.SetSelectedTrack(track.trackId)
-          }
-          className={S("timeline-row__label")}
-        >
-          {track.label}
-        </Linkish>
-        <div className={S("timeline-row__content")}>
-          <Track track={track} />
-        </div>
-      </div>
-    )
+    <>
+      <TimelineThumbnailTrack />
+      {
+        tracks.map((track, i) =>
+          <div
+            key={`track-${track.trackId || i}`}
+            style={
+              track.trackType !== "metadata" ||
+              trackStore.IsTrackVisible(track.trackId) ?
+                {} :
+                {display: "none"}
+            }
+            className={S("timeline-row", track.trackId === tagStore.selectedTrackId ? "timeline-row--selected" : "")}
+          >
+            <Linkish
+              onClick={
+                track.trackType !== "metadata" ? undefined :
+                  () => tagStore.selectedTrackId === track.trackId ?
+                    tagStore.ClearSelectedTrack() :
+                    tagStore.SetSelectedTrack(track.trackId)
+              }
+              className={S("timeline-row__label")}
+            >
+              {track.label}
+            </Linkish>
+            <div className={S("timeline-row__content")}>
+              <Track track={track} />
+            </div>
+          </div>
+        )
+      }
+    </>
   );
 });
 
@@ -396,48 +437,53 @@ const ClipTimelineContent = observer(() => {
   }
 
   return (
-    tracks
-      .filter(t => t)
-      .map((track, i) =>
-        <div
-          key={`track-${track.trackId || i}`}
-          style={
-            track.trackType === "primary-content" ||
-            !trackStore.clipTracksSelected ||
-            trackStore.activeClipTracks[track.key] ?
-              {} :
-              {display: "none"}
-          }
-          className={S("timeline-row", track.trackId === tagStore.selectedTrackId ? "timeline-row--selected" : "")}
-        >
-          <Linkish
-            onClick={
-              track.trackType === "primary-content" ? undefined :
-                () => tagStore.selectedTrackId === track.trackId ?
-                  tagStore.ClearSelectedTrack() :
-                  tagStore.SetSelectedTrack(track.trackId)
-            }
-            className={S("timeline-row__label")}
-          >
-            {track.label}
-            {
-              track.trackType !== "primary-content" ? null :
-                <IconButton
-                  icon={QuestionMarkIcon}
-                  label="Modifying the primary content tag allows you to specify the start and end times for this offering"
-                  className={S("timeline-row__icon")}
-                />
-            }
-          </Linkish>
-          <div className={S("timeline-row__content")}>
-            <Track track={track} noActive={track.trackType === "primary-content"} />
-          </div>
-        </div>
-      )
+    <>
+      <TimelineThumbnailTrack />
+      {
+        tracks
+          .filter(t => t)
+          .map((track, i) =>
+            <div
+              key={`track-${track.trackId || i}`}
+              style={
+                track.trackType === "primary-content" ||
+                !trackStore.clipTracksSelected ||
+                trackStore.activeClipTracks[track.key] ?
+                  {} :
+                  {display: "none"}
+              }
+              className={S("timeline-row", track.trackId === tagStore.selectedTrackId ? "timeline-row--selected" : "")}
+            >
+              <Linkish
+                onClick={
+                  track.trackType === "primary-content" ? undefined :
+                    () => tagStore.selectedTrackId === track.trackId ?
+                      tagStore.ClearSelectedTrack() :
+                      tagStore.SetSelectedTrack(track.trackId)
+                }
+                className={S("timeline-row__label")}
+              >
+                {track.label}
+                {
+                  track.trackType !== "primary-content" ? null :
+                    <IconButton
+                      icon={QuestionMarkIcon}
+                      label="Modifying the primary content tag allows you to specify the start and end times for this offering"
+                      className={S("timeline-row__icon")}
+                    />
+                }
+              </Linkish>
+              <div className={S("timeline-row__content")}>
+                <Track track={track} noActive={track.trackType === "primary-content"} />
+              </div>
+            </div>
+          )
+      }
+    </>
   );
 });
 
-const Timeline = observer(({content}) => {
+const Timeline = observer(({content, simple=false}) => {
   const [hoverPosition, setHoverPosition] = useState(undefined);
   const timelineRef = useRef(null);
 
@@ -471,8 +517,8 @@ const Timeline = observer(({content}) => {
   }
 
   return (
-    <div className={S("content-block", "timeline-section")}>
-      <TimelineTopBar />
+    <div className={S("content-block", "timeline-section", simple ? "timeline-section--simple" : "")}>
+      <TimelineTopBar simple={simple} />
       <TimelinePlayheadIndicator value={videoStore.seek} timelineRef={timelineRef} />
       {
         !hoverSeek ? null :
@@ -513,27 +559,11 @@ const Timeline = observer(({content}) => {
         className={S("timeline-section__content")}
       >
         <TimelineSeekBar hoverSeek={hoverSeek} />
-        {
-          !videoStore.initialized || !videoStore.thumbnailStore.thumbnailStatus.loaded || !trackStore.showThumbnails ? null :
-            <div className={S("timeline-row", "timeline-row--thumbnails")}>
-              <div className={S("timeline-row__label")}>
-                Thumbnails
-              </div>
-              <div className={S("timeline-row__content")}>
-                <ThumbnailTrack
-                  store={videoStore}
-                  allowCreation
-                  onClick={progress => videoStore.SeekPercentage(progress)}
-                  className={S("track-container")}
-                />
-              </div>
-            </div>
-        }
         { content }
         <TimelineScaleBar hoverSeek={hoverSeek} />
       </div>
 
-      <TimelineBottomBar />
+      <TimelineBottomBar simple={simple} />
     </div>
   );
 });
@@ -544,4 +574,8 @@ export const TagTimeline = observer(() => {
 
 export const ClipTimeline = observer(() => {
   return <Timeline content={<ClipTimelineContent />} />;
+});
+
+export const SimpleTimeline = observer(() => {
+  return <Timeline simple content={<TimelineThumbnailTrack />} />;
 });

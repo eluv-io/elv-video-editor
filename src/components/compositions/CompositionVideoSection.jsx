@@ -85,6 +85,7 @@ const ClipControls = observer(() => {
             });
           }}
         />
+        <PlayCurrentClipButton store={store}/>
         <IconButton
           label="Set Clip Out to Current Frame"
           highlight
@@ -104,7 +105,6 @@ const ClipControls = observer(() => {
       </div>
       <div className={S("toolbar__separator")}/>
       <div className={S("toolbar__controls-group")}>
-        <PlayCurrentClipButton store={store}/>
         <IconButton
           label="Append Clip to Composition"
           icon={AddClipIcon}
@@ -230,7 +230,6 @@ const Title = observer(({clipView}) => {
     );
   }
 
-
   return (
     <h1 className={S("video-section__title")}>
       <Tooltip label={<div style={{textOverflow: "ellipsis", overflowX: "hidden"}}>{name}</div>} multiline maw={500}>
@@ -261,14 +260,34 @@ const Title = observer(({clipView}) => {
   );
 });
 
-const CompositionVideoSection = observer(({store, clipView = false}) => {
+const CompositionVideoSection = observer(({store, clipView=false}) => {
   const sectionRef = useRef(null);
+  const [active, setActive] = useState(false);
 
   useEffect(() => {
     keyboardControlsStore.ToggleKeyboardControls(true);
 
-    return () => keyboardControlsStore.ToggleKeyboardControls(false);
+    if(clipView) {
+      keyboardControlsStore.SetActiveStore(store);
+    }
+
+    return () => {
+      if(clipView) {
+        keyboardControlsStore.SetActiveStore(compositionStore.videoStore);
+      } else {
+        keyboardControlsStore.ToggleKeyboardControls(false);
+      }
+    };
   }, []);
+
+  useEffect(() => {
+    if(!clipView) { return; }
+
+    // Switch keyboard control context when focused/blurred
+    keyboardControlsStore.SetActiveStore(
+      active ? store : compositionStore.videoStore
+    );
+  }, [active]);
 
   useEffect(() => {
     if(!clipView || !store.initialized || !store.videoHandler) { return; }
@@ -291,6 +310,16 @@ const CompositionVideoSection = observer(({store, clipView = false}) => {
   return (
     <div
       ref={sectionRef}
+      tabIndex="0"
+      onKeyDown={event => {
+        if(event.key === "[") {
+          compositionStore.ModifySelectedClip({clipInFrame: store.frame});
+        } else if(event.key === "]") {
+          compositionStore.ModifySelectedClip({clipOutFrame: store.frame});
+        }
+      }}
+      onFocus={() => setActive(true)}
+      onBlur={() => setActive(false)}
       onScroll={event => {
         event.preventDefault();
         event.stopPropagation();
@@ -310,7 +339,7 @@ const CompositionVideoSection = observer(({store, clipView = false}) => {
 
         store.ScrollScale(0.5, event.deltaY);
       }}
-      className={S("content-block", "video-section")}
+      className={S("content-block", "video-section", clipView && active ? "video-section--active" : "")}
     >
       <Title clipView={clipView} />
       {

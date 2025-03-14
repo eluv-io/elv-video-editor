@@ -338,6 +338,7 @@ export const FrameDisplay = observer(({store}) => {
 export const PlayCurrentClipButton = observer(({store}) => {
   return (
     <IconButton
+      highlight
       icon={PlayClipIcon}
       label="Play Current Selection"
       onClick={() => store.PlaySegment(store.clipInFrame, store.clipOutFrame)}

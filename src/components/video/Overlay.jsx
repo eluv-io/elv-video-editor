@@ -13,20 +13,6 @@ const frameSpread = 10;
 
 const S = CreateModuleClassMatcher(OverlayStyles);
 
-const hoverColor = {
-  r: 25,
-  g: 200,
-  b: 255,
-  a: 150
-};
-
-const selectedColor = {
-  r: 50,
-  g: 255,
-  b: 0,
-  a: 255
-};
-
 const PolygonOverlayEdit = observer(({pos, points, setPoints}) => {
   const pointSize = 8;
   const canvasRef = useRef();
@@ -384,7 +370,6 @@ const Draw = ({canvas, tags, hoverTags, elementSize}) => {
   const height = context.canvas.height;
 
   context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-  context.globalAlpha = 0.8;
   context.lineWidth = 3;
 
   if(tags.length === 0) { return; }
@@ -404,17 +389,19 @@ const Draw = ({canvas, tags, hoverTags, elementSize}) => {
 
     const toHex = n => n.toString(16).padStart(2, "0");
 
-    let color = tag.color;
-    if(hoverTags?.find(hoverTag => hoverTag.tagId === tag.tagId)) {
-      color = hoverColor;
-    } else if(
-      (tagStore.selectedOverlayTag && tagStore.selectedOverlayTagId === tag.tagId) ||
-      !!assetStore.selectedTags.find(selectedTag => tag.tagId === selectedTag.tagId)
+    if(
+      // Hover tags
+      hoverTags?.find(hoverTag => hoverTag.tagId === tag.tagId) ||
+      tagStore.selectedOverlayTagId === tag.tagId ||
+      (!tagStore.selectedOverlayTagId && tagStore.selectedOverlayTagIds.includes(tag.tagId)) ||
+      assetStore.selectedTags.find(selectedTag => tag.tagId === selectedTag.tagId)
     ) {
-      color = selectedColor;
+      context.globalAlpha = 0.8;
+    } else {
+      context.globalAlpha = 0.4;
     }
 
-    context.strokeStyle = `#${toHex(color.r)}${toHex(color.g)}${toHex(color.b)}`;
+    context.strokeStyle = `#${toHex(tag.color.r)}${toHex(tag.color.g)}${toHex(tag.color.b)}`;
 
     context.beginPath();
     context.moveTo(points[0][0], points[0][1]);
@@ -479,6 +466,7 @@ const Overlay = observer(({element, asset, highlightTag}) => {
         frame: videoStore.frame,
         elementSize: overlayStore.overlayCanvasDimensions,
         selectedOverlayTagIds: tagStore.selectedOverlayTagIds,
+        selectedOverlayTagId: tagStore.selectedOverlayTagId,
         selectedAssetTags: assetStore.selectedTags.map(tag => tag.tagId),
         editingOverlayTagId: tagStore.editedOverlayTag?.tagId,
         editingAssetTagId: tagStore.editedAssetTag?.tagId,

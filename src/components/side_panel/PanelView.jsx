@@ -107,7 +107,12 @@ export const PanelView = observer(({
       (heights.top === 0 || heights.bottom === 0)
     ) {
       // Content shown in both places but height is 0 for one of them - re-initialize heights
-      const topPanelHeight = Math.floor(containerHeight * initialTopPanelProportion);
+      const topPanelHeight =
+        Math.min(
+          containerHeight - (minSizes.bottomPanel || 0),
+          Math.floor(containerHeight * initialTopPanelProportion)
+        );
+
       setHeights({
         top: topPanelHeight,
         bottom: containerHeight - topPanelHeight,
@@ -130,6 +135,7 @@ export const PanelView = observer(({
       containerHeight - (minSizes.bottomPanel || 0),
       containerHeight * 0.75
     );
+
     const newBottomHeight = containerHeight - newTopHeight;
 
     setHeights({
@@ -194,8 +200,14 @@ export const PanelView = observer(({
 
           if(sidePanelContent) {
             setWidths({
-              sidePanel: parentSize.width * initialSidePanelProportion,
-              contentPanel: parentSize.width - (parentSize.width * initialSidePanelProportion),
+              sidePanel: Math.max(
+                minSizes.sidePanel || 0,
+                parentSize.width * initialSidePanelProportion
+              ),
+              contentPanel: Math.min(
+                parentSize.width - (minSizes.sidePanel || 0),
+                parentSize.width - (parentSize.width * initialSidePanelProportion)
+              ),
               container: parentSize.width
             });
           } else {
@@ -204,8 +216,14 @@ export const PanelView = observer(({
 
           if(bottomPanelContent) {
             setHeights({
-              top: Math.floor(parentSize.height * initialTopPanelProportion),
-              bottom: parentSize.height - Math.floor(parentSize.height * initialTopPanelProportion),
+              top: Math.min(
+                parentSize.height - (minSizes.bottomPanel || 0),
+                Math.floor(parentSize.height * initialTopPanelProportion)
+              ),
+              bottom: Math.max(
+                minSizes.bottomPanel || 0,
+                parentSize.height - Math.floor(parentSize.height * initialTopPanelProportion)
+              ),
               container: parentSize.height
             });
           } else {

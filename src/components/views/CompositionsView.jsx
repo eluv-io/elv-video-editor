@@ -1,13 +1,18 @@
 import {observer} from "mobx-react-lite";
-import React from "react";
+import React, {useEffect} from "react";
 import {ClipSidePanel, TagSidePanel} from "@/components/side_panel/SidePanel.jsx";
 import PanelView from "@/components/side_panel/PanelView.jsx";
-import {compositionStore} from "@/stores/index.js";
+import {compositionStore, keyboardControlsStore, rootStore} from "@/stores/index.js";
 import CompositionTimeline from "@/components/compositions/CompositionTimeline.jsx";
 import CompositionVideoSection from "@/components/compositions/CompositionVideoSection.jsx";
 import {DraggedClip} from "@/components/compositions/Clips.jsx";
 
 const CompositionsView = observer(({mode}) => {
+  useEffect(() => {
+    rootStore.SetPage("compositions");
+    keyboardControlsStore.SetActiveStore(compositionStore.videoStore);
+  }, []);
+
   return (
     <>
       <PanelView

@@ -76,6 +76,7 @@ const TimelineTopBar = observer(() => {
           value={compositionStore.videoStore.FrameToSMPTE(compositionStore.videoStore.clipInFrame) || "00:00:00:00"}
           onChange={({frame}) => compositionStore.videoStore.SetClipMark({inFrame: frame})}
         />
+        <PlayCurrentClipButton store={compositionStore.videoStore}/>
         <SMPTEInput
           store={compositionStore.videoStore}
           label="Clip End"
@@ -97,7 +98,6 @@ const TimelineTopBar = observer(() => {
           label="Split Clip at Playhead"
         />
         <div className={S("toolbar__separator")}/>
-        <PlayCurrentClipButton store={compositionStore.videoStore}/>
         <Download/>
       </div>
     </div>

@@ -23,6 +23,18 @@
     overscroll-behavior-y: contain;
     position: relative;
   }
+
+  &--simple {
+    --track-height--thumbnails: 80px;
+
+    .timeline-row {
+      grid-template-columns: 1fr;
+    }
+
+    .timeline-row__label {
+      display: none;
+    }
+  }
 }
 
 .jump-to {

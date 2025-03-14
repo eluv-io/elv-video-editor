@@ -37,12 +37,12 @@ const Nav = observer(() => {
       active: !rootStore.page || rootStore.page === "compositions"
     },
     {
-      label: "Clips",
-      key: "clips",
+      label: "Clip",
+      key: "simple",
       disabled: !objectId || (videoStore.ready && !videoStore.isVideo),
-      to: !objectId ? "/" : UrlJoin("/", libraryId, objectId, "clips"),
+      to: !objectId ? "/" : UrlJoin("/", libraryId, objectId),
       icon: ClipIcon,
-      active: rootStore.page === "clips"
+      active: rootStore.page === "simple"
     },
     {
       label: "Tags",
@@ -50,7 +50,7 @@ const Nav = observer(() => {
       disabled: !objectId || (videoStore.ready && !videoStore.isVideo),
       to: !objectId ? "/" : UrlJoin("/", libraryId, objectId, "tags"),
       icon: TagIcon,
-      active: rootStore.page === "tags"
+      active: ["tags", "clips"].includes(rootStore.page)
     },
     {
       label: "Assets",

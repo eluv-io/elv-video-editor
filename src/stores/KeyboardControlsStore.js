@@ -4,6 +4,7 @@ class ControlStore {
   controlMap;
   keyboardControlsEnabled = false;
   keyboardControlsActive = false;
+  activeStore;
   modifiers = {
     alt: false,
     control: false,
@@ -12,9 +13,15 @@ class ControlStore {
   };
 
   constructor(rootStore) {
-    makeAutoObservable(this);
+    makeAutoObservable(
+      this,
+      {
+        activeStore: false
+      }
+    );
 
     this.rootStore = rootStore;
+    this.activeStore = rootStore.videoStore;
 
     this.HandleModifiers = this.HandleModifiers.bind(this);
     this.HandleInput = this.HandleInput.bind(this);
@@ -28,6 +35,10 @@ class ControlStore {
 
   ToggleKeyboardControlsActive(active) {
     this.keyboardControlsActive = active;
+  }
+
+  SetActiveStore(store) {
+    this.activeStore = store;
   }
 
   InitializeControlMap() {
@@ -88,7 +99,7 @@ class ControlStore {
 
   HandleInput(event) {
     // Controls only enabled on clips and tags view
-    if(!["clips", "tags"].includes(this.rootStore.page)) {
+    if(!["clips", "tags", "simple", "compositions"].includes(this.rootStore.page)) {
       return;
     }
 
@@ -148,15 +159,15 @@ class ControlStore {
   }
 
   SeekFrames({frames, seconds}) {
-    this.rootStore.videoStore.SeekFrames({frames, seconds});
+    this.activeStore.SeekFrames({frames, seconds});
   }
 
   SeekProgress(progress) {
-    this.rootStore.videoStore.SeekPercentage(progress);
+    this.activeStore.SeekPercentage(progress);
   }
 
   PlayPause() {
-    this.rootStore.videoStore.PlayPause();
+    this.activeStore.PlayPause();
   }
 
   PlayCurrentTag() {
@@ -164,27 +175,27 @@ class ControlStore {
   }
 
   SetPlaybackRate(rate) {
-    this.rootStore.videoStore.SetPlaybackRate(rate);
+    this.activeStore.SetPlaybackRate(rate);
   }
 
   ChangePlaybackRate(delta) {
-    this.rootStore.videoStore.ChangePlaybackRate(delta);
+    this.activeStore.ChangePlaybackRate(delta);
   }
 
   ToggleFullscreen() {
-    this.rootStore.videoStore.ToggleFullscreen();
+    this.activeStore.ToggleFullscreen();
   }
 
   ToggleMuted() {
-    this.rootStore.videoStore.ToggleMuted();
+    this.activeStore.ToggleMuted();
   }
 
   SetVolume(volume) {
-    this.rootStore.videoStore.SetVolume(volume);
+    this.activeStore.SetVolume(volume);
   }
 
   ChangeVolume(delta) {
-    this.rootStore.videoStore.ChangeVolume(delta);
+    this.activeStore.ChangeVolume(delta);
   }
 
   ToggleTrackByIndex(index) {
@@ -204,7 +215,7 @@ class ControlStore {
   }
 
   PlayClip() {
-    this.rootStore.videoStore.PlaySegment(this.rootStore.videoStore.clipInFrame, this.rootStore.videoStore.clipOutFrame);
+    this.activeStore.PlaySegment(this.activeStore.clipInFrame, this.activeStore.clipOutFrame);
   }
 
   DeleteClip() {
@@ -214,11 +225,11 @@ class ControlStore {
   }
 
   SetMarkIn() {
-    this.rootStore.videoStore.SetClipMark({inFrame: this.rootStore.videoStore.frame});
+    this.activeStore.SetClipMark({inFrame: this.activeStore.frame});
   }
 
   SetMarkOut() {
-    this.rootStore.videoStore.SetClipMark({outFrame: this.rootStore.videoStore.frame});
+    this.activeStore.SetClipMark({outFrame: this.activeStore.frame});
   }
 
   // Control definitions

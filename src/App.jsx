@@ -13,6 +13,7 @@ import Nav from "@/components/nav/Nav.jsx";
 import TagsAndClipsView from "@/components/views/TagsAndClipsView.jsx";
 import AssetsView from "@/components/views/AssetsView.jsx";
 import CompositionsView from "@/components/views/CompositionsView.jsx";
+import SimpleView from "@/components/views/SimpleView.jsx";
 
 // Keep track of the current page
 const SetView = observer(() => {
@@ -24,7 +25,6 @@ const SetView = observer(() => {
     if(!videoStore.ready) { return; }
 
     rootStore.SetNavigation(location, navigate);
-    rootStore.SetPage(params?.view || "source");
     tagStore.Reset();
   }, [params, videoStore.ready]);
 });
@@ -53,13 +53,13 @@ const DefaultContentRoutes = observer(() => {
 
   return (
     <Switch>
-      <Route path="/compositions">
-        <CompositionsView />
+      <Route path="/" exact>
+        <SimpleView />
       </Route>
       <Route path="/tags">
         <TagsAndClipsView mode="tags" />
       </Route>
-      <Route path="/clips">
+      <Route path="/my-tags">
         <TagsAndClipsView mode="clips" />
       </Route>
       <Route path="/assets/:assetKey?">

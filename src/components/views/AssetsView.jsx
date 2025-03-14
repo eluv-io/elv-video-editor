@@ -11,6 +11,7 @@ const AssetsView = observer(() => {
 
   useEffect(() => {
     assetStore.ClearSelectedTags();
+    rootStore.SetPage("assets");
     rootStore.SetSubpage(assetKey);
   }, [assetKey]);
 
