@@ -661,11 +661,11 @@ class VideoStore {
     if(!this.video) { return; }
 
     this.frame = Math.floor(frame);
-    this.totalFrames = this.videoHandler?.TotalFrames();
+    this.totalFrames = this.videoHandler?.TotalFrames() || this.totalFrames;
     this.smpte = smpte;
     this.seek = progress * 100;
-    this.duration = this.video.duration;
-    this.durationSMPTE = this.videoHandler?.TimeToSMPTE(this.video.duration);
+    this.duration = this.video.duration || this.duration;
+    this.durationSMPTE = this.videoHandler?.TimeToSMPTE(this.duration);
     this.currentTime = this.video.currentTime;
 
     /*

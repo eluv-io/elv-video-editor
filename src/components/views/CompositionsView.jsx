@@ -5,34 +5,42 @@ import PanelView from "@/components/side_panel/PanelView.jsx";
 import {compositionStore} from "@/stores/index.js";
 import CompositionTimeline from "@/components/compositions/CompositionTimeline.jsx";
 import CompositionVideoSection from "@/components/compositions/CompositionVideoSection.jsx";
+import {DraggedClip} from "@/components/compositions/Clips.jsx";
 
 const CompositionsView = observer(({mode}) => {
   return (
-    <PanelView
-      sidePanelContent={
-        mode === "tags" ?
-          <TagSidePanel /> :
-          <ClipSidePanel />
-      }
-      mainPanelContent={
-        <PanelView
-          isSubpanel
-          initialSidePanelProportion={0.5}
-          sidePanelContent={
-            !compositionStore.selectedClip ? null :
-              <CompositionVideoSection clip store={compositionStore.selectedClipStore} />
-          }
-          mainPanelContent={<CompositionVideoSection store={compositionStore.videoStore} />}
-        />
-      }
-      bottomPanelContent={<CompositionTimeline />}
-      initialTopPanelProportion={0.6}
-      minSizes={{
-        mainPanel: 700,
-        sidePanel: 350,
-        bottomPanel: 260
-      }}
-    />
+    <>
+      <PanelView
+        sidePanelContent={
+          mode === "tags" ?
+            <TagSidePanel /> :
+            <ClipSidePanel />
+        }
+        mainPanelContent={
+          <PanelView
+            isSubpanel
+            initialSidePanelProportion={0.5}
+            sidePanelContent={
+              !compositionStore.selectedClip ? null :
+                <CompositionVideoSection
+                  clipView
+                  key={`clip-${compositionStore.selectedClip.storeKey}`}
+                  store={compositionStore.selectedClipStore}
+                />
+            }
+            mainPanelContent={<CompositionVideoSection store={compositionStore.videoStore} />}
+          />
+        }
+        bottomPanelContent={<CompositionTimeline />}
+        initialTopPanelProportion={0.6}
+        minSizes={{
+          mainPanel: 700,
+          sidePanel: 350,
+          bottomPanel: 260
+        }}
+      />
+      <DraggedClip />
+    </>
   );
 });
 

@@ -307,7 +307,7 @@ const MarkedSlider = observer(({
               showNotches={false}
             />
         }
-        <Tooltip.Floating withinPortal={false}  label={(RenderHover || RenderText)(hoverPosition)} position="top" offset={20}>
+        <Tooltip.Floating withinPortal={false} label={(RenderHover || RenderText)(hoverPosition)} position="top" offset={20}>
           <div
             onMouseDown={handleControlOnly ? undefined : StartDrag}
             onMouseUp={handleControlOnly ? null : EndDrag}

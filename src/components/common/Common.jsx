@@ -182,6 +182,8 @@ export const IconButton = ({
   children,
   openDelay=500,
   highlight,
+  faded,
+  small,
   withinPortal=false,
   ...props
 }) => {
@@ -220,7 +222,9 @@ export const IconButton = ({
               "icon-button",
               active ? "icon-button--active" : "",
               disabled ? "icon-button--disabled" : "",
+              faded ? "icon-button--faded" : "",
               highlight ? "icon-button--highlight" : "",
+              small ? "icon-button--small" : "",
             ),
           props.className || ""
         )

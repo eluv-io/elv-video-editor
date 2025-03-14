@@ -66,7 +66,7 @@ const DefaultContentRoutes = observer(() => {
         <AssetsView />
       </Route>
       <Route>
-        <Redirect to={videoStore.isVideo ? "/tags" : "/assets"} replace />
+        <Redirect to={videoStore.isVideo ? "/clips" : "/assets"} replace />
       </Route>
     </Switch>
   );

@@ -52,7 +52,7 @@ class EditStore {
     const result = Action();
 
     this._actionStack.push({
-      id: rootStore.NextId(),
+      id: this.rootStore.NextId(),
       label,
       Action,
       Undo,

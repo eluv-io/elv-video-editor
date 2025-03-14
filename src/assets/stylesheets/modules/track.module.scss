@@ -20,19 +20,25 @@
 
 .thumbnail-track {
   align-items: center;
+  background-color: var(--background-track);
   cursor: pointer;
   display: flex;
+  height: 100%;
   max-width: 100%;
   overflow: hidden;
   position: relative;
+  width: 100%;
 
   &__thumbnail {
     border: 1px solid black;
     color: transparent;
+    object-fit: cover;
+    object-position: left center;
     pointer-events: none;
     user-select: none;
   }
 
+  &__canvas,
   &__cover {
     inset: 0;
     position: absolute;

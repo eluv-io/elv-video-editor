@@ -11,8 +11,22 @@
     align-items: center;
     background: var(--background-toolbar);
     display: flex;
+    gap: 20px;
     height: 45px;
+    justify-content: space-between;
     padding-inline: var(--content-inline-padding);
+  }
+
+  &__title-actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    height: 100%;
+    justify-content: center;
+  }
+
+  &__title-input {
+    width: 100%;
   }
 }
 

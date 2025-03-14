@@ -1,5 +1,6 @@
 import {makeAutoObservable} from "mobx";
 import {Unproxy} from "@/utils/Utils.js";
+import {Cue} from "@/stores/Helpers.js";
 
 class TagStore {
   selectedTrackId;
@@ -564,7 +565,7 @@ class TagStore {
     if(!track) { return; }
 
     startTime = startTime || this.rootStore.videoStore.currentTime;
-    const tag = this.rootStore.trackStore.Cue({
+    const tag = Cue({
       trackId,
       trackKey: track.key,
       startTime,

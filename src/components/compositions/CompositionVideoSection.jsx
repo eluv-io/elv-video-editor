@@ -1,6 +1,6 @@
 import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
-import React, {useEffect, useRef} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {compositionStore, keyboardControlsStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
@@ -14,17 +14,24 @@ import {
 import Video from "@/components/video/Video";
 import MarkedSlider from "@/components/common/MarkedSlider.jsx";
 import {IconButton} from "@/components/common/Common.jsx";
+import {TextInput, Tooltip} from "@mantine/core";
 
 import ZoomInIcon from "@/assets/icons/v2/zoom-in.svg";
 import ZoomOutIcon from "@/assets/icons/v2/zoom-out.svg";
 import ClipIcon from "@/assets/icons/v2/clip-return.svg";
 import ClipInIcon from "@/assets/icons/v2/clip-start.svg";
 import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
+import AddClipIcon from "@/assets/icons/v2/add-new-item.svg";
+import DragClipIcon from "@/assets/icons/v2/drag-handle.svg";
+import EditIcon from "@/assets/icons/Edit.svg";
+import CheckIcon from "@/assets/icons/check-circle.svg";
+import XIcon from "@/assets/icons/X.svg";
 
 const S = CreateModuleClassMatcher(VideoStyles);
 
 const ClipControls = observer(() => {
   const store = compositionStore.selectedClipStore;
+  const clip = compositionStore.selectedClip;
 
   if(!store.initialized) {
     return null;
@@ -43,10 +50,10 @@ const ClipControls = observer(() => {
           label="Reset View to Selected Clip"
           icon={ClipIcon}
           onClick={() => {
-            let clipInProgress = 100 * (store.clipInFrame || 0) / store.totalFrames;
-            let clipOutProgress = 100 * (store.clipOutFrame || (store.totalFrames - 1)) / store.totalFrames;
+            let clipInProgress = 100 * (clip.clipInFrame || 0) / store.totalFrames;
+            let clipOutProgress = 100 * (clip.clipOutFrame || (store.totalFrames - 1)) / store.totalFrames;
 
-            store.SetSegment(store.clipInFrame, store.clipOutFrame);
+            store.SetSegment(clip.clipInFrame, clip.clipOutFrame);
             store.SetScale(
               Math.max(0, clipInProgress - 0.5),
               Math.min(100, clipOutProgress + 0.5),
@@ -66,18 +73,63 @@ const ClipControls = observer(() => {
           label="Set Clip In to Current Frame"
           highlight
           icon={ClipInIcon}
-          onClick={() => store.SetClipMark({inFrame: store.frame})}
+          onClick={() => {
+            store.SetClipMark({inFrame: store.frame});
+            compositionStore.ModifyClip({
+              label: "Modify Clip Points",
+              clipId: clip.clipId,
+              attrs: {
+                clipInFrame: store.clipInFrame,
+                clipOutFrame: store.clipOutFrame
+              }
+            });
+          }}
         />
         <IconButton
           label="Set Clip Out to Current Frame"
           highlight
           icon={ClipOutIcon}
-          onClick={() => store.SetClipMark({outFrame: store.frame})}
+          onClick={() => {
+            store.SetClipMark({outFrame: store.frame});
+            compositionStore.ModifyClip({
+              label: "Modify Clip Points",
+              clipId: clip.clipId,
+              attrs: {
+                clipInFrame: store.clipInFrame,
+                clipOutFrame: store.clipOutFrame
+              }
+            });
+          }}
         />
       </div>
       <div className={S("toolbar__separator")}/>
       <div className={S("toolbar__controls-group")}>
         <PlayCurrentClipButton store={store}/>
+        <IconButton
+          label="Append Clip to Composition"
+          icon={AddClipIcon}
+          onClick={() => compositionStore.AppendClip(compositionStore.selectedClip)}
+        />
+        <IconButton
+          key={compositionStore.selectedClip.clipKey}
+          label="Drag Clip to Timeline"
+          icon={DragClipIcon}
+          style={{cursor: "grab"}}
+          draggable
+          onDragStart={event => {
+            const dragElement = document.querySelector("#drag-dummy") || document.createElement("div");
+            document.body.appendChild(dragElement);
+            dragElement.style.display = "none";
+            dragElement.id = "drag-dummy";
+            event.dataTransfer.setDragImage(dragElement, -10000, -10000);
+            compositionStore.SetDragging({
+              clip: compositionStore.selectedClip,
+              showDragShadow: true,
+              createNewClip: true
+            });
+          }}
+          onDragEnd={() => compositionStore.EndDrag()}
+        />
       </div>
     </div>
   );
@@ -85,23 +137,24 @@ const ClipControls = observer(() => {
 
 const ClipSeekBar = observer(() => {
   const store = compositionStore.selectedClipStore;
+  const clip = compositionStore.selectedClip;
 
   if(!store.initialized) {
     return null;
   }
 
   let indicators = [];
-  if(store.clipInFrame) {
+  if(clip.clipInFrame) {
     indicators.push({
-      position: 100 * store.clipInFrame / (store.totalFrames || 1),
+      position: 100 * clip.clipInFrame / (store.totalFrames || 1),
       style: "start",
       connectStart: true
     });
   }
 
-  if(store.clipOutFrame < store.totalFrames - 1) {
+  if(clip.clipOutFrame < store.totalFrames - 1) {
     indicators.push({
-      position: 100 * store.clipOutFrame / (store.totalFrames || 1),
+      position: 100 * clip.clipOutFrame / (store.totalFrames || 1),
       style: "end",
       connectEnd: true
     });
@@ -127,7 +180,7 @@ const ClipSeekBar = observer(() => {
                 style={{aspectRatio: store.aspectRatio}}
                 className={S("thumbnail-hover__image")}
               />
-              <div className={S("thumbnail-hover__text")}>{store.ProgressToSMPTE(progress)}</div>
+              <div className={S("thumbnail-hover__time")}>{store.ProgressToSMPTE(progress)}</div>
             </div>
           )
       }
@@ -137,8 +190,78 @@ const ClipSeekBar = observer(() => {
   );
 });
 
+const Title = observer(({clipView}) => {
+  const name = clipView ? compositionStore.selectedClip.name : compositionStore.name;
 
-const CompositionVideoSection = observer(({store, clip=false}) => {
+  const [editing, setEditing] = useState(false);
+  const [editedName, setEditedName] = useState(name);
+
+  if(editing) {
+    const Save = () => {
+      if(clipView) {
+        compositionStore.ModifyClip({
+          clipId: compositionStore.selectedClipId,
+          attrs: { name: editedName },
+          label: "Modify Clip Name"
+        });
+      } else {
+        compositionStore.SetCompositionName(editedName);
+      }
+
+      setEditing(false);
+    };
+
+    return (
+      <h1 className={S("video-section__title")}>
+        <TextInput
+          value={editedName}
+          placeholder={clipView ? "Clip Name" : "Composition Name"}
+          onKeyDown={event => event.key === "Enter" && Save()}
+          onChange={event => setEditedName(event.target.value)}
+          className={S("video-section__title-input")}
+        />
+        <IconButton
+          highlight
+          label="Update Name"
+          icon={CheckIcon}
+          onClick={Save}
+        />
+      </h1>
+    );
+  }
+
+
+  return (
+    <h1 className={S("video-section__title")}>
+      <Tooltip label={<div style={{textOverflow: "ellipsis", overflowX: "hidden"}}>{name}</div>} multiline maw={500}>
+        <div className={S("ellipsis")}>
+          {name}
+        </div>
+      </Tooltip>
+      <div className={S("video-section__title-actions")}>
+        <IconButton
+          faded
+          small
+          label="Edit Name"
+          icon={EditIcon}
+          onClick={() => setEditing(true)}
+        />
+        {
+          !clipView || compositionStore.videoStore.fullScreen ? null :
+            <IconButton
+              faded
+              small
+              label="Close"
+              icon={XIcon}
+              onClick={() => compositionStore.ClearSelectedClip()}
+            />
+        }
+      </div>
+    </h1>
+  );
+});
+
+const CompositionVideoSection = observer(({store, clipView = false}) => {
   const sectionRef = useRef(null);
 
   useEffect(() => {
@@ -148,19 +271,22 @@ const CompositionVideoSection = observer(({store, clip=false}) => {
   }, []);
 
   useEffect(() => {
-    if(!clip || !store.initialized || !store.videoHandler) { return; }
+    if(!clipView || !store.initialized || !store.videoHandler) { return; }
 
+    const clip = compositionStore.selectedClip;
     // Set initial scale for clip
 
-    let clipInProgress = 100 * (store.clipInFrame || 0) / store.totalFrames;
-    let clipOutProgress = 100 * (store.clipOutFrame || (store.totalFrames - 1)) / store.totalFrames;
+    let clipInProgress = store.FrameToProgress(clip.clipInFrame);
+    let clipOutProgress = store.FrameToProgress(clip.clipOutFrame);
 
-    store.SetSegment(store.clipInFrame, store.clipOutFrame);
+    store.SetClipMark({inFrame: clip.clipInFrame, outFrame: clip.clipOutFrame});
+    store.SetSegment(clip.clipInFrame, clip.clipOutFrame);
     store.SetScale(
       Math.max(0, clipInProgress - 0.5),
       Math.min(100, clipOutProgress + 0.5),
     );
-  }, [store.initialized, !!store.videoHandler]);
+    store.Seek(clip.clipInFrame);
+  }, [store.initialized, !!store.videoHandler, compositionStore.selectedClipId]);
 
   return (
     <div
@@ -186,17 +312,13 @@ const CompositionVideoSection = observer(({store, clip=false}) => {
       }}
       className={S("content-block", "video-section")}
     >
-      <h1 className={S("video-section__title")}>
-        <div className={S("ellipsis")}>
-          {store.name}
-        </div>
-      </h1>
+      <Title clipView={clipView} />
       {
         !sectionRef?.current ? null :
           <Video store={store} fullscreenContainer={sectionRef.current} />
       }
       {
-        !clip ? null :
+        !clipView ? null :
           <>
             <ClipSeekBar />
             <ClipControls />
@@ -207,7 +329,7 @@ const CompositionVideoSection = observer(({store, clip=false}) => {
         <div className={S("toolbar__controls-group")}>
           <PlaybackRateControl store={store}/>
           {
-            !clip ? null :
+            !clipView ? null :
               <>
                 <OfferingControls store={store}/>
                 <SubtitleControls store={store}/>

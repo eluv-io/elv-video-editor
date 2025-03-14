@@ -41,6 +41,7 @@
   background-color: var(--text-highlight);
   box-shadow: 0 0 10px var(--text-disabled);
   height: 100%;
+  pointer-events: none;
   position: absolute;
   width: 2px;
   z-index: 1;
@@ -80,6 +81,16 @@
     .timeline-row__content {
       height: var(--track-height-thumbnails);
       max-height: var(--track-height--thumbnails);
+    }
+  }
+
+  &--composition {
+    height: var(--track-height--compositions);
+
+    .timeline-row__label,
+    .timeline-row__content {
+      height: var(--track-height--compositions);
+      max-height: var(--track-height--compositions);
     }
   }
 

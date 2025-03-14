@@ -104,17 +104,17 @@ const TimelineTopBar = observer(() => {
           value={videoStore.FrameToSMPTE(videoStore.clipInFrame) || "00:00:00:00"}
           onChange={({frame}) => videoStore.SetClipMark({inFrame: frame})}
         />
-        <IconButton
-          highlight
-          icon={ClipOutIcon}
-          label="Set Clip Out to Current Frame"
-          onClick={() => videoStore.SetClipMark({outFrame: videoStore.frame})}
-        />
         <SMPTEInput
           highlight
           label="Clip End"
           value={videoStore.FrameToSMPTE(videoStore.clipOutFrame) || "00:00:00:00"}
           onChange={({frame}) => videoStore.SetClipMark({outFrame: frame})}
+        />
+        <IconButton
+          highlight
+          icon={ClipOutIcon}
+          label="Set Clip Out to Current Frame"
+          onClick={() => videoStore.SetClipMark({outFrame: videoStore.frame})}
         />
         <div className={S("toolbar__separator")}/>
         <PlayCurrentClipButton store={videoStore}/>
@@ -520,7 +520,12 @@ const Timeline = observer(({content}) => {
                 Thumbnails
               </div>
               <div className={S("timeline-row__content")}>
-                <ThumbnailTrack />
+                <ThumbnailTrack
+                  store={videoStore}
+                  allowCreation
+                  onClick={progress => videoStore.SeekPercentage(progress)}
+                  className={S("track-container")}
+                />
               </div>
             </div>
         }

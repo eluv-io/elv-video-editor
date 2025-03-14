@@ -37,20 +37,20 @@ const Nav = observer(() => {
       active: !rootStore.page || rootStore.page === "compositions"
     },
     {
-      label: "Tags",
-      key: "tags",
-      disabled: !objectId || (videoStore.ready && !videoStore.isVideo),
-      to: !objectId ? "/" : UrlJoin("/", libraryId, objectId, "tags"),
-      icon: TagIcon,
-      active: rootStore.page === "tags"
-    },
-    {
       label: "Clips",
       key: "clips",
       disabled: !objectId || (videoStore.ready && !videoStore.isVideo),
       to: !objectId ? "/" : UrlJoin("/", libraryId, objectId, "clips"),
       icon: ClipIcon,
       active: rootStore.page === "clips"
+    },
+    {
+      label: "Tags",
+      key: "tags",
+      disabled: !objectId || (videoStore.ready && !videoStore.isVideo),
+      to: !objectId ? "/" : UrlJoin("/", libraryId, objectId, "tags"),
+      icon: TagIcon,
+      active: rootStore.page === "tags"
     },
     {
       label: "Assets",

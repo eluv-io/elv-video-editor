@@ -1,4 +1,6 @@
 :root {
+  --color-highlight: #bc77ec;
+  --color-highlight-secondary: #7787ec;
   --background-primary: #151515;
   --background-secondary: #1b1b1c;
   --background-active: #323233;
@@ -9,6 +11,9 @@
   --background-track: #000;
   --background-switch-active: #4a4a4b;
   --background-modal: #242424;
+  --background-clip: #42423f;
+  --background-clip--hover: #797974;
+  --background-clip--selected: var(--color-highlight-secondary);
   --content-border-color: #222;
   --content-border-radius: 5px;
   --content-inline-padding: 20px;
@@ -22,14 +27,14 @@
   --text-secondary: #BDBDBD;
   --text-tertiary: #7b7580;
   --text-disabled: #4b494e;
-  --text-highlight: #bc77ec;
-  --text-highlight-secondary: #7787ec;
+  --text-highlight: var(--color-highlight);
+  --text-highlight-secondary: var(--color-highlight-secondary);
   --text-error: #ce6666;
   --table-border-color: #3B3B3B;
   --font-default: inter, system-ui, "Segoe UI", roboto, helvetica, arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   --font-monospace: "Chivo Mono", "Courier New", courier, monospace;
-  --slider-color: var(--text-highlight);
-  --slider-indicator-color: var(--text-highlight-secondary);
+  --slider-color: var(--color-highlight);
+  --slider-indicator-color: var(--color-highlight-secondary);
   --background-tag: #29292D;
   --background-tag--selected: #2e2e3d;
   --background-tag--hover: #38383d;
@@ -37,6 +42,7 @@
   --animation-fadein: fadein;
   --track-height: 45px;
   --track-height--thumbnails: 60px;
+  --track-height--compositions: 80px;
 
   @keyframes fadein {
     0% {

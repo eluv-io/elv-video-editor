@@ -1,0 +1,81 @@
+.composition-track {
+  background-color: var(--background-track);
+  height: var(--track-height--compositions);
+  position: relative;
+  width: 100%;
+
+  &__content {
+    display: flex;
+    inset: 5px 0;
+    position: absolute;
+  }
+
+  &__drop-indicator {
+    background-color: var(--text-highlight);
+    box-shadow: 0 0 3px var(--text-highlight);
+    height: 100%;
+    pointer-events: none;
+    position: relative;
+    width: 2px;
+    z-index: 1000;
+  }
+}
+
+.clip {
+  background-color: var(--background-clip);
+  border: 1px solid var(--background-track);
+  border-radius: 5px;
+  height: 100%;
+  padding: 2px;
+  position: absolute;
+  transition: background-color 0.15s ease, border 0.15s ease, box-shadow 0.15s ease;
+
+  &:not(&--selected) {
+    &:hover {
+      background-color: var(--background-clip--hover);
+    }
+  }
+
+  &--selected {
+    background-color: var(--background-clip--selected);
+    box-shadow: 0 0 3px var(--background-clip--selected);
+  }
+
+  &__thumbnail-container {
+    border-radius: 5px;
+    inset: 2px;
+    overflow: hidden;
+    position: absolute;
+  }
+
+  &__thumbnails {
+    inset: 0;
+    position: absolute;
+  }
+}
+
+.dragged-clip {
+  background-color: var(--background-clip);
+  border: 1px solid var(--background-track);
+  border-radius: 5px;
+  height: var(--track-height--compositions);
+  padding: 1px;
+  position: absolute;
+  z-index: 100;
+
+  &__thumbnail-container {
+    border-radius: 5px;
+    inset: 2px;
+    overflow: hidden;
+    position: absolute;
+  }
+
+  &__thumbnails {
+    inset: 0;
+    position: absolute;
+  }
+
+  canvas {
+    background-color: var(--background-toolbar);
+  }
+}
