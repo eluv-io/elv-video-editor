@@ -26,66 +26,105 @@ const S = CreateModuleClassMatcher(DownloadStyles);
 
 const DownloadForm = observer(({options, setOptions, representations, audioRepresentations, Submit, Close}) => {
   return (
-    <div className={S("download__form")}>
-      <FormTextInput
-        label="Title"
-        autoFocus
-        name="title"
-        value={options.filename}
-        onChange={event => setOptions({...options, filename: event.target.value})}
-        placeholder={options.defaultFilename}
-      />
-
-      <FormSelect
-        label="Offering"
-        name="offering"
-        value={options.offering}
-        onChange={value => setOptions({...options, offering: value || options.offering})}
-        data={
-          Object.keys(videoStore.availableOfferings).map(offeringKey => ({
-            label: offeringKey === "default" ? "Default" : videoStore.availableOfferings[offeringKey].display_name || offeringKey,
-            value: offeringKey,
-          }))
+    <div className={S("download")}>
+      <div className={S("preview")}>
+        {
+          !videoStore.thumbnailStore.thumbnailStatus.available ? null :
+            <div style={{aspectRatio: videoStore.aspectRatio}} className={S("preview__thumbnail-container")}>
+              <PreviewThumbnail
+                startFrame={videoStore.clipInFrame}
+                endFrame={videoStore.clipOutFrame}
+                className={S("preview__thumbnail")}
+              />
+            </div>
         }
-      />
-      {
-        !representations || representations.length === 0 ? null :
-          <FormSelect
-            label="Resolution"
-            name="representation"
-            value={options.representation}
-            onChange={value => setOptions({...options, representation: value || options.representation})}
-            data={representations.map(rep => ({label: rep.string, value: rep.key}))}
-          />
-      }
-      {
-        !audioRepresentations || audioRepresentations.length === 0 ? null :
-          <FormSelect
-            label="Audio"
-            name="audioRepresentation"
-            value={options.audioRepresentation}
-            onChange={value => setOptions({...options, audioRepresentation: value || options.audioRepresentation})}
-            data={audioRepresentations.map(rep => ({label: rep.string, value: rep.key}))}
-          />
-      }
-      <FormSelect
-        label="Format"
-        name="format"
-        value={options.format}
-        onChange={value => setOptions({...options, format: value || options.format})}
-        data={[{label: "MP4", value: "mp4"}, {label: "ProRes", value: "prores"}]}
-      />
+        <div className={S("preview__title")}>{videoStore.name}</div>
+        <div className={S("preview__time")}>
+            <span>
+              {videoStore.videoHandler.FrameToSMPTE(videoStore.clipInFrame)}
+            </span>
+          <span>-</span>
+          <span>
+              {videoStore.videoHandler.FrameToSMPTE(videoStore.clipOutFrame)}
+            </span>
+          <span>
+              (
+            {videoStore.videoHandler.FrameToString({frame: videoStore.clipOutFrame - videoStore.clipInFrame})}
+            )
+            </span>
+        </div>
+        <div className={S("preview__object-id")}>
+          {videoStore.videoObject.objectId}
+          <CopyButton label="Copy Object ID" value={videoStore.videoObject.objectId} small/>
+        </div>
+        {
+          !videoStore.metadata?.public?.description ? null :
+            <div className={S("preview__description")}>
+              {videoStore.metadata.public.description}
+            </div>
+        }
+      </div>
+      <div className={S("download__form")}>
+        <FormTextInput
+          label="Title"
+          autoFocus
+          name="title"
+          value={options.filename}
+          onChange={event => setOptions({...options, filename: event.target.value})}
+          placeholder={options.defaultFilename}
+        />
 
-      <div className={S("download__actions")}>
-        <Button variant="subtle" color="gray.5" onClick={() => Close()} className={S("download__action")}>
-          Cancel
-        </Button>
-        <AsyncButton
-          onClick={async () => await Submit(options)}
-          className={S("download__action")}
-        >
-          Download
-        </AsyncButton>
+        <FormSelect
+          label="Offering"
+          name="offering"
+          value={options.offering}
+          onChange={value => setOptions({...options, offering: value || options.offering})}
+          data={
+            Object.keys(videoStore.availableOfferings).map(offeringKey => ({
+              label: offeringKey === "default" ? "Default" : videoStore.availableOfferings[offeringKey].display_name || offeringKey,
+              value: offeringKey,
+            }))
+          }
+        />
+        {
+          !representations || representations.length === 0 ? null :
+            <FormSelect
+              label="Resolution"
+              name="representation"
+              value={options.representation}
+              onChange={value => setOptions({...options, representation: value || options.representation})}
+              data={representations.map(rep => ({label: rep.string, value: rep.key}))}
+            />
+        }
+        {
+          !audioRepresentations || audioRepresentations.length === 0 ? null :
+            <FormSelect
+              label="Audio"
+              name="audioRepresentation"
+              value={options.audioRepresentation}
+              onChange={value => setOptions({...options, audioRepresentation: value || options.audioRepresentation})}
+                data={audioRepresentations.map(rep => ({label: rep.string, value: rep.key}))}
+              />
+          }
+          <FormSelect
+            label="Format"
+            name="format"
+            value={options.format}
+            onChange={value => setOptions({...options, format: value || options.format})}
+            data={[{label: "MP4", value: "mp4"}, {label: "ProRes", value: "prores"}]}
+          />
+
+          <div className={S("download__actions")}>
+            <Button variant="subtle" color="gray.5" onClick={() => Close()} className={S("download__action")}>
+              Cancel
+            </Button>
+            <AsyncButton
+              onClick={async () => await Submit(options)}
+              className={S("download__action")}
+            >
+              Download
+            </AsyncButton>
+          </div>
       </div>
     </div>
   );
@@ -102,6 +141,7 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
         <IconButton
           icon={RetryIcon}
           title="Retry"
+          small
           onClick={() => {
             setConfirming(true);
 
@@ -124,6 +164,7 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
         <IconButton
           icon={XIcon}
           label="Remove"
+          small
           onClick={() => {
             setConfirming(true);
 
@@ -148,11 +189,13 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
         <IconButton
           icon={DownloadIcon}
           label="Download"
+          small
           onClick={() => videoStore.SaveDownloadJob({jobId: job.jobId})}
         />
         <IconButton
           icon={XIcon}
           label="Remove Download"
+          small
           onClick={() => {
             setConfirming(true);
 
@@ -172,12 +215,22 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
       </div>
     );
   } else if(jobStatus.status === "processing") {
-    return <progress value={jobStatus.progress} max={100} className={S("progress")} />;
+    return (
+      <div className={S("history-row__actions")}>
+        <progress value={jobStatus.progress} max={100} className={S("progress")} />
+      </div>
+    );
   }
 });
 
 const JobStatusTable = observer(({jobs, representations, audioRepresentations, setConfirming, Reload}) => (
   <div className={S("history")}>
+    <div className={S("history-row", "history-row--header")}>
+      <div>Name</div>
+      <div>Duration</div>
+      <div>Status</div>
+      <div />
+    </div>
     {
       jobs.map(job => {
         const jobStatus = videoStore.downloadJobStatus[job.jobId];
@@ -195,41 +248,35 @@ const JobStatusTable = observer(({jobs, representations, audioRepresentations, s
             className={
               S(
                 "history-row",
-                videoStore.thumbnailStore.thumbnailStatus.available ? "history-row--thumbnail" : "",
+                "history-row--entry",
                 job.highlighted ? "history-row--highlighted" : ""
               )
             }
           >
-            {
-              !videoStore.thumbnailStore.thumbnailStatus.available ? null :
-                <div style={{aspectRatio: videoStore.aspectRatio}} className={S("history-row__thumbnail-container")}>
-                  <PreviewThumbnail
-                    startFrame={startFrame}
-                    endFrame={endFrame}
-                    className={S("history-row__thumbnail")}
-                  />
-                </div>
-            }
-
-            <div className={S("history-row__info")}>
-              <div title={job.filename} className={S("history-row__name")}>
-                {job.filename}
-              </div>
+            <div className={S("history-row__cell", "history-row__cell--title")}>
               {
-                !jobStatus ? null :
-                  <div className={S("history-row__status")}>
-                    {
-                      jobStatus?.status === "completed" ?
-                        downloaded ? "Download Initiated. Access from browser download history" : "Available" :
-                        jobStatus?.status === "failed" ? "Failed" : "Generating..."
-                    }
+                !videoStore.thumbnailStore.thumbnailStatus.available ? null :
+                  <div style={{aspectRatio: videoStore.aspectRatio}} className={S("history-row__thumbnail-container")}>
+                    <PreviewThumbnail
+                      startFrame={startFrame}
+                      endFrame={endFrame}
+                      className={S("history-row__thumbnail")}
+                    />
                   </div>
               }
-              <div className={S("history-row__duration")}>
-                {job?.duration}
-              </div>
+              {job.filename}
             </div>
-            <div className={S("history-row__actions")}>
+            <div className={S("history-row__cell")}>
+              {job?.duration}
+            </div>
+            <div className={S("history-row__cell")}>
+              {
+                jobStatus?.status === "completed" ?
+                  downloaded ? "Download Initiated" : "Available" :
+                  jobStatus?.status === "failed" ? "Failed" : "Generating..."
+              }
+            </div>
+            <div className={S("history-row__cell")}>
               <JobActions job={job} setConfirming={setConfirming} Reload={Reload}/>
             </div>
 
@@ -237,6 +284,7 @@ const JobStatusTable = observer(({jobs, representations, audioRepresentations, s
               icon={QuestionMarkIcon}
               className={S("history-row__details")}
               aria-label="Clip Details"
+              withinPortal
               label={
                 <div className={S("job-details")}>
                   <div className={S("job-details__detail")}>
@@ -335,13 +383,11 @@ const DownloadHistory = ({representations, audioRepresentations, highlightedJobI
   );
 };
 
-const DownloadModalContent = observer(({setConfirming, Close}) => {
-  const [tab, setTab] = useState("details");
+const DownloadModalContent = observer(({tab, setTab, setConfirming, Close}) => {
   const [jobId, setJobId] = useState(undefined);
   const [error, setError] = useState("");
   const [representations, setRepresentations] = useState(undefined);
   const [audioRepresentations, setAudioRepresentations] = useState(undefined);
-  const [embedUrl, setEmbedUrl] = useState(undefined);
   const [options, setOptions] = useState({
     format: "mp4",
     filename: "",
@@ -370,14 +416,6 @@ const DownloadModalContent = observer(({setConfirming, Close}) => {
       filename: options.filename === options.defaultFilename ?
         defaultFilename : options.filename
     });
-
-    videoStore.CreateEmbedUrl({
-      offeringKey: options.offering,
-      audioTrackLabel: audioTrack && !audioTrack.default ? audioTrack.label : undefined,
-      clipInFrame: videoStore.clipInFrame,
-      clipOutFrame: videoStore.clipOutFrame
-    })
-      .then(url => setEmbedUrl(url));
   }, [options.format, options.offering, options.representation, options.audioRepresentation, options.clipInFrame, options.clipOutFrame]);
 
   // Load quality and audio options
@@ -436,112 +474,67 @@ const DownloadModalContent = observer(({setConfirming, Close}) => {
 
   return (
     <div className={S("download-modal")}>
-      <h1 className={S("header")}>
-        <Icon icon={DownloadIcon}/>
-        Generate and Download Clip
-      </h1>
-      <div className={S("download")}>
-        <div className={S("preview")}>
-          <div className={S("preview__header")}>Preview</div>
-          <div className={S("preview__container")}>
-            {
-              !videoStore.thumbnailStore.thumbnailStatus.available ? null :
-                <div className={S("preview__thumbnail-container")}>
-                  <PreviewThumbnail
-                    startFrame={videoStore.clipInFrame}
-                    endFrame={videoStore.clipOutFrame}
-                    className={S("preview__thumbnail")}
-                  />
-                </div>
-            }
-            <div className={S("preview__details")}>
-              <div className={S("preview__detail")}>
-                <label>Start Time</label>
-                <div>
-                  {videoStore.videoHandler.FrameToSMPTE(videoStore.clipInFrame)}
-                </div>
-              </div>
-              <div className={S("preview__detail")}>
-                <label>End Time</label>
-                <div>
-                  {videoStore.videoHandler.FrameToSMPTE(videoStore.clipOutFrame)}
-                </div>
-              </div>
-              <div className={S("preview__detail")}>
-                <label>Duration</label>
-                <div>
-                  {videoStore.videoHandler.FrameToString({frame: videoStore.clipOutFrame - videoStore.clipInFrame})}
-                </div>
-              </div>
-            </div>
+      {
+        !error ? null :
+          <div className={S("download__error")}>
+            {error}
           </div>
-          {
-            !embedUrl ? null :
-              <div className={S("url")}>
-                <div className={S("preview__header")}>
-                  Streaming URL
-                </div>
-                <div className={S("url__container")}>
-                  <div className={S("url__url")}>
-                    { embedUrl }
-                  </div>
-                  <CopyButton label="Copy Streaming URL" value={embedUrl} />
-                </div>
-              </div>
-          }
-        </div>
-        <div className={S("content")}>
-          <Tabs value={tab} color="gray.5" onChange={setTab}>
-            <Tabs.List>
-              <Tabs.Tab value="details">
-                Details
-              </Tabs.Tab>
-              <Tabs.Tab value="history">
-                History
-              </Tabs.Tab>
-            </Tabs.List>
-          </Tabs>
-          {
-            !error ? null :
-              <div className={S("download__error")}>
-                {error}
-              </div>
-          }
-          {
-            tab === "details" ?
-              <DownloadForm
-                options={options}
-                setOptions={setOptions}
-                representations={representations}
-                audioRepresentations={audioRepresentations}
-                Submit={Submit}
-                Close={Close}
-              /> :
-              <DownloadHistory
-                representations={representations}
-                audioRepresentations={audioRepresentations}
-                highlightedJobId={jobId}
-                setConfirming={setConfirming}
-              />
-          }
-        </div>
-      </div>
+      }
+      {
+        tab === "details" ?
+          <DownloadForm
+            options={options}
+            setOptions={setOptions}
+            representations={representations}
+            audioRepresentations={audioRepresentations}
+            Submit={Submit}
+            Close={Close}
+          /> :
+          <DownloadHistory
+            representations={representations}
+            audioRepresentations={audioRepresentations}
+            highlightedJobId={jobId}
+            setConfirming={setConfirming}
+          />
+      }
     </div>
   );
 });
 
 const DownloadModal = observer(props => {
   const [confirming, setConfirming] = useState(false);
+  const [tab, setTab] = useState("details");
+
+  useEffect(() => {
+    //setTab("details");
+  }, [props.opened]);
 
   return (
     <Modal
       size={1000}
       onClose={() => !confirming && props.onClose()}
-      withCloseButton={false}
+      title={
+        <h1 className={S("header")}>
+          <Icon icon={DownloadIcon}/>
+          Generate and Download Clip
+        </h1>
+      }
       padding={30}
       {...props}
     >
+      <Tabs value={tab} mb="sm" color="gray.5" onChange={setTab}>
+        <Tabs.List>
+          <Tabs.Tab value="details">
+            Details
+          </Tabs.Tab>
+          <Tabs.Tab value="history">
+            Download History
+          </Tabs.Tab>
+        </Tabs.List>
+      </Tabs>
       <DownloadModalContent
+        tab={tab}
+        setTab={setTab}
         setConfirming={setConfirming}
         Close={props.onClose}
       />

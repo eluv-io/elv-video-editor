@@ -7,8 +7,19 @@
   }
 
   &--modal {
+    &__header {
+      align-items: center;
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 20px;
+    }
+
+    &__content {
+      border: 1px solid var(--table-border-color);
+    }
+
     &__body {
-      padding-top: 5px;
+      padding: 10px 20px;
     }
   }
 }

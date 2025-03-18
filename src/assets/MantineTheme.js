@@ -26,6 +26,8 @@ const MantineTheme = createTheme({
     }),
     Modal: Modal.extend({
       classNames: {
+        header: MantineStyles["__mantine--modal__header"],
+        content: MantineStyles["__mantine--modal__content"],
         body: MantineStyles["__mantine--modal__body"]
       }
     })

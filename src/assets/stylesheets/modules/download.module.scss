@@ -1,4 +1,5 @@
 .download-modal {
+  min-height: 500px;
   padding-top: 10px;
 }
 
@@ -9,7 +10,6 @@
    font-size: 20px;
    font-weight: 600;
    gap: 10px;
-   margin-bottom: 30px;
    position: relative;
    width: 100%;
 
@@ -23,15 +23,9 @@
    max-width: 100%;
    overflow: hidden;
 
-   &__header {
-     font-size: 18px;
-     font-weight: 600;
-     margin-bottom: 10px;
-   }
-
-   &__container,
    &__thumbnail-container,
    &__thumbnail {
+     border-radius: 10px;
      width: 100%;
 
      img {
@@ -39,52 +33,36 @@
      }
    }
 
-   &__container {
-     background-color: var(--background-secondary);
-     border-radius: 0 0 3px 3px;
-     overflow: hidden;
+   &__title {
+     color: var(--text-primary);
+     font-size: 18px;
+     font-weight: 700;
+     margin-top: 5px;
    }
 
-   &__details {
-     align-items: flex-start;
-     display: flex;
-     gap: 20px;
-     justify-content: space-between;
-     padding: 10px 20px;
-   }
-
-   &__detail {
-     label {
-       color: var(--text-tertiary);
-       font-size: 10px;
-       font-weight: 600;
-     }
-
-     div {
-       font-size: 12px;
-       font-weight: 600;
-     }
-   }
- }
-
- .url {
-   margin-top: 20px;
-   max-width: 100%;
-   overflow: hidden;
-
-   &__container {
+   &__time {
      align-items: center;
      display: flex;
-     gap: 10px;
-     max-width: 100%;
+     font-size: 14px;
+     gap: 5px;
    }
 
-   &__url {
-     color: var(--text-tertiary);
-     font-size: 12px;
-     overflow: hidden;
-     text-overflow: ellipsis;
-     white-space: nowrap;
+   &__object-id {
+     align-items: center;
+     background-color: var(--background-active);
+     border-radius: 15px;
+     display: flex;
+     justify-content: space-between;
+     margin-top: 20px;
+     padding: 5px 10px 5px 20px;
+   }
+
+   &__description {
+     background-color: var(--background-active);
+     border-radius: 10px;
+     font-size: 14px;
+     margin-top: 10px;
+     padding: 10px 15px;
    }
  }
 
@@ -140,29 +118,24 @@
 .history {
   display: grid;
   gap: var(--gutter-size-y);
-  margin-top: 20px;
   max-height: 550px;
   overflow-y: auto;
-  padding-right: 10px;
+  padding: 0 10px 20px 0;
   position: relative;
 }
 
 .history-row {
   align-items: center;
-  background-color: var(--background-active);
   border-radius: 5px;
   display: grid;
+  font-size: 14px;
   gap: 10px;
-  grid-template-columns: 3fr 90px;
+  grid-template-columns: 1fr 100px 100px 75px;
   height: min-content;
   min-height: 35px;
-  padding: 10px 20px;
+  padding: 10px;
   position: relative;
-
-  &--thumbnail {
-    gap: 15px;
-    grid-template-columns: 2fr 4fr 90px;
-  }
+  transition: background-color 0.15s ease, color 0.15s ease;
 
   &--highlighted {
     .download-modal__history-row-name {
@@ -170,44 +143,38 @@
     }
   }
 
+  &--header {
+    color: var(--text-primary);
+  }
+
+  &--entry {
+    border-bottom: 1px solid var(--table-border-color);
+
+    &:last-child {
+      border: 0;
+    }
+
+    &:hover {
+      background-color: var(--background-active);
+    }
+  }
+
   &__thumbnail-container {
+    border-radius: 10px;
+    max-width: 150px;
     overflow: hidden;
     width: 100%;
   }
 
-  &--header {
-    background: #131315;
-    border-bottom: 1px solid green;
-    font-size: 16px;
-    font-weight: 400;
-    position: sticky;
-    top: 0;
-    z-index: 1;
-  }
-
-  &__info {
-    display: flex;
-    flex-direction: column;
-  }
-
-  &__name {
-    font-size: 12px;
-    font-weight: 600;
-    max-width: 100%;
-  }
-
-  &__duration,
-  &__status {
-    font-size: 12px;
-    opacity: 0.5;
-  }
-
-  &__status {
+  &__cell {
     align-items: center;
     display: flex;
-    height: 100%;
-    margin-top: 2px;
+    gap: 10px;
     width: 100%;
+
+    &--title {
+      gap: 20px;
+    }
   }
 
   &__actions {
@@ -215,6 +182,8 @@
     display: flex;
     gap: 10px;
     justify-content: flex-end;
+    padding-right: 10px;
+    width: 100%;
   }
 
   &__details {
