@@ -240,7 +240,7 @@ class VideoStore {
         filePath: "/"
       });
 
-      this.rootStore.signedToken = new URL(this.baseFileUrl).searchParams.get("authorization");
+      this.rootStore.authToken = new URL(this.baseFileUrl).searchParams.get("authorization");
 
       this.metadata = videoObject.metadata;
       this.isVideo = videoObject.isVideo;
@@ -1314,6 +1314,125 @@ class VideoStore {
     url.searchParams.set("vc", "");
 
     return url.toString();
+  });
+
+  CreateShare = flow(function * ({clipInFrame, clipOutFrame, expiration, offering, attributes}) {
+    const objectId = this.videoObject.objectId;
+    const tenantId = yield this.rootStore.client.ContentObjectTenantId({objectId});
+
+    let params = {
+      attributes,
+      object_id: objectId,
+      offering,
+      sharing_type: "public",
+      end_time: Math.floor(new Date(expiration).getTime() / 1000)
+    };
+
+    if(clipInFrame) {
+      params.clip_start = Math.floor(this.FrameToTime(clipInFrame));
+    }
+
+    if(clipOutFrame < this.totalFrames - 1) {
+      params.clip_end = Math.ceil(this.FrameToTime(clipOutFrame));
+    }
+
+    return yield this.rootStore.client.MakeAuthServiceRequest({
+      path: UrlJoin("as", "sharing", tenantId, "share"),
+      method: "POST",
+      body: params,
+      headers: {
+        Authorization: `Bearer ${this.rootStore.signedToken}`
+      }
+    });
+  });
+
+  Shares = flow(function * () {
+    const objectId = this.videoObject.objectId;
+    const tenantId = yield this.rootStore.client.ContentObjectTenantId({objectId});
+
+    const {shares} = yield this.rootStore.client.MakeAuthServiceRequest({
+      path: UrlJoin("as", "sharing", tenantId, "shares"),
+      method: "POST",
+      queryParams: {limit: 10000},
+      body: {object_id: objectId},
+      format: "JSON",
+      headers: {
+        Authorization: `Bearer ${this.rootStore.signedToken}`
+      }
+    });
+
+    return (shares || [])
+      .sort((a, b) => a.updated < b.updated ? 1 : -1)
+      .map(share => {
+        let details = {};
+        if(share.attributes?.details?.length > 0) {
+          try {
+            details = JSON.parse(share.attributes.details[0]);
+
+            if(details) {
+              share.clipInFrame = details?.video_options?.clipInFrame || 0;
+              share.clipOutFrame = details?.video_options?.clipOutFrame || this.totalFrames - 1;
+            }
+          } catch(error) {
+            // eslint-disable-next-line no-console
+            console.error("Unable to parse share details", share);
+            // eslint-disable-next-line no-console
+            console.error(error);
+          }
+        }
+
+        let clipInfo;
+        if(share.clip_start || share.clip_end) {
+          clipInfo = `${this.FrameToSMPTE(share.clipInFrame)} - ${this.FrameToSMPTE(share.clipOutFrame)} (${this.TimeToString(share.clipOutFrame - share.clipInFrame)})`;
+        }
+
+        return {
+          ...share,
+          recipient: details?.share_options?.email,
+          expiresAt: new Date(share.end_time * 1000),
+          clipInfo,
+          details
+        };
+      });
+  });
+
+  UpdateShare = flow(function * ({shareId, expiration}) {
+    const objectId = this.videoObject.objectId;
+    const tenantId = yield this.rootStore.client.ContentObjectTenantId({objectId});
+
+    return yield this.rootStore.client.MakeAuthServiceRequest({
+      path: UrlJoin("as", "sharing", tenantId, "share", shareId),
+      method: "PUT",
+      format: "JSON",
+      body: {
+        end_time: Math.floor(new Date(expiration).getTime() / 1000)
+      },
+      headers: {
+        Authorization: `Bearer ${this.rootStore.signedToken}`
+      }
+    });
+  });
+
+  RevokeShare = flow(function * ({shareId}) {
+    const objectId = this.videoObject.objectId;
+    const tenantId = yield this.rootStore.client.ContentObjectTenantId({objectId});
+
+    return yield this.rootStore.client.MakeAuthServiceRequest({
+      path: UrlJoin("as", "sharing", tenantId, "share", shareId, "revoke"),
+      method: "PUT",
+      format: "JSON",
+      headers: {
+        Authorization: `Bearer ${this.rootStore.signedToken}`
+      }
+    });
+  });
+
+  RedeemShareToken = flow(function * ({shareId}) {
+    return (yield this.rootStore.client.MakeAuthServiceRequest({
+      path: UrlJoin("as", "sharing", "share", shareId, "token"),
+      method: "GET",
+      format: "JSON"
+    })).token;
   });
 }
 

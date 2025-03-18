@@ -26,6 +26,12 @@ export const CreateModuleClassMatcher = (...modules) => {
   );
 };
 
+export const ValidEmail = email => {
+  return /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+    .test(email);
+};
+
+
 export const TextWidth = ({text, fontWeight="normal", fontSize=16}) => {
   const canvas = window.__textWidthCanvas || (window.__textWidthCanvas = document.createElement("canvas"));
 

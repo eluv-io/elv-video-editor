@@ -38,6 +38,9 @@ class RootStore {
   errorMessage = undefined;
   l10n = LocalizationEN;
 
+  signedToken;
+  authToken;
+
   libraryIds = {};
   versionHashes = {};
 
@@ -120,6 +123,7 @@ class RootStore {
     this.address = yield this.client.CurrentAccountAddress();
     this.network = (yield this.client.NetworkInfo()).name;
     this.publicToken = client.utils.B64(JSON.stringify({qspace_id: yield this.client.ContentSpaceId()}));
+    this.signedToken = yield client.CreateFabricToken({duration: 24 * 60 * 60 * 1000});
   });
 
   FabricUrl({libraryId, objectId, writeToken, versionHash, noWriteToken=false, path="", auth, resolve=true, width}) {
@@ -141,7 +145,7 @@ class RootStore {
     }
     let urlPath = UrlJoin("s", this.network);
     if(auth === "private") {
-      urlPath = UrlJoin("t", this.signedToken);
+      urlPath = UrlJoin("t", this.authToken);
     }
 
     if(versionHash) {

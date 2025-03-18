@@ -291,7 +291,7 @@ class FrameAccurateVideo {
       if(includeFractionalSeconds) {
         string += `${parseFloat(seconds.valueOf().toFixed(4))}s`;
       } else {
-        string += seconds.floor().valueOf();
+        string += `${seconds.floor().valueOf()}s`;
       }
     }
 

@@ -98,6 +98,8 @@ const CreateTrackForm = observer(({Close}) => {
           label={error}
         >
           <Button
+            color="gray.5"
+            autoContrast
             disabled={!valid}
             title={error}
             onClick={() => {

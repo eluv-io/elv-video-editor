@@ -4,18 +4,15 @@ import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {
-  AsyncButton,
-  CopyButton,
-  FormSelect,
-  FormTextInput,
   Icon,
   IconButton,
   Modal
 } from "@/components/common/Common.jsx";
-import {Button, Tabs, Text} from "@mantine/core";
+import {Tabs, Text} from "@mantine/core";
 import {videoStore} from "@/stores/index.js";
 import {modals} from "@mantine/modals";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
+import DownloadForm from "@/components/download/DownloadForm.jsx";
 
 import DownloadIcon from "@/assets/icons/download.svg";
 import QuestionMarkIcon from "@/assets/icons/v2/question-mark.svg";
@@ -23,112 +20,6 @@ import XIcon from "@/assets/icons/X.svg";
 import RetryIcon from "@/assets/icons/rotate-ccw.svg";
 
 const S = CreateModuleClassMatcher(DownloadStyles);
-
-const DownloadForm = observer(({options, setOptions, representations, audioRepresentations, Submit, Close}) => {
-  return (
-    <div className={S("download")}>
-      <div className={S("preview")}>
-        {
-          !videoStore.thumbnailStore.thumbnailStatus.available ? null :
-            <div style={{aspectRatio: videoStore.aspectRatio}} className={S("preview__thumbnail-container")}>
-              <PreviewThumbnail
-                startFrame={videoStore.clipInFrame}
-                endFrame={videoStore.clipOutFrame}
-                className={S("preview__thumbnail")}
-              />
-            </div>
-        }
-        <div className={S("preview__title")}>{videoStore.name}</div>
-        <div className={S("preview__time")}>
-            <span>
-              {videoStore.videoHandler.FrameToSMPTE(videoStore.clipInFrame)}
-            </span>
-          <span>-</span>
-          <span>
-              {videoStore.videoHandler.FrameToSMPTE(videoStore.clipOutFrame)}
-            </span>
-          <span>
-              (
-            {videoStore.videoHandler.FrameToString({frame: videoStore.clipOutFrame - videoStore.clipInFrame})}
-            )
-            </span>
-        </div>
-        <div className={S("preview__object-id")}>
-          {videoStore.videoObject.objectId}
-          <CopyButton label="Copy Object ID" value={videoStore.videoObject.objectId} small/>
-        </div>
-        {
-          !videoStore.metadata?.public?.description ? null :
-            <div className={S("preview__description")}>
-              {videoStore.metadata.public.description}
-            </div>
-        }
-      </div>
-      <div className={S("download__form")}>
-        <FormTextInput
-          label="Title"
-          autoFocus
-          name="title"
-          value={options.filename}
-          onChange={event => setOptions({...options, filename: event.target.value})}
-          placeholder={options.defaultFilename}
-        />
-
-        <FormSelect
-          label="Offering"
-          name="offering"
-          value={options.offering}
-          onChange={value => setOptions({...options, offering: value || options.offering})}
-          data={
-            Object.keys(videoStore.availableOfferings).map(offeringKey => ({
-              label: offeringKey === "default" ? "Default" : videoStore.availableOfferings[offeringKey].display_name || offeringKey,
-              value: offeringKey,
-            }))
-          }
-        />
-        {
-          !representations || representations.length === 0 ? null :
-            <FormSelect
-              label="Resolution"
-              name="representation"
-              value={options.representation}
-              onChange={value => setOptions({...options, representation: value || options.representation})}
-              data={representations.map(rep => ({label: rep.string, value: rep.key}))}
-            />
-        }
-        {
-          !audioRepresentations || audioRepresentations.length === 0 ? null :
-            <FormSelect
-              label="Audio"
-              name="audioRepresentation"
-              value={options.audioRepresentation}
-              onChange={value => setOptions({...options, audioRepresentation: value || options.audioRepresentation})}
-                data={audioRepresentations.map(rep => ({label: rep.string, value: rep.key}))}
-              />
-          }
-          <FormSelect
-            label="Format"
-            name="format"
-            value={options.format}
-            onChange={value => setOptions({...options, format: value || options.format})}
-            data={[{label: "MP4", value: "mp4"}, {label: "ProRes", value: "prores"}]}
-          />
-
-          <div className={S("download__actions")}>
-            <Button variant="subtle" color="gray.5" onClick={() => Close()} className={S("download__action")}>
-              Cancel
-            </Button>
-            <AsyncButton
-              onClick={async () => await Submit(options)}
-              className={S("download__action")}
-            >
-              Download
-            </AsyncButton>
-          </div>
-      </div>
-    </div>
-  );
-});
 
 const JobActions = observer(({job, setConfirming, Reload}) => {
   const jobStatus = videoStore.downloadJobStatus[job.jobId];
@@ -223,7 +114,7 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
   }
 });
 
-const JobStatusTable = observer(({jobs, representations, audioRepresentations, setConfirming, Reload}) => (
+const JobStatusTable = observer(({jobs, setConfirming, Reload}) => (
   <div className={S("history")}>
     <div className={S("history-row", "history-row--header")}>
       <div>Name</div>
@@ -238,6 +129,9 @@ const JobStatusTable = observer(({jobs, representations, audioRepresentations, s
 
         const startFrame = job.clipInFrame || 0;
         const endFrame = job.clipOutFrame || videoStore.totalFrames - 1;
+
+        const representations = videoStore.ResolutionOptions(job.offering);
+        const audioRepresentations = videoStore.AudioOptions(job.offering);
 
         const resolutionLabel = representations?.find(rep => rep.key === job.representation)?.string;
         const audioTrackLabel = audioRepresentations?.find(rep => rep.key === job.audioRepresentation)?.label;
@@ -327,7 +221,7 @@ const JobStatusTable = observer(({jobs, representations, audioRepresentations, s
   </div>
 ));
 
-const DownloadHistory = ({representations, audioRepresentations, highlightedJobId, setConfirming}) => {
+const DownloadHistory = ({highlightedJobId, setConfirming}) => {
   const [key, setKey] = useState(Math.random());
 
   const jobs = Object.keys(videoStore.downloadJobInfo)
@@ -374,8 +268,6 @@ const DownloadHistory = ({representations, audioRepresentations, highlightedJobI
       </div> :
       <JobStatusTable
         key={`job-table-${key}`}
-        representations={representations}
-        audioRepresentations={audioRepresentations}
         jobs={jobs}
         setConfirming={setConfirming}
         Reload={() => setKey(Math.random())}
@@ -386,56 +278,6 @@ const DownloadHistory = ({representations, audioRepresentations, highlightedJobI
 const DownloadModalContent = observer(({tab, setTab, setConfirming, Close}) => {
   const [jobId, setJobId] = useState(undefined);
   const [error, setError] = useState("");
-  const [representations, setRepresentations] = useState(undefined);
-  const [audioRepresentations, setAudioRepresentations] = useState(undefined);
-  const [options, setOptions] = useState({
-    format: "mp4",
-    filename: "",
-    defaultFilename: "",
-    representation: "",
-    audioRepresentation: "",
-    offering: videoStore.offeringKey,
-    clipInFrame: videoStore.clipInFrame,
-    clipOutFrame: videoStore.clipOutFrame,
-  });
-
-  // Update
-  useEffect(() => {
-    const audioTrack = audioRepresentations?.find(rep => rep.key === options.audioRepresentation);
-    const defaultFilename = videoStore.DownloadJobDefaultFilename({
-      format: options.format,
-      offering: options.offering,
-      representationInfo: representations?.find(rep => rep.key === options.representation),
-      audioRepresentationInfo: audioTrack,
-      clipInFrame: videoStore.clipInFrame,
-      clipOutFrame: videoStore.clipOutFrame
-    });
-    setOptions({
-      ...options,
-      defaultFilename,
-      filename: options.filename === options.defaultFilename ?
-        defaultFilename : options.filename
-    });
-  }, [options.format, options.offering, options.representation, options.audioRepresentation, options.clipInFrame, options.clipOutFrame]);
-
-  // Load quality and audio options
-  useEffect(() => {
-    const repInfo = videoStore.ResolutionOptions(options.offering);
-
-    const audioRepInfo = videoStore.AudioOptions(options.offering);
-
-    setRepresentations(repInfo);
-    setAudioRepresentations(audioRepInfo);
-
-    setOptions({
-      ...options,
-      representation: repInfo[0]?.key || "",
-      audioRepresentation:
-        audioRepInfo.find(rep => rep.current)?.key ||
-        audioRepInfo.find(rep => rep.default)?.key ||
-        ""
-    });
-  }, [options.offering]);
 
   // Reset error
   useEffect(() => {
@@ -482,20 +324,8 @@ const DownloadModalContent = observer(({tab, setTab, setConfirming, Close}) => {
       }
       {
         tab === "details" ?
-          <DownloadForm
-            options={options}
-            setOptions={setOptions}
-            representations={representations}
-            audioRepresentations={audioRepresentations}
-            Submit={Submit}
-            Close={Close}
-          /> :
-          <DownloadHistory
-            representations={representations}
-            audioRepresentations={audioRepresentations}
-            highlightedJobId={jobId}
-            setConfirming={setConfirming}
-          />
+          <DownloadForm Submit={Submit} Close={Close} /> :
+          <DownloadHistory highlightedJobId={jobId} setConfirming={setConfirming} />
       }
     </div>
   );
@@ -514,10 +344,10 @@ const DownloadModal = observer(props => {
       size={1000}
       onClose={() => !confirming && props.onClose()}
       title={
-        <h1 className={S("header")}>
+        <div className={S("header")}>
           <Icon icon={DownloadIcon}/>
           Generate and Download Clip
-        </h1>
+        </div>
       }
       padding={30}
       {...props}
@@ -544,6 +374,13 @@ const DownloadModal = observer(props => {
 
 const Download = observer(() => {
   const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    if(showModal) {
+      videoStore.PlayPause(true);
+    }
+  }, [showModal]);
+
   return (
     <>
       <IconButton

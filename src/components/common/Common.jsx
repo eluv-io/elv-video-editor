@@ -13,6 +13,7 @@ import {
   TextInput,
   Tooltip
 } from "@mantine/core";
+import {DateTimePicker} from "@mantine/dates";
 import SVG from "react-inlinesvg";
 import {observer} from "mobx-react-lite";
 import {Link} from "wouter";
@@ -378,7 +379,6 @@ export const FormNumberInput = observer(props =>
   />
 );
 
-// Form styled inputs
 export const FormTextArea = observer(props =>
   <Textarea
     autosize
@@ -388,8 +388,20 @@ export const FormTextArea = observer(props =>
     {...props}
     classNames={{
       root: S("form-input"),
-      label: S("form-input__label", "form-input__label--textarea"),
+      label: S("form-input__label", "form-input__label--textarea", props.disabled ? "form-input__label--textarea-disabled" : ""),
       input: S("form-input__input", "form-input__textarea")
+    }}
+  />
+);
+
+// Form styled inputs
+export const FormDateTimeInput = observer(props =>
+  <DateTimePicker
+    {...props}
+    classNames={{
+      root: S("form-input"),
+      label: S("form-input__label"),
+      input: S("form-input__input")
     }}
   />
 );

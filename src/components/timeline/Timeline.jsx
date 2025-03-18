@@ -18,6 +18,7 @@ import {
 } from "@/components/video/VideoControls.jsx";
 import KeyboardControls from "@/components/timeline/KeyboardControls.jsx";
 import Download from "@/components/download/Download.jsx";
+import Share from "@/components/download/Share.jsx";
 import Track from "@/components/timeline/Track.jsx";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
@@ -124,6 +125,7 @@ const TimelineTopBar = observer(({simple}) => {
         <div className={S("toolbar__separator")}/>
         <PlayCurrentClipButton store={videoStore}/>
         <Download/>
+        <Share />
       </div>
     </div>
   );
