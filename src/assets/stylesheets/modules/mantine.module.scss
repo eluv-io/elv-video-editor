@@ -10,12 +10,14 @@
     &__header {
       align-items: center;
       display: flex;
+      font-size: 24px;
       justify-content: space-between;
       padding: 10px 20px;
     }
 
     &__content {
       border: 1px solid var(--table-border-color);
+      max-height: 95vh;
     }
 
     &__body {

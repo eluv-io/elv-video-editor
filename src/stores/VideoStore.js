@@ -2,7 +2,7 @@ import {action, flow, makeAutoObservable} from "mobx";
 import FrameAccurateVideo, {FrameRateDenominator, FrameRateNumerator, FrameRates} from "@/utils/FrameAccurateVideo";
 import UrlJoin from "url-join";
 import HLS from "hls.js";
-import {DownloadFromUrl} from "@/utils/Utils.js";
+import {DownloadFromUrl, Unproxy} from "@/utils/Utils.js";
 import {LoadVideo} from "@/stores/Helpers.js";
 import ThumbnailStore from "@/stores/ThumbnailStore.js";
 
@@ -81,6 +81,8 @@ class VideoStore {
   downloadJobInfo = {};
   downloadJobStatus = {};
   downloadedJobs = {};
+
+  shareDownloadJobStatus = {};
 
   get scaleMagnitude() { return this.scaleMax - this.scaleMin; }
 
@@ -1087,13 +1089,16 @@ class VideoStore {
   }
 
   DownloadJobDefaultFilename({format="mp4", offering="default", clipInFrame, clipOutFrame, representationInfo, audioRepresentationInfo}) {
+    clipInFrame = clipInFrame || 0;
+    clipOutFrame = clipOutFrame || this.totalFrames - 1;
+
     let filename = this.name;
 
     if(offering && offering !== "default") {
       filename = `${filename} (${offering})`;
     }
 
-    if(clipInFrame || (clipOutFrame && clipOutFrame !== this.videoHandler.TotalFrames() - 1)) {
+    if(clipInFrame || (clipOutFrame && clipOutFrame < this.videoHandler.TotalFrames() - 1)) {
       const startTime = this.videoHandler.FrameToString({frame: clipInFrame}).replaceAll(" ", "");
       const endTime = this.videoHandler.FrameToString({frame: clipOutFrame || this.videoHandler.TotalFrames()}).replaceAll(" ", "");
       filename = `${filename} (${startTime} - ${endTime})`;
@@ -1158,9 +1163,13 @@ class VideoStore {
     audioRepresentation,
     clipInFrame,
     clipOutFrame,
+    isShareDownload=false,
     encrypt=true
   }) {
     try {
+      clipInFrame = clipInFrame || 0;
+      clipOutFrame = clipOutFrame || this.totalFrames - 1;
+
       filename = filename || this.DownloadJobDefaultFilename({format, offering, clipInFrame, clipOutFrame});
       const expectedExtension = format === "mp4" ? ".mp4" : ".mov";
       if(!filename.endsWith(expectedExtension)) {
@@ -1186,7 +1195,7 @@ class VideoStore {
         params.start_ms = `${((1 / this.frameRate) * clipInFrame).toFixed(4)}s`;
       }
 
-      if(clipOutFrame && clipOutFrame !== this.videoHandler.TotalFrames() - 1) {
+      if(clipOutFrame && clipOutFrame < this.videoHandler.TotalFrames() - 1) {
         params.end_ms = `${((1 / this.frameRate) * clipOutFrame).toFixed(4)}s`;
       }
 
@@ -1203,6 +1212,13 @@ class VideoStore {
         versionHash: this.videoObject.versionHash
       });
 
+      // If created for a share, do not save to personal downloads or initiate automatic download
+      if(isShareDownload) {
+        this.shareDownloadJobStatus[response.job_id] = status;
+
+        return { jobId: response.job_id, status };
+      }
+
       this.downloadJobInfo[response.job_id] = {
         versionHash: this.videoObject.versionHash,
         filename,
@@ -1217,7 +1233,6 @@ class VideoStore {
       };
 
       this.SaveDownloadJobInfo();
-
       this.downloadJobInfo[response.job_id].automaticDownloadInterval = setInterval(async () => {
         const status = await this.DownloadJobStatus({jobId: response.job_id}) || {};
 
@@ -1248,6 +1263,16 @@ class VideoStore {
     });
 
     return this.downloadJobStatus[jobId];
+  });
+
+  ShareDownloadJobStatus = flow(function * ({jobId, objectId}) {
+    this.shareDownloadJobStatus[jobId] = yield this.rootStore.client.MakeFileServiceRequest({
+      libraryId: yield this.rootStore.client.ContentObjectLibraryId({objectId}),
+      objectId,
+      path: UrlJoin("call", "media", "files", jobId)
+    });
+
+    return this.shareDownloadJobStatus[jobId];
   });
 
   SaveDownloadJob = flow(function * ({jobId}) {
@@ -1281,7 +1306,7 @@ class VideoStore {
     this.SaveDownloadJobInfo();
   }
 
-  CreateEmbedUrl = flow(function * ({offeringKey, audioTrackLabel, clipInFrame, clipOutFrame}) {
+  CreateEmbedUrl = flow(function * ({offeringKey, audioTrackLabel, clipInFrame, clipOutFrame, shareId, title}) {
     let options = {
       autoplay: true,
     };
@@ -1313,126 +1338,176 @@ class VideoStore {
 
     url.searchParams.set("vc", "");
 
+    if(shareId) {
+      url.searchParams.delete("ath");
+      url.searchParams.set("sid", shareId);
+    }
+
+    if(title) {
+      url.searchParams.set("ttl", this.rootStore.client.utils.B64(title));
+    }
+
     return url.toString();
   });
 
-  CreateShare = flow(function * ({clipInFrame, clipOutFrame, expiration, offering, attributes}) {
+  CreateShare = flow(function * ({shareOptions, downloadOptions}) {
     const objectId = this.videoObject.objectId;
-    const tenantId = yield this.rootStore.client.ContentObjectTenantId({objectId});
 
-    let params = {
-      attributes,
-      object_id: objectId,
-      offering,
-      sharing_type: "public",
-      end_time: Math.floor(new Date(expiration).getTime() / 1000)
+    downloadOptions = Unproxy(downloadOptions);
+
+    if(downloadOptions.noClip){
+      delete downloadOptions.noClip;
+      downloadOptions.clipInFrame = 0;
+      downloadOptions.clipOutFrame = this.totalFrames - 1;
+    }
+
+    let attributes = {
+      source: ["evie"],
+      title: [shareOptions.title || ""],
+      permissions: [shareOptions.permissions],
+      shareOptions: [JSON.stringify(shareOptions)],
+      downloadOptions: [JSON.stringify(downloadOptions)],
     };
 
-    if(clipInFrame) {
-      params.clip_start = Math.floor(this.FrameToTime(clipInFrame));
+    if(["download", "both"].includes(shareOptions.permissions)) {
+      attributes.downloadJobId = [
+        (yield this.StartDownloadJob({
+          ...downloadOptions,
+          isShareDownload: true
+        })).jobId
+      ];
     }
 
-    if(clipOutFrame < this.totalFrames - 1) {
-      params.clip_end = Math.ceil(this.FrameToTime(clipOutFrame));
+    if(shareOptions.email) {
+      attributes.recipient = [shareOptions.email];
     }
 
-    return yield this.rootStore.client.MakeAuthServiceRequest({
-      path: UrlJoin("as", "sharing", tenantId, "share"),
-      method: "POST",
-      body: params,
-      headers: {
-        Authorization: `Bearer ${this.rootStore.signedToken}`
-      }
+    let params = {};
+    if(downloadOptions.clipInFrame > 0) {
+      attributes.clipIn = [this.FrameToTime(downloadOptions.clipInFrame).toString(), downloadOptions.clipInFrame.toString()];
+      params.clip_start = Math.floor(this.FrameToTime(downloadOptions.clipInFrame));
+    }
+
+    if(downloadOptions.clipOutFrame < this.totalFrames - 1) {
+      attributes.clipOut = [this.FrameToTime(downloadOptions.clipOutFrame).toString(), downloadOptions.clipOutFrame.toString()];
+      params.clip_end = Math.ceil(this.FrameToTime(downloadOptions.clipOutFrame));
+    }
+
+    return yield this.rootStore.client.CreateShare({
+      objectId,
+      expiresAt: shareOptions.expiresAt,
+      params: Unproxy({
+        ...params,
+        offering: downloadOptions.offering,
+        sharing_type: "public",
+        attributes
+      })
     });
   });
 
   Shares = flow(function * () {
     const objectId = this.videoObject.objectId;
-    const tenantId = yield this.rootStore.client.ContentObjectTenantId({objectId});
 
-    const {shares} = yield this.rootStore.client.MakeAuthServiceRequest({
-      path: UrlJoin("as", "sharing", tenantId, "shares"),
-      method: "POST",
-      queryParams: {limit: 10000},
-      body: {object_id: objectId},
-      format: "JSON",
-      headers: {
-        Authorization: `Bearer ${this.rootStore.signedToken}`
-      }
-    });
+    const {shares} = yield this.rootStore.client.Shares({objectId, limit: 10000});
 
-    return (shares || [])
-      .sort((a, b) => a.updated < b.updated ? 1 : -1)
-      .map(share => {
-        let details = {};
-        if(share.attributes?.details?.length > 0) {
-          try {
-            details = JSON.parse(share.attributes.details[0]);
-
-            if(details) {
-              share.clipInFrame = details?.video_options?.clipInFrame || 0;
-              share.clipOutFrame = details?.video_options?.clipOutFrame || this.totalFrames - 1;
-            }
-          } catch(error) {
-            // eslint-disable-next-line no-console
-            console.error("Unable to parse share details", share);
-            // eslint-disable-next-line no-console
-            console.error(error);
+    return yield Promise.all(
+      (shares || [])
+        .filter(share => share.attributes?.source?.[0] === "evie")
+        .sort((a, b) => a.updated < b.updated ? 1 : -1)
+        .map(async share => {
+          let clipDetails = {};
+          if(share.attributes?.clipIn) {
+            const [clipInTime, clipInFrame] = share.attributes.clipIn;
+            clipDetails.clipInTime = parseFloat(clipInTime);
+            clipDetails.clipInFrame = parseFloat(clipInFrame);
+            clipDetails.isClipped = true;
           }
-        }
 
-        let clipInfo;
-        if(share.clip_start || share.clip_end) {
-          clipInfo = `${this.FrameToSMPTE(share.clipInFrame)} - ${this.FrameToSMPTE(share.clipOutFrame)} (${this.TimeToString(share.clipOutFrame - share.clipInFrame)})`;
-        }
+          if(share.attributes?.clipOut) {
+            const [clipOutTime, clipOutFrame] = share.attributes.clipOut;
+            clipDetails.clipOutTime = parseFloat(clipOutTime);
+            clipDetails.clipOutFrame = parseFloat(clipOutFrame);
+            clipDetails.isClipped = true;
+          }
 
-        return {
-          ...share,
-          recipient: details?.share_options?.email,
-          expiresAt: new Date(share.end_time * 1000),
-          clipInfo,
-          details
-        };
-      });
+          clipDetails.durationFrames = (clipDetails.clipOutFrame || this.totalFrames - 1) - (clipDetails.clipInFrame || 0);
+          clipDetails.duration = this.FrameToTime(clipDetails.durationFrames);
+          clipDetails.durationString = this.TimeToString(clipDetails.duration);
+
+          if(share.attributes?.downloadJobId) {
+            share.downloadJobId = share.attributes.downloadJobId[0];
+          }
+
+          if(share.attributes?.title) {
+            share.title = share.attributes.title[0];
+          }
+
+          if(share.attributes?.shareOptions?.length > 0) {
+            try {
+              share.shareOptions = JSON.parse(share.attributes.shareOptions[0]);
+            } catch(error) {
+              // eslint-disable-next-line no-console
+              console.error("Unable to parse share details", share);
+              // eslint-disable-next-line no-console
+              console.error(error);
+            }
+          }
+
+          if(share.attributes?.downloadOptions?.length > 0) {
+            try {
+              share.downloadOptions = JSON.parse(share.attributes.downloadOptions[0]);
+            } catch(error) {
+              // eslint-disable-next-line no-console
+              console.error("Unable to parse share details", share);
+              // eslint-disable-next-line no-console
+              console.error(error);
+            }
+          }
+
+          if(clipDetails.isClipped) {
+            clipDetails.string = `${this.FrameToSMPTE(clipDetails.clipInFrame || 0)} - ${this.FrameToSMPTE(clipDetails.clipOutFrame || this.totalFrames - 1)} (${this.TimeToString(clipDetails.duration)})`;
+          }
+
+          const embedUrl = new URL(
+            await this.CreateEmbedUrl({
+              offeringKey: share.downloadOptions?.offering,
+              clipInFrame: clipDetails.clipInFrame ? clipDetails.clipInTime : undefined,
+              clipOutFrame: share.clipOutFrame ? share.clipOutTime : undefined,
+              shareId: share.share_id,
+              title: share.title
+            })
+          );
+
+          if(share.downloadJobId) {
+            const downloadUrl = new URL(embedUrl.origin);
+            downloadUrl.searchParams.set("d", "");
+            downloadUrl.searchParams.set("oid", share.object_id);
+            downloadUrl.searchParams.set("fn", this.rootStore.client.utils.B64(share.downloadOptions?.filename || share.title || ""));
+            downloadUrl.searchParams.set("ttl", this.rootStore.client.utils.B64(share.title || ""));
+            downloadUrl.searchParams.set("jid", share.downloadJobId);
+            downloadUrl.searchParams.set("sid", share.share_id);
+
+            share.downloadUrl = downloadUrl.toString();
+          }
+
+          return {
+            ...share,
+            recipient: share.attributes?.recipient?.[0],
+            permissions: share.attributes?.permissions?.[0] || "stream",
+            expiresAt: new Date(share.end_time),
+            clipDetails,
+            embedUrl: embedUrl.toString()
+          };
+        })
+    );
   });
 
-  UpdateShare = flow(function * ({shareId, expiration}) {
-    const objectId = this.videoObject.objectId;
-    const tenantId = yield this.rootStore.client.ContentObjectTenantId({objectId});
-
-    return yield this.rootStore.client.MakeAuthServiceRequest({
-      path: UrlJoin("as", "sharing", tenantId, "share", shareId),
-      method: "PUT",
-      format: "JSON",
-      body: {
-        end_time: Math.floor(new Date(expiration).getTime() / 1000)
-      },
-      headers: {
-        Authorization: `Bearer ${this.rootStore.signedToken}`
-      }
-    });
+  UpdateShare = flow(function * ({shareId, expiresAt}) {
+    return yield this.rootStore.client.UpdateShare({shareId, expiresAt: expiresAt});
   });
 
   RevokeShare = flow(function * ({shareId}) {
-    const objectId = this.videoObject.objectId;
-    const tenantId = yield this.rootStore.client.ContentObjectTenantId({objectId});
-
-    return yield this.rootStore.client.MakeAuthServiceRequest({
-      path: UrlJoin("as", "sharing", tenantId, "share", shareId, "revoke"),
-      method: "PUT",
-      format: "JSON",
-      headers: {
-        Authorization: `Bearer ${this.rootStore.signedToken}`
-      }
-    });
-  });
-
-  RedeemShareToken = flow(function * ({shareId}) {
-    return (yield this.rootStore.client.MakeAuthServiceRequest({
-      path: UrlJoin("as", "sharing", "share", shareId, "token"),
-      method: "GET",
-      format: "JSON"
-    })).token;
+    return yield this.rootStore.client.RevokeShare({shareId});
   });
 }
 

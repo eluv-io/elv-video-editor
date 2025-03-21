@@ -265,7 +265,7 @@ class FrameAccurateVideo {
       string += `${minutes}m `;
     }
 
-    if(seconds > 0) {
+    if(seconds > 0 || !string) {
       string += `${seconds}s`;
     }
 

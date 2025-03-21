@@ -67,6 +67,7 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
               onConfirm: () => {
                 videoStore.RemoveDownloadJob({jobId: job.jobId});
                 setConfirming(false);
+                Reload();
               },
               onCancel: () => setConfirming(false)
             });
@@ -98,6 +99,7 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
               onConfirm: () => {
                 videoStore.RemoveDownloadJob({jobId: job.jobId});
                 setConfirming(false);
+                Reload();
               },
               onCancel: () => setConfirming(false)
             });
@@ -165,9 +167,10 @@ const JobStatusTable = observer(({jobs, setConfirming, Reload}) => (
             </div>
             <div className={S("history-row__cell")}>
               {
-                jobStatus?.status === "completed" ?
-                  downloaded ? "Download Initiated" : "Available" :
-                  jobStatus?.status === "failed" ? "Failed" : "Generating..."
+                !jobStatus ? "" :
+                  jobStatus?.status === "completed" ?
+                    downloaded ? "Download Initiated" : "Available" :
+                    jobStatus?.status === "failed" ? "Failed" : "Generating..."
               }
             </div>
             <div className={S("history-row__cell")}>
@@ -222,19 +225,24 @@ const JobStatusTable = observer(({jobs, setConfirming, Reload}) => (
 ));
 
 const DownloadHistory = ({highlightedJobId, setConfirming}) => {
-  const [key, setKey] = useState(Math.random());
+  const [key, setKey] = useState(0);
+  const [jobs, setJobs] = useState([]);
 
-  const jobs = Object.keys(videoStore.downloadJobInfo)
-    .map(jobId => ({
-      ...videoStore.downloadJobInfo[jobId],
-      highlighted: jobId === highlightedJobId,
-      jobId,
-      duration: videoStore.videoHandler.FrameToString({
-        frame: videoStore.downloadJobInfo[jobId].clipOutFrame - videoStore.downloadJobInfo[jobId].clipInFrame
-      })
-    }))
-    .filter(({versionHash}) => videoStore.versionHash === versionHash)
-    .sort((a, b) => a.startedAt > b.startedAt ? -1 : 1);
+  useEffect(() => {
+    setJobs(
+      Object.keys(videoStore.downloadJobInfo)
+        .map(jobId => ({
+          ...videoStore.downloadJobInfo[jobId],
+          highlighted: jobId === highlightedJobId,
+          jobId,
+          duration: videoStore.videoHandler.FrameToString({
+            frame: videoStore.downloadJobInfo[jobId].clipOutFrame - videoStore.downloadJobInfo[jobId].clipInFrame
+          })
+        }))
+        .filter(({versionHash}) => videoStore.versionHash === versionHash)
+        .sort((a, b) => a.startedAt > b.startedAt ? -1 : 1)
+    );
+  }, [key, videoStore.downloadJobInfo]);
 
   useEffect(() => {
     const UpdateStatus = async () => {
@@ -259,7 +267,7 @@ const DownloadHistory = ({highlightedJobId, setConfirming}) => {
     const statusUpdateInterval = setInterval(UpdateStatus, 3000);
 
     return () => clearInterval(statusUpdateInterval);
-  }, []);
+  }, [jobs]);
 
   return (
     jobs.length === 0 ?
@@ -270,7 +278,7 @@ const DownloadHistory = ({highlightedJobId, setConfirming}) => {
         key={`job-table-${key}`}
         jobs={jobs}
         setConfirming={setConfirming}
-        Reload={() => setKey(Math.random())}
+        Reload={() => setKey(key + 1)}
       />
   );
 };
@@ -336,7 +344,7 @@ const DownloadModal = observer(props => {
   const [tab, setTab] = useState("details");
 
   useEffect(() => {
-    //setTab("details");
+    setTab("details");
   }, [props.opened]);
 
   return (
@@ -372,7 +380,7 @@ const DownloadModal = observer(props => {
   );
 });
 
-const Download = observer(() => {
+const DownloadModalButton = observer(() => {
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
@@ -396,4 +404,4 @@ const Download = observer(() => {
   );
 });
 
-export default Download;
+export default DownloadModalButton;

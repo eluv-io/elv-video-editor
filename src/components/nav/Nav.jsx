@@ -28,6 +28,14 @@ const Nav = observer(() => {
       active: !rootStore.page || rootStore.page === "source"
     },
     {
+      label: "Simple Mode",
+      key: "simple",
+      disabled: !objectId || (videoStore.ready && !videoStore.isVideo),
+      to: !objectId ? "/" : UrlJoin("/", libraryId, objectId),
+      icon: ClipIcon,
+      active: rootStore.page === "simple"
+    },
+    {
       label: "Compositions",
       key: "compositions",
       //to: !compositionObject?.objectId ? "/" : UrlJoin("/compositions", objectId),
@@ -36,14 +44,7 @@ const Nav = observer(() => {
       icon: CompositionIcon,
       active: !rootStore.page || rootStore.page === "compositions"
     },
-    {
-      label: "Clip",
-      key: "simple",
-      disabled: !objectId || (videoStore.ready && !videoStore.isVideo),
-      to: !objectId ? "/" : UrlJoin("/", libraryId, objectId),
-      icon: ClipIcon,
-      active: rootStore.page === "simple"
-    },
+
     {
       label: "Tags",
       key: "tags",

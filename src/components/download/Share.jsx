@@ -11,9 +11,9 @@ import {
   IconButton, Loader,
   Modal
 } from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher, ValidEmail} from "@/utils/Utils.js";
+import {Copy, CreateModuleClassMatcher, ValidEmail} from "@/utils/Utils.js";
 import {Button, FocusTrap, Text, TextInput} from "@mantine/core";
-import DownloadForm, {DownloadPreview} from "@/components/download/DownloadForm.jsx";
+import {DownloadFormFields, DownloadPreview} from "@/components/download/DownloadForm.jsx";
 import {videoStore} from "@/stores/index.js";
 import {modals} from "@mantine/modals";
 
@@ -21,17 +21,45 @@ import ShareIcon from "@/assets/icons/v2/share.svg";
 import BackIcon from "@/assets/icons/v2/back.svg";
 import XIcon from "@/assets/icons/X.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
+import LinkIcon from "@/assets/icons/v2/link.svg";
+import DownloadIcon from "@/assets/icons/v2/download.svg";
 
 const S = CreateModuleClassMatcher(DownloadStyles);
 
+const ShareDownloadJobStatusChecker = observer(({share}) => {
+  useEffect(() => {
+    const jobId = share.downloadJobId;
+    if(!jobId || !["download", "both"].includes(share.permissions)) {
+      return;
+    }
+
+    const status = videoStore.shareDownloadJobStatus[jobId];
+
+    if(["completed", "failed"].includes(status?.status)) {
+      return;
+    }
+
+    const CheckStatus = async () => videoStore.ShareDownloadJobStatus({jobId, objectId: share.object_id});
+
+    const statusInterval = setInterval(CheckStatus, 5000);
+
+    CheckStatus();
+
+    return () => clearInterval(statusInterval);
+
+
+  }, [share.downloadJobId]);
+
+  return null;
+});
 
 const ShareEditForm = observer(({existingShare, setShowShareForm}) => {
-  const [expiration, setExpiration] = useState(new Date(existingShare.end_time * 1000));
+  const [expiresAt, setExpiresAt] = useState(new Date(existingShare.end_time));
 
-  const days = Math.ceil((expiration.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+  const days = Math.ceil((expiresAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
 
   let error;
-  if(!expiration) {
+  if(!expiresAt) {
     error = "You must enter a valid expiration date";
   } else if(days < 0) {
     error = "Expiration date is in the past";
@@ -48,19 +76,19 @@ const ShareEditForm = observer(({existingShare, setShowShareForm}) => {
           valueFormat={`MMMM D YYYY - hh:mm A z ${days > 0  ? `[(${days} day${days === 1 ? "" : "s"})]` : ""}`}
           data-autofocus
           autoFocus
-          value={expiration}
+          value={expiresAt}
           label="Expiration"
-          onChange={value => setExpiration(value)}
+          onChange={value => setExpiresAt(value)}
         />
         <FormTextInput
-          value={existingShare?.details?.share_options.email}
+          value={existingShare.recipient}
           label="Recipient's Email Address"
           autoComplete="off"
           disabled
         />
         <FormSelect
           label="Permissions"
-          value={existingShare?.details?.share_options.permissions}
+          value={existingShare.permissions}
           disabled
           options={[
             { label: "Stream", value: "stream" },
@@ -69,7 +97,7 @@ const ShareEditForm = observer(({existingShare, setShowShareForm}) => {
           ]}
         />
         <FormTextArea
-          value={existingShare?.details?.share_options?.note}
+          value={existingShare.shareOptions?.note}
           label="Note"
           disabled
         />
@@ -82,7 +110,7 @@ const ShareEditForm = observer(({existingShare, setShowShareForm}) => {
             onClick={async () => {
               await videoStore.UpdateShare({
                 shareId: existingShare.share_id,
-                expiration: expiration
+                expiresAt
               });
 
               setShowShareForm(false);
@@ -97,21 +125,25 @@ const ShareEditForm = observer(({existingShare, setShowShareForm}) => {
   );
 });
 
-const ShareCreateForm = observer(({options, setShowShareForm}) => {
+const ShareCreateForm = observer(({downloadOptions, setDownloadOptions, setShowShareForm}) => {
   const [shareOptions, setShareOptions] = useState({
+    title: "",
     email: "",
     permissions: "stream",
-    expiration: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-    note: "",
-    noClip: ""
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    note: ""
   });
 
-  const days = Math.ceil((shareOptions.expiration.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+  const days = Math.ceil((shareOptions.expiresAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+
+  const invalidEmail = shareOptions.email.split(",").find(email => !ValidEmail(email.trim()));
 
   let error;
-  if(!ValidEmail(shareOptions.email)) {
+  if(!shareOptions.email) {
     error = "You must enter a valid recipient email address";
-  } else if(!shareOptions.expiration) {
+  } else if(invalidEmail) {
+    error = `Invalid email address: ${invalidEmail}`;
+  } else if(!shareOptions.expiresAt) {
     error = "You must enter a valid expiration date";
   } else if(days < 0) {
     error = "Expiration date is in the past";
@@ -124,47 +156,81 @@ const ShareCreateForm = observer(({options, setShowShareForm}) => {
           <IconButton icon={BackIcon} onClick={() => setShowShareForm(false)} />
           Share Access
         </div>
-        <FormTextInput
-          data-autofocus
-          autoFocus
-          value={shareOptions.email}
-          label="Recipient's Email Address"
-          autoComplete="off"
-          onChange={event => setShareOptions({...shareOptions, email: event.target.value})}
-        />
-        <FormSelect
-          label="Permissions"
-          value={shareOptions.permissions}
-          onChange={value => setShareOptions({...shareOptions, permissions: value})}
-          options={[
-            { label: "Stream", value: "stream" },
-            { label: "Download", value: "download" },
-            { label: "Stream & Download", value: "both" },
-          ]}
-        />
-        {
-          !(options.clipInFrame > 0 || options.clipOutFrame < videoStore.totalFrames - 1) ? null :
-            <FormSelect
-              label="Content"
-              value={shareOptions.noClip}
-              onChange={value => setShareOptions({...shareOptions, noClip: value})}
-              options={[
-                { label: "Selected Clip", value: "" },
-                { label: "Full Video", value: "full" },
-              ]}
-        />
-        }
-        <FormDateTimeInput
-          valueFormat={`MMMM D YYYY - hh:mm A z ${days > 0  ? `[(${days} day${days === 1 ? "" : "s"})]` : ""}`}
-          value={shareOptions.expiration}
-          label="Expiration"
-          onChange={value => setShareOptions({...shareOptions, expiration: value})}
-        />
-        <FormTextArea
-          value={shareOptions.note}
-          label="Note"
-          onChange={event => setShareOptions({...shareOptions, note: event.target.value})}
-        />
+        <div className={S("share-form__fields")}>
+          <FormTextInput
+            data-autofocus
+            autoFocus
+            value={shareOptions.email}
+            placeholder="Comma separated email addresses"
+            label="Recipient Email Addresses"
+            autoComplete="off"
+            onChange={event => setShareOptions({...shareOptions, email: event.target.value})}
+          />
+          <FormSelect
+            label="Permissions"
+            value={shareOptions.permissions}
+            onChange={value => setShareOptions({...shareOptions, permissions: value})}
+            options={[
+              { label: "Stream", value: "stream" },
+              { label: "Download", value: "download" },
+              { label: "Stream & Download", value: "both" },
+            ]}
+          />
+          {
+            !(downloadOptions.clipInFrame > 0 || downloadOptions.clipOutFrame < videoStore.totalFrames - 1) ? null :
+              <FormSelect
+                label="Content"
+                value={downloadOptions.noClip || ""}
+                onChange={value => setDownloadOptions({...downloadOptions, noClip: value})}
+                options={[
+                  { label: "Selected Clip", value: "" },
+                  { label: "Full Video", value: "full" },
+                ]}
+          />
+          }
+          <FormDateTimeInput
+            valueFormat={`MMMM D YYYY - hh:mm A z ${days > 0  ? `[(${days} day${days === 1 ? "" : "s"})]` : ""}`}
+            value={shareOptions.expiresAt}
+            label="Expiration"
+            onChange={value => setShareOptions({...shareOptions, expiresAt: value})}
+          />
+          <FormTextInput
+            value={shareOptions.title || ""}
+            label="Title"
+            autoComplete="off"
+            onChange={event => setShareOptions({...shareOptions, title: event.target.value})}
+          />
+          <FormTextArea
+            value={shareOptions.note}
+            label="Note"
+            onChange={event => setShareOptions({...shareOptions, note: event.target.value})}
+          />
+          {
+            ["download", "both"].includes(shareOptions.permissions) ?
+              <>
+                <div className={S("share-form__subtitle")}>
+                  Download Options
+                </div>
+                <DownloadFormFields
+                  options={downloadOptions}
+                  setOptions={setDownloadOptions}
+                />
+              </> :
+              // Stream case only needs offering selected
+              <FormSelect
+                label="Offering"
+                name="offering"
+                value={downloadOptions.offering}
+                onChange={value => setDownloadOptions({...options, offering: value || options.offering})}
+                data={
+                  Object.keys(videoStore.availableOfferings).map(offeringKey => ({
+                    label: offeringKey === "default" ? "Default" : videoStore.availableOfferings[offeringKey].display_name || offeringKey,
+                    value: offeringKey,
+                  }))
+                }
+              />
+          }
+        </div>
         <div className={S("share-form__actions")}>
           <AsyncButton
             title={error}
@@ -172,7 +238,7 @@ const ShareCreateForm = observer(({options, setShowShareForm}) => {
             autoContrast
             color="gray.5"
             onClick={async () => {
-              options = {...options};
+              const options = {...downloadOptions};
 
               if(shareOptions.noClip || options.clipInFrame === 0) {
                 delete options.clipInFrame;
@@ -182,19 +248,17 @@ const ShareCreateForm = observer(({options, setShowShareForm}) => {
                 delete options.clipOutFrame;
               }
 
-              await videoStore.CreateShare({
-                clipInFrame: options.clipInFrame,
-                clipOutFrame: options.clipOutFrame,
-                offering: options.offering,
-                expiration: shareOptions.expiration,
-                attributes: {
-                  source: ["evie"],
-                  details: [JSON.stringify({
-                    video_options: options,
-                    share_options: shareOptions
-                  })]
-                }
-              });
+              const emails = shareOptions.email.split(",").map(email => email.trim());
+
+              for(const email of emails) {
+                await videoStore.CreateShare({
+                  shareOptions: {
+                    ...shareOptions,
+                    email
+                  },
+                  downloadOptions: options
+                });
+              }
 
               setShowShareForm(false);
             }}
@@ -208,11 +272,96 @@ const ShareCreateForm = observer(({options, setShowShareForm}) => {
   );
 });
 
+const Share = observer(({share, setEditingShare, setSelectedShare, Reload}) => {
+  const jobStatus = videoStore.shareDownloadJobStatus[share.downloadJobId];
+
+  return (
+    <div role="button" onClick={() => setSelectedShare(share)} key={share.share_id} className={S("recipient")}>
+      {
+        !share.downloadJobId ? null :
+          <ShareDownloadJobStatusChecker share={share} />
+      }
+      <div className={S("recipient__info")}>
+        <div className={S("recipient__email")}>
+          {share.recipient || share.share_id}
+        </div>
+        {
+          !share.clipDetails.isClipped ? null :
+            <div className={S("recipient__clip-info")}>
+              {share.clipDetails.string}
+            </div>
+        }
+        <div className={S("recipient__expiration")}>
+          Access Expires {share.expiresAt.toLocaleString()}
+        </div>
+      </div>
+      <div className={S("recipient__status")}>
+        <div className={S("recipient__permissions")}>
+          {
+            share.permissions === "both" ? "Stream & Download" :
+              share.permissions === "download" ? "Download" : "Stream"
+          }
+        </div>
+        {
+          !jobStatus ? null :
+            <div className={S("recipient__download-status")}>
+              {
+                !jobStatus ? "" :
+                  jobStatus?.status === "completed" ? "Download Available" :
+                    jobStatus?.status === "failed" ? "Download Generation Failed" :
+                      `Download Generating - ${(100 * jobStatus.progress / 100).toFixed(0)}%`
+              }
+            </div>
+        }
+      </div>
+      <div className={S("recipient__actions")}>
+        <IconButton
+          small
+          icon={EditIcon}
+          title="Change Access"
+          onClick={event => {
+            event.preventDefault();
+            event.stopPropagation();
+            setEditingShare(share);
+          }}
+        />
+        <IconButton
+          small
+          icon={XIcon}
+          title="Revoke Access"
+          onClick={async event => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            await new Promise(resolve =>
+              modals.openConfirmModal({
+                title: "Revoke Access",
+                centered: true,
+                children: <Text fz="sm">Are you sure you want to revoke access to this content
+                  from {share.recipient || "this person"}?</Text>,
+                labels: {confirm: "Confirm", cancel: "Cancel"},
+                onConfirm: async () => {
+                  await videoStore.RevokeShare({shareId: share.share_id});
+                  Reload();
+                  resolve();
+                },
+                onCancel: () => resolve()
+              })
+            );
+          }}
+        />
+      </div>
+    </div>
+  );
+});
+
 const Shares = observer(({setSelectedShare, setEditingShare}) => {
   const [shares, setShares] = useState(undefined);
   const [key, setKey] = useState(0);
 
   useEffect(() => {
+    setShares(undefined);
+
     videoStore.Shares()
       .then(s => setShares(s));
   }, [key]);
@@ -220,7 +369,7 @@ const Shares = observer(({setSelectedShare, setEditingShare}) => {
   if(!shares) {
     return (
       <div className={S("share__loader")}>
-        <Loader />
+        <Loader/>
       </div>
     );
   }
@@ -232,159 +381,22 @@ const Shares = observer(({setSelectedShare, setEditingShare}) => {
       </div>
       <div className={S("recipients__list")}>
         {
-          shares.filter(share => !share.revoked).map(share =>
-            <div role="button" onClick={() => setSelectedShare(share)} key={share.share_id} className={S("recipient")}>
-              <div className={S("recipient__info")}>
-                <div className={S("recipient__email")}>
-                  { share.details?.share_options?.email || share.share_id }
-                </div>
-                {
-                  !share.clipInfo ? null :
-                    <div className={S("recipient__clip-info")}>
-                      {share.clipInfo}
-                    </div>
-                }
-                <div className={S("recipient__expiration")}>
-                  Access Expires {share.expiresAt.toLocaleString()}
-                </div>
-              </div>
-              <div className={S("recipient__permissions")}>
-                {
-                  share.details?.share_options?.permissions === "both" ? "Stream & Download" :
-                    share.details?.share_options?.permissions === "download" ? "Download" : "Stream"
-                }
-              </div>
-              <div className={S("recipient__actions")}>
-                <IconButton
-                  small
-                  icon={EditIcon}
-                  title="Change Access"
-                  onClick={event => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setEditingShare(share);
-                  }}
-                />
-                <IconButton
-                  small
-                  icon={XIcon}
-                  title="Revoke Access"
-                  onClick={event => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    modals.openConfirmModal({
-                      title: "Revoke Access",
-                      centered: true,
-                      children: <Text fz="sm">Are you sure you want to revoke access to this content from {share.recipient || "this person"}?</Text>,
-                      labels: { confirm: "Confirm", cancel: "Cancel" },
-                      onConfirm: async () => {
-                        await videoStore.RevokeShare({shareId: share.share_id});
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                        setKey(key + 1);
-                      }
-                    });
-                  }}
-                />
-              </div>
+          shares.length > 0 ? null :
+            <div className={S("recipients__empty")}>
+              This content is not yet shared with anyone
             </div>
+        }
+        {
+          shares.filter(share => !share.revoked).map(share =>
+            <Share
+              key={`share-${share.share_id}`}
+              share={share}
+              setSelectedShare={setSelectedShare}
+              setEditingShare={setEditingShare}
+              Reload={() => setKey(key + 1)}
+            />
           )
         }
-      </div>
-    </div>
-  );
-});
-
-const ShareDetails = observer(({selectedShare, setSelectedShare}) => {
-  const videoOptions = selectedShare.details?.video_options || {};
-  const shareOptions = selectedShare.details?.share_options || {};
-
-  const representations = videoStore.ResolutionOptions(selectedShare.offering);
-  const audioRepresentations = videoStore.AudioOptions(selectedShare.offering);
-
-  const resolutionLabel = representations?.find(rep => rep.key === videoOptions.representation)?.string;
-  const audioTrackLabel = audioRepresentations?.find(rep => rep.key === videoOptions.audioRepresentation)?.label;
-
-  const permissions = { both: "Stream & Download", stream: "Stream", download: "Download" };
-
-  return (
-    <div className={S("share")}>
-      <DownloadPreview options={selectedShare.details?.video_options || {}}/>
-      <div className={S("share-details")}>
-        <div className={S("share-details__title")}>
-          <IconButton icon={BackIcon} onClick={() => setSelectedShare(undefined)}/>
-          View Share Details
-        </div>
-
-        <div className={S("share-details__subtitle")}>
-          Share Details
-        </div>
-        <div className={S("share-details__details")}>
-          <div className={S("share-details__detail")}>
-            <label>Recipient:</label>
-            <span>{selectedShare.recipient}</span>
-          </div>
-          <div className={S("share-details__detail")}>
-            <label>Created:</label>
-            <span>{new Date(selectedShare.updated).toLocaleString()}</span>
-          </div>
-          <div className={S("share-details__detail")}>
-            <label>Expiration:</label>
-            <span>{new Date(selectedShare.end_time * 1000).toLocaleString()}</span>
-          </div>
-          <div className={S("share-details__detail")}>
-            <label>Permissions:</label>
-            <span>{permissions[shareOptions.permissions] || "Stream"}</span>
-          </div>
-          <div className={S("share-details__detail")}>
-            <label>Note:</label>
-            <span>{shareOptions.note || ""}</span>
-          </div>
-        </div>
-
-        <div className={S("share-details__subtitle")}>
-          Content Details
-        </div>
-        <div className={S("share-details__details")}>
-          <div className={S("share-details__detail")}>
-            <label>Start Time:</label>
-            <span className="monospace">{videoStore.FrameToSMPTE(selectedShare.clipInFrame)}</span>
-          </div>
-          <div className={S("share-details__detail")}>
-            <label>End Time:</label>
-            <span className="monospace">{videoStore.FrameToSMPTE(selectedShare.clipOutFrame)}</span>
-          </div>
-          <div className={S("share-details__detail")}>
-            <label>Duration:</label>
-            <span>{videoStore.videoHandler.FrameToString({frame: selectedShare.clipOutFrame - selectedShare.clipInFrame})}</span>
-          </div>
-          <div className={S("share-details__detail")}>
-            <label>Offering:</label>
-            <span>{selectedShare.offering === "default" ? "Default" : selectedShare.offering || "Default"}</span>
-          </div>
-          {
-            !["download", "both"].includes(shareOptions.permissions) ? null :
-              <>
-                {
-                  !resolutionLabel ? null :
-                    <div className={S("share-details__detail")}>
-                      <label>Resolution:</label>
-                      <span>{resolutionLabel}</span>
-                    </div>
-                }
-                {
-                  !audioTrackLabel ? null :
-                    <div className={S("share-details__detail")}>
-                      <label>Audio:</label>
-                      <span>{audioTrackLabel}</span>
-                    </div>
-                }
-                <div className={S("share-details__detail")}>
-                  <label>Format:</label>
-                  <span>{videoOptions.format}</span>
-                </div>
-              </>
-          }
-        </div>
       </div>
     </div>
   );
@@ -408,45 +420,37 @@ const SharesInfo = observer(({setShowShareForm, setSelectedShare}) => {
         <TextInput
           autoComplete="off"
           onClick={() => setShowShareForm(true)}
-          placeholder="Recipient's Email Address"
+          placeholder="Add New Recipients"
           classNames={{input: S("shares-info__dummy-input")}}
         />
       </form>
-      <Shares setSelectedShare={setSelectedShare} setEditingShare={setEditingShare}/>
+      <Shares setSelectedShare={setSelectedShare} setEditingShare={setEditingShare} />
     </div>
   );
 });
 
-const ShareModalContent = observer(({options, selectedShare, setSelectedShare, setOptionsConfirmed, Close}) => {
+// Shares list + share form
+const ShareModalContent = observer(({downloadOptions, setDownloadOptions, setSelectedShare, Close}) => {
   const [showShareForm, setShowShareForm] = useState(false);
 
   return (
     <div className={S("share-container")}>
-      {
-        selectedShare ?
-          <ShareDetails selectedShare={selectedShare} setSelectedShare={setSelectedShare}/> :
-          <div className={S("share")}>
-            <DownloadPreview options={options}/>
-            {
-              showShareForm ?
-                <ShareCreateForm options={options} setShowShareForm={setShowShareForm}/> :
-                <SharesInfo setSelectedShare={setSelectedShare} setShowShareForm={setShowShareForm}/>
-            }
-          </div>
-      }
+      <div className={S("share")}>
+        <DownloadPreview options={downloadOptions}/>
+        {
+          showShareForm ?
+            <ShareCreateForm
+              downloadOptions={downloadOptions}
+              setDownloadOptions={setDownloadOptions}
+              setShowShareForm={setShowShareForm}
+            /> :
+            <SharesInfo
+              setSelectedShare={setSelectedShare}
+              setShowShareForm={setShowShareForm}
+            />
+        }
+      </div>
       <div className={S("download__actions")}>
-        <Button
-          variant="subtle"
-          color="gray.5"
-          onClick={() => {
-            selectedShare ?
-              setSelectedShare(undefined) :
-              setOptionsConfirmed(false);
-          }}
-          className={S("download__action")}
-        >
-          Back
-        </Button>
         <Button autoContrast color="gray.5" onClick={() => Close()} className={S("download__action")}>
           Done
         </Button>
@@ -455,15 +459,176 @@ const ShareModalContent = observer(({options, selectedShare, setSelectedShare, s
   );
 });
 
+
+// Detailed info about specific share
+const ShareDetails = observer(({selectedShare, Back, Close}) => {
+  const representations = videoStore.ResolutionOptions(selectedShare.offering);
+  const audioRepresentations = videoStore.AudioOptions(selectedShare.offering);
+
+  const resolutionLabel = representations?.find(rep => rep.key === selectedShare.downloadOptions?.representation)?.string;
+  const audioTrackLabel = audioRepresentations?.find(rep => rep.key === selectedShare.downloadOptions?.audioRepresentation)?.label;
+
+  const permissions = { both: "Stream & Download", stream: "Stream", download: "Download" };
+
+  const jobStatus = videoStore.shareDownloadJobStatus[selectedShare.downloadJobId];
+
+  return (
+    <div className={S("share-container")}>
+      {
+        !selectedShare.downloadJobId ? null :
+          <ShareDownloadJobStatusChecker share={selectedShare} />
+      }
+      <div className={S("share")}>
+        <DownloadPreview options={selectedShare.downloadOptions || {}}/>
+        <div className={S("share-details")}>
+          <div className={S("share-details__title")}>
+            <IconButton icon={BackIcon} onClick={Back}/>
+            View Share Details
+          </div>
+
+          <div className={S("share-details__subtitle")}>
+            Share Details
+          </div>
+          <div className={S("share-details__details")}>
+            <div className={S("share-details__detail")}>
+              <label>Recipient:</label>
+              <span>{selectedShare.recipient}</span>
+            </div>
+            <div className={S("share-details__detail")}>
+              <label>Created:</label>
+              <span>{new Date(selectedShare.updated).toLocaleString()}</span>
+            </div>
+            <div className={S("share-details__detail")}>
+              <label>Expires At:</label>
+              <span>{new Date(selectedShare.end_time).toLocaleString()}</span>
+            </div>
+            <div className={S("share-details__detail")}>
+              <label>Permissions:</label>
+              <span>{permissions[selectedShare.permissions] || "Stream"}</span>
+            </div>
+            <div className={S("share-details__detail")}>
+              <label>Note:</label>
+              <span>{selectedShare.shareOptions?.note || ""}</span>
+            </div>
+          </div>
+
+          <div className={S("share-details__subtitle")}>
+            Content Details
+          </div>
+          <div className={S("share-details__details")}>
+            {
+              !jobStatus ? null :
+                <div className={S("share-details__detail")}>
+                  <label>Download Status:</label>
+                  <span>
+                    {
+                      !jobStatus ? "" :
+                        jobStatus?.status === "completed" ? "Available" :
+                          jobStatus?.status === "failed" ? "Download Generation Failed" :
+                            `Generating - ${(100 * jobStatus.progress / 100).toFixed(0)}%`
+                    }
+                  </span>
+                </div>
+            }
+
+            <div className={S("share-details__detail")}>
+              <label>Start Time:</label>
+              <span className="monospace">{videoStore.FrameToSMPTE(selectedShare.clipDetails.clipInFrame || 0)}</span>
+            </div>
+            <div className={S("share-details__detail")}>
+              <label>End Time:</label>
+              <span
+                className="monospace">{videoStore.FrameToSMPTE(selectedShare.clipDetails.clipOutFrame || videoStore.totalFrames - 1)}</span>
+            </div>
+            <div className={S("share-details__detail")}>
+              <label>Duration:</label>
+              <span>{selectedShare.clipDetails.durationString}</span>
+            </div>
+            <div className={S("share-details__detail")}>
+              <label>Offering:</label>
+              <span>{selectedShare.offering === "default" ? "Default" : selectedShare.offering || "Default"}</span>
+            </div>
+            {
+              !["download", "both"].includes(selectedShare.permissions) ? null :
+                <>
+                  {
+                    !resolutionLabel ? null :
+                      <div className={S("share-details__detail")}>
+                        <label>Resolution:</label>
+                        <span>{resolutionLabel}</span>
+                      </div>
+                  }
+                  {
+                    !audioTrackLabel ? null :
+                      <div className={S("share-details__detail")}>
+                        <label>Audio:</label>
+                        <span>{audioTrackLabel}</span>
+                      </div>
+                  }
+                  <div className={S("share-details__detail")}>
+                    <label>Format:</label>
+                    <span>{selectedShare.downloadOptions?.format}</span>
+                  </div>
+                </>
+            }
+          </div>
+          <div className={S("share-details__links")}>
+            {
+              !["stream", "both"].includes(selectedShare.permissions) ? null :
+                <button onClick={() => Copy(selectedShare.embedUrl)} className={S("share-details__copy")}>
+                  <Icon icon={LinkIcon} />
+                  Copy Streaming URL
+                </button>
+            }
+            {
+              !["download", "both"].includes(selectedShare.permissions) ? null :
+                <button onClick={() => Copy(selectedShare.downloadUrl)} className={S("share-details__copy")}>
+                  <Icon icon={DownloadIcon} />
+                  Copy Download URL
+                </button>
+            }
+          </div>
+        </div>
+      </div>
+      <div className={S("download__actions")}>
+      <Button
+          variant="subtle"
+          color="gray.5"
+          onClick={Back}
+          className={S("download__action")}
+        >
+          Back
+        </Button>
+        <Button autoContrast color="gray.5" onClick={Close} className={S("download__action")}>
+          Done
+        </Button>
+      </div>
+    </div>
+  );
+});
+
 const ShareModal = observer(props => {
-  const [optionsConfirmed, setOptionsConfirmed] = useState(undefined);
-  const [options, setOptions] = useState(undefined);
   const [selectedShare, setSelectedShare] = useState(undefined);
+  const [downloadOptions, setDownloadOptions] = useState(undefined);
 
   useEffect(() => {
-    setOptionsConfirmed(false);
-    setOptions(undefined);
+    setDownloadOptions({
+      objectId: videoStore.videoObject?.objectId,
+      format: "mp4",
+      title: videoStore.name,
+      filename: "",
+      defaultFilename: "",
+      representation: "",
+      audioRepresentation: "",
+      offering: videoStore.offeringKey,
+      clipInFrame: videoStore.clipInFrame,
+      clipOutFrame: videoStore.clipOutFrame
+    });
   }, [videoStore.clipInFrame, videoStore.clipOutFrame]);
+
+  if(!downloadOptions) {
+    return null;
+  }
 
   return (
     <Modal
@@ -472,11 +637,7 @@ const ShareModal = observer(props => {
         <div className={S("header")}>
           <Icon icon={ShareIcon}/>
           <div className={S("header__text")}>
-            {
-              selectedShare ?
-                "Share Details" :
-                `Share Clip${optionsConfirmed ? ` - ${options.filename}` : ""}`
-            }
+            { selectedShare ? "Share Details" : "Share Clip" }
           </div>
         </div>
       }
@@ -484,19 +645,15 @@ const ShareModal = observer(props => {
       {...props}
     >
       {
-        !optionsConfirmed ?
-          <DownloadForm
-            initialOptions={options}
-            buttonText="Continue"
-            Submit={newOptions => {
-              setOptions(newOptions);
-              setOptionsConfirmed(true);
-            }}
+        selectedShare ?
+          <ShareDetails
+            selectedShare={selectedShare}
+            Back={() => setSelectedShare(undefined)}
             Close={props.onClose}
           /> :
           <ShareModalContent
-            options={options}
-            setOptionsConfirmed={setOptionsConfirmed}
+            downloadOptions={downloadOptions}
+            setDownloadOptions={setDownloadOptions}
             selectedShare={selectedShare}
             setSelectedShare={setSelectedShare}
             Close={props.onClose}
@@ -506,7 +663,7 @@ const ShareModal = observer(props => {
   );
 });
 
-const Share = observer(() => {
+const ShareModalButton = observer(() => {
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
@@ -530,4 +687,4 @@ const Share = observer(() => {
   );
 });
 
-export default Share;
+export default ShareModalButton;

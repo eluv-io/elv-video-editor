@@ -188,6 +188,8 @@ export const IconButton = ({
   withinPortal=false,
   ...props
 }) => {
+  const [submitting, setSubmitting] = useState(false);
+
   tooltipProps = {openDelay, ...tooltipProps};
 
   if(props.disabled) {
@@ -195,7 +197,7 @@ export const IconButton = ({
   }
 
   let content;
-  if(loading) {
+  if(loading || submitting) {
     content = <Loader className={S("icon-button__loader")} />;
   } else {
     content = (
@@ -216,6 +218,18 @@ export const IconButton = ({
       {...props}
       disabled={disabled}
       aria-label={props["aria-label"] || label || ""}
+      onClick={
+        !props.onClick ? undefined :
+          async event => {
+            const loadingTimeout = setTimeout(() => setSubmitting(true), 100);
+            try {
+              await props.onClick(event);
+            } finally {
+              clearTimeout(loadingTimeout);
+              setSubmitting(false);
+            }
+          }
+      }
       className={
         JoinClassNames(
           unstyled ? "" :
@@ -439,6 +453,7 @@ export const FormColorInput = observer(props => {
 export const FormSelect = observer(props =>
   <Select
     {...props}
+    allowDeselect={false}
     data={props.options || props.data}
     classNames={{
       root: S("form-input"),

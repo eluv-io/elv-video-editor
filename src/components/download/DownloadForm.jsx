@@ -11,8 +11,8 @@ import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 const S = CreateModuleClassMatcher(DownloadStyles);
 
 export const DownloadPreview = observer(({options}) => {
-  const clipInFrame = options.clipInFrame || 0;
-  const clipOutFrame = options.clipOutFrame || videoStore.totalFrames - 1;
+  const clipInFrame = options.noClip ? 0 : options.clipInFrame || 0;
+  const clipOutFrame = options.noClip ? videoStore.totalFrames - 1 : options.clipOutFrame || videoStore.totalFrames - 1;
 
   return (
     <div className={S("preview")}>
@@ -20,26 +20,28 @@ export const DownloadPreview = observer(({options}) => {
         !videoStore.thumbnailStore.thumbnailStatus.available ? null :
           <div style={{aspectRatio: videoStore.aspectRatio}} className={S("preview__thumbnail-container")}>
             <PreviewThumbnail
+              key={`thumbnail-${options.noClip}`}
               startFrame={clipInFrame}
               endFrame={clipOutFrame}
               className={S("preview__thumbnail")}
             />
+            <div className={S("preview__thumbnail-duration")}>
+              {videoStore.videoHandler.FrameToString({frame: clipOutFrame - clipInFrame})}
+            </div>
           </div>
       }
-      <div className={S("preview__title")}>{options.filename}</div>
+      <div className={S("preview__title")}>{videoStore.name}</div>
       <div className={S("preview__time")}>
-            <span>
-              {videoStore.videoHandler.FrameToSMPTE(clipInFrame)}
-            </span>
+        <span>
+          {videoStore.videoHandler.FrameToSMPTE(clipInFrame)}
+        </span>
         <span>-</span>
         <span>
-              {videoStore.videoHandler.FrameToSMPTE(clipOutFrame)}
-            </span>
+          {videoStore.videoHandler.FrameToSMPTE(clipOutFrame)}
+        </span>
         <span>
-              (
-          {videoStore.videoHandler.FrameToString({frame: clipOutFrame - clipInFrame})}
-          )
-            </span>
+          ({videoStore.videoHandler.FrameToString({frame: clipOutFrame - clipInFrame})})
+        </span>
       </div>
       <div className={S("preview__object-id")}>
         {videoStore.videoObject.objectId}
@@ -55,20 +57,7 @@ export const DownloadPreview = observer(({options}) => {
   );
 });
 
-const DownloadForm = observer(({buttonText="Download", initialOptions={}, Submit, Close}) => {
-  const [options, setOptions] = useState({
-    objectId: videoStore.videoObject.objectId,
-    format: "mp4",
-    filename: "",
-    defaultFilename: "",
-    representation: "",
-    audioRepresentation: "",
-    offering: videoStore.offeringKey,
-    clipInFrame: videoStore.clipInFrame,
-    clipOutFrame: videoStore.clipOutFrame,
-    ...initialOptions
-  });
-
+export const DownloadFormFields = observer(({autoFocus=false, options={}, setOptions}) => {
   const representations = videoStore.ResolutionOptions(options.offering);
   const audioRepresentations = videoStore.AudioOptions(options.offering);
 
@@ -89,7 +78,14 @@ const DownloadForm = observer(({buttonText="Download", initialOptions={}, Submit
       filename: options.filename === options.defaultFilename ?
         defaultFilename : options.filename
     });
-  }, [options.format, options.offering, options.representation, options.audioRepresentation, options.clipInFrame, options.clipOutFrame]);
+  }, [
+    options.format,
+    options.offering,
+    options.representation,
+    options.audioRepresentation,
+    options.clipInFrame,
+    options.clipOutFrame
+  ]);
 
   // Load quality and audio options
   useEffect(() => {
@@ -104,58 +100,77 @@ const DownloadForm = observer(({buttonText="Download", initialOptions={}, Submit
   }, [options.offering]);
 
   return (
+    <>
+      <FormTextInput
+        label="File Name"
+        autoFocus={autoFocus}
+        name="filename"
+        value={options.filename}
+        onChange={event => setOptions({...setOptions, filename: event.target.value})}
+        placeholder={options.defaultFilename}
+      />
+      <FormSelect
+        label="Offering"
+        name="offering"
+        value={options.offering}
+        onChange={value => setOptions({...options, offering: value || options.offering})}
+        data={
+          Object.keys(videoStore.availableOfferings).map(offeringKey => ({
+            label: offeringKey === "default" ? "Default" : videoStore.availableOfferings[offeringKey].display_name || offeringKey,
+            value: offeringKey,
+          }))
+        }
+      />
+      {
+        !representations || representations.length === 0 ? null :
+          <FormSelect
+            label="Resolution"
+            name="representation"
+            value={options.representation}
+            onChange={value => setOptions({...options, representation: value || options.representation})}
+            data={representations.map(rep => ({label: rep.string, value: rep.key}))}
+          />
+      }
+      {
+        !audioRepresentations || audioRepresentations.length === 0 ? null :
+          <FormSelect
+            label="Audio"
+            name="audioRepresentation"
+            value={options.audioRepresentation}
+            onChange={value => setOptions({...options, audioRepresentation: value || options.audioRepresentation})}
+            data={audioRepresentations.map(rep => ({label: rep.string, value: rep.key}))}
+          />
+      }
+      <FormSelect
+        label="Format"
+        name="format"
+        value={options.format}
+        onChange={value => setOptions({...options, format: value || options.format})}
+        data={[{label: "MP4", value: "mp4"}, {label: "ProRes", value: "prores"}]}
+      />
+    </>
+  );
+});
+
+const DownloadForm = observer(({buttonText="Download", Submit, Close}) => {
+  const [downloadOptions, setDownloadOptions] = useState({
+    objectId: videoStore.videoObject.objectId,
+    format: "mp4",
+    filename: "",
+    defaultFilename: "",
+    representation: "",
+    audioRepresentation: "",
+    offering: videoStore.offeringKey,
+    clipInFrame: videoStore.clipInFrame,
+    clipOutFrame: videoStore.clipOutFrame
+  });
+
+  return (
     <div className={S("download-container")}>
       <div className={S("download")}>
-        <DownloadPreview options={options}/>
+        <DownloadPreview options={downloadOptions}/>
         <div className={S("download__form")}>
-          <FormTextInput
-            label="Title"
-            autoFocus
-            name="title"
-            value={options.filename}
-            onChange={event => setOptions({...options, filename: event.target.value})}
-            placeholder={options.defaultFilename}
-          />
-
-          <FormSelect
-            label="Offering"
-            name="offering"
-            value={options.offering}
-            onChange={value => setOptions({...options, offering: value || options.offering})}
-            data={
-              Object.keys(videoStore.availableOfferings).map(offeringKey => ({
-                label: offeringKey === "default" ? "Default" : videoStore.availableOfferings[offeringKey].display_name || offeringKey,
-                value: offeringKey,
-              }))
-            }
-          />
-          {
-            !representations || representations.length === 0 ? null :
-              <FormSelect
-                label="Resolution"
-                name="representation"
-                value={options.representation}
-                onChange={value => setOptions({...options, representation: value || options.representation})}
-                data={representations.map(rep => ({label: rep.string, value: rep.key}))}
-              />
-          }
-          {
-            !audioRepresentations || audioRepresentations.length === 0 ? null :
-              <FormSelect
-                label="Audio"
-                name="audioRepresentation"
-                value={options.audioRepresentation}
-                onChange={value => setOptions({...options, audioRepresentation: value || options.audioRepresentation})}
-                data={audioRepresentations.map(rep => ({label: rep.string, value: rep.key}))}
-              />
-          }
-          <FormSelect
-            label="Format"
-            name="format"
-            value={options.format}
-            onChange={value => setOptions({...options, format: value || options.format})}
-            data={[{label: "MP4", value: "mp4"}, {label: "ProRes", value: "prores"}]}
-          />
+          <DownloadFormFields autoFocus options={downloadOptions} setOptions={setDownloadOptions} />
         </div>
       </div>
       <div className={S("download__actions")}>
@@ -165,7 +180,7 @@ const DownloadForm = observer(({buttonText="Download", initialOptions={}, Submit
         <AsyncButton
           color="gray.5"
           autoContrast
-          onClick={async () => await Submit(options)}
+          onClick={async () => await Submit(downloadOptions)}
           className={S("download__action")}
         >
           {buttonText}
