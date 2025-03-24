@@ -78,17 +78,25 @@
 }
 
 .icon-button {
+  --icon-size: 25px;
+
   align-items: center;
   border-radius: 3px;
   color: var(--text-secondary);
   display: flex;
   justify-content: center;
-  max-height: 25px;
-  max-width: 25px;
-  min-height: 25px;
-  min-width: 25px;
+  max-height: var(--icon-size);
+  max-width: var(--icon-size);
+  min-height: var(--icon-size);
+  min-width: var(--icon-size);
   padding: 2px;
   transition: color 0.25s ease, background-color 0.1s ease, opacity 0.25s ease;
+
+  svg {
+    height: 100%;
+    object-fit: contain;
+    width: 100%;
+  }
 
   &:hover,
   &--active,
@@ -127,10 +135,7 @@
   }
 
   &--small {
-    max-height: 20px;
-    max-width: 20px;
-    min-height: 20px;
-    min-width: 20px;
+    --icon-size: 20px;
   }
 }
 

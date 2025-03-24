@@ -9,7 +9,7 @@ import {
   Modal
 } from "@/components/common/Common.jsx";
 import {Tabs, Text} from "@mantine/core";
-import {videoStore} from "@/stores/index.js";
+import {rootStore, videoStore, downloadStore} from "@/stores/index.js";
 import {modals} from "@mantine/modals";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import DownloadForm from "@/components/download/DownloadForm.jsx";
@@ -22,7 +22,7 @@ import RetryIcon from "@/assets/icons/rotate-ccw.svg";
 const S = CreateModuleClassMatcher(DownloadStyles);
 
 const JobActions = observer(({job, setConfirming, Reload}) => {
-  const jobStatus = videoStore.downloadJobStatus[job.jobId];
+  const jobStatus = downloadStore.downloadJobStatus[job.jobId];
 
   if(!jobStatus) {
     return null;
@@ -42,9 +42,9 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
               centered: true,
               labels: { confirm: "Retry", cancel: "Cancel" },
               onConfirm: () => {
-                const jobInfo = videoStore.downloadJobInfo[job.jobId];
-                videoStore.RemoveDownloadJob({jobId: job.jobId});
-                videoStore.StartDownloadJob({...jobInfo})
+                const jobInfo = downloadStore.downloadJobInfo[job.jobId];
+                downloadStore.RemoveDownloadJob({jobId: job.jobId});
+                downloadStore.StartDownloadJob({...jobInfo})
                   .then(() => Reload());
                 setConfirming(false);
               },
@@ -65,7 +65,7 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
               centered: true,
               labels: { confirm: "Remove", cancel: "Cancel" },
               onConfirm: () => {
-                videoStore.RemoveDownloadJob({jobId: job.jobId});
+                downloadStore.RemoveDownloadJob({jobId: job.jobId});
                 setConfirming(false);
                 Reload();
               },
@@ -82,7 +82,7 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
           icon={DownloadIcon}
           label="Download"
           small
-          onClick={() => videoStore.SaveDownloadJob({jobId: job.jobId})}
+          onClick={() => downloadStore.SaveDownloadJob({jobId: job.jobId})}
         />
         <IconButton
           icon={XIcon}
@@ -97,7 +97,7 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
               centered: true,
               labels: { confirm: "Remove", cancel: "Cancel" },
               onConfirm: () => {
-                videoStore.RemoveDownloadJob({jobId: job.jobId});
+                downloadStore.RemoveDownloadJob({jobId: job.jobId});
                 setConfirming(false);
                 Reload();
               },
@@ -126,8 +126,8 @@ const JobStatusTable = observer(({jobs, setConfirming, Reload}) => (
     </div>
     {
       jobs.map(job => {
-        const jobStatus = videoStore.downloadJobStatus[job.jobId];
-        const downloaded = videoStore.downloadedJobs[job.jobId];
+        const jobStatus = downloadStore.downloadJobStatus[job.jobId];
+        const downloaded = downloadStore.downloadedJobs[job.jobId];
 
         const startFrame = job.clipInFrame || 0;
         const endFrame = job.clipOutFrame || videoStore.totalFrames - 1;
@@ -230,28 +230,28 @@ const DownloadHistory = ({highlightedJobId, setConfirming}) => {
 
   useEffect(() => {
     setJobs(
-      Object.keys(videoStore.downloadJobInfo)
+      Object.keys(downloadStore.downloadJobInfo)
         .map(jobId => ({
-          ...videoStore.downloadJobInfo[jobId],
+          ...downloadStore.downloadJobInfo[jobId],
           highlighted: jobId === highlightedJobId,
           jobId,
           duration: videoStore.videoHandler.FrameToString({
-            frame: videoStore.downloadJobInfo[jobId].clipOutFrame - videoStore.downloadJobInfo[jobId].clipInFrame
+            frame: downloadStore.downloadJobInfo[jobId].clipOutFrame - downloadStore.downloadJobInfo[jobId].clipInFrame
           })
         }))
-        .filter(({versionHash}) => videoStore.versionHash === versionHash)
+        .filter(({versionHash}) => videoStore.videoObject.objectId === rootStore.client.utils.DecodeVersionHash(versionHash).objectId)
         .sort((a, b) => a.startedAt > b.startedAt ? -1 : 1)
     );
-  }, [key, videoStore.downloadJobInfo]);
+  }, [key, downloadStore.downloadJobInfo]);
 
   useEffect(() => {
     const UpdateStatus = async () => {
       await Promise.all(
         jobs
-          .filter(({jobId}) => !videoStore.downloadJobStatus[jobId] || videoStore.downloadJobStatus[jobId]?.status === "processing")
+          .filter(({jobId}) => !downloadStore.downloadJobStatus[jobId] || downloadStore.downloadJobStatus[jobId]?.status === "processing")
           .map(async ({jobId}) => {
             try {
-              await videoStore.DownloadJobStatus({jobId});
+              await downloadStore.DownloadJobStatus({jobId});
             } catch(error) {
               // eslint-disable-next-line no-console
               console.log(`Unable to get status for download job ${jobId}:`);
@@ -304,7 +304,7 @@ const DownloadModalContent = observer(({tab, setTab, setConfirming, Close}) => {
   }) => {
     try {
       setJobId(
-        (await videoStore.StartDownloadJob({
+        (await downloadStore.StartDownloadJob({
           format,
           offering,
           clipInFrame,

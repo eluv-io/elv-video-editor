@@ -1,7 +1,7 @@
 import DownloadStyles from "@/assets/stylesheets/modules/download.module.scss";
 
 import {observer} from "mobx-react-lite";
-import {videoStore} from "@/stores/index.js";
+import {videoStore, downloadStore} from "@/stores/index.js";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import {AsyncButton, CopyButton, FormSelect, FormTextInput} from "@/components/common/Common.jsx";
 import {Button} from "@mantine/core";
@@ -64,7 +64,7 @@ export const DownloadFormFields = observer(({autoFocus=false, options={}, setOpt
   // Update
   useEffect(() => {
     const audioTrack = audioRepresentations?.find(rep => rep.key === options.audioRepresentation);
-    const defaultFilename = videoStore.DownloadJobDefaultFilename({
+    const defaultFilename = downloadStore.DownloadJobDefaultFilename({
       format: options.format,
       offering: options.offering,
       representationInfo: representations?.find(rep => rep.key === options.representation),

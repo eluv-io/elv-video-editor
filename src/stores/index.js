@@ -9,6 +9,7 @@ import TrackStore from "./TrackStore";
 import VideoStore from "./VideoStore";
 import FileBrowserStore from "./FileBrowserStore.js";
 import CompositionStore from "@/stores/CompositionStore.js";
+import DownloadStore from "@/stores/DownloadStore.js";
 import Id from "@/utils/Id.js";
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
 
@@ -57,6 +58,7 @@ class RootStore {
     this.compositionStore = new CompositionStore(this);
     this.assetStore = new AssetStore(this);
     this.fileBrowserStore = new FileBrowserStore(this);
+    this.downloadStore = new DownloadStore(this);
 
     this.InitializeClient();
 
@@ -245,3 +247,4 @@ export const videoStore = rootStore.videoStore;
 export const compositionStore = rootStore.compositionStore;
 export const assetStore = rootStore.assetStore;
 export const fileBrowserStore = rootStore.fileBrowserStore;
+export const downloadStore = rootStore.downloadStore;

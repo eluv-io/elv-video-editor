@@ -290,10 +290,10 @@ export const CopyButton = observer(({value, ...props}) => {
   );
 });
 
-export const AsyncButton = observer(({onClick, ...props}) => {
+export const AsyncButton = observer(({onClick, tooltip, ...props}) => {
   const [loading, setLoading] = useState(false);
 
-  return (
+  let button = (
     <Button
       {...props}
       loading={loading}
@@ -307,6 +307,16 @@ export const AsyncButton = observer(({onClick, ...props}) => {
         }
       }}
     />
+  );
+
+  if(!tooltip) {
+    return button;
+  }
+
+  return (
+    <Tooltip label={tooltip}>
+      { button }
+    </Tooltip>
   );
 });
 
