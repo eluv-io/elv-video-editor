@@ -94,7 +94,7 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
           offering
         });
 
-        const playoutMethods = offeringPlayoutOptions[offering].hls.playoutMethods;
+        const playoutMethods = offeringPlayoutOptions[offering]?.hls?.playoutMethods || {};
 
         if(!(playoutMethods["aes-128"] || playoutMethods["clear"])) {
           videoObject.availableOfferings[offering].disabled = true;
