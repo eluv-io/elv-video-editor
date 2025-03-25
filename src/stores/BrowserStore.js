@@ -95,15 +95,18 @@ class BrowserStore {
         const latestVersion = object.versions[0];
 
         // Try and retrieve video duration
-        let duration, lastModified, forbidden;
+        let duration, lastModified, forbidden, isVideo, isChannel;
         try {
           const metadata = await this.rootStore.client.ContentObjectMetadata({
             versionHash: latestVersion.hash,
             select: [
               "commit/timestamp",
+              "channel/source_info",
               "offerings/*/media_struct/duration_rat"
             ]
           });
+
+          isChannel = metadata?.channel;
 
           lastModified = metadata?.commit?.timestamp;
           if(lastModified) {
@@ -117,6 +120,7 @@ class BrowserStore {
           duration = metadata?.offerings?.[offering]?.media_struct?.duration_rat;
 
           if(duration) {
+            isVideo = true;
             duration = parseInt(duration.split("/")[0]) / parseInt(duration.split("/")[1]);
 
             let hours = Math.floor(Math.max(0, duration) / 60 / 60) % 24;
@@ -140,6 +144,8 @@ class BrowserStore {
           forbidden,
           lastModified,
           duration,
+          isVideo,
+          isChannel,
           name: latestVersion?.meta?.public?.name || latestVersion.id,
           image: !latestVersion?.meta?.public?.display_image ? undefined :
             await this.rootStore.client.LinkUrl({
@@ -152,7 +158,8 @@ class BrowserStore {
     );
 
     return {
-      content: contents,
+      content: contents
+       .filter(object => object.objectId.replace("iq__", "ilib") !== libraryId),
       paging: {
         page,
         pages: paging.pages,

@@ -1,12 +1,19 @@
 import {flow, makeAutoObservable} from "mobx";
 import VideoStore from "@/stores/VideoStore.js";
 import {Unproxy} from "@/utils/Utils.js";
+import UrlJoin from "url-join";
+import {ExtractHashFromLink} from "@/stores/Helpers.js";
+import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 
 class CompositionStore {
   videoStore;
   name = "";
   loading = false;
   clipStores = {};
+
+  compositionObject;
+  compositionPlayoutUrl;
+  writeTokenInfo = {};
 
   clips = {};
   clipIdList = [];
@@ -23,17 +30,15 @@ class CompositionStore {
   _redoStack = [];
   _position = 0;
 
+  get client() {
+    return this.rootStore.client;
+  }
+
   constructor(rootStore) {
-    makeAutoObservable(
-      this,
-      {
-        videoStore: false,
-        clipStores: false
-      }
-    );
+    makeAutoObservable(this);
 
     this.rootStore = rootStore;
-    this.videoStore = new VideoStore(this.rootStore, {tags: false});
+    this.videoStore = new VideoStore(this.rootStore, {tags: false, channel: true});
     this.videoStore.id = "Composition Store";
   }
 
@@ -70,10 +75,14 @@ class CompositionStore {
       return 30;
     }
 
-    return this.videoStore.FrameToTime(this.compositionDurationFrames);
+    return this.videoStore.FrameToTime(this.videoStore.totalFrames);
   }
 
   get clipList() {
+    // Any time the clip list gets re-rendered, update the playout url
+    this.UpdateComposition()
+      .then(() => this.GetCompositionPlayoutUrl());
+
     let startFrame = 0;
     return this.clipIdList
       .map((clipId, index) => {
@@ -132,7 +141,7 @@ class CompositionStore {
 
 
   SetCompositionName(name) {
-    this.name = name;
+    this.compositionObject.name = name;
   }
 
   ClipIndexAt(frame) {
@@ -192,8 +201,6 @@ class CompositionStore {
         this.clipIdList = this.clipIdList.toSpliced(index, 0, clipId);
       }
     });
-
-    this.SetSelectedClip(clipId);
   }
 
   ModifyClip({clipId, attrs={}, label}) {
@@ -323,7 +330,8 @@ class CompositionStore {
   }
 
   Reset() {
-    this.videoStore = new VideoStore(this.rootStore, {tags: false});
+    this.videoStore = new VideoStore(this.rootStore, {tags: false, channel: true});
+    this.videoStore.id = "Composition Store";
 
     this.clipStores = {};
     this.clips = {};
@@ -337,16 +345,6 @@ class CompositionStore {
     yield this.videoStore.SetVideo({objectId, preferredOfferingKey});
 
     this.name = this.videoStore.name;
-
-    // TOdO :REmove
-    const clipId = yield this.InitializeClip({
-      objectId: "iq__2yRdMBUdVgmX5A6CivWT56BZz6pz",
-      offering: preferredOfferingKey,
-      clipInFrame: 24 * 400,
-      clipOutFrame: 24 * 500
-    });
-
-    this.SetSelectedClip(clipId);
 
     this.loading = false;
   });
@@ -392,6 +390,7 @@ class CompositionStore {
     }
 
     const store = this.clipStores[key];
+
     const clipId = "new";
     this.clips[clipId] = {
       clipId,
@@ -416,6 +415,249 @@ class CompositionStore {
   CompositionProgressToSMPTE(progress) {
     return this.videoStore.TimeToSMPTE(this.compositionDuration * progress / 100);
   }
+
+  // Create/update/load channel objects
+  CreateCompositionObject = flow(function * ({sourceObjectId, libraryId}) {
+    const contentTypes = yield this.client.ContentTypes();
+    const channelType =
+      Object.values(contentTypes).find(type => type.name?.toLowerCase()?.includes("- channel")) ||
+      Object.values(contentTypes).find(type =>
+        type.name?.toLowerCase()?.includes("- title") &&
+        type.name?.toLowerCase()?.includes("master")
+      );
+
+    const sourceLibraryId = yield this.client.ContentObjectLibraryId({objectId: sourceObjectId});
+    const sourceMetadata = yield this.client.ContentObjectMetadata({
+      libraryId: sourceLibraryId,
+      objectId: sourceObjectId,
+      select: [
+        "offerings/*/playout",
+        "/public"
+      ]
+    });
+
+    const offerings = Object.keys(sourceMetadata.offerings);
+    const offeringKey = offerings.includes("default") ? "default" : offerings[0];
+    const playoutMetadata = sourceMetadata.offerings[offeringKey].playout;
+    const offeringOptions = offerings[offeringKey]?.media_struct?.streams || {};
+
+    let frameRate;
+    if(offeringOptions.video) {
+      frameRate = offeringOptions.video.rate;
+    } else {
+      const videoKey = Object.keys(offeringOptions).find(key => key.startsWith("video"));
+      frameRate = offeringOptions[videoKey].rate;
+    }
+
+    const name = sourceMetadata?.public?.name ? `${sourceMetadata.public.name} - Composition` : "New Composition";
+    let compositionMetadata = {
+      public: {
+        name,
+        asset_metadata: {
+          display_title: name,
+          title: name,
+          info: {}
+        }
+      },
+      channel: {
+        source_info: {
+          libraryId: sourceLibraryId,
+          objectId: sourceObjectId,
+          name: sourceMetadata?.public?.name,
+          offeringKey,
+          frameRate,
+        },
+        offerings: {
+          default: {
+            playout_type: "ch_vod",
+            playout: playoutMetadata,
+            items: [],
+            source_info: {
+              libraryId: sourceLibraryId,
+              objectId: sourceObjectId,
+              name: sourceMetadata?.public?.name,
+              offeringKey,
+              frameRate
+            }
+          }
+        }
+      }
+    };
+
+    const createResponse = yield this.client.CreateContentObject({
+      libraryId,
+      options: {
+        type: channelType.id
+      }
+    });
+
+    yield this.client.ReplaceMetadata({
+      libraryId,
+      objectId: createResponse.id,
+      writeToken: createResponse.write_token,
+      metadataSubtree: "/",
+      metadata: compositionMetadata,
+    });
+
+    yield this.client.FinalizeContentObject({
+      libraryId,
+      objectId: createResponse.id,
+      writeToken: createResponse.write_token
+    });
+
+    return createResponse.id;
+  });
+
+  GetCompositionPlayoutUrl = flow(function * () {
+    if(!this.compositionObject) { return; }
+
+    const {objectId} = this.compositionObject;
+    const writeToken = this.WriteToken(objectId);
+
+    const playoutOptions = (yield this.client.PlayoutOptions({
+      objectId,
+      writeToken,
+      handler: "channel"
+    }));
+
+    const playoutUrl = new URL(playoutOptions.hls.playoutMethods.clear.playoutUrl);
+    playoutUrl.searchParams.set("uid", Math.random());
+
+    // TODO: Client should use write token in generated urls
+    playoutUrl.pathname = playoutUrl.pathname.replace(
+      this.compositionObject.versionHash,
+      this.WriteToken()
+    );
+
+    this.compositionPlayoutUrl = playoutUrl.toString();
+
+    return playoutUrl;
+  });
+
+  UpdateComposition = flow(function * () {
+    if(!this.compositionObject) { return; }
+
+    const {libraryId, objectId, sourceObjectId, sourceOfferingKey} = this.compositionObject;
+    const writeToken = this.WriteToken(objectId);
+    const sourceHash = yield this.client.LatestVersionHash({objectId: sourceObjectId});
+
+    const sourceLink = {
+      "/": UrlJoin("/qfab", sourceHash, "rep", "playout", sourceOfferingKey)
+    };
+
+    const items = this.clipList.map(clip => {
+      const store = this.clipStores[clip.storeKey];
+
+      return {
+        display_name: clip.name,
+        source: sourceLink,
+        slice_start_rat: store.videoHandler.FrameToRat(clip.clipInFrame || 0),
+        slice_end_rat: store.videoHandler.FrameToRat(clip.clipOutFrame || store.totalFrames - 1),
+        duration_rat: store.videoHandler.FrameToRat((clip.clipOutFrame || store.totalFrames - 1) - (clip.clipInFrame || 0)),
+        type: "mez_vod"
+      };
+    });
+
+    yield this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: "/channel/offerings/default/items",
+      metadata: Unproxy(items)
+    });
+
+    this.GetCompositionPlayoutUrl();
+  });
+
+  SaveComposition = flow(function * () {
+    yield this.UpdateComposition();
+
+    const {libraryId, objectId} = this.compositionObject;
+    const writeToken = this.WriteToken(objectId);
+
+    yield this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: "/public/name",
+      metadata: this.compositionObject.name
+    });
+
+    yield this.client.FinalizeContentObject({
+      libraryId,
+      objectId,
+      writeToken,
+      commitMessage: "EVIE Composition"
+    });
+
+    this.writeTokenInfo[objectId] = yield this.client.EditContentObject({
+      libraryId,
+      objectId
+    });
+  });
+
+  SetCompositionObject = flow(function * ({objectId}) {
+    yield this.LoadWriteTokens();
+
+    const libraryId = yield this.client.ContentObjectLibraryId({objectId});
+    const versionHash = yield this.client.LatestVersionHash({objectId});
+    const writeTokenInfo = this.writeTokenInfo[objectId] || (yield this.client.EditContentObject({libraryId, objectId}));
+    const metadata = yield this.client.ContentObjectMetadata({libraryId, objectId});
+
+    const sourceClipId = yield this.InitializeClip({objectId: metadata.channel.source_info.objectId});
+    this.SetSelectedClip(sourceClipId);
+
+    yield this.videoStore.SetVideo({objectId, preferredOfferingKey: "default", noTags: true});
+    const frameRate = this.selectedClipStore.frameRate;
+
+    const videoHandler = new FrameAccurateVideo({frameRate});
+
+    this.clipIdList = yield Promise.all(
+      (metadata.channel.offerings.default.items || []).map(async item => {
+        const clipId = this.rootStore.NextId();
+        const versionHash = ExtractHashFromLink(item.source);
+        const objectId = this.client.utils.DecodeVersionHash(versionHash).objectId;
+        const libraryId = await this.client.ContentObjectLibraryId({objectId});
+        const offeringKey = item.source["/"].split("/").slice(-1)[0];
+
+        const clipInFrame = videoHandler.RatToFrame(item.slice_start_rat);
+        const clipOutFrame = videoHandler.RatToFrame(item.slice_end_rat);
+
+        this.clips[clipId] = {
+          clipId,
+          name: item.display_name,
+          libraryId,
+          objectId,
+          versionHash,
+          offering: offeringKey,
+          clipInFrame,
+          clipOutFrame,
+          storeKey: `${objectId}-${offeringKey}`,
+          clipKey: `${objectId}-${offeringKey}-${clipInFrame}-${clipOutFrame}`
+          // TODO: Audio
+          //audioRepresentation: store.audioRepresentation,
+        };
+
+        return clipId;
+      })
+    );
+
+
+    this.writeTokenInfo[objectId] = writeTokenInfo;
+    this.SaveWriteTokens();
+
+    this.compositionObject = {
+      libraryId,
+      objectId,
+      versionHash,
+      sourceObjectId: metadata.channel.source_info.objectId,
+      sourceOfferingKey: metadata.channel.source_info.offeringKey || "default",
+      name: metadata?.public?.name,
+      metadata
+    };
+
+    this.GetCompositionPlayoutUrl();
+  });
 
   Undo() {
     if(this._actionStack.length === 0) { return; }
@@ -445,6 +687,35 @@ class CompositionStore {
     if(!this.selectedClip) {
       this.ClearSelectedClip();
     }
+  }
+
+  WriteToken(objectId) {
+    return this.writeTokenInfo[objectId || this.compositionObject.objectId]?.writeToken;
+  }
+
+  LoadWriteTokens = flow(function * () {
+    const tokens = yield this.client.walletClient.ProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: "composition-write-tokens"
+    });
+
+    if(tokens) {
+      this.writeTokenInfo = JSON.parse(this.client.utils.FromB64(tokens));
+    }
+  });
+
+  async SaveWriteTokens() {
+    await this.client.walletClient.SetProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: "composition-write-tokens",
+      value: this.client.utils.B64(
+        JSON.stringify(this.writeTokenInfo || {})
+      )
+    });
   }
 }
 

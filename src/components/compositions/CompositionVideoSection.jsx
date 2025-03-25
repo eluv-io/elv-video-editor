@@ -191,7 +191,7 @@ const ClipSeekBar = observer(() => {
 });
 
 const Title = observer(({clipView}) => {
-  const name = clipView ? compositionStore.selectedClip.name : compositionStore.name;
+  const name = clipView ? compositionStore.selectedClip.name : compositionStore.compositionObject?.name;
 
   const [editing, setEditing] = useState(false);
   const [editedName, setEditedName] = useState(name);
@@ -295,11 +295,13 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
     const clip = compositionStore.selectedClip;
     // Set initial scale for clip
 
-    let clipInProgress = store.FrameToProgress(clip.clipInFrame);
-    let clipOutProgress = store.FrameToProgress(clip.clipOutFrame);
+    const clipOutFrame = clip.clipOutFrame || store.totalFrames - 1;
 
-    store.SetClipMark({inFrame: clip.clipInFrame, outFrame: clip.clipOutFrame});
-    store.SetSegment(clip.clipInFrame, clip.clipOutFrame);
+    let clipInProgress = store.FrameToProgress(clip.clipInFrame);
+    let clipOutProgress = store.FrameToProgress(clipOutFrame);
+
+    store.SetClipMark({inFrame: clip.clipInFrame, outFrame: clipOutFrame});
+    store.SetSegment(clip.clipInFrame, clipOutFrame);
     store.SetScale(
       Math.max(0, clipInProgress - 0.5),
       Math.min(100, clipOutProgress + 0.5),
@@ -344,7 +346,11 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
       <Title clipView={clipView} />
       {
         !sectionRef?.current ? null :
-          <Video store={store} fullscreenContainer={sectionRef.current} />
+          <Video
+            playoutUrl={clipView ? undefined : compositionStore.compositionPlayoutUrl}
+            store={store}
+            fullscreenContainer={sectionRef.current}
+          />
       }
       {
         !clipView ? null :

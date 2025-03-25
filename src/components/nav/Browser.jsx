@@ -3,7 +3,7 @@ import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 import React, {useState, useEffect, useRef} from "react";
 import {observer} from "mobx-react-lite";
 import {rootStore, browserStore} from "@/stores";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {IconButton, Linkish, Loader} from "@/components/common/Common";
 import SVG from "react-inlinesvg";
 import {useLocation, useParams} from "wouter";
@@ -23,7 +23,7 @@ const S = CreateModuleClassMatcher(BrowserStyles);
 const PageControls = observer(({currentPage, pages, maxSpread=15, SetPage}) => {
   const ref = useRef();
 
-  const width = ref?.current?.getBoundingClientRect().width || rootStore.pageWidth;
+  const width = ref?.current?.getBoundingClientRect().width || 0;
 
   let spread = maxSpread;
   if(width < 600) {
@@ -37,11 +37,11 @@ const PageControls = observer(({currentPage, pages, maxSpread=15, SetPage}) => {
   spreadStart = Math.max(1, spreadEnd - spread);
 
   if(!pages || pages <= 1) {
-    return null;
+    return <div className={S("page-controls")} />;
   }
 
   return (
-    <div ref={ref} className={S("page-controls")}>
+    <div ref={ref} style={width === 0 ? {opacity: 0} : {}} className={S("page-controls")}>
       <IconButton
         disabled={spreadStart <= 1}
         label="First Page"
@@ -126,7 +126,7 @@ const SearchBar = observer(({filter, setFilter, delay=500}) => {
   );
 });
 
-const BrowserTable = observer(({filter, Load, Path, defaultIcon, contentType="library"}) => {
+const BrowserTable = observer(({filter, Load, Path, Select, defaultIcon, contentType="library", videoOnly}) => {
   const [loading, setLoading] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
   const [content, setContent] = useState(undefined);
@@ -185,11 +185,12 @@ const BrowserTable = observer(({filter, Load, Path, defaultIcon, contentType="li
           }
         </div>
         {
-          content.map(({id, name, image, duration, lastModified, forbidden}) =>
+          content.map(({id, name, image, duration, isVideo, isChannel, lastModified, forbidden}) =>
             <Linkish
-              to={Path(id)}
+              to={Path?.(id, isChannel)}
+              onClick={Select ? () => Select(id) : undefined}
               key={`browser-row-${id}`}
-              disabled={forbidden}
+              disabled={forbidden || (videoOnly && !isVideo)}
               className={S("browser-table__row", "browser-table__row--content")}
             >
               <div className={S("browser-table__cell")}>
@@ -242,7 +243,7 @@ const BrowserTable = observer(({filter, Load, Path, defaultIcon, contentType="li
   );
 });
 
-const ObjectBrowser = observer(({libraryId}) => {
+export const ObjectBrowser = observer(({libraryId, title, Select, Path, Back, backPath, videoOnly, className=""}) => {
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
@@ -252,53 +253,49 @@ const ObjectBrowser = observer(({libraryId}) => {
 
   const library = browserStore.libraries?.[libraryId];
 
-  if(!library) {
-    return (
-      <div className={S("browser", "browser--object")}>
-        <Loader />
-      </div>
-    );
-  }
-
   return (
-    <div className={S("browser", "browser--object")}>
+    <div className={JoinClassNames(S("browser", "browser--object"), className)}>
       <SearchBar filter={filter} setFilter={setFilter}/>
       <h1 className={S("browser__header")}>
         <IconButton
           icon={BackIcon}
           label="Back to Content Libraries"
-          to="/"
+          to={backPath}
+          onClick={Back}
           className={S("browser__header-back")}
         />
         <span>
-          Content Libraries / {library?.name || libraryId}
+          { title || `Content Libraries / ${library?.name || libraryId}` }
         </span>
       </h1>
       <BrowserTable
         filter={filter}
         defaultIcon={ObjectIcon}
         contentType="object"
-        Path={objectId => UrlJoin("/", libraryId, objectId)}
+        videoOnly={videoOnly}
+        Path={Path}
+        Select={Select}
         Load={async args => await browserStore.ListObjects({libraryId, ...args})}
       />
     </div>
   );
 });
 
-const LibraryBrowser = observer(() => {
+export const LibraryBrowser = observer(({title, Path, Select, className=""}) => {
   const [filter, setFilter] = useState("");
 
   return (
-    <div className={S("browser", "browser--library")}>
+    <div className={JoinClassNames(S("browser", "browser--library"), className)}>
       <SearchBar filter={filter} setFilter={setFilter}/>
       <h1 className={S("browser__header")}>
-        Content Libraries
+        { title || "Content Libraries" }
       </h1>
       <BrowserTable
         filter={filter}
         defaultIcon={LibraryIcon}
         contentType="library"
-        Path={libraryId => `/${libraryId}`}
+        Select={Select}
+        Path={Path}
         Load={async args => await browserStore.ListLibraries(args)}
       />
     </div>
@@ -313,8 +310,16 @@ const Browser = observer(() => {
   }, []);
 
   return libraryId ?
-    <ObjectBrowser key={`browser-${libraryId}`} libraryId={libraryId} />:
-    <LibraryBrowser />;
+    <ObjectBrowser
+      key={`browser-${libraryId}`}
+      libraryId={libraryId}
+      backPath="/"
+      Path={(objectId, isChannel) =>
+        isChannel ?
+          UrlJoin("/compositions", objectId) :
+          UrlJoin("/", libraryId, objectId)}
+    />:
+    <LibraryBrowser Path={libraryId => `/${libraryId}`} />;
 });
 
 export default Browser;

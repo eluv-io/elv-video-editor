@@ -1,4 +1,6 @@
 .browser {
+  --row-height: 60px;
+
   height: 100%;
   max-height: 100vh;
   min-height: 100vh;
@@ -35,7 +37,7 @@
   display: flex;
   flex-direction: column;
   font-size: 16px;
-  min-height: min(660px, 85vh);
+  min-height: calc(11 * var(--row-height));
 
   &--library {
     .browser-table__row {
@@ -52,7 +54,9 @@
   &__row {
     border-bottom: 1px solid var(--table-border-color);
     display: grid;
-    min-height: 60px;
+    height: var(--row-height);
+    max-height: var(--row-height);
+    min-height: var(--row-height);
     padding-inline: 10px;
     transition: color 0.25s ease, background-color 0.1s ease;
 
@@ -78,7 +82,7 @@
     align-items: center;
     display: flex;
     gap: 15px;
-    height: 100%;
+    height: var(--row-height);
     justify-content: flex-start;
     text-align: left;
 
@@ -98,11 +102,9 @@
   }
 
   &__cell-image {
-    aspect-ratio: 16/9;
-    background: rgb(0 0 0 / 25%);
-    height: 39px;
-    margin: 10px 0;
+    height: 100%;
     object-fit: contain;
+    padding: 10px 0;
   }
 
   &--loading,
@@ -122,6 +124,7 @@
 .page-controls {
   display: flex;
   gap: 7px;
+  height: 25px;
   justify-content: center;
   margin-top: 30px;
   width: 100%;

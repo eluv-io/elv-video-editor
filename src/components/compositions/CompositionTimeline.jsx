@@ -24,6 +24,8 @@ import RedoIcon from "@/assets/icons/v2/redo.svg";
 import ClipInIcon from "@/assets/icons/v2/clip-start.svg";
 import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
 import SplitIcon from "@/assets/icons/v2/split.svg";
+import {useParams} from "wouter";
+import CompositionSelection from "@/components/compositions/CompositionSelection.jsx";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -114,8 +116,6 @@ const TimelineBottomBar = observer(() => {
 });
 
 const TimelineSeekBar = observer(({hoverSeek}) => {
-  if(!compositionStore.videoStore.initialized) { return null; }
-
   let indicators = [];
   if(compositionStore.videoStore.clipInFrame) {
     indicators.push({
@@ -149,7 +149,7 @@ const TimelineSeekBar = observer(({hoverSeek}) => {
         topMarks
         nMarks={compositionStore.videoStore.sliderMarks}
         majorMarksEvery={compositionStore.videoStore.majorMarksEvery}
-        RenderText={progress => compositionStore.CompositionProgressToSMPTE(progress)}
+        RenderText={progress => compositionStore.videoStore.ProgressToSMPTE(progress)}
         onChange={progress => compositionStore.videoStore.Seek(compositionStore.videoStore.ProgressToFrame(progress))}
         className={S("seek-bar")}
       />
@@ -158,8 +158,6 @@ const TimelineSeekBar = observer(({hoverSeek}) => {
 });
 
 const TimelineScaleBar = observer(({hoverSeek}) => {
-  if(!compositionStore.videoStore.initialized) { return null; }
-
   let indicators = [];
   if(compositionStore.videoStore.clipInFrame) {
     indicators.push({
@@ -182,35 +180,40 @@ const TimelineScaleBar = observer(({hoverSeek}) => {
   }
 
   return (
-     <div className={S("timeline-row", "timeline-row--scale", "scale-bar-container")}>
-       <div className={S("timeline-row__label", "scale-bar-container__label")}>
-         <div>{compositionStore.CompositionProgressToSMPTE(compositionStore.videoStore.scaleMin)}</div>
-         <div>-</div>
-         <div>{compositionStore.CompositionProgressToSMPTE(compositionStore.videoStore.scaleMax)}</div>
-       </div>
-       <MarkedSlider
-         min={0}
-         max={100}
-         showTopMarks={false}
-         handles={[
-           { position: compositionStore.videoStore.scaleMin },
-           { position: compositionStore.videoStore.scaleMax }
-         ]}
-         handleSeparator={100 * compositionStore.videoStore.currentTime / (compositionStore.compositionDuration || 1)}
-         indicators={[
-           { position: 100 * compositionStore.videoStore.currentTime / (compositionStore.compositionDuration || 1) },
-           ...indicators
-         ]}
-         showMarks
-         topMarks
-         nMarks={compositionStore.videoStore.sliderMarks}
-         majorMarksEvery={compositionStore.videoStore.majorMarksEvery}
-         RenderText={progress => compositionStore.CompositionProgressToSMPTE(progress)}
-         onChange={values => compositionStore.videoStore.SetScale(values[0], values[1])}
-         onSlide={diff => compositionStore.videoStore.SetScale(compositionStore.videoStore.scaleMin + diff, compositionStore.videoStore.scaleMax + diff, true)}
-         className={S("scale-bar")}
+    <div className={S("timeline-row", "timeline-row--scale", "scale-bar-container")}>
+      <div className={S("timeline-row__label", "scale-bar-container__label")}>
+        {
+          !compositionStore.videoStore.videoHandler ? null :
+            <>
+              <div>{compositionStore.CompositionProgressToSMPTE(compositionStore.videoStore.scaleMin)}</div>
+              <div>-</div>
+              <div>{compositionStore.CompositionProgressToSMPTE(compositionStore.videoStore.scaleMax)}</div>
+            </>
+        }
+      </div>
+      <MarkedSlider
+        min={0}
+        max={100}
+        showTopMarks={false}
+        handles={[
+          { position: compositionStore.videoStore.scaleMin },
+          { position: compositionStore.videoStore.scaleMax }
+        ]}
+        handleSeparator={100 * compositionStore.videoStore.currentTime / (compositionStore.compositionDuration || 1)}
+        indicators={[
+          { position: 100 * compositionStore.videoStore.currentTime / (compositionStore.compositionDuration || 1) },
+          ...indicators
+        ]}
+        showMarks
+        topMarks
+        nMarks={compositionStore.videoStore.sliderMarks}
+        majorMarksEvery={compositionStore.videoStore.majorMarksEvery}
+        RenderText={progress => compositionStore.videoStore.ProgressToSMPTE(progress)}
+        onChange={values => compositionStore.videoStore.SetScale(values[0], values[1])}
+        onSlide={diff => compositionStore.videoStore.SetScale(compositionStore.videoStore.scaleMin + diff, compositionStore.videoStore.scaleMax + diff, true)}
+        className={S("scale-bar")}
       />
-     </div>
+    </div>
   );
 });
 
@@ -248,7 +251,46 @@ const TimelinePlayheadIndicator = observer(({value, timelineRef, className=""}) 
   );
 });
 
+const CompositionTimelineContent = observer(({hoverSeek}) => {
+  const CalculateDragProgress = event => {
+    const startProgress = compositionStore.videoStore.scaleMinTime / compositionStore.compositionDuration;
+    const dimensions = event.currentTarget.querySelector(`.${S("timeline-row__content")}`).getBoundingClientRect();
+    return startProgress + ((event.clientX - dimensions.left) / dimensions.width) * compositionStore.videoStore.scaleMagnitude / 100;
+  };
+
+  return (
+    <>
+      <TimelineSeekBar hoverSeek={hoverSeek}/>
+      <div
+        onDragOver={event => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          compositionStore.SetDropIndicator(CalculateDragProgress(event));
+        }}
+        onDragLeave={() => compositionStore.ClearDropIndicator()}
+        onDrop={event => {
+          if(!compositionStore.draggingClip) { return; }
+
+          compositionStore.AddClip(compositionStore.draggingClip, CalculateDragProgress(event));
+          compositionStore.EndDrag();
+        }}
+        className={S("timeline-row", "timeline-row--composition")}
+      >
+        <div className={S("timeline-row__label")}>
+          { compositionStore.compositionObject?.name }
+        </div>
+        <div className={S("timeline-row__content")}>
+          <CompositionTrack />
+        </div>
+      </div>
+      <TimelineScaleBar hoverSeek={hoverSeek}/>
+    </>
+  );
+});
+
 const CompositionTimeline = observer(() => {
+  const {objectId} = useParams();
   const [hoverPosition, setHoverPosition] = useState(undefined);
   const timelineRef = useRef(null);
 
@@ -281,18 +323,15 @@ const CompositionTimeline = observer(() => {
     );
   }
 
-  const CalculateDragProgress = event => {
-    const startProgress = compositionStore.videoStore.scaleMinTime / compositionStore.compositionDuration;
-    const dimensions = event.currentTarget.querySelector(`.${S("timeline-row__content")}`).getBoundingClientRect();
-    return startProgress + ((event.clientX - dimensions.left) / dimensions.width) * compositionStore.videoStore.scaleMagnitude / 100;
-  };
-
   return (
     <div className={S("content-block", "timeline-section")}>
       <TimelineTopBar />
-      <TimelinePlayheadIndicator value={compositionStore.videoStore.seek} timelineRef={timelineRef} />
       {
-        !hoverSeek ? null :
+        !objectId ? null :
+          <TimelinePlayheadIndicator value={compositionStore.videoStore.seek} timelineRef={timelineRef} />
+      }
+      {
+        !objectId || !hoverSeek ? null :
           <TimelinePlayheadIndicator value={hoverSeek} timelineRef={timelineRef} className={S("playhead-indicator--hover")} />
       }
       <div
@@ -329,33 +368,13 @@ const CompositionTimeline = observer(() => {
 
           compositionStore.videoStore.ScrollScale(position, event.deltaY);
         }}
-        className={S("timeline-section__content")}
+        className={S("timeline-section__content", !objectId ? "timeline-section__content--selection" : "")}
       >
-        <TimelineSeekBar hoverSeek={hoverSeek}/>
-        <div
-          onDragOver={event => {
-            event.preventDefault();
-            event.stopPropagation();
-
-            compositionStore.SetDropIndicator(CalculateDragProgress(event));
-          }}
-          onDragLeave={() => compositionStore.ClearDropIndicator()}
-          onDrop={event => {
-            if(!compositionStore.draggingClip) { return; }
-
-            compositionStore.AddClip(compositionStore.draggingClip, CalculateDragProgress(event));
-            compositionStore.EndDrag();
-          }}
-          className={S("timeline-row", "timeline-row--composition")}
-        >
-          <div className={S("timeline-row__label")}>
-            { compositionStore.videoStore.name }
-          </div>
-          <div className={S("timeline-row__content")}>
-            <CompositionTrack />
-          </div>
-        </div>
-        <TimelineScaleBar hoverSeek={hoverSeek}/>
+        {
+          objectId ?
+            <CompositionTimelineContent hoverSeek={hoverSeek} /> :
+            <CompositionSelection />
+        }
       </div>
       <TimelineBottomBar/>
     </div>

@@ -122,6 +122,13 @@ class FrameAccurateVideo {
     this.frameRateDenominator = denom;
   }
 
+  RatToFrame(rat) {
+    const [numerator, denominator] = rat.split("/");
+    const time = denominator ? Fraction(numerator).div(denominator) : numerator;
+
+    return this.TimeToFrame(time);
+  }
+
   FrameToRat(frame) {
     return `${frame * this.frameRateDenominator}/${this.frameRateNumerator}`;
   }

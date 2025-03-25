@@ -6,12 +6,18 @@ import {compositionStore, keyboardControlsStore, rootStore} from "@/stores/index
 import CompositionTimeline from "@/components/compositions/CompositionTimeline.jsx";
 import CompositionVideoSection from "@/components/compositions/CompositionVideoSection.jsx";
 import {DraggedClip} from "@/components/compositions/Clips.jsx";
+import {useParams} from "wouter";
 
 const CompositionsView = observer(({mode}) => {
+  const {objectId} = useParams();
   useEffect(() => {
     rootStore.SetPage("compositions");
     keyboardControlsStore.SetActiveStore(compositionStore.videoStore);
-  }, []);
+
+    if(objectId) {
+      compositionStore.SetCompositionObject({objectId});
+    }
+  }, [objectId]);
 
   return (
     <>
@@ -33,7 +39,10 @@ const CompositionsView = observer(({mode}) => {
                   store={compositionStore.selectedClipStore}
                 />
             }
-            mainPanelContent={<CompositionVideoSection store={compositionStore.videoStore} />}
+            mainPanelContent={
+              !compositionStore.compositionObject ? null :
+                <CompositionVideoSection store={compositionStore.videoStore} />
+            }
           />
         }
         bottomPanelContent={<CompositionTimeline />}

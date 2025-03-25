@@ -3,7 +3,7 @@ import {rootStore} from "@/stores/index.js";
 import {Unproxy} from "@/utils/Utils.js";
 import IntervalTree from "node-interval-tree";
 
-export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="default"}) => {
+export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="default", channel=false}) => {
   try {
     if(!libraryId) {
       libraryId = await rootStore.LibraryId({objectId});
@@ -20,6 +20,7 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
         "public/name",
         "public/description",
         "offerings",
+        "channel",
         "video_tags",
         "mime_types",
         "assets"
@@ -33,7 +34,8 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
       name: metadata.public && metadata.public.name || metadata.name || versionHash,
       description: metadata.public && metadata.public.description || metadata.description,
       metadata,
-      isVideo: metadata.offerings
+      isVideo: !!metadata.offerings || !!metadata.channel,
+      isChannel: !!metadata.channel
     };
 
     if(videoObject.isVideo) {
@@ -43,6 +45,10 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
 
       if(videoObject.availableOfferings?.default) {
         videoObject.availableOfferings.default.display_name = "Default Offering";
+      }
+
+      if(channel) {
+        return videoObject;
       }
 
       Object.keys(metadata?.offerings || {}).map(offeringKey => {
@@ -88,13 +94,14 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
       for(let offering of offeringKeys) {
         offeringPlayoutOptions[offering] = await rootStore.client.PlayoutOptions({
           versionHash,
+          handler: channel ? "channel" : "playout",
           protocols: ["hls"],
           drms: browserSupportedDrms,
           hlsjsProfile: false,
           offering
         });
 
-        const playoutMethods = offeringPlayoutOptions[offering]?.hls?.playoutMethods || {};
+        const playoutMethods = offeringPlayoutOptions?.[offering]?.hls?.playoutMethods || {};
 
         if(!(playoutMethods["aes-128"] || playoutMethods["clear"])) {
           videoObject.availableOfferings[offering].disabled = true;
@@ -244,4 +251,12 @@ export const CreateTrackIntervalTree = (tags, label) => {
   });
 
   return intervalTree;
+};
+
+export const ExtractHashFromLink = link => {
+  if(link?.["."]?.source) {
+    return link["."]?.source;
+  } else if(link?.["/"]) {
+    return link["/"]?.split("/").find(token => token.startsWith("hq__"));
+  }
 };

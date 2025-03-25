@@ -17,7 +17,7 @@ const S = CreateModuleClassMatcher(NavStyles);
 
 const Nav = observer(() => {
   const { libraryId, objectId } = videoStore.videoObject || {};
-  const compositionObject = compositionStore.videoObject;
+  const compositionObject = compositionStore.compositionObject;
 
   const pages = [
     {
@@ -38,9 +38,9 @@ const Nav = observer(() => {
     {
       label: "Compositions",
       key: "compositions",
-      //to: !compositionObject?.objectId ? "/" : UrlJoin("/compositions", objectId),
-      // TODO: Change
-      to: "/compositions/iq__3QhxBgWHZDkcN87irAYqf5hSGdya",
+      to: !compositionObject?.objectId ? "/compositions" : UrlJoin("/compositions", compositionObject.objectId),
+      //to: "/compositions/iq__3kmDn5K2KqHV9YtPGNVNFjtwWwyu",
+
       icon: CompositionIcon,
       active: !rootStore.page || rootStore.page === "compositions"
     },

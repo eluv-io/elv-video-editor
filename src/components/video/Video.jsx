@@ -23,14 +23,16 @@ import Overlay from "@/components/video/Overlay.jsx";
 const S = CreateModuleClassMatcher(VideoStyles);
 
 
-const Video = observer(({store, showOverlay, showFrameDownload, fullscreenContainer, className=""}) => {
+const Video = observer(({store, showOverlay, showFrameDownload, fullscreenContainer, playoutUrl, className=""}) => {
   const [ready, setReady] = useState(false);
   const [hlsPlayer, setHLSPlayer] = useState(undefined);
   const [video, setVideo] = useState(undefined);
   const [videoId] = useState(rootStore.NextId());
 
+  playoutUrl = playoutUrl || store.playoutUrl;
+
   useEffect(() => {
-    if(!video || !store.playoutUrl || !store.isVideo) {
+    if(!video || !playoutUrl || !store.isVideo) {
       return;
     }
 
@@ -63,7 +65,7 @@ const Video = observer(({store, showOverlay, showFrameDownload, fullscreenContai
 
     setHLSPlayer(player);
 
-    player.loadSource(store.playoutUrl);
+    player.loadSource(playoutUrl);
     player.attachMedia(video);
 
     store.Initialize(video, player);
@@ -102,7 +104,7 @@ const Video = observer(({store, showOverlay, showFrameDownload, fullscreenContai
             <Overlay key={`overlay-${tagStore.editPosition}`} element={video} />
         }
         <video
-          key={`video-${store.playoutUrl}`}
+          key={`video-${playoutUrl}`}
           ref={setVideo}
           crossOrigin="anonymous"
           muted={true}

@@ -10,6 +10,7 @@ import ThumbnailStore from "@/stores/ThumbnailStore.js";
 const MIN_SCALE = 0.2;
 
 class VideoStore {
+  channel = false;
   tags = false;
 
   videoKey = 0;
@@ -110,7 +111,7 @@ class VideoStore {
     }
   }
 
-  constructor(rootStore, options={clipKey: "", tags: true}) {
+  constructor(rootStore, options={clipKey: "", tags: true, channel: false}) {
     makeAutoObservable(
       this,
       {
@@ -123,6 +124,7 @@ class VideoStore {
     this.thumbnailStore = new ThumbnailStore(this);
     this.tags = typeof options.tags !== "undefined" ? options.tags : true;
     this.initialClipPoints = options.initialClipPoints;
+    this.channel = options.channel || false;
 
     this.Update = this.Update.bind(this);
 
@@ -130,8 +132,6 @@ class VideoStore {
   }
 
   Reset() {
-    this.clipStores = {};
-
     this.loading = true;
     this.initialized = false;
     this.isVideo = false;
@@ -215,7 +215,7 @@ class VideoStore {
     try {
       this.selectedObject = undefined;
 
-      const videoObject = yield LoadVideo({objectId, preferredOfferingKey});
+      const videoObject = yield LoadVideo({objectId, preferredOfferingKey, channel: this.channel});
 
       this.videoObject = videoObject;
 
@@ -246,31 +246,35 @@ class VideoStore {
       this.thumbnailTrackUrl = videoObject.thumbnailTrackUrl;
 
       try {
-        videoObject.primaryContentStartTime = 0;
-
-        const offering = videoObject.metadata.offerings[videoObject.offeringKey];
-        const offeringOptions = offering.media_struct.streams || {};
-
-        let rate;
-        if(offeringOptions.video) {
-          rate = offeringOptions.video.rate;
+        if(this.channel) {
+          videoObject.rate = videoObject.metadata?.channel?.source_info?.frameRate;
+          videoObject.frameRateSpecified = !!videoObject.rate;
         } else {
-          const videoKey = Object.keys(offeringOptions).find(key => key.startsWith("video"));
-          rate = offeringOptions[videoKey].rate;
-        }
+          videoObject.primaryContentStartTime = 0;
+          const offering = videoObject.metadata.offerings[videoObject.offeringKey];
+          const offeringOptions = offering.media_struct.streams || {};
 
-        videoObject.frameRateSpecified = true;
-        videoObject.rate = rate;
+          let rate;
+          if(offeringOptions.video) {
+            rate = offeringOptions.video.rate;
+          } else {
+            const videoKey = Object.keys(offeringOptions).find(key => key.startsWith("video"));
+            rate = offeringOptions[videoKey].rate;
+          }
 
-        this.SetFrameRate({rateRat: rate});
+          videoObject.frameRateSpecified = true;
+          videoObject.rate = rate;
 
-        if(offering.tag_point_rat) {
-          this.primaryContentStartTime = FrameAccurateVideo.ParseRat(offering.tag_point_rat);
-        }
+          this.SetFrameRate({rateRat: rate});
 
-        if(offering.exit_point_rat) {
-          // End time is end of specified frame
-          this.primaryContentEndTime = Number((FrameAccurateVideo.ParseRat(offering.exit_point_rat)).toFixed(3));
+          if(offering.tag_point_rat) {
+            this.primaryContentStartTime = FrameAccurateVideo.ParseRat(offering.tag_point_rat);
+          }
+
+          if(offering.exit_point_rat) {
+            // End time is end of specified frame
+            this.primaryContentEndTime = Number((FrameAccurateVideo.ParseRat(offering.exit_point_rat)).toFixed(3));
+          }
         }
       } catch(error) {
         // eslint-disable-next-line no-console
@@ -502,7 +506,7 @@ class VideoStore {
 
         this.SetClipMark({
           inFrame: 0,
-          outFrame: this.videoHandler.TotalFrames() - 1
+          outFrame: this.videoHandler.TotalFrames()
         });
 
         if(this.initialClipPoints) {
@@ -658,6 +662,10 @@ class VideoStore {
 
     this.frame = Math.floor(frame);
     this.totalFrames = this.videoHandler?.TotalFrames() || this.totalFrames;
+    if(this.clipOutFrame >= this.totalFrames - 2) {
+      // Minor shift in duration from channels may cause unset clip out point to show
+      this.clipOutFrame = this.totalFrames - 1;
+    }
     this.smpte = smpte;
     this.seek = progress * 100;
     this.duration = this.video.duration || this.duration;

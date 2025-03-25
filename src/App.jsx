@@ -81,7 +81,7 @@ const CompositionRoutes = observer(() => {
     rootStore.SetSubpage(objectId);
 
     if(objectId && !compositionStore.loading && compositionStore.videoObject?.objectId !== objectId) {
-      compositionStore.SetVideo({objectId});
+      compositionStore.SetCompositionObject({objectId});
     }
   }, [objectId]);
 
@@ -93,8 +93,6 @@ const CompositionRoutes = observer(() => {
         <Linkish to="~/" styled>Return to Content Browser</Linkish>
       </div>
     );
-  } else if(!compositionStore.ready) {
-    return <Loader />;
   }
 
   return (

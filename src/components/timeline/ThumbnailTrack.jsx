@@ -150,6 +150,7 @@ const ThumbnailTrack = observer(({
   const content = (
     <div
       ref={ref}
+      key={`thumbnail-${store?.thumbnailStore?.thumbnailStatus?.available}`}
       onMouseMove={event => setHoverThumbnail(
         store.thumbnailStore.ThumbnailImage(CalculateProgress(event) * store.duration)
       )}
