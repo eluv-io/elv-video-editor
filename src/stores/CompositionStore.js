@@ -432,6 +432,7 @@ class CompositionStore {
       objectId: sourceObjectId,
       select: [
         "offerings/*/playout",
+        "offerings/*/media_struct/streams/*/rate",
         "/public"
       ]
     });
@@ -439,7 +440,7 @@ class CompositionStore {
     const offerings = Object.keys(sourceMetadata.offerings);
     const offeringKey = offerings.includes("default") ? "default" : offerings[0];
     const playoutMetadata = sourceMetadata.offerings[offeringKey].playout;
-    const offeringOptions = offerings[offeringKey]?.media_struct?.streams || {};
+    const offeringOptions = sourceMetadata.offerings?.[offeringKey]?.media_struct?.streams || {};
 
     let frameRate;
     if(offeringOptions.video) {
@@ -509,7 +510,7 @@ class CompositionStore {
   });
 
   GetCompositionPlayoutUrl = flow(function * () {
-    if(!this.compositionObject) { return; }
+    if(!this.compositionObject || this.clipIdList.length === 0) { return; }
 
     const {objectId} = this.compositionObject;
     const writeToken = this.WriteToken(objectId);
@@ -596,6 +597,8 @@ class CompositionStore {
     });
   });
 
+  //TODO: Keyboard controls - handle overlapping clip points ] [
+
   SetCompositionObject = flow(function * ({objectId}) {
     yield this.LoadWriteTokens();
 
@@ -608,9 +611,12 @@ class CompositionStore {
     this.SetSelectedClip(sourceClipId);
 
     yield this.videoStore.SetVideo({objectId, preferredOfferingKey: "default", noTags: true});
-    const frameRate = this.selectedClipStore.frameRate;
 
-    const videoHandler = new FrameAccurateVideo({frameRate});
+    const videoHandler = new FrameAccurateVideo({frameRateRat: this.selectedClipStore.frameRateRat});
+
+    this.videoStore.SetFrameRate({rateRat: this.selectedClipStore.frameRateRat});
+
+    this.videoStore.videoHandler = videoHandler;
 
     this.clipIdList = yield Promise.all(
       (metadata.channel.offerings.default.items || []).map(async item => {

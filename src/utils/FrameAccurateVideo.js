@@ -150,7 +150,7 @@ class FrameAccurateVideo {
   }
 
   ProgressToSMPTE(progress) {
-    const duration = this.video.duration || 0;
+    const duration = this.video?.duration || 0;
 
     return this.TimeToSMPTE(Fraction(progress).mul(duration));
   }
@@ -203,7 +203,7 @@ class FrameAccurateVideo {
   /* Time Calculations */
 
   Frame() {
-    return this.TimeToFrame(this.video.currentTime);
+    return this.TimeToFrame(this.video?.currentTime || 0);
   }
 
   Pad(fraction) {
@@ -247,13 +247,13 @@ class FrameAccurateVideo {
   }
 
   Progress() {
-    if(isNaN(this.video.duration)) { return Fraction(0); }
+    if(isNaN(this.video?.duration)) { return Fraction(0); }
 
-    return Fraction(this.video.currentTime).div(this.video.duration);
+    return Fraction(this.video?.currentTime || 0).div(this.video?.duration || 1);
   }
 
   TotalFrames() {
-    return Math.floor(Fraction(this.video.duration || 0).mul(this.frameRate).valueOf());
+    return Math.floor(Fraction(this.video?.duration || 0).mul(this.frameRate).valueOf());
   }
 
   FrameToString({frame, includeFractionalSeconds}) {
@@ -341,6 +341,8 @@ class FrameAccurateVideo {
   }
 
   RegisterCallback() {
+    if(!this.video) { return; }
+
     this.Update();
 
     this.video.onseeked = (event) => this.Update(event);
@@ -363,6 +365,8 @@ class FrameAccurateVideo {
   }
 
   RemoveCallback() {
+    if(!this.video) { return; }
+
     this.video.onseeked = undefined;
     this.video.onseeking = undefined;
     this.video.onplay = undefined;
@@ -372,6 +376,8 @@ class FrameAccurateVideo {
   }
 
   AddListener() {
+    if(!this.video) { return; }
+
     // Call once per frame - possible range 10hz - 50hz               Prevent division by zero
     const fps = Fraction(this.video.playbackRate).mul(this.frameRate).add(Fraction("0.00001"));
     const interval = Math.min(Math.max(Fraction(1000).div(fps).valueOf(), 20), 100);

@@ -347,7 +347,9 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
       {
         !sectionRef?.current ? null :
           <Video
+            blank={!clipView && compositionStore.clipIdList.length === 0}
             playoutUrl={clipView ? undefined : compositionStore.compositionPlayoutUrl}
+            key={clipView ? undefined : compositionStore.compositionPlayoutUrl}
             store={store}
             fullscreenContainer={sectionRef.current}
           />

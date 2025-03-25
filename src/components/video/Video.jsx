@@ -23,7 +23,15 @@ import Overlay from "@/components/video/Overlay.jsx";
 const S = CreateModuleClassMatcher(VideoStyles);
 
 
-const Video = observer(({store, showOverlay, showFrameDownload, fullscreenContainer, playoutUrl, className=""}) => {
+const Video = observer(({
+  store,
+  showOverlay,
+  showFrameDownload,
+  fullscreenContainer,
+  playoutUrl,
+  blank,
+  className=""
+}) => {
   const [ready, setReady] = useState(false);
   const [hlsPlayer, setHLSPlayer] = useState(undefined);
   const [video, setVideo] = useState(undefined);
@@ -32,7 +40,7 @@ const Video = observer(({store, showOverlay, showFrameDownload, fullscreenContai
   playoutUrl = playoutUrl || store.playoutUrl;
 
   useEffect(() => {
-    if(!video || !playoutUrl || !store.isVideo) {
+    if(!video || !playoutUrl || !store.isVideo || blank) {
       return;
     }
 
@@ -71,7 +79,7 @@ const Video = observer(({store, showOverlay, showFrameDownload, fullscreenContai
     store.Initialize(video, player);
 
     window.player = hlsPlayer;
-  }, [video]);
+  }, [video, playoutUrl]);
 
   useEffect(() => {
     return () => {
@@ -145,7 +153,7 @@ const Video = observer(({store, showOverlay, showFrameDownload, fullscreenContai
         }
       </div>
       {
-        ready || rootStore.errorMessage ? null :
+        ready || rootStore.errorMessage || blank ? null :
           <Loader className={S("loader")}/>
       }
     </div>

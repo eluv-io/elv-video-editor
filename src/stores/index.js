@@ -102,12 +102,10 @@ class RootStore {
     });
 
     // TODO: Remove
-    /*
+
     yield client.SetNodes({
       fabricURIs: ["https://host-76-74-28-233.contentfabric.io"]
     });
-
-     */
 
     runInAction(() => this.client = client);
 

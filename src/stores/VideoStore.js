@@ -573,10 +573,15 @@ class VideoStore {
     if(!this.clipOutFrame) { this.clipOutFrame = totalFrames - 1; }
 
     if(inFrameChanged && inFrame >= this.clipOutFrame) {
-      this.clipOutFrame = Math.min(totalFrames - 1, this.clipInFrame + (totalFrames * 0.05));
+      this.clipOutFrame = Math.min(totalFrames - 1, this.clipInFrame + Math.floor(totalFrames * 0.05));
     } else if(outFrameChanged && outFrame <= this.clipInFrame) {
-      this.clipInFrame = Math.max(0, this.clipOutFrame - (totalFrames * 0.05));
+      this.clipInFrame = Math.max(0, this.clipOutFrame - Math.floor(totalFrames * 0.05));
     }
+
+    return {
+      clipInFrame: this.clipInFrame,
+      clipOutFrame: this.clipOutFrame
+    };
   }
 
   SMPTEToTime(smpte) {
