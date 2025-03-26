@@ -104,13 +104,12 @@ class RootStore {
     // TODO: Remove
 
 
-    /*
+
     yield client.SetNodes({
-      fabricURIs: ["https://host-76-74-28-233.contentfabric.io"]
-      //fabricURIs: ["https://host-76-74-34-203.contentfabric.io"]
+      //fabricURIs: ["https://host-76-74-28-233.contentfabric.io"]
+      fabricURIs: ["https://host-76-74-34-203.contentfabric.io"]
     });
-    
-     */
+
 
 
 
