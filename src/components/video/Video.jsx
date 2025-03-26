@@ -59,15 +59,19 @@ const Video = observer(({
     StopScroll({element: video});
 
 
+    // TODO: Remove
     const config = {
       nudgeOffset: 0.2,
       nudgeMaxRetry: 30,
       autoLevelEnabled: false,
       // TODO: Remove
+      /*
       maxBufferLength: 2,
       maxBufferSize: 1 * 1024 * 1024,
       maxMaxBufferLength: 2,
       capLevelToPlayerSize: true
+      
+       */
     };
 
 

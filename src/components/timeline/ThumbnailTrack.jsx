@@ -5,7 +5,7 @@ import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {Button, Tooltip, Text, Progress} from "@mantine/core";
 import {modals} from "@mantine/modals";
-import {AsyncButton} from "@/components/common/Common.jsx";
+import {AsyncButton, LoaderImage} from "@/components/common/Common.jsx";
 
 const S = CreateModuleClassMatcher(TrackStyles);
 
@@ -175,7 +175,8 @@ const ThumbnailTrack = observer(({
           let startTime = store.duration * progress;
 
           return (
-            <img
+            <LoaderImage
+              showWithoutSource
               src={store.thumbnailStore.ThumbnailImage(startTime)}
               alt="Thumbnail"
               key={`thumbnail-${index}`}
