@@ -20,16 +20,17 @@ import KeyboardControls from "@/components/timeline/KeyboardControls.jsx";
 import Download from "@/components/download/Download.jsx";
 import Share from "@/components/download/Share.jsx";
 import Track from "@/components/timeline/Track.jsx";
+import {CreateTrackButton} from "@/components/forms/CreateTrack.jsx";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
-import AddNewItemIcon from "@/assets/icons/v2/add-new-item.svg";
+import AddTagIcon from "@/assets/icons/v2/add-tag.svg";
+import AddOverlayIcon from "@/assets/icons/v2/add-overlay.svg";
 import ClipInIcon from "@/assets/icons/v2/clip-start.svg";
 import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
 import UploadIcon from "@/assets/icons/v2/upload.svg";
 import SaveIcon from "@/assets/icons/v2/save.svg";
 import QuestionMarkIcon from "@/assets/icons/v2/question-mark.svg";
-import {CreateTrackButton} from "@/components/forms/CreateTrack.jsx";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -53,30 +54,35 @@ const TimelineTopBar = observer(({simple}) => {
                 onClick={() => editStore.Redo()}
               />
               <div className={S("toolbar__separator")}/>
-              <CreateTrackButton/>
-              <IconButton
-                icon={AddNewItemIcon}
-                disabled={trackStore.viewTracks.length === 0}
-                label={`Add New ${rootStore.page === "tags" ? "Tag" : "Clip"}`}
-                onClick={() =>
-                  tagStore.AddTag({
-                    trackId: tagStore.selectedTrackId,
+              <div className={S("tag-tools")}>
+                <div className={S("tag-tools__label")}>
+                  Tag Tools
+                </div>
+                <CreateTrackButton/>
+                <IconButton
+                  icon={AddTagIcon}
+                  disabled={trackStore.viewTracks.length === 0}
+                  label={`Add New ${rootStore.page === "tags" ? "Tag" : "Clip"}`}
+                  onClick={() =>
+                    tagStore.AddTag({
+                      trackId: tagStore.selectedTrackId,
                     text: "<New Tag>",
-                    tagType: rootStore.page === "clips" ? "clip" : "metadata"
-                  })
-                }
-              />
-              <IconButton
-                icon={AddNewItemIcon}
-                disabled={trackStore.viewTracks.length === 0}
-                label="Add New Overlay Tag"
-                onClick={() =>
-                  tagStore.AddOverlayTag({
-                    trackId: tagStore.selectedTrackId,
+                      tagType: rootStore.page === "clips" ? "clip" : "metadata"
+                    })
+                  }
+                />
+                <IconButton
+                  icon={AddOverlayIcon}
+                  disabled={trackStore.viewTracks.length === 0}
+                  label="Add New Overlay Tag"
+                  onClick={() =>
+                    tagStore.AddOverlayTag({
+                      trackId: tagStore.selectedTrackId,
                     text: "<New Tag>"
-                  })
-                }
-              />
+                    })
+                  }
+                />
+              </div>
               <div className={S("toolbar__separator")}/>
             </>
         }
@@ -110,6 +116,7 @@ const TimelineTopBar = observer(({simple}) => {
           value={videoStore.FrameToSMPTE(videoStore.clipInFrame) || "00:00:00:00"}
           onChange={({frame}) => videoStore.SetClipMark({inFrame: frame})}
         />
+        <PlayCurrentClipButton store={videoStore}/>
         <SMPTEInput
           highlight
           label="Clip End"
@@ -123,7 +130,6 @@ const TimelineTopBar = observer(({simple}) => {
           onClick={() => videoStore.SetClipMark({outFrame: videoStore.frame})}
         />
         <div className={S("toolbar__separator")}/>
-        <PlayCurrentClipButton store={videoStore}/>
         <Download/>
         <Share />
       </div>
@@ -330,7 +336,7 @@ const TimelinePlayheadIndicator = observer(({value, timelineRef, className=""}) 
 });
 
 const TimelineThumbnailTrack = observer(() => {
-  if(!videoStore.initialized || !videoStore.thumbnailStore.thumbnailStatus.loaded || !trackStore.showThumbnails) {
+  if(!videoStore.initialized || !trackStore.showThumbnails) {
     return null;
   }
 

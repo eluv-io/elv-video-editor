@@ -8,24 +8,27 @@ import {
   AudioControls,
   OfferingControls,
   PlaybackRateControl,
-  PlayCurrentClipButton,
+  PlayCurrentClipButton, QualityControls,
   SubtitleControls,
 } from "@/components/video/VideoControls";
 import Video from "@/components/video/Video";
 import MarkedSlider from "@/components/common/MarkedSlider.jsx";
-import {IconButton} from "@/components/common/Common.jsx";
-import {TextInput, Tooltip} from "@mantine/core";
+import {AsyncButton, Icon, IconButton} from "@/components/common/Common.jsx";
+import {Text, TextInput, Tooltip} from "@mantine/core";
 
 import ZoomInIcon from "@/assets/icons/v2/zoom-in.svg";
 import ZoomOutIcon from "@/assets/icons/v2/zoom-out.svg";
 import ClipIcon from "@/assets/icons/v2/clip-return.svg";
 import ClipInIcon from "@/assets/icons/v2/clip-start.svg";
 import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
-import AddClipIcon from "@/assets/icons/v2/add-new-item.svg";
-import DragClipIcon from "@/assets/icons/v2/drag-handle.svg";
+import AddClipIcon from "@/assets/icons/v2/add.svg";
+import DragClipIcon from "@/assets/icons/v2/drag.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
 import CheckIcon from "@/assets/icons/check-circle.svg";
 import XIcon from "@/assets/icons/X.svg";
+import TrashIcon from "@/assets/icons/trash.svg";
+import PublishIcon from "@/assets/icons/v2/publish.svg";
+import {modals} from "@mantine/modals";
 
 const S = CreateModuleClassMatcher(VideoStyles);
 
@@ -44,7 +47,7 @@ const ClipControls = observer(() => {
           label="Zoom Out"
           icon={ZoomOutIcon}
           disabled={store.scaleMin === 0 && store.scaleMax === 100}
-          onClick={() => store.SetScale(store.scaleMin - 0.5, store.scaleMax + 0.5)}
+          onClick={() => store.SetScale(store.scaleMin - 1, store.scaleMax + 1)}
         />
         <IconButton
           label="Reset View to Selected Clip"
@@ -63,8 +66,8 @@ const ClipControls = observer(() => {
         <IconButton
           label="Zoom In"
           icon={ZoomInIcon}
-          disabled={store.scaleMagnitude < 0.5}
-          onClick={() => store.SetScale(store.scaleMin + 0.5, store.scaleMax - 0.5)}
+          disabled={store.scaleMagnitude < 1}
+          onClick={() => store.SetScale(store.scaleMin + 1, store.scaleMax - 1)}
         />
       </div>
       <div className={S("toolbar__separator")}/>
@@ -152,7 +155,7 @@ const ClipSeekBar = observer(() => {
     });
   }
 
-  if(clip.clipOutFrame < store.totalFrames - 1) {
+  if(clip.clipOutFrame < store.totalFrames - 5) {
     indicators.push({
       position: 100 * clip.clipOutFrame / (store.totalFrames || 1),
       style: "end",
@@ -237,23 +240,62 @@ const Title = observer(({clipView}) => {
           {name}
         </div>
       </Tooltip>
+      <IconButton
+        faded
+        small
+        label="Edit Name"
+        icon={EditIcon}
+        onClick={() => setEditing(true)}
+      />
+      {
+        !clipView || compositionStore.videoStore.fullScreen ? null :
+          <IconButton
+            faded
+            small
+            label="Remove Clip from Composition"
+            icon={TrashIcon}
+            onClick={() => compositionStore.RemoveClip(compositionStore.selectedClipId)}
+          />
+      }
+      {
+        !clipView || compositionStore.videoStore.fullScreen ? null :
+          <IconButton
+            faded
+            small
+            label="Close"
+            icon={XIcon}
+            onClick={() => compositionStore.ClearSelectedClip()}
+          />
+      }
       <div className={S("video-section__title-actions")}>
-        <IconButton
-          faded
-          small
-          label="Edit Name"
-          icon={EditIcon}
-          onClick={() => setEditing(true)}
-        />
         {
-          !clipView || compositionStore.videoStore.fullScreen ? null :
-            <IconButton
-              faded
-              small
-              label="Close"
-              icon={XIcon}
-              onClick={() => compositionStore.ClearSelectedClip()}
-            />
+          clipView ? null :
+            <AsyncButton
+              color="gray.5"
+              variant="outline"
+              autoContrast
+              h={30}
+              px="xs"
+              onClick={async () => {
+                if(!await new Promise(resolve =>
+                  modals.openConfirmModal({
+                    title: "Publish Composition",
+                    centered: true,
+                    children: <Text fz="sm">Are you sure you want to publish this composition?</Text>,
+                    labels: { confirm: "Publish", cancel: "Cancel" },
+                    onConfirm: () => resolve(true),
+                    onCancel: () => resolve(false)
+                  })
+                )) { return; }
+
+                await compositionStore.SaveComposition();
+              }}
+            >
+              <Icon icon={PublishIcon} />
+              <span style={{marginLeft: 10}}>
+                Publish to Fabric
+              </span>
+            </AsyncButton>
         }
       </div>
     </h1>
@@ -348,8 +390,20 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
         !sectionRef?.current ? null :
           <Video
             blank={!clipView && compositionStore.clipIdList.length === 0}
+            muted={clipView ? compositionStore.clipMuted : compositionStore.compositionMuted}
+            volume={clipView ? compositionStore.clipVolume : compositionStore.compositionVolume}
             playoutUrl={clipView ? undefined : compositionStore.compositionPlayoutUrl}
             key={clipView ? undefined : compositionStore.compositionPlayoutUrl}
+            Callback={video => {
+              video.addEventListener("volumechange", () => compositionStore.__UpdateVideoSettings(
+                clipView ? "clip" : "composition",
+                video
+              ));
+
+              if(!clipView && compositionStore.seekProgress) {
+                video.addEventListener("durationchange", () => video.currentTime = video.duration * compositionStore.seekProgress / 100);
+              }
+            }}
             store={store}
             fullscreenContainer={sectionRef.current}
           />
@@ -370,9 +424,10 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
               <>
                 <OfferingControls store={store}/>
                 <SubtitleControls store={store}/>
-                <AudioControls store={store}/>
               </>
           }
+          <QualityControls store={store}/>
+          <AudioControls store={store}/>
         </div>
       </div>
     </div>

@@ -91,7 +91,7 @@ const PageControls = observer(({currentPage, pages, maxSpread=15, SetPage}) => {
   );
 });
 
-const SearchBar = observer(({filter, setFilter, delay=500}) => {
+const SearchBar = observer(({filter, setFilter, delay=500, Select}) => {
   const [updateTimeout, setUpdateTimeout] = useState(undefined);
   const [input, setInput] = useState(filter);
   // eslint-disable-next-line no-unused-vars
@@ -114,7 +114,9 @@ const SearchBar = observer(({filter, setFilter, delay=500}) => {
         if(["ilib", "iq__", "hq__", "0x"].find(prefix => event.target.value.trim().startsWith(prefix))) {
           const result = await browserStore.LookupContent(event.target.value);
 
-          if(result.objectId) {
+          if(Select) {
+            Select(result);
+          } else if(result.objectId) {
             navigate(`/${result.libraryId}/${result.objectId}`);
           } else if(result.libraryId) {
             navigate(`/${result.libraryId}`);
@@ -185,23 +187,21 @@ const BrowserTable = observer(({filter, Load, Path, Select, defaultIcon, content
           }
         </div>
         {
-          content.map(({id, name, image, duration, isVideo, isChannel, lastModified, forbidden}) =>
+          content.map(({id, name, image, duration, isVideo, lastModified, forbidden}) =>
             <Linkish
-              to={Path?.(id, isChannel)}
-              onClick={Select ? () => Select(id) : undefined}
+              to={Path?.(id, name)}
+              onClick={Select ? () => Select({[contentType === "library" ? "libraryId" : "objectId"]: id, name}) : undefined}
               key={`browser-row-${id}`}
               disabled={forbidden || (videoOnly && !isVideo)}
               className={S("browser-table__row", "browser-table__row--content")}
             >
-              <div className={S("browser-table__cell")}>
+              <div title={name} className={S("browser-table__cell")}>
                 {
                   image ?
                     <img src={image} alt={name} className={S("browser-table__cell-image")}/> :
                     <SVG src={duration ? VideoIcon : defaultIcon} className={S("browser-table__cell-icon")}/>
                 }
-                <span>
-                  {name}
-                </span>
+                {name}
               </div>
               {
                 contentType !== "object" ? null :
@@ -255,7 +255,7 @@ export const ObjectBrowser = observer(({libraryId, title, Select, Path, Back, ba
 
   return (
     <div className={JoinClassNames(S("browser", "browser--object"), className)}>
-      <SearchBar filter={filter} setFilter={setFilter}/>
+      <SearchBar filter={filter} setFilter={setFilter} Select={Select} />
       <h1 className={S("browser__header")}>
         <IconButton
           icon={BackIcon}
@@ -286,7 +286,7 @@ export const LibraryBrowser = observer(({title, Path, Select, className=""}) => 
 
   return (
     <div className={JoinClassNames(S("browser", "browser--library"), className)}>
-      <SearchBar filter={filter} setFilter={setFilter}/>
+      <SearchBar filter={filter} setFilter={setFilter} Select={Select}/>
       <h1 className={S("browser__header")}>
         { title || "Content Libraries" }
       </h1>
@@ -314,10 +314,7 @@ const Browser = observer(() => {
       key={`browser-${libraryId}`}
       libraryId={libraryId}
       backPath="/"
-      Path={(objectId, isChannel) =>
-        isChannel ?
-          UrlJoin("/compositions", objectId) :
-          UrlJoin("/", libraryId, objectId)}
+      Path={objectId => UrlJoin("/", libraryId, objectId)}
     />:
     <LibraryBrowser Path={libraryId => `/${libraryId}`} />;
 });

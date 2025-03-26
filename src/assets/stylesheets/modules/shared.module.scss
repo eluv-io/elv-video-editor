@@ -226,9 +226,9 @@
   &__time,
   &__text {
     font-size: 12px;
-    max-height: 100px;
+    max-height: 150px;
     max-width: 200px;
-    overflow-x: hidden;
+    overflow: hidden;
     text-align: center;
     text-overflow: ellipsis;
     white-space: wrap;

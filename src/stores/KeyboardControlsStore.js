@@ -98,7 +98,7 @@ class ControlStore {
   }
 
   HandleInput(event) {
-    // Controls only enabled on clips and tags view
+    // Controls not enabled in browser or asset views
     if(!["clips", "tags", "simple", "compositions"].includes(this.rootStore.page)) {
       return;
     }
@@ -218,10 +218,10 @@ class ControlStore {
     this.activeStore.PlaySegment(this.activeStore.clipInFrame, this.activeStore.clipOutFrame);
   }
 
-  DeleteClip() {
-    if(!this.rootStore.clipStore.selectedClipId) { return; }
+  RemoveClip() {
+    if(!this.rootStore.compositionStore.selectedClipId) { return; }
 
-    this.rootStore.clipStore.DeleteClip(this.rootStore.clipStore.selectedClipId);
+    this.rootStore.compositionStore.RemoveClip(this.rootStore.compositionStore.selectedClipId);
   }
 
   SetMarkIn() {
@@ -396,6 +396,17 @@ class ControlStore {
           }
         }
       ],
+    ],
+    "Compositions": [
+      [
+        ["Delete", "Backspace"],
+        {
+          action: {
+            description: "Remove Selected Clip from Composition",
+            action: () => this.RemoveClip()
+          }
+        }
+      ]
     ],
     "Tracks": [
       [

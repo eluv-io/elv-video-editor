@@ -9,9 +9,9 @@ import {
 } from "@/components/common/Common.jsx";
 import {tagStore, trackStore} from "@/stores/index.js";
 import {CreateModuleClassMatcher, Slugify} from "@/utils/Utils.js";
-
-import TrackIcon from "@/assets/icons/v2/track.svg";
 import {Button, Tooltip} from "@mantine/core";
+
+import TrackIcon from "@/assets/icons/v2/add-track.svg";
 
 const S = CreateModuleClassMatcher();
 

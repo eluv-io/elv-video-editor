@@ -4,7 +4,7 @@ import "@/assets/stylesheets/modules/shared.module.scss";
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useRef} from "react";
-import {compositionStore, keyboardControlsStore, rootStore, tagStore, videoStore} from "@/stores";
+import {keyboardControlsStore, rootStore, tagStore, videoStore} from "@/stores";
 import {Linkish, Loader} from "@/components/common/Common";
 import {Redirect, Route, Switch, useLocation, useParams, useRoute} from "wouter";
 import Browser from "@/components/nav/Browser";
@@ -72,38 +72,6 @@ const DefaultContentRoutes = observer(() => {
   );
 });
 
-// All routes after content is selected - route will contain /:libraryId/:objectId
-const CompositionRoutes = observer(() => {
-  const { objectId } = useParams();
-
-  useEffect(() => {
-    rootStore.SetPage("compositions");
-    rootStore.SetSubpage(objectId);
-
-    if(objectId && !compositionStore.loading && compositionStore.videoObject?.objectId !== objectId) {
-      compositionStore.SetCompositionObject({objectId});
-    }
-  }, [objectId]);
-
-  if(rootStore.errorMessage) {
-    return (
-      <div className="error">
-        <div>Unable to load content: </div>
-        <div>{rootStore.errorMessage}</div>
-        <Linkish to="~/" styled>Return to Content Browser</Linkish>
-      </div>
-    );
-  }
-
-  return (
-    <Switch>
-      <Route path="">
-        <CompositionsView />
-      </Route>
-    </Switch>
-  );
-});
-
 const App = observer(() => {
   const ref = useRef(null);
 
@@ -153,8 +121,11 @@ const App = observer(() => {
           !rootStore.initialized ?
             <Loader /> :
             <Switch>
-              <Route path="/compositions/:objectId?">
-                <CompositionRoutes />
+              <Route path="/compositions">
+                <CompositionsView />
+              </Route>
+              <Route path="/compositions/:objectId/:compositionKey">
+                <CompositionsView key="selected" />
               </Route>
               <Route path="/:libraryId?">
                 <Browser />

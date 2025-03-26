@@ -1,29 +1,20 @@
-import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
+import CompositionStyles from "@/assets/stylesheets/modules/compositions.module.scss";
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-
-import ManualCompositionSelectionImage from "@/assets/images/composition-manual.svg";
-import AICompositionSelectionImage from "@/assets/images/composition-ai.svg";
-import {Loader, Modal} from "@/components/common/Common.jsx";
+import {CreateModuleClassMatcher, Slugify} from "@/utils/Utils.js";
+import {AsyncButton, FormTextArea, FormTextInput, IconButton, Loader, Modal} from "@/components/common/Common.jsx";
 import {LibraryBrowser, ObjectBrowser} from "@/components/nav/Browser.jsx";
 import {Redirect} from "wouter";
 import {compositionStore} from "@/stores/index.js";
+import {Button} from "@mantine/core";
 
-const S = CreateModuleClassMatcher(TimelineStyles);
+import BackIcon from "@/assets/icons/v2/back.svg";
+import ManualCompositionSelectionImage from "@/assets/images/composition-manual.svg";
+import AICompositionSelectionImage from "@/assets/images/composition-ai.svg";
+import UrlJoin from "url-join";
 
-const TargetLibrarySelectionModal = observer(({Select, Cancel}) => {
-  return (
-    <Modal withCloseButton={false} opened centered size={1000} onClose={Cancel}>
-      <LibraryBrowser
-        Select={Select}
-        title="Select a library for your new composition"
-        className={S("composition-selection__browser")}
-      />
-    </Modal>
-  );
-});
+const S = CreateModuleClassMatcher(CompositionStyles);
 
 const SourceSelectionModal = observer(({Select, Cancel}) => {
   const [libraryId, setLibraryId] = useState(undefined);
@@ -34,14 +25,20 @@ const SourceSelectionModal = observer(({Select, Cancel}) => {
           <ObjectBrowser
             libraryId={libraryId}
             title="Select source content for your composition"
-            videoOnly
+            //videoOnly
             Back={() => setLibraryId(undefined)}
-            Select={objectId => Select({libraryId, objectId})}
+            Select={({objectId, name}) => Select({objectId, name})}
             className={S("composition-selection__browser")}
           /> :
           <LibraryBrowser
             title="Select source content for your composition"
-            Select={libraryId => setLibraryId(libraryId)}
+            Select={({libraryId, objectId, name}) => {
+              if(objectId) {
+                Select({objectId, name});
+              } else {
+                setLibraryId(libraryId);
+              }
+            }}
             className={S("composition-selection__browser")}
           />
       }
@@ -49,35 +46,38 @@ const SourceSelectionModal = observer(({Select, Cancel}) => {
   );
 });
 
-const CompositionSelection = observer(() => {
+let keyCheckTimeout;
+const CompositionForm = observer(({type, Cancel}) => {
+  const [showSourceModal, setShowSourceModal] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [compositionId, setCompositionId] = useState(undefined);
+  const [created, setCreated] = useState(false);
+  const [keyExists, setKeyExists] = useState(false);
   const [options, setOptions] = useState({
     type: undefined,
     sourceId: undefined,
-    targetLibraryId: undefined,
+    sourceName: "",
+    name: "",
+    key: "",
     prompt: "",
     length: undefined
   });
 
+  const key = options.key || Slugify(options.name);
+
+  // TODO: Select source offering
   useEffect(() => {
-    if(creating || !options.targetLibraryId) { return; }
+    clearTimeout(keyCheckTimeout);
 
-    setCreating(true);
-    setOptions({type: undefined, prompt: ""});
+    if(!options.sourceId || !key) { return; }
 
-    compositionStore.CreateCompositionObject({
-      sourceObjectId: options.sourceId,
-      libraryId: options.targetLibraryId
-    })
-      .then(objectId => setCompositionId(objectId))
-      // eslint-disable-next-line no-console
-      .catch(error => console.error(error))
-      .finally(() => setCreating(false));
-  }, [options]);
+    keyCheckTimeout = setTimeout(() => {
+      compositionStore.__CheckCompositionKeyExists({objectId: options.sourceId, key})
+        .then(exists => setKeyExists(exists));
+    }, 500);
+  }, [options.sourceId, key]);
 
-  if(compositionId) {
-    return <Redirect to={`/compositions/${compositionId}`} />;
+  if(created) {
+    return <Redirect to={UrlJoin("/compositions", options.sourceId, key)} />;
   }
 
   if(creating) {
@@ -93,27 +93,119 @@ const CompositionSelection = observer(() => {
     );
   }
 
-  if(options.type) {
-    if(!options.sourceId){
-      return (
-        <SourceSelectionModal
-          Select={({objectId}) => setOptions({...options, sourceId: objectId})}
-          Cancel={() => setOptions({...options, type: undefined})}
-        />
-      );
-    } else {
-      return (
-        <TargetLibrarySelectionModal
-          Select={libraryId => setOptions({...options, targetLibraryId: libraryId})}
-          Cancel={() => setOptions({...options, type: undefined, sourceId: undefined})}
-        />
-      );
-    }
+  let error;
+  if(!options.sourceId) {
+    error = "Please select source content";
+  } else if(!options.name) {
+    error = "Please specify a name for your composition";
+  } else if(keyExists) {
+    error = "A composition with this key already exists for this content";
   }
 
   return (
     <div className={S("composition-selection")}>
-      <button onClick={() => setOptions({...options, type: "manual"})} className={S("selection-block", "selection-block--manual")}>
+      <form onSubmit={event => event.preventDefault()} className={S("composition-form")}>
+        <div className={S("composition-form__title")}>
+          <IconButton
+            icon={BackIcon}
+            onClick={Cancel}
+          />
+          {
+            type === "manual" ?
+              "Create Composition" :
+              "Create Highlight Compositions with AI"
+          }
+        </div>
+        <Button color="gray.5" autoContrast onClick={() => setShowSourceModal(true)}>
+          Choose Source Content
+        </Button>
+        {
+          !options.sourceName ? null :
+            <FormTextInput
+              disabled
+              label="Source"
+              value={options.sourceName}
+            />
+        }
+        <FormTextInput
+          label="Composition Name"
+          value={options.name}
+          onChange={event => setOptions({...options, name: event.target.value})}
+        />
+        <FormTextInput
+          label="Composition Key"
+          value={options.key}
+          placeholder={key}
+          onChange={event => setOptions({...options, key: event.target.value})}
+        />
+        {
+          type !== "ai" ? null :
+            <FormTextArea
+              label="Prompt (optional)"
+              value={options.prompt}
+              onChange={event => setOptions({...options, prompt: event.target.value})}
+            />
+        }
+        <div className={S("composition-form__actions")}>
+          <AsyncButton
+            tooltip={error}
+            disabled={!!error}
+            color="gray.1"
+            autoContrast
+            mt={5}
+            w={150}
+            onClick={async () => {
+              setCreating(true);
+
+              try {
+                await compositionStore.CreateComposition({
+                  type,
+                  sourceObjectId: options.sourceId,
+                  name: options.name,
+                  key,
+                  prompt: options.prompt
+                });
+
+                setCreated(true);
+              } catch(error) {
+                // eslint-disable-next-line no-console
+                console.error(error);
+                setCreating(false);
+              }
+            }}
+          >
+            {
+              type === "manual" ?
+                "Create" : "Generate"
+            }
+          </AsyncButton>
+        </div>
+      </form>
+
+      {
+        !showSourceModal ? null :
+          <SourceSelectionModal
+            Select={({objectId, name}) => {
+              setOptions({...options, sourceId: objectId, sourceName: name});
+              setShowSourceModal(false);
+            }}
+            Cancel={() => setShowSourceModal(false)}
+          />
+      }
+    </div>
+  );
+});
+
+const CompositionSelection = observer(() => {
+  const [type, setType] = useState(undefined);
+
+  if(type) {
+    return <CompositionForm type={type} Cancel={() => setType(undefined)} />;
+  }
+
+  return (
+    <div className={S("composition-selection")}>
+      <button onClick={() => setType("manual")} className={S("selection-block", "selection-block--manual")}>
         <img src={ManualCompositionSelectionImage} className={S("selection-block__image")}/>
         <div className={S("selection-block__text")}>
           <div className={S("selection-block__title")}>
@@ -124,7 +216,7 @@ const CompositionSelection = observer(() => {
           </div>
         </div>
       </button>
-      <button onClick={() => setOptions({...options, type: "ai"})} className={S("selection-block", "selection-block--ai")}>
+      <button onClick={() => setType("ai")} className={S("selection-block", "selection-block--ai")}>
         <img src={AICompositionSelectionImage} className={S("selection-block__image")}/>
         <div className={S("selection-block__text")}>
           <div className={S("selection-block__title")}>

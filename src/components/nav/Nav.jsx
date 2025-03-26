@@ -38,9 +38,9 @@ const Nav = observer(() => {
     {
       label: "Compositions",
       key: "compositions",
-      to: !compositionObject?.objectId ? "/compositions" : UrlJoin("/compositions", compositionObject.objectId),
-      //to: "/compositions/iq__3kmDn5K2KqHV9YtPGNVNFjtwWwyu",
-
+      to: !compositionObject?.objectId ?
+        "/compositions" :
+        UrlJoin("/compositions", compositionObject.objectId, compositionObject.compositionKey),
       icon: CompositionIcon,
       active: !rootStore.page || rootStore.page === "compositions"
     },

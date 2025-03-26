@@ -103,12 +103,16 @@ class RootStore {
 
     // TODO: Remove
 
+
     /*
     yield client.SetNodes({
       fabricURIs: ["https://host-76-74-28-233.contentfabric.io"]
+      //fabricURIs: ["https://host-76-74-34-203.contentfabric.io"]
     });
     
      */
+
+
 
     runInAction(() => this.client = client);
 
@@ -134,7 +138,7 @@ class RootStore {
     this.address = yield this.client.CurrentAccountAddress();
     this.network = (yield this.client.NetworkInfo()).name;
     this.publicToken = client.utils.B64(JSON.stringify({qspace_id: yield this.client.ContentSpaceId()}));
-    this.signedToken = yield client.CreateFabricToken({duration: 24 * 60 * 60 * 1000});
+    this.signedToken = yield client.CreateSignedToken({duration: 24 * 60 * 60 * 1000});
   });
 
   FabricUrl({libraryId, objectId, writeToken, versionHash, noWriteToken=false, path="", auth, resolve=true, width}) {

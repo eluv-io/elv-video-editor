@@ -30,6 +30,9 @@ const Video = observer(({
   fullscreenContainer,
   playoutUrl,
   blank,
+  muted=true,
+  volume=1,
+  Callback,
   className=""
 }) => {
   const [ready, setReady] = useState(false);
@@ -50,9 +53,12 @@ const Video = observer(({
 
     video.addEventListener("canplay", () => setReady(true));
 
+    video.volume = volume;
+
     // Add scroll handler for volume to video element
     StopScroll({element: video});
 
+    /*
     const config = {
       nudgeOffset: 0.2,
       nudgeMaxRetry: 30,
@@ -63,6 +69,11 @@ const Video = observer(({
       maxMaxBufferLength: 2,
       capLevelToPlayerSize: true
     };
+
+
+     */
+
+    const config = {};
 
     const player = new HLSPlayer(config);
 
@@ -79,6 +90,8 @@ const Video = observer(({
     store.Initialize(video, player);
 
     window.player = hlsPlayer;
+
+    Callback?.(video);
   }, [video, playoutUrl]);
 
   useEffect(() => {
@@ -115,7 +128,7 @@ const Video = observer(({
           key={`video-${playoutUrl}`}
           ref={setVideo}
           crossOrigin="anonymous"
-          muted={true}
+          muted={muted}
           autoPlay={false}
           controls={false}
           preload="auto"

@@ -16,7 +16,6 @@ import {
   PlayCurrentClipButton
 } from "@/components/video/VideoControls.jsx";
 import KeyboardControls from "@/components/timeline/KeyboardControls.jsx";
-import Download from "@/components/download/Download.jsx";
 import CompositionTrack from "@/components/compositions/CompositionTrack.jsx";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
@@ -26,6 +25,7 @@ import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
 import SplitIcon from "@/assets/icons/v2/split.svg";
 import {useParams} from "wouter";
 import CompositionSelection from "@/components/compositions/CompositionSelection.jsx";
+import Share from "@/components/download/Share.jsx";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -100,7 +100,7 @@ const TimelineTopBar = observer(() => {
           label="Split Clip at Playhead"
         />
         <div className={S("toolbar__separator")}/>
-        <Download/>
+        <Share />
       </div>
     </div>
   );

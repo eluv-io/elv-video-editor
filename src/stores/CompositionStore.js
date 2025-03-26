@@ -11,13 +11,17 @@ class CompositionStore {
   loading = false;
   clipStores = {};
 
+  filter = "";
+
   compositionObject;
   compositionPlayoutUrl;
+  sourceClipId;
   writeTokenInfo = {};
 
   clips = {};
   clipIdList = [];
   selectedClipId;
+  aiClipIds = [];
 
   draggingClip;
   showDragShadow = false;
@@ -25,6 +29,13 @@ class CompositionStore {
 
   mousePositionX = 0;
   mousePositionY = 0;
+
+  clipMuted = true;
+  clipVolume = 1;
+  compositionMuted = true;
+  compositionVolume = 1;
+
+  saved = false;
 
   _actionStack = [];
   _redoStack = [];
@@ -38,8 +49,8 @@ class CompositionStore {
     makeAutoObservable(this);
 
     this.rootStore = rootStore;
-    this.videoStore = new VideoStore(this.rootStore, {tags: false, channel: true});
-    this.videoStore.id = "Composition Store";
+
+    this.Reset();
   }
 
   get nextUndoAction() {
@@ -101,12 +112,29 @@ class CompositionStore {
       });
   }
 
+  get aiClips() {
+    return this.aiClipIds
+      .map(clipId => this.clips[clipId])
+      .filter(clip =>
+        !this.filter ||
+        clip.name?.toLowerCase()?.includes(this.filter)
+      );
+  }
+
   get selectedClipStore() {
     return this.clipStores[this.selectedClip?.storeKey];
   }
 
   get selectedClip() {
     return this.clips[this.selectedClipId];
+  }
+
+  get sourceClip() {
+    return this.clips[this.sourceClipId];
+  }
+
+  get sourceVideoStore() {
+    return this.clipStores[this.sourceClip?.storeKey];
   }
 
   PerformAction({label, Action, ...attrs}, fromRedo=false) {
@@ -136,9 +164,10 @@ class CompositionStore {
       this._redoStack = [];
     }
 
+    this.saved = false;
+
     return result;
   }
-
 
   SetCompositionName(name) {
     this.compositionObject.name = name;
@@ -234,7 +263,7 @@ class CompositionStore {
     });
 
     if(this.selectedClipId === clipId) {
-      this.ClearSelectedClip();
+      this.SetSelectedClip(this.sourceClipId);
     }
   }
 
@@ -332,12 +361,19 @@ class CompositionStore {
   Reset() {
     this.videoStore = new VideoStore(this.rootStore, {tags: false, channel: true});
     this.videoStore.id = "Composition Store";
+    this.saved = false;
 
     this.clipStores = {};
     this.clips = {};
     this.clipIdList = [];
+    this.aiClipIds = [];
     this.selectedClipId = undefined;
     this.name = "";
+    this.filter = "";
+  }
+
+  SetFilter(filter) {
+    this.filter = filter;
   }
 
   SetVideo = flow(function * ({objectId, preferredOfferingKey}) {
@@ -358,6 +394,17 @@ class CompositionStore {
   }
 
   ModifySelectedClip({...attrs}) {
+    if(attrs.clipInFrame || attrs.clipOutFrame) {
+      // Set clip points in store and use store check to ensure valid points
+      const {clipInFrame, clipOutFrame} = this.selectedClipStore.SetClipMark({
+        inFrame: attrs.clipInFrame || this.selectedClip.clipInFrame,
+        outFrame: attrs.clipOutFrame || this.selectedClip.clipOutFrame
+      });
+
+      attrs.clipInFrame = clipInFrame;
+      attrs.clipOutFrame = clipOutFrame;
+    }
+
     this.clips[this.selectedClipId] = {
       ...this.clips[this.selectedClipId],
       ...attrs
@@ -368,7 +415,7 @@ class CompositionStore {
     this.selectedClipId = undefined;
   }
 
-  InitializeClip = flow(function * ({objectId, offering="default", clipInFrame, clipOutFrame}) {
+  InitializeClip = flow(function * ({objectId, offering="default", clipInFrame, clipOutFrame, source}) {
     const key = `${objectId}-${offering}`;
     if(!this.clipStores[key]) {
       this.clipLoading = true;
@@ -399,13 +446,19 @@ class CompositionStore {
       objectId: store.videoObject.objectId,
       versionHash: store.videoObject.versionHash,
       offering: store.offeringKey,
-      clipInFrame,
-      clipOutFrame,
+      clipInFrame: clipInFrame || 0,
+      clipOutFrame: clipOutFrame || store.totalFrames - 1,
       storeKey: `${store.videoObject.objectId}-${store.offeringKey}`,
       clipKey: `${store.videoObject.objectId}-${store.offeringKey}-${clipInFrame}-${clipOutFrame}`
       // TODO: Audio
       //audioRepresentation: store.audioRepresentation,
     };
+
+    if(!store.totalFrames && source) {
+      store.InitializeCallback = () => {
+        this.clips[clipId].clipOutFrame = store.totalFrames - 2;
+      };
+    }
 
     this.clipLoading = false;
 
@@ -417,7 +470,8 @@ class CompositionStore {
   }
 
   // Create/update/load channel objects
-  CreateCompositionObject = flow(function * ({sourceObjectId, libraryId}) {
+  CreateComposition = flow(function * ({type, sourceObjectId, name, key, prompt}) {
+    /*
     const contentTypes = yield this.client.ContentTypes();
     const channelType =
       Object.values(contentTypes).find(type => type.name?.toLowerCase()?.includes("- channel")) ||
@@ -425,6 +479,8 @@ class CompositionStore {
         type.name?.toLowerCase()?.includes("- title") &&
         type.name?.toLowerCase()?.includes("master")
       );
+
+     */
 
     const sourceLibraryId = yield this.client.ContentObjectLibraryId({objectId: sourceObjectId});
     const sourceMetadata = yield this.client.ContentObjectMetadata({
@@ -450,84 +506,77 @@ class CompositionStore {
       frameRate = offeringOptions[videoKey].rate;
     }
 
-    const name = sourceMetadata?.public?.name ? `${sourceMetadata.public.name} - Composition` : "New Composition";
-    let compositionMetadata = {
-      public: {
-        name,
-        asset_metadata: {
-          display_title: name,
-          title: name,
-          info: {}
-        }
-      },
-      channel: {
-        source_info: {
-          libraryId: sourceLibraryId,
-          objectId: sourceObjectId,
-          name: sourceMetadata?.public?.name,
-          offeringKey,
-          frameRate,
-        },
-        offerings: {
-          default: {
-            playout_type: "ch_vod",
-            playout: playoutMetadata,
-            items: [],
-            source_info: {
-              libraryId: sourceLibraryId,
-              objectId: sourceObjectId,
-              name: sourceMetadata?.public?.name,
-              offeringKey,
-              frameRate
-            }
-          }
-        }
+    const sourceWriteToken = yield this.WriteToken(sourceObjectId);
+
+    let items = [];
+    if(type === "ai") {
+      const highlights = yield this.GenerateAIHighlights({objectId: sourceObjectId, prompt});
+      const videoHandler = new FrameAccurateVideo({frameRateRat: frameRate});
+
+      items = highlights.map(clip => {
+        const clipInFrame = videoHandler.TimeToFrame(clip.start_time / 1000);
+        const clipOutFrame = videoHandler.TimeToFrame(clip.end_time / 1000);
+
+        return {
+          display_name: clip.reason,
+          source: {
+            "/": UrlJoin("./", "rep", "playout", offeringKey)
+          },
+          slice_start_rat: videoHandler.FrameToRat(clipInFrame),
+          slice_end_rat: videoHandler.FrameToRat(clipOutFrame),
+          duration_rat: videoHandler.FrameToRat(clipOutFrame - clipInFrame),
+          type: "mez_vod"
+        };
+      });
+    }
+
+    let channelMetadata = {
+      name,
+      key,
+      playout_type: "ch_vod",
+      playout: playoutMetadata,
+      items,
+      source_info: {
+        libraryId: sourceLibraryId,
+        objectId: sourceObjectId,
+        name: sourceMetadata?.public?.name,
+        offeringKey,
+        frameRate
       }
     };
 
-    const createResponse = yield this.client.CreateContentObject({
-      libraryId,
-      options: {
-        type: channelType.id
-      }
-    });
-
     yield this.client.ReplaceMetadata({
-      libraryId,
-      objectId: createResponse.id,
-      writeToken: createResponse.write_token,
-      metadataSubtree: "/",
-      metadata: compositionMetadata,
+      libraryId: sourceLibraryId,
+      objectId: sourceObjectId,
+      writeToken: sourceWriteToken,
+      metadataSubtree: UrlJoin("/channel", "offerings", key),
+      metadata: Unproxy(channelMetadata)
     });
-
-    yield this.client.FinalizeContentObject({
-      libraryId,
-      objectId: createResponse.id,
-      writeToken: createResponse.write_token
-    });
-
-    return createResponse.id;
   });
 
   GetCompositionPlayoutUrl = flow(function * () {
     if(!this.compositionObject || this.clipIdList.length === 0) { return; }
 
-    const {objectId} = this.compositionObject;
-    const writeToken = this.WriteToken(objectId);
+    const {objectId, compositionKey} = this.compositionObject;
+    const writeToken = yield this.WriteToken(objectId, false);
 
     const playoutOptions = (yield this.client.PlayoutOptions({
       objectId,
       writeToken,
-      handler: "channel"
+      handler: "channel",
+      offering: compositionKey
     }));
 
-    const playoutUrl = new URL(playoutOptions.hls.playoutMethods.clear.playoutUrl);
+    const playoutUrl = new URL(
+      playoutOptions.hls.playoutMethods.clear?.playoutUrl ||
+      playoutOptions.hls.playoutMethods["aes-128"]?.playoutUrl
+    );
     playoutUrl.searchParams.set("uid", Math.random());
 
     // TODO: Client should use write token in generated urls
     playoutUrl.pathname = playoutUrl.pathname.replace(
       this.compositionObject.versionHash,
-      this.WriteToken()
+      writeToken
     );
 
     this.compositionPlayoutUrl = playoutUrl.toString();
@@ -538,23 +587,37 @@ class CompositionStore {
   UpdateComposition = flow(function * () {
     if(!this.compositionObject) { return; }
 
-    const {libraryId, objectId, sourceObjectId, sourceOfferingKey} = this.compositionObject;
-    const writeToken = this.WriteToken(objectId);
+    this.seekProgress = this.videoStore.seek;
+
+    const {libraryId, objectId, sourceObjectId, sourceOfferingKey, compositionKey} = this.compositionObject;
+    const writeToken = yield this.WriteToken(objectId);
     const sourceHash = yield this.client.LatestVersionHash({objectId: sourceObjectId});
 
-    const sourceLink = {
-      "/": UrlJoin("/qfab", sourceHash, "rep", "playout", sourceOfferingKey)
-    };
+    let sourceLink;
+    if(objectId === sourceObjectId) {
+      sourceLink = {
+        "/": UrlJoin("./", "rep", "playout", sourceOfferingKey)
+      };
+    } else {
+      sourceLink = {
+        "/": UrlJoin("/qfab", sourceHash, "rep", "playout", sourceOfferingKey)
+      };
+    }
 
     const items = this.clipList.map(clip => {
       const store = this.clipStores[clip.storeKey];
+
+      // Actual duration may be lower than what the video element projects
+      const sourceEndFrame = store.videoHandler.RatToFrame(store.metadata.offerings[clip.offering].media_struct.duration_rat);
+
+      let clipOutFrame = Math.min(clip.clipOutFrame, sourceEndFrame - 1);
 
       return {
         display_name: clip.name,
         source: sourceLink,
         slice_start_rat: store.videoHandler.FrameToRat(clip.clipInFrame || 0),
-        slice_end_rat: store.videoHandler.FrameToRat(clip.clipOutFrame || store.totalFrames - 1),
-        duration_rat: store.videoHandler.FrameToRat((clip.clipOutFrame || store.totalFrames - 1) - (clip.clipInFrame || 0)),
+        slice_end_rat: store.videoHandler.FrameToRat(clipOutFrame || store.totalFrames - 1),
+        duration_rat: store.videoHandler.FrameToRat((clipOutFrame || store.totalFrames - 1) - (clip.clipInFrame || 0)),
         type: "mez_vod"
       };
     });
@@ -563,7 +626,7 @@ class CompositionStore {
       libraryId,
       objectId,
       writeToken,
-      metadataSubtree: "/channel/offerings/default/items",
+      metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "items"),
       metadata: Unproxy(items)
     });
 
@@ -574,15 +637,7 @@ class CompositionStore {
     yield this.UpdateComposition();
 
     const {libraryId, objectId} = this.compositionObject;
-    const writeToken = this.WriteToken(objectId);
-
-    yield this.client.ReplaceMetadata({
-      libraryId,
-      objectId,
-      writeToken,
-      metadataSubtree: "/public/name",
-      metadata: this.compositionObject.name
-    });
+    const writeToken = yield this.WriteToken(objectId);
 
     yield this.client.FinalizeContentObject({
       libraryId,
@@ -591,26 +646,32 @@ class CompositionStore {
       commitMessage: "EVIE Composition"
     });
 
-    this.writeTokenInfo[objectId] = yield this.client.EditContentObject({
-      libraryId,
-      objectId
-    });
+    this.saved = true;
+
+    delete this.writeTokenInfo[objectId];
+
+    this.GetCompositionPlayoutUrl();
   });
 
   //TODO: Keyboard controls - handle overlapping clip points ] [
 
-  SetCompositionObject = flow(function * ({objectId}) {
+  SetCompositionObject = flow(function * ({objectId, compositionKey}) {
     yield this.LoadWriteTokens();
 
     const libraryId = yield this.client.ContentObjectLibraryId({objectId});
     const versionHash = yield this.client.LatestVersionHash({objectId});
-    const writeTokenInfo = this.writeTokenInfo[objectId] || (yield this.client.EditContentObject({libraryId, objectId}));
-    const metadata = yield this.client.ContentObjectMetadata({libraryId, objectId});
+    const writeToken = yield this.WriteToken(objectId);
+    const metadata = yield this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: UrlJoin("/channel", "offerings", compositionKey)
+    });
 
-    const sourceClipId = yield this.InitializeClip({objectId: metadata.channel.source_info.objectId});
-    this.SetSelectedClip(sourceClipId);
+    this.sourceClipId = yield this.InitializeClip({objectId: metadata.source_info.objectId, source: true});
+    this.SetSelectedClip(this.sourceClipId);
 
-    yield this.videoStore.SetVideo({objectId, preferredOfferingKey: "default", noTags: true});
+    yield this.videoStore.SetVideo({objectId, preferredOfferingKey: compositionKey, noTags: true});
 
     const videoHandler = new FrameAccurateVideo({frameRateRat: this.selectedClipStore.frameRateRat});
 
@@ -619,10 +680,10 @@ class CompositionStore {
     this.videoStore.videoHandler = videoHandler;
 
     this.clipIdList = yield Promise.all(
-      (metadata.channel.offerings.default.items || []).map(async item => {
+      (metadata.items || []).map(async item => {
         const clipId = this.rootStore.NextId();
-        const versionHash = ExtractHashFromLink(item.source);
-        const objectId = this.client.utils.DecodeVersionHash(versionHash).objectId;
+        const clipVersionHash = ExtractHashFromLink(item.source) || versionHash;
+        const objectId = this.client.utils.DecodeVersionHash(clipVersionHash).objectId;
         const libraryId = await this.client.ContentObjectLibraryId({objectId});
         const offeringKey = item.source["/"].split("/").slice(-1)[0];
 
@@ -634,7 +695,7 @@ class CompositionStore {
           name: item.display_name,
           libraryId,
           objectId,
-          versionHash,
+          versionHash: clipVersionHash,
           offering: offeringKey,
           clipInFrame,
           clipOutFrame,
@@ -648,21 +709,49 @@ class CompositionStore {
       })
     );
 
-
-    this.writeTokenInfo[objectId] = writeTokenInfo;
-    this.SaveWriteTokens();
-
     this.compositionObject = {
       libraryId,
       objectId,
       versionHash,
-      sourceObjectId: metadata.channel.source_info.objectId,
-      sourceOfferingKey: metadata.channel.source_info.offeringKey || "default",
-      name: metadata?.public?.name,
+      sourceObjectId: metadata.source_info.objectId,
+      sourceOfferingKey: metadata.source_info.offeringKey || "default",
+      sourceName: metadata.source_info.name,
+      name: metadata.name,
+      compositionKey,
       metadata
     };
 
     this.GetCompositionPlayoutUrl();
+
+    try {
+      const highlights = yield this.GenerateAIHighlights({objectId});
+
+      let aiClipIds = [];
+      for(const clip of highlights) {
+        const clipInFrame = videoHandler.TimeToFrame(clip.start_time / 1000);
+        const clipOutFrame = videoHandler.TimeToFrame(clip.end_time / 1000);
+        const clipId = this.rootStore.NextId();
+        this.clips[clipId] = {
+          clipId,
+          name: clip.reason,
+          libraryId,
+          objectId,
+          versionHash,
+          offering: "default",
+          clipInFrame,
+          clipOutFrame,
+          storeKey: `${objectId}-default`,
+          clipKey: `${objectId}-default-${clipInFrame}-${clipOutFrame}`
+        };
+
+        aiClipIds.push(clipId);
+      }
+
+      this.aiClipIds = aiClipIds;
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.log(error);
+    }
   });
 
   Undo() {
@@ -695,9 +784,18 @@ class CompositionStore {
     }
   }
 
-  WriteToken(objectId) {
-    return this.writeTokenInfo[objectId || this.compositionObject.objectId]?.writeToken;
-  }
+  WriteToken = flow(function * (objectId, create=true) {
+    objectId = objectId || this.compositionObject.objectId;
+
+    if(!this.writeTokenInfo[objectId] && create) {
+      const libraryId = yield this.client.ContentObjectLibraryId({objectId});
+      this.writeTokenInfo[objectId] = yield this.client.EditContentObject({libraryId, objectId});
+
+      this.SaveWriteTokens();
+    }
+
+    return this.writeTokenInfo[objectId]?.write_token;
+  });
 
   LoadWriteTokens = flow(function * () {
     const tokens = yield this.client.walletClient.ProfileMetadata({
@@ -712,6 +810,26 @@ class CompositionStore {
     }
   });
 
+  GenerateAIHighlights = flow(function * ({objectId}) {
+    // TODO: Actually deal with generating status
+    const url = new URL(`https://ai.contentfabric.io/ml/highlight_composition/q/${objectId}`);
+
+    const signedToken = yield this.rootStore.client.CreateSignedToken({objectId, duration: 24 * 60 * 60 * 1000});
+
+    return (
+      yield (
+        yield fetch(
+          url,
+          {
+            headers: {
+              Authorization: `Bearer ${signedToken}`
+            }
+          }
+        )
+      ).json()
+    ).clips;
+  });
+
   async SaveWriteTokens() {
     await this.client.walletClient.SetProfileMetadata({
       type: "app",
@@ -722,6 +840,26 @@ class CompositionStore {
         JSON.stringify(this.writeTokenInfo || {})
       )
     });
+  }
+
+  __UpdateVideoSettings(type, video) {
+    if(type === "composition") {
+      this.compositionMuted = video.muted;
+      this.compositionVolume = video.volume;
+    } else {
+      this.clipMuted = video.muted;
+      this.clipVolume = video.volume;
+    }
+  }
+
+  async __CheckCompositionKeyExists({objectId, key}) {
+    const libraryId = await this.client.ContentObjectLibraryId({objectId});
+    return (this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      writeToken: await this.WriteToken(objectId, false),
+      metadataSubtree: UrlJoin("/channel", "offerings", key, "playout_type")
+    }));
   }
 }
 

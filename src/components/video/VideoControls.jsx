@@ -31,7 +31,7 @@ export const SubtitleControls = observer(({store}) => {
   }));
 
   if(tracks.length === 0) {
-    return;
+    return null;
   }
 
   return (
@@ -53,6 +53,10 @@ export const AudioControls = observer(({store}) => {
     label: track.name || track.lang,
     value: track.id.toString()
   }));
+
+  if(tracks.length === 1) {
+    return null;
+  }
 
   return (
     <SelectInput

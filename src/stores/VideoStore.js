@@ -115,8 +115,7 @@ class VideoStore {
     makeAutoObservable(
       this,
       {
-        metadata: false,
-        thumbnailStore: false
+        metadata: false
       }
     );
 
@@ -450,7 +449,7 @@ class VideoStore {
 
         // Give up and show an error message after several failures
         if(this.consecutiveSegmentErrors >= 3) {
-          this.rootStore.SetError("Playback Error");
+          //this.rootStore.SetError("Playback Error");
           this.Reset();
         }
       }
@@ -515,6 +514,8 @@ class VideoStore {
 
         this.aspectRatio = this.video.videoWidth / this.video.videoHeight;
       }
+
+      this.InitializeCallback?.(this.video);
     });
 
     this.video.addEventListener("canplay", InitializeDuration);
@@ -663,7 +664,7 @@ class VideoStore {
   }
 
   Update({frame, smpte, progress}) {
-    if(!this.video) { return; }
+    if(!this.video || !this.video.duration) { return; }
 
     this.frame = Math.floor(frame);
     this.totalFrames = this.videoHandler?.TotalFrames() || this.totalFrames;

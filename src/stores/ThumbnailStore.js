@@ -114,6 +114,7 @@ class ThumbnailStore {
 
   GenerateVideoThumbnails = flow(function * ({options={}}={}) {
     const client = this.parentStore.rootStore.client;
+
     try {
       this.thumbnailStatus.status = { state: "started" };
 

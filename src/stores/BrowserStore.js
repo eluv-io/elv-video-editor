@@ -95,7 +95,7 @@ class BrowserStore {
         const latestVersion = object.versions[0];
 
         // Try and retrieve video duration
-        let duration, lastModified, forbidden, isVideo, isChannel;
+        let duration, lastModified, forbidden, isVideo, hasChannels;
         try {
           const metadata = await this.rootStore.client.ContentObjectMetadata({
             versionHash: latestVersion.hash,
@@ -106,7 +106,7 @@ class BrowserStore {
             ]
           });
 
-          isChannel = metadata?.channel;
+          hasChannels = metadata?.channel;
 
           lastModified = metadata?.commit?.timestamp;
           if(lastModified) {
@@ -145,7 +145,7 @@ class BrowserStore {
           lastModified,
           duration,
           isVideo,
-          isChannel,
+          hasChannels,
           name: latestVersion?.meta?.public?.name || latestVersion.id,
           image: !latestVersion?.meta?.public?.display_image ? undefined :
             await this.rootStore.client.LinkUrl({
@@ -211,7 +211,14 @@ class BrowserStore {
         case "library":
           return { libraryId };
         case "object":
-          return { libraryId, objectId, versionHash };
+          const name = yield client.ContentObjectMetadata({
+            libraryId,
+            objectId,
+            versionHash,
+            metadataSubtree: "/public/name"
+          });
+
+          return { libraryId, objectId, versionHash, name };
         default:
           // eslint-disable-next-line no-console
           console.error("Invalid content:", contentId, accessType);

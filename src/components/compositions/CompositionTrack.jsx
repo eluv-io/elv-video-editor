@@ -34,7 +34,7 @@ const CompositionTrack = observer(() => {
         {
           compositionStore.clipList.map(clip =>
             <Clip
-              key={`clip-${clip.clipId}`}
+              key={`clip-${clip.clipId}-${compositionStore._position}`}
               clip={clip}
               containerDimensions={dimensions}
             />

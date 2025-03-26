@@ -5,13 +5,14 @@ import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Input} from "@/components/common/Common.jsx";
 import {useDebouncedState} from "@mantine/hooks";
-import {assetStore, tagStore, trackStore} from "@/stores/index.js";
+import {assetStore, compositionStore, tagStore, trackStore} from "@/stores/index.js";
 import {TagDetails, TagsList} from "@/components/side_panel/Tags.jsx";
 import Assets, {AssetTagDetails, AssetTagsList} from "@/components/side_panel/Assets.jsx";
 import {TrackDetails} from "@/components/side_panel/Tracks.jsx";
 
 import SearchIcon from "@/assets/icons/v2/search.svg";
 import {OverlayTagDetails, OverlayTagsList} from "@/components/side_panel/OverlayTags.jsx";
+import {CompositionClips} from "@/components/side_panel/Compositions.jsx";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -158,6 +159,17 @@ export const AssetSidePanel = observer(() => {
             <AssetTagDetails />
           </div>
       }
+    </div>
+  );
+});
+
+export const CompositionSidePanel = observer(() => {
+  return (
+    <div className={S("content-block", "side-panel-section")}>
+      <div className={S("side-panel")}>
+        <SidebarFilter store={compositionStore} label="Search Clips"/>
+        <CompositionClips />
+      </div>
     </div>
   );
 });

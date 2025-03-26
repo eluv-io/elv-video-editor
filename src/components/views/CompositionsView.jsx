@@ -1,31 +1,43 @@
 import {observer} from "mobx-react-lite";
 import React, {useEffect} from "react";
-import {ClipSidePanel, TagSidePanel} from "@/components/side_panel/SidePanel.jsx";
+import {CompositionSidePanel} from "@/components/side_panel/SidePanel.jsx";
 import PanelView from "@/components/side_panel/PanelView.jsx";
 import {compositionStore, keyboardControlsStore, rootStore} from "@/stores/index.js";
 import CompositionTimeline from "@/components/compositions/CompositionTimeline.jsx";
 import CompositionVideoSection from "@/components/compositions/CompositionVideoSection.jsx";
 import {DraggedClip} from "@/components/compositions/Clips.jsx";
 import {useParams} from "wouter";
+import {Linkish} from "@/components/common/Common.jsx";
 
-const CompositionsView = observer(({mode}) => {
-  const {objectId} = useParams();
+const CompositionsView = observer(() => {
+  const {objectId, compositionKey} = useParams();
+
   useEffect(() => {
     rootStore.SetPage("compositions");
+    rootStore.SetSubpage(objectId);
     keyboardControlsStore.SetActiveStore(compositionStore.videoStore);
 
     if(objectId) {
-      compositionStore.SetCompositionObject({objectId});
+      compositionStore.SetCompositionObject({objectId, compositionKey});
     }
   }, [objectId]);
+
+  if(rootStore.errorMessage) {
+    return (
+      <div className="error">
+        <div>Unable to load content: </div>
+        <div>{rootStore.errorMessage}</div>
+        <Linkish to="~/" styled>Return to Content Browser</Linkish>
+      </div>
+    );
+  }
 
   return (
     <>
       <PanelView
         sidePanelContent={
-          mode === "tags" ?
-            <TagSidePanel /> :
-            <ClipSidePanel />
+          !objectId ? null :
+            <CompositionSidePanel />
         }
         mainPanelContent={
           <PanelView
@@ -46,7 +58,7 @@ const CompositionsView = observer(({mode}) => {
           />
         }
         bottomPanelContent={<CompositionTimeline />}
-        initialTopPanelProportion={0.6}
+        initialTopPanelProportion={objectId ? 0.6 : 0.3}
         minSizes={{
           mainPanel: 700,
           sidePanel: 350,

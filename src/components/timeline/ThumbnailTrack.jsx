@@ -40,7 +40,7 @@ const ThumbnailCreationTrack = observer(({store}) => {
                   title: "Finalize Thumbnails",
                   centered: true,
                   children: <Text fz="sm">Warning: Finalizing the thumbnails for this content will cause the page to reload. If you have any changes, they will be lost.</Text>,
-                  labels: { confirm: "Generate Thumbnails", cancel: "Cancel" },
+                  labels: { confirm: "Finalize Thumbnails", cancel: "Cancel" },
                   onConfirm: () => resolve(true),
                   onCancel: () => resolve(false)
                 })
@@ -80,7 +80,10 @@ const ThumbnailCreationTrack = observer(({store}) => {
   }
 
   useEffect(() => {
-    if(!["running", "started"].includes(store.thumbnailStore.thumbnailStatus?.status?.state)) {
+    if(
+      store.thumbnailStore.thumbnailStatus?.status &&
+      !["running", "started"].includes(store.thumbnailStore.thumbnailStatus?.status?.state)
+    ) {
       return;
     }
 
@@ -128,7 +131,7 @@ const ThumbnailTrack = observer(({
     resizeObserver.observe(ref.current);
 
     return () => resizeObserver?.disconnect();
-  }, [ref]);
+  }, [ref?.current]);
 
   const scale = (endFrame - startFrame) / store.totalFrames;
   const startProgress = startFrame / store.totalFrames;
