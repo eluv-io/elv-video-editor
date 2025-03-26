@@ -4,46 +4,50 @@ import {observer} from "mobx-react-lite";
 import React from "react";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {compositionStore} from "@/stores/index.js";
-import {Icon, LoaderImage} from "@/components/common/Common.jsx";
+import {Icon} from "@/components/common/Common.jsx";
 
 import AISparkleIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import {Tooltip} from "@mantine/core";
+import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
 const Clip = observer(({clip}) => {
+  const store = compositionStore.ClipStore({clipId: clip.clipId});
+
+  const HandleDrag = event => {
+    const dragElement = document.querySelector("#drag-dummy") || document.createElement("div");
+    document.body.appendChild(dragElement);
+    dragElement.style.display = "none";
+    dragElement.id = "drag-dummy";
+    event.dataTransfer.setDragImage(dragElement, -10000, -10000);
+    compositionStore.SetDragging({
+      clip,
+      showDragShadow: true,
+      createNewClip: true
+    });
+  };
+
   return (
     <button
       draggable
-      onDragStart={event => {
-        const dragElement = document.querySelector("#drag-dummy") || document.createElement("div");
-        document.body.appendChild(dragElement);
-        dragElement.style.display = "none";
-        dragElement.id = "drag-dummy";
-        event.dataTransfer.setDragImage(dragElement, -10000, -10000);
-        compositionStore.SetDragging({
-          clip,
-          showDragShadow: true,
-          createNewClip: true
-        });
-      }}
+      onDragStart={HandleDrag}
+      onDrop={() => compositionStore.EndDrag()}
       onDragEnd={() => compositionStore.EndDrag()}
       onClick={() => compositionStore.SetSelectedClip(clip.clipId)}
       className={S("clip", compositionStore.selectedClipId === clip.clipId ? "clip--active" : "")}
     >
-      <LoaderImage
-        lazy={false}
-        showWithoutSource
-        draggable={false}
-        key={`image-${compositionStore.sourceVideoStore.thumbnailStore.thumbnailStatus.available}`}
-        src={compositionStore.sourceVideoStore.thumbnailStore.ThumbnailImage(
-          compositionStore.sourceVideoStore.FrameToTime(Math.floor(clip.clipInFrame + (clip.clipOutFrame - clip.clipInFrame) / 2))
-        )}
-        loaderAspectRatio={compositionStore.sourceVideoStore.aspectRatio}
+      <PreviewThumbnail
+        useLoaderImage
+        store={store}
+        onDragEnd={() => compositionStore.EndDrag()}
+        startFrame={clip.clipInFrame}
+        endFrame={clip.clipOutFrame}
+        style={{aspectRatio: store.aspectRatio}}
         className={S("clip__image")}
       />
       <Tooltip label={clip.name} multiline maw={300}>
-        <div className={S("clip__name", "ellipsis")}>
+        <div draggable={false} className={S("clip__name", "ellipsis")}>
           { clip.name }
         </div>
       </Tooltip>

@@ -1,6 +1,6 @@
 import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
-import React, {useEffect, useRef, useState} from "react";
+import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {compositionStore, keyboardControlsStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
@@ -204,7 +204,7 @@ const Title = observer(({clipView}) => {
       if(clipView) {
         compositionStore.ModifyClip({
           clipId: compositionStore.selectedClipId,
-          attrs: { name: editedName },
+          attrs: { name: editedName || name },
           label: "Modify Clip Name"
         });
       } else {
@@ -230,6 +230,12 @@ const Title = observer(({clipView}) => {
           onClick={Save}
         />
       </h1>
+    );
+  }
+
+  if(!name) {
+    return (
+      <h1 className={S("video-section__title")} />
     );
   }
 
@@ -282,16 +288,18 @@ const Title = observer(({clipView}) => {
                     title: "Publish Composition",
                     centered: true,
                     children: <Text fz="sm">Are you sure you want to publish this composition?</Text>,
-                    labels: { confirm: "Publish", cancel: "Cancel" },
+                    labels: {confirm: "Publish", cancel: "Cancel"},
                     onConfirm: () => resolve(true),
                     onCancel: () => resolve(false)
                   })
-                )) { return; }
+                )) {
+                  return;
+                }
 
                 await compositionStore.SaveComposition();
               }}
             >
-              <Icon icon={PublishIcon} />
+              <Icon icon={PublishIcon}/>
               <span style={{marginLeft: 10}}>
                 Publish to Fabric
               </span>
@@ -303,7 +311,7 @@ const Title = observer(({clipView}) => {
 });
 
 const CompositionVideoSection = observer(({store, clipView=false}) => {
-  const sectionRef = useRef(null);
+  const [sectionRef, setSectionRef] = useState(undefined);
   const [active, setActive] = useState(false);
 
   useEffect(() => {
@@ -332,7 +340,7 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
   }, [active]);
 
   useEffect(() => {
-    if(!clipView || !store.initialized || !store.videoHandler) { return; }
+    if(!clipView || !store || !store.initialized || !store.videoHandler) { return; }
 
     const clip = compositionStore.selectedClip;
     // Set initial scale for clip
@@ -353,7 +361,7 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
 
   return (
     <div
-      ref={sectionRef}
+      ref={setSectionRef}
       tabIndex="0"
       onKeyDown={event => {
         if(event.key === "[") {
@@ -387,7 +395,7 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
     >
       <Title clipView={clipView} />
       {
-        !sectionRef?.current ? null :
+        !sectionRef ? null :
           <Video
             blank={!clipView && compositionStore.clipIdList.length === 0}
             muted={clipView ? compositionStore.clipMuted : compositionStore.compositionMuted}
@@ -405,7 +413,7 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
               }
             }}
             store={store}
-            fullscreenContainer={sectionRef.current}
+            fullscreenContainer={sectionRef}
           />
       }
       {

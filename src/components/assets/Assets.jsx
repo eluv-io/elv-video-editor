@@ -2,7 +2,6 @@ import AssetStyles from "@/assets/stylesheets/modules/assets.module.scss";
 
 import {observer} from "mobx-react-lite";
 import React, {useState} from "react";
-import PanelView from "@/components/side_panel/PanelView.jsx";
 import {CreateModuleClassMatcher, DownloadFromUrl} from "@/utils/Utils.js";
 import {assetStore, editStore, tagStore} from "@/stores/index.js";
 import {Icon, IconButton, LoaderImage} from "@/components/common/Common.jsx";
@@ -14,6 +13,7 @@ import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
 import AddTagIcon from "@/assets/icons/v2/add-new-item.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
+import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 
 const S = CreateModuleClassMatcher(AssetStyles);
 
@@ -193,23 +193,15 @@ const SelectedAsset = observer(({assetKey}) => {
   }
 
   return (
-    <div className="subcontent">
-      <PanelView
-        isSubpanel
-        mainPanelContent={
-          <AssetContent
-            asset={asset}
-            hoverTag={hoverTag}
-          />
-        }
-        bottomPanelContent={
-          <AssetDetails
-            asset={asset}
-            setHoverTag={setHoverTag}
-          />
-        }
-      />
-    </div>
+    <PanelGroup direction="vertical" className="panel-group">
+      <Panel minSize={30}>
+        <AssetContent asset={asset} hoverTag={hoverTag} />
+      </Panel>
+      <PanelResizeHandle />
+      <Panel minSize={30}>
+        <AssetDetails asset={asset} setHoverTag={setHoverTag} />
+      </Panel>
+    </PanelGroup>
   );
 });
 

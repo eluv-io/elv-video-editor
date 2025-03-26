@@ -18,8 +18,10 @@
   --content-border-color: #222;
   --content-border-radius: 5px;
   --content-inline-padding: 20px;
-  --gutter-size-x: 5px;
-  --gutter-size-y: 5px;
+
+  /* Note: Gutter sizes are doubled due to resize handles */
+  --gutter-size-x: 3px;
+  --gutter-size-y: 3px;
   --spinner-color: #FFF;
   --spinner-color-background: red;
   --spinner-width: 5px;

@@ -1,6 +1,6 @@
 import CompositionStyles from "@/assets/stylesheets/modules/compositions.module.scss";
 
-import React from "react";
+import React, {useEffect} from "react";
 import {observer} from "mobx-react-lite";
 import {compositionStore} from "@/stores/index.js";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
@@ -9,6 +9,8 @@ import ThumbnailTrack from "@/components/timeline/ThumbnailTrack.jsx";
 const S = CreateModuleClassMatcher(CompositionStyles);
 
 const CalculateClipPosition = ({clip, containerDimensions}) => {
+  if(!clip) { return { clipWidth: 0, clipLeft: 0 }; }
+
   const totalFrames = compositionStore.compositionDurationFrames;
   const visibleStartFrame = (compositionStore.videoStore.scaleMin / 100) * totalFrames;
   const visibleFrames = (compositionStore.videoStore.scaleMagnitude / 100) * totalFrames;
@@ -42,11 +44,27 @@ export const DropIndicator = observer(({containerDimensions}) => {
 });
 
 export const DraggedClip = observer(() => {
-  if(
+  const visible = !(
     !compositionStore.showDragShadow ||
     !compositionStore.draggingClip ||
     compositionStore.mousePositionX === 0
-  ) {
+  );
+
+  useEffect(() => {
+    if(!visible) { return; }
+
+    const EndDrag = () => compositionStore.EndDrag();
+
+    document.body.addEventListener("mouseup", EndDrag);
+    document.body.addEventListener("mousedown", EndDrag);
+
+    return () => {
+      document.body.removeEventListener("mouseup", EndDrag);
+      document.body.removeEventListener("mousedown", EndDrag);
+    };
+  }, [visible]);
+
+  if(!visible) {
     return null;
   }
 
@@ -69,7 +87,7 @@ export const DraggedClip = observer(() => {
       <div className={S("dragged-clip__thumbnail-container")}>
         <ThumbnailTrack
           noHover
-          store={compositionStore.ClipStore(clip)}
+          store={compositionStore.ClipStore({...clip})}
           startFrame={clip.clipInFrame}
           endFrame={clip.clipOutFrame}
           className={S("dragged-clip__thumbnails")}

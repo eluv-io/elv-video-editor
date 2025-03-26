@@ -107,18 +107,20 @@ class BrowserStore {
         const latestVersion = object.versions[0];
 
         // Try and retrieve video duration
-        let duration, lastModified, forbidden, isVideo, hasChannels;
+        let duration, lastModified, forbidden, isVideo, hasChannels, hasAssets;
         try {
           const metadata = await this.rootStore.client.ContentObjectMetadata({
             versionHash: latestVersion.hash,
             select: [
               "commit/timestamp",
               "channel/source_info",
+              "assets",
               "offerings/*/media_struct/duration_rat"
             ]
           });
 
-          hasChannels = metadata?.channel;
+          hasChannels = !!metadata?.channel;
+          hasAssets = !!metadata?.assets;
 
           lastModified = metadata?.commit?.timestamp;
           if(lastModified) {
@@ -158,6 +160,7 @@ class BrowserStore {
           duration,
           isVideo,
           hasChannels,
+          hasAssets,
           name: latestVersion?.meta?.public?.name || latestVersion.id,
           image: !latestVersion?.meta?.public?.display_image ? undefined :
             await this.rootStore.client.LinkUrl({

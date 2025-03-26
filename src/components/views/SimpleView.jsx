@@ -2,8 +2,8 @@ import {observer} from "mobx-react-lite";
 import React, {useEffect} from "react";
 import VideoSection from "@/components/video/VideoSection.jsx";
 import {SimpleTimeline} from "@/components/timeline/Timeline.jsx";
-import PanelView from "@/components/side_panel/PanelView.jsx";
 import {keyboardControlsStore, rootStore, videoStore} from "@/stores/index.js";
+import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 
 const SimpleView = observer(() => {
   useEffect(() => {
@@ -12,18 +12,15 @@ const SimpleView = observer(() => {
   }, []);
 
   return (
-    <PanelView
-      mainPanelContent={
-        <VideoSection  />
-      }
-      bottomPanelContent={
+    <PanelGroup direction="vertical" className="panel-group">
+      <Panel defaultSize={65}>
+        <VideoSection />
+      </Panel>
+      <PanelResizeHandle />
+      <Panel minSize={35}>
         <SimpleTimeline />
-      }
-      minSizes={{
-        bottomPanel: 290
-      }}
-      initialTopPanelProportion={0.8}
-    />
+      </Panel>
+    </PanelGroup>
   );
 });
 

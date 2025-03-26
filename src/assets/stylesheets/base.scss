@@ -15,6 +15,10 @@ body {
   width: 100%;
 }
 
+.panel-group {
+  gap: var(--gutter-size-y) var(--gutter-size-x);
+}
+
 .content {
   background: var(--background-primary);
   display: flex;

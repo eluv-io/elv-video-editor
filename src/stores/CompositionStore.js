@@ -385,8 +385,10 @@ class CompositionStore {
     this.loading = false;
   });
 
-  ClipStore({objectId, offering}) {
-    return this.clipStores[`${objectId}-${offering}`];
+  ClipStore({objectId, offering, clipId}) {
+    const key = this.clips[clipId]?.storeKey || `${objectId}-${offering}`;
+
+    return this.clipStores[key];
   }
 
   SetSelectedClip(clipId) {

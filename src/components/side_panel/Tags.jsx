@@ -193,6 +193,7 @@ const TagForm = observer(() => {
                   className={S("tag-details__thumbnail")}
                 /> :
                 <PreviewThumbnail
+                  store={videoStore}
                   key={`preview-${tag.startTime}-${tag.endTime}`}
                   startFrame={videoStore.TimeToFrame(tag.startTime)}
                   endFrame={videoStore.TimeToFrame(tag.endTime)}
@@ -321,6 +322,7 @@ export const TagDetails = observer(() => {
                     className={S("tag-details__thumbnail")}
                   /> :
                   <PreviewThumbnail
+                    store={videoStore}
                     startFrame={videoStore.TimeToFrame(tag.startTime)}
                     endFrame={videoStore.TimeToFrame(tag.endTime)}
                     className={S("tag-details__thumbnail")}

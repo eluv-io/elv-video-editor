@@ -154,6 +154,7 @@ const JobStatusTable = observer(({jobs, setConfirming, Reload}) => (
                 !videoStore.thumbnailStore.thumbnailStatus.available ? null :
                   <div style={{aspectRatio: videoStore.aspectRatio}} className={S("history-row__thumbnail-container")}>
                     <PreviewThumbnail
+                      store={videoStore}
                       startFrame={startFrame}
                       endFrame={endFrame}
                       className={S("history-row__thumbnail")}

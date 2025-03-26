@@ -243,6 +243,7 @@ class VideoStore {
       this.availableOfferings = videoObject.availableOfferings;
       this.offeringKey = videoObject.offeringKey;
       this.thumbnailTrackUrl = videoObject.thumbnailTrackUrl;
+      this.hasAssets = videoObject.metadata.assets;
 
       try {
         if(this.channel) {

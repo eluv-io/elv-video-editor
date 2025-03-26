@@ -20,6 +20,7 @@ export const DownloadPreview = observer(({options}) => {
         !videoStore.thumbnailStore.thumbnailStatus.available ? null :
           <div style={{aspectRatio: videoStore.aspectRatio}} className={S("preview__thumbnail-container")}>
             <PreviewThumbnail
+              store={videoStore}
               key={`thumbnail-${options.noClip}`}
               startFrame={clipInFrame}
               endFrame={clipOutFrame}

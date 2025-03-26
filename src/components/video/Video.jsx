@@ -58,7 +58,7 @@ const Video = observer(({
     // Add scroll handler for volume to video element
     StopScroll({element: video});
 
-    /*
+
     const config = {
       nudgeOffset: 0.2,
       nudgeMaxRetry: 30,
@@ -71,9 +71,8 @@ const Video = observer(({
     };
 
 
-     */
 
-    const config = {};
+    //const config = {};
 
     const player = new HLSPlayer(config);
 

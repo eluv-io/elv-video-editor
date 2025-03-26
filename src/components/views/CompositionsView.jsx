@@ -1,13 +1,13 @@
 import {observer} from "mobx-react-lite";
 import React, {useEffect} from "react";
 import {CompositionSidePanel} from "@/components/side_panel/SidePanel.jsx";
-import PanelView from "@/components/side_panel/PanelView.jsx";
 import {compositionStore, keyboardControlsStore, rootStore} from "@/stores/index.js";
 import CompositionTimeline from "@/components/compositions/CompositionTimeline.jsx";
 import CompositionVideoSection from "@/components/compositions/CompositionVideoSection.jsx";
 import {DraggedClip} from "@/components/compositions/Clips.jsx";
 import {useParams} from "wouter";
 import {Linkish} from "@/components/common/Common.jsx";
+import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 
 const CompositionsView = observer(() => {
   const {objectId, compositionKey} = useParams();
@@ -32,39 +32,58 @@ const CompositionsView = observer(() => {
     );
   }
 
+  if(!objectId) {
+    // Selection view
+    return (
+      <PanelGroup direction="vertical" className="panel-group">
+        <Panel minSize={30} defaultSize={30}>
+          <CompositionVideoSection store={compositionStore.videoStore} />
+        </Panel>
+        <PanelResizeHandle />
+        <Panel minSize={50}>
+          <CompositionTimeline />
+        </Panel>
+      </PanelGroup>
+    );
+  }
+
   return (
     <>
-      <PanelView
-        sidePanelContent={
-          !objectId ? null :
-            <CompositionSidePanel />
-        }
-        mainPanelContent={
-          <PanelView
-            isSubpanel
-            initialSidePanelProportion={0.5}
-            sidePanelContent={
-              !compositionStore.selectedClip ? null :
-                <CompositionVideoSection
-                  clipView
-                  key={`clip-${compositionStore.selectedClip.storeKey}`}
-                  store={compositionStore.selectedClipStore}
-                />
-            }
-            mainPanelContent={
-              !compositionStore.compositionObject ? null :
-                <CompositionVideoSection store={compositionStore.videoStore} />
-            }
-          />
-        }
-        bottomPanelContent={<CompositionTimeline />}
-        initialTopPanelProportion={objectId ? 0.6 : 0.3}
-        minSizes={{
-          mainPanel: 700,
-          sidePanel: 350,
-          bottomPanel: 260
-        }}
-      />
+      <PanelGroup direction="vertical" className="panel-group">
+        <Panel minSize={35} defaultSize={65}>
+          <PanelGroup direction="horizontal" className="panel-group">
+            <Panel defaultSize={25}>
+              <CompositionSidePanel />
+            </Panel>
+            <PanelResizeHandle />
+            <Panel>
+              <PanelGroup direction="horizontal" className="panel-group">
+                {
+                  !compositionStore.selectedClip ? null :
+                    <>
+                      <Panel>
+                        <CompositionVideoSection
+                          clipView
+                          key={`clip-${compositionStore.selectedClip.storeKey}`}
+                          store={compositionStore.selectedClipStore}
+                        />
+                      </Panel>
+                    </>
+                }
+                <PanelResizeHandle />
+                <Panel>
+                  <CompositionVideoSection store={compositionStore.videoStore} />
+                </Panel>
+              </PanelGroup>
+            </Panel>
+          </PanelGroup>
+          <PanelResizeHandle />
+        </Panel>
+        <PanelResizeHandle />
+        <Panel minSize={32}>
+          <CompositionTimeline />
+        </Panel>
+      </PanelGroup>
       <DraggedClip />
     </>
   );

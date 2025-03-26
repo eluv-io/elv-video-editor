@@ -3,8 +3,8 @@ import React, {useEffect} from "react";
 import {ClipSidePanel, TagSidePanel} from "@/components/side_panel/SidePanel.jsx";
 import VideoSection from "@/components/video/VideoSection.jsx";
 import {ClipTimeline, TagTimeline} from "@/components/timeline/Timeline.jsx";
-import PanelView from "@/components/side_panel/PanelView.jsx";
 import {keyboardControlsStore, rootStore, videoStore} from "@/stores/index.js";
+import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 
 const TagsAndClipsView = observer(({mode}) => {
   useEffect(() => {
@@ -13,26 +13,31 @@ const TagsAndClipsView = observer(({mode}) => {
   }, []);
 
   return (
-    <PanelView
-      sidePanelContent={
-      mode === "tags" ?
-        <TagSidePanel /> :
-        <ClipSidePanel />
-      }
-      mainPanelContent={
-        <VideoSection showOverlay />
-      }
-      bottomPanelContent={
-        mode === "tags" ?
-          <TagTimeline /> :
-          <ClipTimeline />
-      }
-      minSizes={{
-        mainPanel: 700,
-        sidePanel: 350,
-        bottomPanel: 260
-      }}
-    />
+    <PanelGroup direction="vertical" className="panel-group">
+      <Panel defaultSize={50} minSize={30}>
+        <PanelGroup direction="horizontal" className="panel-group">
+          <Panel defaultSize={30} minSize={20}>
+            {
+              mode === "tags" ?
+                <TagSidePanel /> :
+                <ClipSidePanel />
+            }
+          </Panel>
+          <PanelResizeHandle />
+          <Panel>
+            <VideoSection showOverlay />
+          </Panel>
+        </PanelGroup>
+      </Panel>
+      <PanelResizeHandle />
+      <Panel>
+        {
+          mode === "tags" ?
+            <TagTimeline /> :
+            <ClipTimeline />
+        }
+      </Panel>
+    </PanelGroup>
   );
 });
 

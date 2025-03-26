@@ -187,9 +187,9 @@ const BrowserTable = observer(({filter, Load, Path, Select, defaultIcon, content
           }
         </div>
         {
-          content.map(({id, name, image, duration, isVideo, lastModified, forbidden}) =>
+          content.map(({id, name, image, duration, isVideo, hasChannels, hasAssets, lastModified, forbidden}) =>
             <Linkish
-              to={Path?.(id, name)}
+              to={Path?.({id, name, isVideo, hasChannels, hasAssets})}
               onClick={Select ? () => Select({[contentType === "library" ? "libraryId" : "objectId"]: id, name}) : undefined}
               key={`browser-row-${id}`}
               disabled={forbidden || (videoOnly && !isVideo)}
@@ -314,9 +314,13 @@ const Browser = observer(() => {
       key={`browser-${libraryId}`}
       libraryId={libraryId}
       backPath="/"
-      Path={objectId => UrlJoin("/", libraryId, objectId)}
+      Path={({id, isVideo, hasAssets}) =>
+        !isVideo && hasAssets ?
+          UrlJoin("/", libraryId, id, "assets") :
+          UrlJoin("/", libraryId, id)
+      }
     />:
-    <LibraryBrowser Path={libraryId => `/${libraryId}`} />;
+    <LibraryBrowser Path={({id}) => `/${id}`} />;
 });
 
 export default Browser;

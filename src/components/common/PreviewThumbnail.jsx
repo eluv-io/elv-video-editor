@@ -2,12 +2,12 @@ import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useRef, useState} from "react";
-import {videoStore} from "@/stores/index.js";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
+import {LoaderImage} from "@/components/common/Common.jsx";
 
 const S = CreateModuleClassMatcher(CommonStyles);
 
-const PreviewThumbnail = observer(({startFrame, endFrame, ...props}) => {
+const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage, ...props}) => {
   const ref = useRef();
   const [thumbnails, setThumbnails] = useState(null);
 
@@ -19,16 +19,16 @@ const PreviewThumbnail = observer(({startFrame, endFrame, ...props}) => {
   });
 
   useEffect(() => {
-    let startTime = videoStore.FrameToTime(startFrame);
-    const endTime = videoStore.FrameToTime(endFrame);
+    let startTime = store.FrameToTime(startFrame);
+    const endTime = store.FrameToTime(endFrame);
 
     // Thumbnail interval based on length of clip
-    const interval = Math.min(60, Math.max(1, (endFrame - startFrame) / videoStore.frameRate / 120));
+    const interval = Math.min(60, Math.max(1, (endFrame - startFrame) / store.frameRate / 120));
 
     let thumbnailMap = {};
     let thumbnailList = [];
     while(startTime < endTime) {
-      const thumbnailUrl = videoStore.thumbnailStore.ThumbnailImage(startTime);
+      const thumbnailUrl = store.thumbnailStore.ThumbnailImage(startTime);
 
       if(!thumbnailMap[thumbnailUrl]) {
         thumbnailList.push(thumbnailUrl);
@@ -39,7 +39,7 @@ const PreviewThumbnail = observer(({startFrame, endFrame, ...props}) => {
     }
 
     setThumbnails(thumbnailList);
-  }, [videoStore.thumbnailStore.thumbnailStatus.available]);
+  }, [store.thumbnailStore.thumbnailStatus.available]);
 
   useEffect(() => {
     if(!ref?.current) { return; }
@@ -65,29 +65,33 @@ const PreviewThumbnail = observer(({startFrame, endFrame, ...props}) => {
     });
   }, [ref, clientX]);
 
-  if(!videoStore.thumbnailStore.thumbnailStatus.available || !thumbnails) {
-    return null;
+  if(!store.thumbnailStore.thumbnailStatus.available || !thumbnails) {
+    return !useLoaderImage ? null :
+      <LoaderImage
+        showWithoutSource
+        {...props}
+      />;
   }
 
   return (
     <div
       {...props}
       ref={ref}
-      style={{aspectRatio: videoStore.aspectRatio, ...(props.style || {})}}
+      style={{aspectRatio: store.aspectRatio, ...(props.style || {})}}
       onMouseMove={event => setClientX(event.clientX)}
       onMouseLeave={() => setClientX(-1)}
       className={JoinClassNames(S("preview-thumbnail"), props.className)}
     >
       <img
         alt="Thumbnail"
-        style={{aspectRatio: videoStore.aspectRatio}}
+        style={{aspectRatio: store.aspectRatio}}
         key={`thumbnail-previous-${hoverInfo.previousThumbnailIndex}`}
         src={thumbnails[hoverInfo.previousThumbnailIndex]}
         className={S("preview-thumbnail__image", "preview-thumbnail__image--previous")}
       />
       <img
         alt="Thumbnail"
-        style={{aspectRatio: videoStore.aspectRatio}}
+        style={{aspectRatio: store.aspectRatio}}
         key={`thumbnail-${hoverInfo.thumbnailIndex}`}
         src={thumbnails[hoverInfo.thumbnailIndex]}
         className={S("preview-thumbnail__image", "preview-thumbnail__image--current")}
