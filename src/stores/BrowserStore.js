@@ -15,6 +15,10 @@ class BrowserStore {
   }
 
   ListLibraries = flow(function * ({page, perPage, filter=""}) {
+    if(filter.startsWith("iq__") || filter.startsWith("hq__")) {
+      filter = "";
+    }
+
     if(!this.libraries) {
       const libraryIds = yield this.rootStore.client.ContentLibraries();
 
@@ -56,7 +60,11 @@ class BrowserStore {
         image: this.libraries[libraryId].image
       }))
       .sort((a, b) => a.name.localeCompare(b.name))
-      .filter(({name}) => !filter || name.toLowerCase().includes(filter.toLowerCase()));
+      .filter(({id, name}) =>
+        !filter ||
+        name.toLowerCase().includes(filter.toLowerCase()) ||
+        id.includes(filter.toLowerCase())
+      );
 
     return ({
       content: content.slice((page - 1) * perPage, page * perPage),
@@ -70,6 +78,10 @@ class BrowserStore {
   });
 
   ListObjects = flow(function * ({libraryId, page=1, perPage=25, filter="", cacheId=""}) {
+    if(filter.startsWith("iq__") || filter.startsWith("hq__")) {
+      filter = "";
+    }
+
     let filters = [];
     if(filter) {
       filters.push({key: "/public/name", type: "cnt", filter});

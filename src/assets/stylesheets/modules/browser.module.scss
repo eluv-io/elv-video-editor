@@ -115,8 +115,8 @@
   &--empty {
     align-items: center;
     display: flex;
-    height: 200px;
     justify-content: center;
+    min-height: calc(11 * var(--row-height));
   }
 
   &__message {

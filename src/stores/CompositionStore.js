@@ -810,9 +810,13 @@ class CompositionStore {
     }
   });
 
-  GenerateAIHighlights = flow(function * ({objectId}) {
+  GenerateAIHighlights = flow(function * ({objectId, prompt}) {
     // TODO: Actually deal with generating status
     const url = new URL(`https://ai.contentfabric.io/ml/highlight_composition/q/${objectId}`);
+
+    if(prompt) {
+      url.searchParams.set("customization", prompt);
+    }
 
     const signedToken = yield this.rootStore.client.CreateSignedToken({objectId, duration: 24 * 60 * 60 * 1000});
 
