@@ -104,12 +104,7 @@ const TimelineTopBar = observer(() => {
         <div className={S("toolbar__separator")}/>
         <IconButton
           icon={LinkIcon}
-          //disabled={!compositionStore.saved}
-          label={
-            !compositionStore.saved ?
-              "Please publish your composition to view it" :
-              "View Composition in Fabric Browser"
-          }
+          label="View Composition in Fabric Browser"
           onClick={() => compositionStore.OpenFabricBrowserLink()}
         />
         <Share />

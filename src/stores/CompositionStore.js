@@ -125,12 +125,6 @@ class CompositionStore {
     // Any time the clip list gets re-rendered, update the playout url
     clearTimeout(this.playoutUrlTimeout);
 
-    this.playoutUrlTimeout = setTimeout(() =>
-      this.UpdateComposition()
-        .then(() => this.GetCompositionPlayoutUrl()),
-      500
-    );
-
     let startFrame = 0;
     return this.clipIdList
       .map((clipId, index) => {
@@ -172,38 +166,6 @@ class CompositionStore {
 
   get sourceVideoStore() {
     return this.clipStores[this.sourceClip?.storeKey];
-  }
-
-  PerformAction({label, Action, ...attrs}, fromRedo=false) {
-    const originalData = {
-      clipIdList: Unproxy(this.clipIdList),
-      clips: Unproxy(this.clips)
-    };
-
-    const result = Action();
-
-    this._actionStack.push({
-      id: this.rootStore.NextId(),
-      label,
-      Action,
-      Undo: () => {
-        this.clips = originalData.clips;
-        this.clipIdList = originalData.clipIdList;
-      },
-      addedAt: Date.now(),
-      ...attrs
-    });
-
-    this._position++;
-
-    // Undid action(s), but performed new action - Drop redo stack for this context
-    if(!fromRedo) {
-      this._redoStack = [];
-    }
-
-    this.saved = false;
-
-    return result;
   }
 
   SetCompositionName(name) {
@@ -504,29 +466,41 @@ class CompositionStore {
     return this.videoStore.TimeToSMPTE(this.compositionDuration * progress / 100);
   }
 
-  GetCompositionPlayoutUrl = flow(function * () {
+  GetCompositionPlayoutUrl = flow(function * (retry=0) {
     if(!this.compositionObject || this.clipIdList.length === 0) { return; }
 
-    const {objectId, compositionKey} = this.compositionObject;
-    const writeToken = yield this.WriteToken(objectId, false);
+    try {
+      const {objectId, compositionKey} = this.compositionObject;
+      const writeToken = yield this.WriteToken(objectId, false);
 
-    const playoutOptions = (yield this.client.PlayoutOptions({
-      objectId,
-      writeToken,
-      handler: "channel",
-      offering: compositionKey
-    }));
+      const playoutOptions = (yield this.client.PlayoutOptions({
+        objectId,
+        writeToken,
+        handler: "channel",
+        offering: compositionKey
+      }));
 
-    const playoutUrl = new URL(
-      playoutOptions.hls.playoutMethods.clear?.playoutUrl ||
-      playoutOptions.hls.playoutMethods["aes-128"]?.playoutUrl
-    );
+      const playoutUrl = new URL(
+        playoutOptions.hls.playoutMethods.clear?.playoutUrl ||
+        playoutOptions.hls.playoutMethods["aes-128"]?.playoutUrl
+      );
 
-    playoutUrl.searchParams.set("uid", Math.random());
+      playoutUrl.searchParams.set("uid", Math.random());
 
-    this.compositionPlayoutUrl = playoutUrl.toString();
+      this.compositionPlayoutUrl = playoutUrl.toString();
 
-    return playoutUrl;
+      return playoutUrl;
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error("Error getting composition playout url:");
+      // eslint-disable-next-line no-console
+      console.error(error);
+
+      if(retry < 2) {
+        yield new Promise(resolve => setTimeout(resolve, 2000));
+        yield this.GetCompositionPlayoutUrl(retry + 1);
+      }
+    }
   });
 
   // Create/update/load channel objects
@@ -627,7 +601,7 @@ class CompositionStore {
     this.SaveMyCompositions();
   });
 
-  UpdateComposition = flow(function * () {
+  UpdateComposition = flow(function * ({updatePlayoutUrl=true}={}) {
     if(!this.compositionObject?.objectId) { return; }
 
     this.seekProgress = this.videoStore.seek;
@@ -673,29 +647,31 @@ class CompositionStore {
       metadata: Unproxy(items)
     });
 
-    this.GetCompositionPlayoutUrl();
+    if(updatePlayoutUrl) {
+      this.GetCompositionPlayoutUrl();
+    }
   });
 
   SaveComposition = flow(function * () {
-    yield this.UpdateComposition();
+    yield this.UpdateComposition({updatePlayoutUrl: false});
 
     const {libraryId, objectId, name} = this.compositionObject;
     const writeToken = yield this.WriteToken(objectId);
 
-    yield this.client.FinalizeContentObject({
-      libraryId,
-      objectId,
-      writeToken,
-      commitMessage: "EVIE Composition"
-    });
+    this.compositionObject.versionHash = (
+      yield this.client.FinalizeContentObject({
+        libraryId,
+        objectId,
+        writeToken,
+        commitMessage: "EVIE Composition"
+      })
+    ).hash;
 
     yield new Promise(resolve => setTimeout(resolve, 3000));
 
     this.saved = true;
 
     delete this.writeTokenInfo[objectId];
-
-    this.GetCompositionPlayoutUrl();
 
     if(!this.myCompositions[objectId]) {
       this.myCompositions[objectId] = {};
@@ -709,6 +685,8 @@ class CompositionStore {
 
     yield this.SaveWriteTokens();
     yield this.SaveMyCompositions();
+
+    this.GetCompositionPlayoutUrl();
   });
 
   SetCompositionObject = flow(function * ({objectId, compositionKey}) {
@@ -716,7 +694,7 @@ class CompositionStore {
 
     const libraryId = yield this.client.ContentObjectLibraryId({objectId});
     const versionHash = yield this.client.LatestVersionHash({objectId});
-    const writeToken = yield this.WriteToken(objectId);
+    const writeToken = yield this.WriteToken(objectId, false);
 
 
     const sourceName = yield this.client.ContentObjectMetadata({
@@ -843,6 +821,43 @@ class CompositionStore {
     ).clips;
   });
 
+  PerformAction({label, Action, ...attrs}, fromRedo=false) {
+    clearTimeout(this.updateTimeout);
+
+    const originalData = {
+      clipIdList: Unproxy(this.clipIdList),
+      clips: Unproxy(this.clips)
+    };
+
+    const result = Action();
+
+    this._actionStack.push({
+      id: this.rootStore.NextId(),
+      label,
+      Action,
+      Undo: () => {
+        this.clips = originalData.clips;
+        this.clipIdList = originalData.clipIdList;
+      },
+      addedAt: Date.now(),
+      ...attrs
+    });
+
+    this._position++;
+
+    // Undid action(s), but performed new action - Drop redo stack for this context
+    if(!fromRedo) {
+      this._redoStack = [];
+    }
+
+    this.saved = false;
+
+    this.updateTimeout = setTimeout(() => this.UpdateComposition(), 500);
+
+    return result;
+  }
+
+
   Undo() {
     if(this._actionStack.length === 0) { return; }
 
@@ -858,6 +873,8 @@ class CompositionStore {
     if(!this.selectedClip) {
       this.ClearSelectedClip();
     }
+
+    this.updateTimeout = setTimeout(() => this.UpdateComposition(), 500);
   }
 
   Redo() {
