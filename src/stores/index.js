@@ -34,7 +34,6 @@ class RootStore {
   initialized = false;
   page = "source";
   subpage = undefined;
-  sidePanelDimensions = {};
   expandedPanel = undefined;
   errorMessage = undefined;
   l10n = LocalizationEN;
@@ -188,10 +187,6 @@ class RootStore {
     }
 
     return url.toString();
-  }
-
-  SetSidePanelDimensions(dimensions) {
-    this.sidePanelDimensions = dimensions;
   }
 
   SetError(message) {

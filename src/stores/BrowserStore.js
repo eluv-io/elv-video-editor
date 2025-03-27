@@ -77,6 +77,107 @@ class BrowserStore {
     });
   });
 
+  ObjectDetails = flow(function * ({objectId, versionHash, publicMetadata}) {
+    if(!versionHash) {
+      versionHash = yield this.rootStore.client.LatestVersionHash({objectId});
+    }
+
+    objectId = this.rootStore.client.utils.DecodeVersionHash(versionHash).objectId;
+
+    const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
+
+    // Try and retrieve video duration
+    let metadata, duration, lastModified, forbidden, isVideo, hasChannels, channels, hasAssets;
+    try {
+      metadata = yield this.rootStore.client.ContentObjectMetadata({
+        versionHash: versionHash,
+        select: [
+          "public/name",
+          "public/display_image",
+          "commit/timestamp",
+          "channel/offerings/*/display_name",
+          "assets",
+          "offerings/*/media_struct/duration_rat"
+        ]
+      });
+
+      const savedChannels = this.rootStore.compositionStore.myCompositions[objectId];
+
+      hasChannels = !!metadata?.channel || savedChannels;
+      hasAssets = !!metadata?.assets;
+
+      if(hasChannels) {
+        channels = [];
+
+        if(metadata?.channel) {
+          channels = Object.keys(metadata?.channel?.offerings || {}).map(channelKey => ({
+            key: channelKey,
+            label: metadata.channel.offerings[channelKey].display_name || channelKey,
+          }));
+        }
+
+        if(savedChannels) {
+          channels = [
+            ...channels,
+            ...Object.values(savedChannels)
+              .filter(({key}) => !channels.find(channel => channel.key === key))
+          ];
+        }
+      }
+
+      lastModified = metadata?.commit?.timestamp;
+      if(lastModified) {
+        lastModified = new Date(lastModified).toLocaleDateString(navigator.language, {month: "short", day: "numeric", year: "numeric"});
+      }
+
+      const offering = metadata?.offerings?.default ?
+        "default" :
+        Object.keys(metadata?.offerings || {})[0];
+
+      duration = metadata?.offerings?.[offering]?.media_struct?.duration_rat;
+
+      if(duration) {
+        isVideo = true;
+        duration = parseInt(duration.split("/")[0]) / parseInt(duration.split("/")[1]);
+
+        let hours = Math.floor(Math.max(0, duration) / 60 / 60) % 24;
+        let minutes = Math.floor(Math.max(0, duration) / 60 % 60);
+        let seconds = Math.ceil(Math.max(duration, 0) % 60);
+
+        duration = [hours, minutes, seconds]
+          .map(t => (!t || isNaN(t) ? "" : t.toString()).padStart(2, "0"))
+          .join(":");
+      }
+    } catch(error) {
+      if(error.status === 403) {
+        forbidden = true;
+      }
+    }
+
+    metadata = metadata || { public: publicMetadata };
+
+    return {
+      libraryId,
+      id: objectId,
+      objectId: objectId,
+      versionHash: versionHash,
+      forbidden,
+      lastModified,
+      duration,
+      isVideo,
+      hasChannels,
+      hasAssets,
+      channels,
+      name: metadata?.public?.name || objectId,
+      image: !metadata?.public?.display_image ? undefined :
+        yield this.rootStore.client.LinkUrl({
+          versionHash: versionHash,
+          linkPath: "/public/display_image"
+        }),
+      metadata
+    };
+  });
+
   ListObjects = flow(function * ({libraryId, page=1, perPage=25, filter="", cacheId=""}) {
     if(filter.startsWith("iq__") || filter.startsWith("hq__")) {
       filter = "";
@@ -102,100 +203,17 @@ class BrowserStore {
       }
     });
 
-    contents = yield Promise.all(
-      contents.map(async object => {
-        const latestVersion = object.versions[0];
-
-        // Try and retrieve video duration
-        let duration, lastModified, forbidden, isVideo, hasChannels, channels, hasAssets;
-        try {
-          const metadata = await this.rootStore.client.ContentObjectMetadata({
-            versionHash: latestVersion.hash,
-            select: [
-              "commit/timestamp",
-              "channel/offerings/*/display_name",
-              "assets",
-              "offerings/*/media_struct/duration_rat"
-            ]
-          });
-
-          const savedChannels = this.rootStore.compositionStore.myCompositions[latestVersion.id];
-
-          hasChannels = !!metadata?.channel || savedChannels;
-          hasAssets = !!metadata?.assets;
-
-          if(hasChannels) {
-            channels = [];
-
-            if(metadata?.channel) {
-              channels = Object.keys(metadata?.channel?.offerings || {}).map(channelKey => ({
-                key: channelKey,
-                label: metadata.channel.offerings[channelKey].display_name || channelKey,
-              }));
-            }
-
-            if(savedChannels) {
-              channels = [
-                ...channels,
-                ...Object.values(savedChannels)
-              ];
-            }
-          }
-
-          lastModified = metadata?.commit?.timestamp;
-          if(lastModified) {
-            lastModified = new Date(lastModified).toLocaleDateString(navigator.language, {month: "short", day: "numeric", year: "numeric"});
-          }
-
-          const offering = metadata?.offerings?.default ?
-            "default" :
-            Object.keys(metadata?.offerings || {})[0];
-
-          duration = metadata?.offerings?.[offering]?.media_struct?.duration_rat;
-
-          if(duration) {
-            isVideo = true;
-            duration = parseInt(duration.split("/")[0]) / parseInt(duration.split("/")[1]);
-
-            let hours = Math.floor(Math.max(0, duration) / 60 / 60) % 24;
-            let minutes = Math.floor(Math.max(0, duration) / 60 % 60);
-            let seconds = Math.ceil(Math.max(duration, 0) % 60);
-
-            duration = [hours, minutes, seconds]
-              .map(t => (!t || isNaN(t) ? "" : t.toString()).padStart(2, "0"))
-              .join(":");
-          }
-        } catch(error) {
-          if(error.status === 403) {
-            forbidden = true;
-          }
-        }
-
-        return {
-          id: latestVersion.id,
-          objectId: latestVersion.id,
-          versionHash: latestVersion.hash,
-          forbidden,
-          lastModified,
-          duration,
-          isVideo,
-          hasChannels,
-          hasAssets,
-          channels,
-          name: latestVersion?.meta?.public?.name || latestVersion.id,
-          image: !latestVersion?.meta?.public?.display_image ? undefined :
-            await this.rootStore.client.LinkUrl({
-              versionHash: latestVersion.hash,
-              linkPath: "/public/display_image"
-            }),
-          metadata: latestVersion?.meta || {}
-        };
-      })
-    );
-
     return {
-      content: contents
-       .filter(object => object.objectId.replace("iq__", "ilib") !== libraryId),
+      content: yield Promise.all(
+        contents.map(async object => {
+          const latestVersion = object.versions[0];
+
+          return this.ObjectDetails({
+            publicMetadata: latestVersion.meta?.public,
+            versionHash: latestVersion.hash
+          });
+        })
+      ),
       paging: {
         page,
         pages: paging.pages,
@@ -247,14 +265,7 @@ class BrowserStore {
         case "library":
           return { libraryId };
         case "object":
-          const name = yield client.ContentObjectMetadata({
-            libraryId,
-            objectId,
-            versionHash,
-            metadataSubtree: "/public/name"
-          });
-
-          return { libraryId, objectId, versionHash, name };
+          return yield this.ObjectDetails({objectId, versionHash});
         default:
           // eslint-disable-next-line no-console
           console.error("Invalid content:", contentId, accessType);

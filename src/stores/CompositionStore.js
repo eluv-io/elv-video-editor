@@ -679,7 +679,7 @@ class CompositionStore {
   SaveComposition = flow(function * () {
     yield this.UpdateComposition();
 
-    const {libraryId, objectId} = this.compositionObject;
+    const {libraryId, objectId, name} = this.compositionObject;
     const writeToken = yield this.WriteToken(objectId);
 
     yield this.client.FinalizeContentObject({
@@ -705,7 +705,8 @@ class CompositionStore {
       saved: true
     };
 
-    this.SaveMyCompositions();
+    yield this.SaveWriteTokens();
+    yield this.SaveMyCompositions();
   });
 
   SetCompositionObject = flow(function * ({objectId, compositionKey}) {
@@ -921,7 +922,7 @@ class CompositionStore {
       type: "app",
       appId: "video-editor",
       mode: "private",
-      key: "my-compositions"
+      key: `my-compositions${window.location.hostname === "localhost" ? "-dev" : ""}`
     });
 
     if(compositions) {
@@ -949,7 +950,7 @@ class CompositionStore {
       type: "app",
       appId: "video-editor",
       mode: "private",
-      key: "my-compositions",
+      key: `my-compositions${window.location.hostname === "localhost" ? "-dev" : ""}`,
       value: this.client.utils.B64(
         JSON.stringify(this.myCompositions || {})
       )

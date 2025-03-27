@@ -1,6 +1,6 @@
 import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
-import React, {forwardRef, useEffect, useRef, useState} from "react";
+import React, {forwardRef, useEffect, useState} from "react";
 import {ConvertColor, Copy, CreateModuleClassMatcher, JoinClassNames, TextWidth} from "@/utils/Utils.js";
 import {
   Button,
@@ -533,48 +533,6 @@ export const SwitchInput = observer(({...props}) => {
         track: S("switch__track"),
       }}
     />
-  );
-});
-
-export const ResizeHandle = observer(({onMove, variant="both"}) => {
-  const [dragging, setDragging] = useState(false);
-  const handleRef = useRef(null);
-
-  useEffect(() => {
-    if(!dragging) { return; }
-
-    const Move = event => {
-      const handlePosition = handleRef?.current?.getBoundingClientRect();
-
-      if(!handlePosition) { return; }
-
-      onMove({
-        deltaX: event.clientX - (handlePosition.x + handlePosition.width),
-        deltaY: event.clientY - (handlePosition.y - (handlePosition.height / 2))
-      });
-    };
-
-    document.addEventListener("dragover", Move);
-
-    return () => {
-      document.removeEventListener("dragover", Move);
-    };
-  }, [dragging]);
-
-  return (
-    <div className={S("resize-handle", `resize-handle--${variant}`, dragging ? "resize-handle--active" : "")}>
-      <div
-        ref={handleRef}
-        onClick={event => {
-          event.preventDefault();
-          event.stopPropagation();
-        }}
-        draggable
-        onDragStart={() => setDragging(true)}
-        onDragEnd={() => setDragging(false)}
-        className={S("resize-handle__draggable")}
-      />
-    </div>
   );
 });
 

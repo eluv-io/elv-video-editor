@@ -1,14 +1,14 @@
 import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
 import {observer} from "mobx-react-lite";
-import React, {useEffect, useRef, useState} from "react";
+import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {LoaderImage} from "@/components/common/Common.jsx";
 
 const S = CreateModuleClassMatcher(CommonStyles);
 
 const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage, ...props}) => {
-  const ref = useRef();
+  const [ref, setRef] = useState(null);
   const [thumbnails, setThumbnails] = useState(null);
 
   const [clientX, setClientX] = useState(-1);
@@ -42,7 +42,7 @@ const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage,
   }, [store.thumbnailStore.thumbnailStatus.available]);
 
   useEffect(() => {
-    if(!ref?.current) { return; }
+    if(!ref) { return; }
 
     if(clientX < 0) {
       setHoverInfo({
@@ -54,7 +54,7 @@ const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage,
       return;
     }
 
-    const {left, width} = ref.current.getBoundingClientRect();
+    const {left, width} = ref.getBoundingClientRect();
     const progress = (clientX - left) / width;
     const thumbnailIndex = Math.floor(thumbnails.length * progress);
 
@@ -76,7 +76,7 @@ const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage,
   return (
     <div
       {...props}
-      ref={ref}
+      ref={setRef}
       style={{aspectRatio: store.aspectRatio, ...(props.style || {})}}
       onMouseMove={event => setClientX(event.clientX)}
       onMouseLeave={() => setClientX(-1)}

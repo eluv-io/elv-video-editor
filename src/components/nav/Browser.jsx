@@ -1,6 +1,6 @@
 import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 
-import React, {useState, useEffect, useRef} from "react";
+import React, {useState, useEffect} from "react";
 import {observer} from "mobx-react-lite";
 import {rootStore, browserStore, compositionStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
@@ -21,9 +21,9 @@ import PageBackIcon from "@/assets/icons/Backward.svg";
 const S = CreateModuleClassMatcher(BrowserStyles);
 
 const PageControls = observer(({currentPage, pages, maxSpread=15, SetPage}) => {
-  const ref = useRef();
+  const [ref, setRef] = useState(undefined);
 
-  const width = ref?.current?.getBoundingClientRect().width || 0;
+  const width = ref?.getBoundingClientRect().width || 0;
 
   let spread = maxSpread;
   if(width < 600) {
@@ -41,7 +41,7 @@ const PageControls = observer(({currentPage, pages, maxSpread=15, SetPage}) => {
   }
 
   return (
-    <div ref={ref} style={width === 0 ? {opacity: 0} : {}} className={S("page-controls")}>
+    <div ref={setRef} style={width === 0 ? {opacity: 0} : {}} className={S("page-controls")}>
       <IconButton
         disabled={spreadStart <= 1}
         label="First Page"
@@ -187,7 +187,7 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
           }
         </div>
         {
-          content.map(({id, name, image, duration, isVideo, hasChannels, hasAssets, channels, lastModified, forbidden}) =>
+          (content || []).map(({id, name, image, duration, isVideo, hasChannels, hasAssets, channels, lastModified, forbidden}) =>
             <Linkish
               onClick={() => {
                 if(contentType === "library") {
@@ -357,7 +357,7 @@ export const LibraryBrowser = observer(({title, Path, Select, className=""}) => 
 });
 
 const Browser = observer(() => {
-  const [libraryId, setLibraryId] = useState(undefined);
+  const [selectedLibraryId, setSelectedLibraryId] = useState(undefined);
   const [channelInfo, setChannelInfo] = useState(undefined);
   const [redirect, setRedirect] = useState(undefined);
 
@@ -386,33 +386,41 @@ const Browser = observer(() => {
     );
   }
 
-  if(libraryId) {
+  const Select = ({libraryId, objectId, name, isVideo, hasAssets, hasChannels, channels}) => {
+    if(libraryId) {
+      setSelectedLibraryId(libraryId);
+    }
+
+    if(!objectId) { return; }
+
+    if(!isVideo && hasAssets) {
+      setRedirect(UrlJoin("/", libraryId || selectedLibraryId, objectId, "assets"));
+    }
+
+    if(hasChannels) {
+      setChannelInfo({
+        libraryId: libraryId || selectedLibraryId,
+        objectId,
+        objectName: name,
+        channels
+      });
+    } else {
+      setRedirect(UrlJoin("/", libraryId || selectedLibraryId, objectId));
+    }
+  };
+
+  if(selectedLibraryId) {
     return (
       <ObjectBrowser
-        key={`browser-${libraryId}`}
-        libraryId={libraryId}
-        Back={() => setLibraryId(undefined)}
-        Select={({objectId, name, isVideo, hasAssets, hasChannels, channels}) => {
-          if(!isVideo && hasAssets) {
-            setRedirect(UrlJoin("/", libraryId, objectId, "assets"));
-          }
-
-          if(hasChannels) {
-            setChannelInfo({
-              libraryId,
-              objectId,
-              objectName: name,
-              channels
-            });
-          } else {
-            setRedirect(UrlJoin("/", libraryId, objectId));
-          }
-        }}
+        key={`browser-${selectedLibraryId}`}
+        libraryId={selectedLibraryId}
+        Back={() => setSelectedLibraryId(undefined)}
+        Select={Select}
       />
     );
   }
 
-  return <LibraryBrowser Select={({libraryId}) => setLibraryId(libraryId)} />;
+  return <LibraryBrowser Select={Select} />;
 });
 
 export default Browser;

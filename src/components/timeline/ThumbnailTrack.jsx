@@ -1,6 +1,6 @@
 import TrackStyles from "@/assets/stylesheets/modules/track.module.scss";
 
-import React, {useEffect, useRef, useState} from "react";
+import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {Button, Tooltip, Text, Progress} from "@mantine/core";
@@ -112,7 +112,7 @@ const ThumbnailTrack = observer(({
   RenderTooltip,
   className=""
 }) => {
-  const ref = useRef(null);
+  const [ref, setRef] = useState(null);
   const [trackDimensions, setTrackDimensions] = useState({height: 1, width: 1});
   const [hoverThumbnail, setHoverThumbnail] = useState(undefined);
 
@@ -120,18 +120,18 @@ const ThumbnailTrack = observer(({
   endFrame = typeof endFrame === "undefined" ? store.scaleMaxFrame : endFrame;
 
   useEffect(() => {
-    if(!ref?.current) {
+    if(!ref) {
       return;
     }
 
     const resizeObserver = new ResizeObserver(() =>
-      setTrackDimensions(ref.current.getBoundingClientRect())
+      setTrackDimensions(ref.getBoundingClientRect())
     );
 
-    resizeObserver.observe(ref.current);
+    resizeObserver.observe(ref);
 
     return () => resizeObserver?.disconnect();
-  }, [ref?.current]);
+  }, [ref]);
 
   const scale = (endFrame - startFrame) / store.totalFrames;
   const startProgress = startFrame / store.totalFrames;
@@ -152,7 +152,7 @@ const ThumbnailTrack = observer(({
 
   const content = (
     <div
-      ref={ref}
+      ref={setRef}
       key={`thumbnail-${store?.thumbnailStore?.thumbnailStatus?.available}`}
       onMouseMove={event => setHoverThumbnail(
         store.thumbnailStore.ThumbnailImage(CalculateProgress(event) * store.duration)
