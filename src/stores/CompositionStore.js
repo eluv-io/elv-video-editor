@@ -628,7 +628,7 @@ class CompositionStore {
   });
 
   UpdateComposition = flow(function * () {
-    if(!this.compositionObject) { return; }
+    if(!this.compositionObject?.objectId) { return; }
 
     this.seekProgress = this.videoStore.seek;
 
@@ -688,6 +688,8 @@ class CompositionStore {
       writeToken,
       commitMessage: "EVIE Composition"
     });
+
+    yield new Promise(resolve => setTimeout(resolve, 3000));
 
     this.saved = true;
 
@@ -873,6 +875,8 @@ class CompositionStore {
 
   WriteToken = flow(function * (objectId, create=true) {
     objectId = objectId || this.compositionObject.objectId;
+
+    if(!objectId) { return; }
 
     if(!this.writeTokenInfo[objectId] && create) {
       const libraryId = yield this.client.ContentObjectLibraryId({objectId});
