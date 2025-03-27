@@ -107,20 +107,40 @@ class BrowserStore {
         const latestVersion = object.versions[0];
 
         // Try and retrieve video duration
-        let duration, lastModified, forbidden, isVideo, hasChannels, hasAssets;
+        let duration, lastModified, forbidden, isVideo, hasChannels, channels, hasAssets;
         try {
           const metadata = await this.rootStore.client.ContentObjectMetadata({
             versionHash: latestVersion.hash,
             select: [
               "commit/timestamp",
-              "channel/source_info",
+              "channel/offerings/*/display_name",
               "assets",
               "offerings/*/media_struct/duration_rat"
             ]
           });
 
-          hasChannels = !!metadata?.channel;
+          const savedChannels = this.rootStore.compositionStore.myCompositions[latestVersion.id];
+
+          hasChannels = !!metadata?.channel || savedChannels;
           hasAssets = !!metadata?.assets;
+
+          if(hasChannels) {
+            channels = [];
+
+            if(metadata?.channel) {
+              channels = Object.keys(metadata?.channel?.offerings || {}).map(channelKey => ({
+                key: channelKey,
+                label: metadata.channel.offerings[channelKey].display_name || channelKey,
+              }));
+            }
+
+            if(savedChannels) {
+              channels = [
+                ...channels,
+                ...Object.values(savedChannels)
+              ];
+            }
+          }
 
           lastModified = metadata?.commit?.timestamp;
           if(lastModified) {
@@ -161,6 +181,7 @@ class BrowserStore {
           isVideo,
           hasChannels,
           hasAssets,
+          channels,
           name: latestVersion?.meta?.public?.name || latestVersion.id,
           image: !latestVersion?.meta?.public?.display_image ? undefined :
             await this.rootStore.client.LinkUrl({

@@ -17,15 +17,17 @@ import {
 } from "@/components/video/VideoControls.jsx";
 import KeyboardControls from "@/components/timeline/KeyboardControls.jsx";
 import CompositionTrack from "@/components/compositions/CompositionTrack.jsx";
+import {useParams} from "wouter";
+import CompositionSelection from "@/components/compositions/CompositionSelection.jsx";
+import Share from "@/components/download/Share.jsx";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
 import ClipInIcon from "@/assets/icons/v2/clip-start.svg";
 import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
 import SplitIcon from "@/assets/icons/v2/split.svg";
-import {useParams} from "wouter";
-import CompositionSelection from "@/components/compositions/CompositionSelection.jsx";
-import Share from "@/components/download/Share.jsx";
+import LinkIcon from "@/assets/icons/v2/external-link.svg";
+
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -100,6 +102,16 @@ const TimelineTopBar = observer(() => {
           label="Split Clip at Playhead"
         />
         <div className={S("toolbar__separator")}/>
+        <IconButton
+          icon={LinkIcon}
+          //disabled={!compositionStore.saved}
+          label={
+            !compositionStore.saved ?
+              "Please publish your composition to view it" :
+              "View Composition in Fabric Browser"
+          }
+          onClick={() => compositionStore.OpenFabricBrowserLink()}
+        />
         <Share />
       </div>
     </div>

@@ -58,25 +58,26 @@ const Video = observer(({
     // Add scroll handler for volume to video element
     StopScroll({element: video});
 
+    let config;
+    if(window.location.hostname === "localhost") {
+      // Reduce quality for development
+      config = {
+        nudgeOffset: 0.2,
+        nudgeMaxRetry: 30,
+        autoLevelEnabled: false,
+        maxBufferLength: 2,
+        maxBufferSize: 1 * 1024 * 1024,
+        maxMaxBufferLength: 2,
+        capLevelToPlayerSize: true
+      };
+    } else {
+      config = {
+        nudgeOffset: 0.2,
+        nudgeMaxRetry: 30,
+        autoLevelEnabled: false
+      };
+    }
 
-    // TODO: Remove
-    const config = {
-      nudgeOffset: 0.2,
-      nudgeMaxRetry: 30,
-      autoLevelEnabled: false,
-      // TODO: Remove
-      /*
-      maxBufferLength: 2,
-      maxBufferSize: 1 * 1024 * 1024,
-      maxMaxBufferLength: 2,
-      capLevelToPlayerSize: true
-      
-       */
-    };
-
-
-
-    //const config = {};
 
     const player = new HLSPlayer(config);
 

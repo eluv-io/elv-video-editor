@@ -105,7 +105,7 @@ export const Clip = observer(({clip, containerDimensions}) => {
       draggable
       onDragStart={() => compositionStore.SetDragging({clip})}
       onDragEnd={() => compositionStore.EndDrag()}
-      onClick={() => compositionStore.SetSelectedClip(clip.clipId)}
+      onClick={() => compositionStore.SetSelectedClip(clip.clipId, true)}
       style={{
         left: clipLeft,
         width: clipWidth,

@@ -1,4 +1,4 @@
-import {configure, runInAction, makeAutoObservable, flow} from "mobx";
+import {configure, makeAutoObservable, flow} from "mobx";
 import AssetStore from "@/stores/AssetStore.js";
 import BrowserStore from "./BrowserStore";
 import EditStore from "./EditStore";
@@ -101,19 +101,7 @@ class RootStore {
       timeout: 30
     });
 
-    // TODO: Remove
-
-
-
-    yield client.SetNodes({
-      //fabricURIs: ["https://host-76-74-28-233.contentfabric.io"]
-      fabricURIs: ["https://host-76-74-34-203.contentfabric.io"]
-    });
-
-
-
-
-    runInAction(() => this.client = client);
+    this.client = client;
 
     this.initialized = true;
 
@@ -138,6 +126,8 @@ class RootStore {
     this.network = (yield this.client.NetworkInfo()).name;
     this.publicToken = client.utils.B64(JSON.stringify({qspace_id: yield this.client.ContentSpaceId()}));
     this.signedToken = yield client.CreateSignedToken({duration: 24 * 60 * 60 * 1000});
+
+    this.compositionStore.Initialize();
   });
 
   FabricUrl({libraryId, objectId, writeToken, versionHash, noWriteToken=false, path="", auth, resolve=true, width}) {

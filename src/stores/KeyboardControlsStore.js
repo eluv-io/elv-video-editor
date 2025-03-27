@@ -219,7 +219,10 @@ class ControlStore {
   }
 
   RemoveClip() {
-    if(!this.rootStore.compositionStore.selectedClipId) { return; }
+    if(
+      this.rootStore.compositionStore.selectedClipId === "new" ||
+      !this.rootStore.compositionStore.selectedClipId
+    ) { return; }
 
     this.rootStore.compositionStore.RemoveClip(this.rootStore.compositionStore.selectedClipId);
   }

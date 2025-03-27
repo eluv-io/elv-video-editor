@@ -36,6 +36,23 @@ const ClipControls = observer(() => {
   const store = compositionStore.selectedClipStore;
   const clip = compositionStore.selectedClip;
 
+  const ResetView = () => {
+    if(!store.initialized) { return; }
+
+    let clipInProgress = 100 * (clip.clipInFrame || 0) / store.totalFrames;
+    let clipOutProgress = 100 * (clip.clipOutFrame || (store.totalFrames - 1)) / store.totalFrames;
+
+    store.SetSegment(clip.clipInFrame, clip.clipOutFrame);
+    store.SetScale(
+      Math.max(0, clipInProgress - 0.5),
+      Math.min(100, clipOutProgress + 0.5),
+    );
+  };
+
+  useEffect(() => {
+    ResetView();
+  }, [compositionStore.originalSelectedClipId]);
+
   if(!store.initialized) {
     return null;
   }
@@ -52,16 +69,7 @@ const ClipControls = observer(() => {
         <IconButton
           label="Reset View to Selected Clip"
           icon={ClipIcon}
-          onClick={() => {
-            let clipInProgress = 100 * (clip.clipInFrame || 0) / store.totalFrames;
-            let clipOutProgress = 100 * (clip.clipOutFrame || (store.totalFrames - 1)) / store.totalFrames;
-
-            store.SetSegment(clip.clipInFrame, clip.clipOutFrame);
-            store.SetScale(
-              Math.max(0, clipInProgress - 0.5),
-              Math.min(100, clipOutProgress + 0.5),
-            );
-          }}
+          onClick={ResetView}
         />
         <IconButton
           label="Zoom In"
@@ -76,34 +84,22 @@ const ClipControls = observer(() => {
           label="Set Clip In to Current Frame"
           highlight
           icon={ClipInIcon}
-          onClick={() => {
-            store.SetClipMark({inFrame: store.frame});
-            compositionStore.ModifyClip({
-              label: "Modify Clip Points",
-              clipId: clip.clipId,
-              attrs: {
-                clipInFrame: store.clipInFrame,
-                clipOutFrame: store.clipOutFrame
-              }
-            });
-          }}
+          onClick={() => compositionStore.ModifyClip({
+            clipId: compositionStore.selectedClipId,
+            attrs: { clipInFrame: store.frame },
+            label: "Modify Clip Points"
+          })}
         />
         <PlayCurrentClipButton store={store}/>
         <IconButton
           label="Set Clip Out to Current Frame"
           highlight
           icon={ClipOutIcon}
-          onClick={() => {
-            store.SetClipMark({outFrame: store.frame});
-            compositionStore.ModifyClip({
-              label: "Modify Clip Points",
-              clipId: clip.clipId,
-              attrs: {
-                clipInFrame: store.clipInFrame,
-                clipOutFrame: store.clipOutFrame
-              }
-            });
-          }}
+          onClick={() => compositionStore.ModifyClip({
+            clipId: compositionStore.selectedClipId,
+            attrs: { clipOutFrame: store.frame },
+            label: "Modify Clip Points"
+          })}
         />
       </div>
       <div className={S("toolbar__separator")}/>
@@ -357,7 +353,7 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
       Math.min(100, clipOutProgress + 0.5),
     );
     store.Seek(clip.clipInFrame);
-  }, [store.initialized, !!store.videoHandler, compositionStore.selectedClipId]);
+  }, [store.initialized, !!store.videoHandler, compositionStore.selectedClipId, store.originalSelectedClipId]);
 
   return (
     <div
@@ -365,9 +361,17 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
       tabIndex="0"
       onKeyDown={event => {
         if(event.key === "[") {
-          compositionStore.ModifySelectedClip({clipInFrame: store.frame});
+          compositionStore.ModifyClip({
+            clipId: compositionStore.selectedClipId,
+            attrs: { clipInFrame: store.frame },
+            label: "Modify Clip Points"
+          });
         } else if(event.key === "]") {
-          compositionStore.ModifySelectedClip({clipOutFrame: store.frame});
+          compositionStore.ModifyClip({
+            clipId: compositionStore.selectedClipId,
+            attrs: { clipOutFrame: store.frame },
+            label: "Modify Clip Points"
+          });
         }
       }}
       onFocus={() => setActive(true)}

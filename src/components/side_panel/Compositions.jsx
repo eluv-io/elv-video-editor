@@ -13,6 +13,8 @@ import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
 const Clip = observer(({clip}) => {
+  if(!clip) { return null; }
+
   const store = compositionStore.ClipStore({clipId: clip.clipId});
 
   const HandleDrag = event => {
@@ -35,7 +37,7 @@ const Clip = observer(({clip}) => {
       onDrop={() => compositionStore.EndDrag()}
       onDragEnd={() => compositionStore.EndDrag()}
       onClick={() => compositionStore.SetSelectedClip(clip.clipId)}
-      className={S("clip", compositionStore.selectedClipId === clip.clipId ? "clip--active" : "")}
+      className={S("clip", compositionStore.originalSelectedClipId === clip.clipId ? "clip--active" : "")}
     >
       <PreviewThumbnail
         useLoaderImage

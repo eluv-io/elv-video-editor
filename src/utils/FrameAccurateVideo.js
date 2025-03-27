@@ -144,7 +144,7 @@ class FrameAccurateVideo {
   }
 
   ProgressToTime(progress) {
-    const duration = this.video.duration || 0;
+    const duration = this.video?.duration || 0;
 
     return Fraction(progress).mul(duration).valueOf();
   }
@@ -322,6 +322,8 @@ class FrameAccurateVideo {
   }
 
   Seek(frame) {
+    if(!this.video) { return; }
+
     // Whenever seeking, stop comfortably in the middle of a frame
     frame = Fraction(frame).floor().add(0.5);
 

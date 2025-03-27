@@ -2,11 +2,11 @@ import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 
 import React, {useState, useEffect, useRef} from "react";
 import {observer} from "mobx-react-lite";
-import {rootStore, browserStore} from "@/stores";
+import {rootStore, browserStore, compositionStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {IconButton, Linkish, Loader} from "@/components/common/Common";
 import SVG from "react-inlinesvg";
-import {useLocation, useParams} from "wouter";
+import {Redirect, useLocation} from "wouter";
 import UrlJoin from "url-join";
 
 import LibraryIcon from "@/assets/icons/v2/library.svg";
@@ -128,7 +128,7 @@ const SearchBar = observer(({filter, setFilter, delay=500, Select}) => {
   );
 });
 
-const BrowserTable = observer(({filter, Load, Path, Select, defaultIcon, contentType="library", videoOnly}) => {
+const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="library", videoOnly}) => {
   const [loading, setLoading] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
   const [content, setContent] = useState(undefined);
@@ -187,10 +187,17 @@ const BrowserTable = observer(({filter, Load, Path, Select, defaultIcon, content
           }
         </div>
         {
-          content.map(({id, name, image, duration, isVideo, hasChannels, hasAssets, lastModified, forbidden}) =>
+          content.map(({id, name, image, duration, isVideo, hasChannels, hasAssets, channels, lastModified, forbidden}) =>
             <Linkish
-              to={Path?.({id, name, isVideo, hasChannels, hasAssets})}
-              onClick={Select ? () => Select({[contentType === "library" ? "libraryId" : "objectId"]: id, name}) : undefined}
+              onClick={() => {
+                if(contentType === "library") {
+                  Select({libraryId: id, name});
+                } else if(contentType === "object") {
+                  Select({objectId: id, name, isVideo, hasAssets, hasChannels, channels});
+                } else {
+                  Select({compositionKey: id});
+                }
+              }}
               key={`browser-row-${id}`}
               disabled={forbidden || (videoOnly && !isVideo)}
               className={S("browser-table__row", "browser-table__row--content")}
@@ -238,6 +245,53 @@ const BrowserTable = observer(({filter, Load, Path, Select, defaultIcon, content
         currentPage={paging.page}
         pages={paging.pages}
         SetPage={page => LoadPage(page)}
+      />
+    </div>
+  );
+});
+
+const ChannelBrowser = observer(({channelInfo, Select, Back, className=""}) => {
+  const [filter, setFilter] = useState("");
+
+  return (
+    <div className={JoinClassNames(S("browser", "browser--channel"), className)}>
+      <SearchBar filter={filter} setFilter={setFilter} Select={Select} />
+      <h1 className={S("browser__header")}>
+        <IconButton
+          icon={BackIcon}
+          label="Back to Content"
+          onClick={Back}
+          className={S("browser__header-back")}
+        />
+        <span>
+          {channelInfo.objectName} / Select Content
+        </span>
+      </h1>
+      <BrowserTable
+        filter={filter}
+        defaultIcon={ObjectIcon}
+        contentType="channels"
+        Select={Select}
+        Load={async ({page, perPage, filter}) => {
+          const content = [
+            {id: "", name: `Main Content - ${channelInfo.objectName}`},
+            ...(channelInfo.channels.map(({key, label}) =>
+              ({id: key, name: `Composition - ${label}`})
+            ))
+          ]
+            .filter(({name}) => !filter || name.toLowerCase().includes(filter.toLowerCase()));
+
+          const total = content.length;
+
+          return {
+            content,
+            paging: {
+              page,
+              pages: Math.ceil(total / perPage),
+              perPage
+            }
+          };
+        }}
       />
     </div>
   );
@@ -303,24 +357,62 @@ export const LibraryBrowser = observer(({title, Path, Select, className=""}) => 
 });
 
 const Browser = observer(() => {
-  const { libraryId } = useParams();
+  const [libraryId, setLibraryId] = useState(undefined);
+  const [channelInfo, setChannelInfo] = useState(undefined);
+  const [redirect, setRedirect] = useState(undefined);
 
   useEffect(() => {
     rootStore.SetPage("source");
   }, []);
 
-  return libraryId ?
-    <ObjectBrowser
-      key={`browser-${libraryId}`}
-      libraryId={libraryId}
-      backPath="/"
-      Path={({id, isVideo, hasAssets}) =>
-        !isVideo && hasAssets ?
-          UrlJoin("/", libraryId, id, "assets") :
-          UrlJoin("/", libraryId, id)
-      }
-    />:
-    <LibraryBrowser Path={({id}) => `/${id}`} />;
+  if(redirect) {
+    return <Redirect to={redirect} />;
+  }
+
+  if(channelInfo) {
+    return (
+      <ChannelBrowser
+        channelInfo={channelInfo}
+        Back={() => setChannelInfo(undefined)}
+        Select={({compositionKey}) => {
+          compositionStore.Reset();
+          setRedirect(
+            compositionKey ?
+              UrlJoin("/compositions", channelInfo.objectId, compositionKey) :
+              UrlJoin("/", channelInfo.libraryId, channelInfo.objectId)
+          );
+        }}
+      />
+    );
+  }
+
+  if(libraryId) {
+    return (
+      <ObjectBrowser
+        key={`browser-${libraryId}`}
+        libraryId={libraryId}
+        Back={() => setLibraryId(undefined)}
+        Select={({objectId, name, isVideo, hasAssets, hasChannels, channels}) => {
+          if(!isVideo && hasAssets) {
+            setRedirect(UrlJoin("/", libraryId, objectId, "assets"));
+          }
+
+          if(hasChannels) {
+            setChannelInfo({
+              libraryId,
+              objectId,
+              objectName: name,
+              channels
+            });
+          } else {
+            setRedirect(UrlJoin("/", libraryId, objectId));
+          }
+        }}
+      />
+    );
+  }
+
+  return <LibraryBrowser Select={({libraryId}) => setLibraryId(libraryId)} />;
 });
 
 export default Browser;

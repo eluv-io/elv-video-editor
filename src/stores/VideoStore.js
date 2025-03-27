@@ -281,6 +281,12 @@ class VideoStore {
         console.error("Unable to determine frame rate");
       }
 
+      this.videoHandler = new FrameAccurateVideo({
+        frameRate: this.frameRate,
+        frameRateRat: this.frameRateRat,
+        dropFrame: this.dropFrame
+      });
+
       if(this.thumbnailTrackUrl) {
         this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl);
       }
