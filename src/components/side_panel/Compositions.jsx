@@ -2,7 +2,7 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 
 import {observer} from "mobx-react-lite";
 import React from "react";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, DragHandler} from "@/utils/Utils.js";
 import {compositionStore} from "@/stores/index.js";
 import {Icon} from "@/components/common/Common.jsx";
 
@@ -17,23 +17,11 @@ const Clip = observer(({clip}) => {
 
   const store = compositionStore.ClipStore({clipId: clip.clipId});
 
-  const HandleDrag = event => {
-    const dragElement = document.querySelector("#drag-dummy") || document.createElement("div");
-    document.body.appendChild(dragElement);
-    dragElement.style.display = "none";
-    dragElement.id = "drag-dummy";
-    event.dataTransfer.setDragImage(dragElement, -10000, -10000);
-    compositionStore.SetDragging({
-      clip,
-      showDragShadow: true,
-      createNewClip: true
-    });
-  };
-
   return (
-    <button
+    <div
       draggable
-      onDragStart={HandleDrag}
+      role="button"
+      onDragStart={DragHandler(() => compositionStore.SetDragging({clip, showDragShadow: true, createNewClip: true}))}
       onDrop={() => compositionStore.EndDrag()}
       onDragEnd={() => compositionStore.EndDrag()}
       onClick={() => compositionStore.SetSelectedClip(clip.clipId)}
@@ -48,12 +36,12 @@ const Clip = observer(({clip}) => {
         style={{aspectRatio: store.aspectRatio}}
         className={S("clip__image")}
       />
-      <Tooltip label={clip.name} multiline maw={300}>
+      <Tooltip disabled={!!compositionStore.draggingClip} label={clip.name} multiline maw={300}>
         <div draggable={false} className={S("clip__name", "ellipsis")}>
           { clip.name }
         </div>
       </Tooltip>
-    </button>
+    </div>
   );
 });
 

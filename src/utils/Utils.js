@@ -253,3 +253,15 @@ export const StorageHandler = ({
     }
   }
 });
+
+const emptyImage = new Image(1, 1);
+emptyImage.src = "data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==";
+
+export const DragHandler = fn => event => {
+   // ...
+  // If the image isn't complete, Safari will abort the drag.
+  // Double check to be safe:
+  event.dataTransfer.setDragImage(emptyImage, 0, 0);
+
+  return fn(event);
+};

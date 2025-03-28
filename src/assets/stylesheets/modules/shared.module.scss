@@ -152,6 +152,12 @@
 }
 
 .form {
+  &__title {
+    font-size: 18px;
+    font-weight: 500;
+    margin: 5px 0 10px;
+  }
+
   &__inputs {
     display: grid;
     gap: 3px;

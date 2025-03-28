@@ -68,8 +68,9 @@ const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage,
   if(!store.thumbnailStore.thumbnailStatus.available || !thumbnails) {
     return !useLoaderImage ? null :
       <LoaderImage
-        showWithoutSource
         {...props}
+        showWithoutSource
+        className={JoinClassNames(S("preview-thumbnail"), props.className)}
       />;
   }
 

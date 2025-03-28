@@ -11,6 +11,7 @@
   }
 
   &__drop-indicator {
+    animation: var(--animation-fadein) 0.25s ease;
     background-color: var(--text-highlight);
     box-shadow: 0 0 3px var(--text-highlight);
     height: 100%;
@@ -18,6 +19,15 @@
     position: relative;
     width: 2px;
     z-index: 1000;
+
+    svg {
+      color: var(--color-highlight);
+      height: 16px;
+      left: -7px;
+      position: absolute;
+      top: -5px;
+      width: 16px
+    }
   }
 }
 

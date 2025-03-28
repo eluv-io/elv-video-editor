@@ -3,8 +3,11 @@ import CompositionStyles from "@/assets/stylesheets/modules/compositions.module.
 import React, {useEffect} from "react";
 import {observer} from "mobx-react-lite";
 import {compositionStore} from "@/stores/index.js";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, DragHandler} from "@/utils/Utils.js";
 import ThumbnailTrack from "@/components/timeline/ThumbnailTrack.jsx";
+
+import InvertedTriangleIcon from "@/assets/icons/v2/inverted-triangle.svg";
+import {Icon} from "@/components/common/Common.jsx";
 
 const S = CreateModuleClassMatcher(CompositionStyles);
 
@@ -39,7 +42,9 @@ export const DropIndicator = observer(({containerDimensions}) => {
       style={{left}}
       key={`indicator-${compositionStore.dropIndicatorIndex}`}
       className={S("composition-track__drop-indicator")}
-    />
+    >
+      <Icon icon={InvertedTriangleIcon} />
+    </div>
   );
 });
 
@@ -78,9 +83,9 @@ export const DraggedClip = observer(() => {
   return (
     <div
       style={{
-        width: Math.min(clipWidth, window.innerWidth / 2),
-        left: compositionStore.mousePositionX,
-        top: compositionStore.mousePositionY
+        width: Math.max(Math.min(clipWidth, window.innerWidth / 2), 200),
+        left: compositionStore.mousePositionX + 10,
+        top: compositionStore.mousePositionY + 10
       }}
       className={S("dragged-clip")}
     >
@@ -103,7 +108,7 @@ export const Clip = observer(({clip, containerDimensions}) => {
   return (
     <div
       draggable
-      onDragStart={() => compositionStore.SetDragging({clip})}
+      onDragStart={DragHandler(() => compositionStore.SetDragging({clip, showDragShadow: true, createNewClip: false}))}
       onDragEnd={() => compositionStore.EndDrag()}
       onClick={() => compositionStore.SetSelectedClip(clip.clipId, true)}
       style={{

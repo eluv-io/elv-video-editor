@@ -231,15 +231,15 @@ class CompositionStore {
     });
   }
 
-  ModifyClip({clipId, attrs={}, label}) {
+  ModifyClip({clipId, originalClipId, attrs={}, label}) {
     const clip = Unproxy(this.clips[clipId]);
 
     const store = this.clipStores[clip.storeKey];
     if(attrs.clipInFrame || attrs.clipOutFrame) {
       // Set clip points in store and use store check to ensure valid points
       const {clipInFrame, clipOutFrame} = store.SetClipMark({
-        inFrame: attrs.clipInFrame || store.clipInFrame,
-        outFrame: attrs.clipOutFrame || store.clipOutFrame
+        inFrame: attrs.clipInFrame || clip.clipInFrame,
+        outFrame: attrs.clipOutFrame || clip.clipOutFrame
       });
 
       attrs.clipInFrame = clipInFrame;
@@ -251,6 +251,13 @@ class CompositionStore {
         ...clip,
         ...attrs
       };
+
+      if(originalClipId) {
+        this.clips[originalClipId] = {
+          ...this.clips[originalClipId],
+          ...attrs
+        };
+      }
     };
 
     if(clip.clipId === "new") {
@@ -395,7 +402,6 @@ class CompositionStore {
       this.selectedClipId = clipId;
     } else {
       // Clip was selected from sidebar, do not change source clip
-
       if(this.clips[clipId]) {
         this.clips["new"] = {
           ...Unproxy(this.clips[clipId]),
@@ -435,7 +441,7 @@ class CompositionStore {
 
     const store = this.clipStores[key];
 
-    const clipId = "new";
+    const clipId = this.rootStore.NextId();
     this.clips[clipId] = {
       clipId,
       name: `${store.name} Clip`,
@@ -722,6 +728,7 @@ class CompositionStore {
 
     this.videoStore.videoHandler = videoHandler;
 
+    let updatedClipList = {};
     this.clipIdList = yield Promise.all(
       (metadata.items || []).map(async item => {
         const clipId = this.rootStore.NextId();
@@ -733,7 +740,7 @@ class CompositionStore {
         const clipInFrame = videoHandler.RatToFrame(item.slice_start_rat);
         const clipOutFrame = videoHandler.RatToFrame(item.slice_end_rat);
 
-        this.clips[clipId] = {
+        updatedClipList[clipId] = {
           clipId,
           name: item.display_name,
           libraryId,
@@ -751,6 +758,11 @@ class CompositionStore {
         return clipId;
       })
     );
+
+    this.clips = {
+      ...this.clips,
+      ...updatedClipList
+    };
 
     this.compositionObject = {
       libraryId,

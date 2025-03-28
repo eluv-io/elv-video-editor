@@ -3,7 +3,7 @@ import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {compositionStore, keyboardControlsStore} from "@/stores";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, DragHandler} from "@/utils/Utils.js";
 import {
   AudioControls,
   OfferingControls,
@@ -13,26 +13,27 @@ import {
 } from "@/components/video/VideoControls";
 import Video from "@/components/video/Video";
 import MarkedSlider from "@/components/common/MarkedSlider.jsx";
-import {AsyncButton, Icon, IconButton} from "@/components/common/Common.jsx";
-import {Text, TextInput, Tooltip} from "@mantine/core";
+import {AsyncButton, FormTextArea, Icon, IconButton, Modal} from "@/components/common/Common.jsx";
+import {Button, Text, Tooltip} from "@mantine/core";
+import {modals} from "@mantine/modals";
 
 import ZoomInIcon from "@/assets/icons/v2/zoom-in.svg";
 import ZoomOutIcon from "@/assets/icons/v2/zoom-out.svg";
+import ZoomOutFullIcon from "@/assets/icons/v2/arrows-horizontal.svg";
 import ClipIcon from "@/assets/icons/v2/clip-return.svg";
 import ClipInIcon from "@/assets/icons/v2/clip-start.svg";
 import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
 import AddClipIcon from "@/assets/icons/v2/add.svg";
 import DragClipIcon from "@/assets/icons/v2/drag.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
-import CheckIcon from "@/assets/icons/check-circle.svg";
 import XIcon from "@/assets/icons/X.svg";
 import TrashIcon from "@/assets/icons/trash.svg";
 import PublishIcon from "@/assets/icons/v2/publish.svg";
-import {modals} from "@mantine/modals";
 
 const S = CreateModuleClassMatcher(VideoStyles);
 
 const ClipControls = observer(() => {
+  const [resetFrames, setResetFrames] = useState({min: 0, max: 100});
   const store = compositionStore.selectedClipStore;
   const clip = compositionStore.selectedClip;
 
@@ -47,6 +48,8 @@ const ClipControls = observer(() => {
       Math.max(0, clipInProgress - 0.5),
       Math.min(100, clipOutProgress + 0.5),
     );
+
+    setResetFrames({min: store.scaleMinFrame, max: store.scaleMaxFrame});
   };
 
   useEffect(() => {
@@ -57,6 +60,8 @@ const ClipControls = observer(() => {
     return null;
   }
 
+  const isReset = store.scaleMinFrame === resetFrames.min && store.scaleMaxFrame === resetFrames.max;
+
   return (
     <div className={S("toolbar", "clip-toolbar")}>
       <div className={S("toolbar__controls-group")}>
@@ -66,11 +71,19 @@ const ClipControls = observer(() => {
           disabled={store.scaleMin === 0 && store.scaleMax === 100}
           onClick={() => store.SetScale(store.scaleMin - 1, store.scaleMax + 1)}
         />
-        <IconButton
-          label="Reset View to Selected Clip"
-          icon={ClipIcon}
-          onClick={ResetView}
-        />
+        {
+          isReset ?
+            <IconButton
+              label="View Entire Content"
+              icon={ZoomOutFullIcon}
+              onClick={() => store.SetScale(0, 100)}
+            /> :
+            <IconButton
+              label="Reset View to Selected Clip"
+              icon={ClipIcon}
+              onClick={ResetView}
+            />
+        }
         <IconButton
           label="Zoom In"
           icon={ZoomInIcon}
@@ -115,18 +128,13 @@ const ClipControls = observer(() => {
           icon={DragClipIcon}
           style={{cursor: "grab"}}
           draggable
-          onDragStart={event => {
-            const dragElement = document.querySelector("#drag-dummy") || document.createElement("div");
-            document.body.appendChild(dragElement);
-            dragElement.style.display = "none";
-            dragElement.id = "drag-dummy";
-            event.dataTransfer.setDragImage(dragElement, -10000, -10000);
+          onDragStart={DragHandler(() =>
             compositionStore.SetDragging({
               clip: compositionStore.selectedClip,
               showDragShadow: true,
               createNewClip: true
-            });
-          }}
+            })
+          )}
           onDragEnd={() => compositionStore.EndDrag()}
         />
       </div>
@@ -189,45 +197,58 @@ const ClipSeekBar = observer(() => {
   );
 });
 
+const TitleEditModal = observer(({name, clipView, Close}) => {
+  const [editedName, setEditedName] = useState(name);
+
+  const Save = () => {
+    if(clipView) {
+      compositionStore.ModifyClip({
+        clipId: compositionStore.selectedClipId,
+        originalClipId: compositionStore.originalSelectedClipId,
+        attrs: { name: editedName || name },
+        label: "Modify Clip Name"
+      });
+    } else {
+      compositionStore.SetCompositionName(editedName);
+    }
+
+    Close();
+  };
+
+  return (
+    <Modal
+      onClose={Close}
+      opened
+      centered
+      withCloseButton={false}
+    >
+      <form onSubmit={event => event.preventDefault()}>
+        <div className={S("form__title")}>Update {clipView ? "Clip" : "Composition"}</div>
+        <div className={S("form__inputs")}>
+          <FormTextArea
+            autoFocus
+            value={editedName}
+            label={clipView ? "Clip Description" : "Composition Name"}
+            onChange={event => setEditedName(event.target.value)}
+          />
+        </div>
+      </form>
+      <div className={S("form__actions")}>
+        <Button variant="subtle" color="gray.5" onClick={Close}>
+          Cancel
+        </Button>
+        <Button color="gray.5" autoContrast onClick={Save}>
+          Update
+        </Button>
+      </div>
+    </Modal>
+  );
+});
+
 const Title = observer(({clipView}) => {
   const name = clipView ? compositionStore.selectedClip.name : compositionStore.compositionObject?.name;
 
   const [editing, setEditing] = useState(false);
-  const [editedName, setEditedName] = useState(name);
-
-  if(editing) {
-    const Save = () => {
-      if(clipView) {
-        compositionStore.ModifyClip({
-          clipId: compositionStore.selectedClipId,
-          attrs: { name: editedName || name },
-          label: "Modify Clip Name"
-        });
-      } else {
-        compositionStore.SetCompositionName(editedName);
-      }
-
-      setEditing(false);
-    };
-
-    return (
-      <h1 className={S("video-section__title")}>
-        <TextInput
-          value={editedName}
-          placeholder={clipView ? "Clip Name" : "Composition Name"}
-          onKeyDown={event => event.key === "Enter" && Save()}
-          onChange={event => setEditedName(event.target.value)}
-          className={S("video-section__title-input")}
-        />
-        <IconButton
-          highlight
-          label="Update Name"
-          icon={CheckIcon}
-          onClick={Save}
-        />
-      </h1>
-    );
-  }
 
   if(!name) {
     return (
@@ -237,6 +258,10 @@ const Title = observer(({clipView}) => {
 
   return (
     <h1 className={S("video-section__title")}>
+      {
+        !editing ? null :
+          <TitleEditModal name={name} clipView={clipView} Close={() => setEditing(false)} />
+      }
       <Tooltip label={<div style={{textOverflow: "ellipsis", overflowX: "hidden"}}>{name}</div>} multiline maw={500}>
         <div className={S("ellipsis")}>
           {name}

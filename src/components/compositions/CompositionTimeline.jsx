@@ -265,17 +265,19 @@ const CompositionTimelineContent = observer(({hoverSeek}) => {
     return startProgress + ((event.clientX - dimensions.left) / dimensions.width) * compositionStore.videoStore.scaleMagnitude / 100;
   };
 
+  let dragLeaveTimeout;
   return (
     <>
       <TimelineSeekBar hoverSeek={hoverSeek}/>
       <div
         onDragOver={event => {
+          clearTimeout(dragLeaveTimeout);
           event.preventDefault();
           event.stopPropagation();
 
           compositionStore.SetDropIndicator(CalculateDragProgress(event));
         }}
-        onDragLeave={() => compositionStore.ClearDropIndicator()}
+        onDragLeave={() => dragLeaveTimeout = setTimeout(() => compositionStore.ClearDropIndicator(), 100)}
         onDrop={event => {
           if(!compositionStore.draggingClip) { return; }
 
