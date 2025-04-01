@@ -118,9 +118,8 @@ class BrowserStore {
 
         if(savedChannels) {
           channels = [
-            ...channels,
-            ...Object.values(savedChannels)
-              .filter(({key}) => !channels.find(channel => channel.key === key))
+            ...Object.values(savedChannels),
+            ...channels.filter(({key}) => !Object.values(savedChannels).find(channel => channel.key === key))
           ];
         }
       }

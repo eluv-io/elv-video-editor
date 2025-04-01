@@ -472,6 +472,19 @@ class TrackStore {
 
   /* Subtitles and Metadata */
 
+  FormatAggregatedSpeechToTextTag(tag) {
+    if(!tag.text?.["Speech to Text"]) {
+      return;
+    }
+
+    const text = tag.text["Speech to Text"].map(({text}) => text).join(" ");
+
+    return {
+      ...tag,
+      text
+    };
+  }
+
   AddTracksFromTags = (metadataTags) => {
     if(!metadataTags) { return []; }
 
@@ -480,6 +493,12 @@ class TrackStore {
       let tags = {};
       const millis = metadataTags[key].version > 0;
       metadataTags[key].tags.forEach(tag => {
+        if(key === "shot_tags") {
+          tag = this.FormatAggregatedSpeechToTextTag(tag);
+
+          if(!tag) { return; }
+        }
+
         const parsedTag = Cue({
           trackKey: key,
           tagType: "metadata",
@@ -498,7 +517,7 @@ class TrackStore {
       });
 
       metadataTracks.push({
-        label: metadataTags[key].label,
+        label: key === "shot_tags" ? "Speech to Text (Aggregated)" : metadataTags[key].label,
         trackType: "metadata",
         key,
         tags
@@ -573,50 +592,62 @@ class TrackStore {
     }
   }
 
-  AddSegmentTracks() {
-    if(!this.rootStore.videoStore.isVideo || !this.rootStore.videoStore.metadata.offerings) { return; }
+  LoadSegments = flow(function * () {
+    const segmentMetadata = yield this.rootStore.client.ContentObjectMetadata({
+      ...this.rootStore.videoStore.videoObject,
+      metadataSubtree: UrlJoin("/offerings", this.rootStore.videoStore.offeringKey, "media_struct", "streams")
+    });
 
+    if(segmentMetadata) {
+      this.AddSegmentTracks(segmentMetadata);
+    }
+  });
+
+  AddSegmentTracks(streams) {
     try {
-      const streams = this.rootStore.videoStore.metadata.offerings[this.rootStore.videoStore.offeringKey].media_struct.streams;
+      Object.keys(streams)
+        .filter(stream =>
+          (stream.toLowerCase().includes("video") || stream.toLowerCase().includes("audio")) &&
+          !stream.toLowerCase().includes("thumb")
+        )
+        .forEach(stream => {
+          if(!streams[stream]) {
+            // eslint-disable-next-line no-console
+            console.error(`No ${stream} stream found. Skipping ${stream} segment track.`);
+            return;
+          }
 
-      ["video", "audio"].forEach(stream => {
-        if(!streams[stream]) {
-          // eslint-disable-next-line no-console
-          console.error(`No ${stream} stream found. Skipping ${stream} segment track.`);
-          return;
-        }
+          const sources = streams[stream].sources;
 
-        const sources = streams[stream].sources;
+          let segments = {};
+          sources.forEach(({timeline_start, timeline_end, source}) => {
+            let segment = Cue({
+              tagType: "segment",
+              startTime: parseFloat(timeline_start.float.toFixed(2)),
+              endTime: parseFloat(timeline_end.float.toFixed(2)),
+              text: `${timeline_start.float.toFixed(2)} - ${timeline_end.float.toFixed(2)}`,
+              tag: {}
+            });
 
-        let segments = {};
-        sources.forEach(({timeline_start, timeline_end, source}) => {
-          let segment = Cue({
-            tagType: "segment",
-            startTime: parseFloat(timeline_start.float.toFixed(2)),
-            endTime: parseFloat(timeline_end.float.toFixed(2)),
-            text: `${timeline_start.float.toFixed(2)} - ${timeline_end.float.toFixed(2)}`,
-            tag: {}
+            segment.source = source;
+            segment.streamType = stream;
+
+            segments[segment.tagId] = segment;
           });
 
-          segment.source = source;
-          segment.streamType = stream;
-
-          segments[segment.tagId] = segment;
+          this.AddTrack({
+            label: `${stream === "video" ? "Video" : "Audio"} Segments ${!["audio", "video"].includes(stream) ? `(${stream})` : ""}`,
+            key: `${stream}-segments`,
+            type: "segments",
+            tags: segments
+          });
         });
-
-        this.AddTrack({
-          label: `${stream === "video" ? "Video" : "Audio"} Segments`,
-          key: `${stream}-segments`,
-          type: "segments",
-          tags: segments
-        });
-      });
-    } catch(error) {
-      // eslint-disable-next-line no-console
-      console.error("Failed to load segment tracks:");
-      // eslint-disable-next-line no-console
-      console.error(error);
-    }
+      } catch(error) {
+        // eslint-disable-next-line no-console
+        console.error("Failed to load segment tracks:");
+        // eslint-disable-next-line no-console
+        console.error(error);
+      }
   }
 
   async AddPrimaryContentTrack() {
@@ -655,7 +686,6 @@ class TrackStore {
     this.AddPrimaryContentTrack();
     yield this.AddSubtitleTracks();
     yield this.AddMetadataTracks(metadataTags);
-    yield this.AddSegmentTracks();
     yield this.rootStore.overlayStore.AddOverlayTracks();
   });
 
@@ -691,6 +721,10 @@ class TrackStore {
       setTimeout(() => runInAction(() => this.showAudio = visible), 1000);
     } else {
       this[`show${type}`] = visible;
+    }
+
+    if(type === "Segments" && visible) {
+      this.LoadSegments();
     }
   }
 

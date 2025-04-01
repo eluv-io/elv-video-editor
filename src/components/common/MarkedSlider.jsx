@@ -111,6 +111,10 @@ const Marks = observer(({
     );
   }
 
+  if(marks.length === 0) {
+    return null;
+  }
+
   return (
     <div className={S("slider__marks-container")}>
       { marks }

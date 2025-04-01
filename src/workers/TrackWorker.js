@@ -20,6 +20,13 @@ const editingColor = {
   a: 255
 };
 
+const isolatedColor = {
+  r: 206,
+  g: 188,
+  b: 12,
+  a: 255
+};
+
 class TrackWorker {
   constructor({trackId, trackLabel, color, height, width, tags, scale, duration, noActive}) {
     this.trackId = trackId;
@@ -38,6 +45,8 @@ class TrackWorker {
     this.hoverTagIds = [];
     this.selectedTagIds = [];
 
+    this.isolatedTag = undefined;
+
     this.editedTag = undefined;
   }
 
@@ -54,8 +63,8 @@ class TrackWorker {
     const visibleDuration = Fraction(scaleMax - scaleMin).div(scale).mul(this.duration);
 
     // Where the currently visible segment starts
-    const startTime = Fraction(scaleMin).div(scale).mul(this.duration);
-    const endTime = startTime.add(visibleDuration);
+    let startTime = Fraction(scaleMin).div(scale).mul(this.duration);
+    let endTime = startTime.add(visibleDuration);
 
     // Filter non visible and non-matching tags
     const formatString = string => (string || "").toString().toLowerCase();
@@ -64,6 +73,8 @@ class TrackWorker {
     tags = tags.filter(tag =>
       tag.endTime >= startTime.valueOf() &&
       tag.startTime <= endTime.valueOf() &&
+      (!this.isolatedTag || tag.endTime > this.isolatedTag.startTime) &&
+      (!this.isolatedTag || tag.startTime < this.isolatedTag.endTime) &&
       (!filter || formatString(tag.textList.join(" ")).includes(filter)) &&
       (!this.editedTag || tag.tagId !== this.editedTag.tagId)
     );
@@ -81,7 +92,9 @@ class TrackWorker {
       const endPixel = Math.floor((tag.endTime - startTime) * widthRatio);
 
       let color = this.color;
-      if(this.editedTag?.tagId === tag.tagId) {
+      if(this.isolatedTag?.tagId === tag.tagId) {
+        color = isolatedColor;
+      } else if(this.editedTag?.tagId === tag.tagId) {
         color = editingColor;
       } else if(this.selectedTagId === tag.tagId) {
         // Currently shown tag
@@ -160,6 +173,10 @@ self.addEventListener(
 
       case "SetFilter":
         worker.filter = data.filter;
+        break;
+
+      case "SetIsolatedTag":
+        worker.isolatedTag = data.isolatedTag;
         break;
 
       case "SetActive":

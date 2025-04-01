@@ -8,6 +8,7 @@
     bottom: 0;
     box-shadow: 0 0 10px var(--background-primary);
     gap: 15px;
+    max-width: calc(100vw - 90px);
     position: fixed;
     width: 100%;
     z-index: 2;

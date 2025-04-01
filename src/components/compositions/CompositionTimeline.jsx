@@ -4,7 +4,7 @@ import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {rootStore, compositionStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
-import {IconButton, SMPTEInput} from "@/components/common/Common";
+import {AsyncButton, Icon, IconButton, SMPTEInput} from "@/components/common/Common";
 import MarkedSlider from "@/components/common/MarkedSlider";
 
 import {
@@ -17,9 +17,10 @@ import {
 } from "@/components/video/VideoControls.jsx";
 import KeyboardControls from "@/components/timeline/KeyboardControls.jsx";
 import CompositionTrack from "@/components/compositions/CompositionTrack.jsx";
-import {useParams} from "wouter";
+import {useLocation, useParams} from "wouter";
 import CompositionSelection from "@/components/compositions/CompositionSelection.jsx";
 import Share from "@/components/download/Share.jsx";
+import {Text} from "@mantine/core";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
@@ -27,6 +28,8 @@ import ClipInIcon from "@/assets/icons/v2/clip-start.svg";
 import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
 import SplitIcon from "@/assets/icons/v2/split.svg";
 import LinkIcon from "@/assets/icons/v2/external-link.svg";
+import DiscardDraftIcon from "@/assets/icons/v2/discard-draft.svg";
+import {modals} from "@mantine/modals";
 
 
 const S = CreateModuleClassMatcher(TimelineStyles);
@@ -114,10 +117,44 @@ const TimelineTopBar = observer(() => {
 });
 
 const TimelineBottomBar = observer(() => {
+  const [, navigate] = useLocation();
+
   return (
     <div className={S("toolbar", "timeline-section__bottom-bar")}>
       <KeyboardControls />
       <div className={S("toolbar__spacer")}/>
+      {
+        !compositionStore.compositionObject ? null :
+          <AsyncButton
+            autoContrast
+            h={30}
+            px="xs"
+            color="gray.6"
+            variant="outline"
+            disabled={compositionStore.saved}
+            onClick={async () => {
+              if(!await new Promise(resolve =>
+                  modals.openConfirmModal({
+                    title: "Publish Composition",
+                    centered: true,
+                    children: <Text fz="sm">Are you sure you want to discard changes to this composition? This action cannot be undone.</Text>,
+                    labels: {confirm: "Discard", cancel: "Cancel"},
+                    onConfirm: () => resolve(true),
+                    onCancel: () => resolve(false)
+                  })
+              )) { return; }
+
+              navigate("/compositions");
+              compositionStore.DiscardDraft({...compositionStore.compositionObject, removeComposition: true});
+              compositionStore.Reset();
+            }}
+          >
+            <Icon style={{height: 18, width: 18}} icon={DiscardDraftIcon}/>
+            <span style={{marginLeft: 10}}>
+              Discard Draft
+            </span>
+          </AsyncButton>
+      }
     </div>
   );
 });

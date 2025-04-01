@@ -473,7 +473,7 @@ export const FormSelect = observer(props =>
   />
 );
 
-export const SMPTEInput = observer(({store, value, onChange, formInput=false, highlight, ...props}) => {
+export const SMPTEInput = observer(({store, value, onChange, formInput=false, highlight,  ...props}) => {
   const [smpteInput, setSMPTEInput] = useState(value);
 
   const FormatSMPTE = ({originalValue, smpte, setSMPTEInput}) => {
@@ -497,7 +497,6 @@ export const SMPTEInput = observer(({store, value, onChange, formInput=false, hi
 
   return (
     <Component
-      w={150}
       value={smpteInput}
       monospace
       onChange={event => setSMPTEInput(event.target.value)}

@@ -16,6 +16,7 @@ import MarkedSlider from "@/components/common/MarkedSlider.jsx";
 import {AsyncButton, FormTextArea, Icon, IconButton, Modal} from "@/components/common/Common.jsx";
 import {Button, Text, Tooltip} from "@mantine/core";
 import {modals} from "@mantine/modals";
+import {useLocation} from "wouter";
 
 import ZoomInIcon from "@/assets/icons/v2/zoom-in.svg";
 import ZoomOutIcon from "@/assets/icons/v2/zoom-out.svg";
@@ -26,7 +27,7 @@ import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
 import AddClipIcon from "@/assets/icons/v2/add.svg";
 import DragClipIcon from "@/assets/icons/v2/drag.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
-import XIcon from "@/assets/icons/X.svg";
+import XIcon from "@/assets/icons/v2/x.svg";
 import TrashIcon from "@/assets/icons/trash.svg";
 import PublishIcon from "@/assets/icons/v2/publish.svg";
 
@@ -103,7 +104,11 @@ const ClipControls = observer(() => {
             label: "Modify Clip Points"
           })}
         />
-        <PlayCurrentClipButton store={store}/>
+        <PlayCurrentClipButton
+          store={store}
+          clipInFrame={compositionStore.selectedClip.clipInFrame}
+          clipOutFrame={compositionStore.selectedClip.clipOutFrame}
+        />
         <IconButton
           label="Set Clip Out to Current Frame"
           highlight
@@ -171,7 +176,7 @@ const ClipSeekBar = observer(() => {
     <MarkedSlider
       min={store.scaleMin}
       max={store.scaleMax}
-      handles={[{ position: store.seek }]}
+      handles={[{ position: store.seek, style: "arrow" }]}
       indicators={indicators}
       showMarks
       topMarks
@@ -246,6 +251,7 @@ const TitleEditModal = observer(({name, clipView, Close}) => {
 });
 
 const Title = observer(({clipView}) => {
+  const [, navigate] = useLocation();
   const name = clipView ? compositionStore.selectedClip.name : compositionStore.compositionObject?.name;
 
   const [editing, setEditing] = useState(false);
@@ -297,34 +303,53 @@ const Title = observer(({clipView}) => {
       <div className={S("video-section__title-actions")}>
         {
           clipView ? null :
-            <AsyncButton
-              color="gray.5"
-              variant="outline"
-              autoContrast
-              h={30}
-              px="xs"
-              onClick={async () => {
-                if(!await new Promise(resolve =>
-                  modals.openConfirmModal({
-                    title: "Publish Composition",
-                    centered: true,
-                    children: <Text fz="sm">Are you sure you want to publish this composition?</Text>,
-                    labels: {confirm: "Publish", cancel: "Cancel"},
-                    onConfirm: () => resolve(true),
-                    onCancel: () => resolve(false)
-                  })
-                )) {
-                  return;
-                }
+            <>
+              <AsyncButton
+                color="gray.5"
+                variant="outline"
+                autoContrast
+                h={30}
+                px="xs"
+                disabled={compositionStore.saved}
+                onClick={async () => {
+                  if(!await new Promise(resolve =>
+                    modals.openConfirmModal({
+                      title: "Publish Composition",
+                      centered: true,
+                      children: <Text fz="sm">Are you sure you want to publish this composition?</Text>,
+                      labels: {confirm: "Publish", cancel: "Cancel"},
+                      onConfirm: () => resolve(true),
+                      onCancel: () => resolve(false)
+                    })
+                  )) {
+                    return;
+                  }
 
-                await compositionStore.SaveComposition();
-              }}
-            >
-              <Icon icon={PublishIcon}/>
-              <span style={{marginLeft: 10}}>
-                Publish to Fabric
-              </span>
-            </AsyncButton>
+                  await compositionStore.SaveComposition();
+                }}
+              >
+                <Icon icon={PublishIcon}/>
+                <span style={{marginLeft: 10}}>
+                  Publish
+                </span>
+              </AsyncButton>
+              <Button
+                autoContrast
+                h={30}
+                px="xs"
+                color="gray.5"
+                variant="outline"
+                onClick={() => {
+                  navigate("/compositions");
+                  compositionStore.Reset();
+                }}
+              >
+                <Icon style={{height: 18, width: 18}} icon={XIcon}/>
+                <span style={{marginLeft: 10}}>
+                  Close
+                </span>
+              </Button>
+            </>
         }
       </div>
     </h1>
@@ -430,6 +455,7 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
             muted={clipView ? compositionStore.clipMuted : compositionStore.compositionMuted}
             volume={clipView ? compositionStore.clipVolume : compositionStore.compositionVolume}
             playoutUrl={clipView ? undefined : compositionStore.compositionPlayoutUrl}
+            autoplay={clipView ? false : compositionStore.videoStore.playing}
             key={clipView ? undefined : compositionStore.compositionPlayoutUrl}
             Callback={video => {
               video.addEventListener("volumechange", () => compositionStore.__UpdateVideoSettings(

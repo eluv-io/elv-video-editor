@@ -339,13 +339,16 @@ export const FrameDisplay = observer(({store}) => {
   );
 });
 
-export const PlayCurrentClipButton = observer(({store}) => {
+export const PlayCurrentClipButton = observer(({store, clipInFrame, clipOutFrame}) => {
   return (
     <IconButton
       highlight
       icon={PlayClipIcon}
       label="Play Current Selection"
-      onClick={() => store.PlaySegment(store.clipInFrame, store.clipOutFrame)}
+      onClick={() => store.PlaySegment(
+        typeof clipInFrame !== "undefined" ? clipInFrame : store.clipInFrame,
+        typeof clipOutFrame !== "undefined" ? clipOutFrame : store.clipOutFrame
+      )}
     />
   );
 });

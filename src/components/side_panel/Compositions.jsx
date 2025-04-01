@@ -61,7 +61,7 @@ export const CompositionClips = observer(() => {
           <>
             <div className={S("composition-clips__title")}>
               <Icon icon={AISparkleIcon}/>
-              Results
+              Suggestions
             </div>
             <div className={S("composition-clips__list")}>
               {

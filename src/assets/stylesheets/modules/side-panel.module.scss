@@ -33,11 +33,14 @@
 }
 
 .search {
+  align-items: center;
+  display: flex;
+  gap: 10px;
   width: 100%;
 
   &__input {
-    height: 40px;
     max-width: unset;
+    width: 100%;
 
     & > div,
     input {
@@ -50,6 +53,23 @@
 
     input {
       padding-inline: 15px;
+
+      &::placeholder {
+        font-size: 14px;
+      }
+    }
+  }
+
+  &__toggle {
+    align-items: center;
+    display: flex;
+    gap: 5px;
+    padding: 0 10px 0 5px;
+
+    label {
+      color: var(--text-tertiary);
+      font-size: 12px;
+      white-space: nowrap;
     }
   }
 }
@@ -198,7 +218,7 @@
     height: 60px;
   }
 
-  &__content {
+  &__text {
     font-size: 12px;
 
     &--text {
@@ -206,7 +226,7 @@
     }
   }
 
-  &__content,
+  &__text,
   &__track,
   &__time {
     max-width: calc(var(--panel-width) - 150px);
@@ -304,12 +324,15 @@
   max-width: min(100%, 800px);
   min-height: 0;
   overflow: hidden auto;
-  padding: 0 10px 30px;
   width: 100%;
 
   &--track {
     display: grid;
     gap: 5px;
+  }
+
+  &__content {
+    padding: 0 10px 30px;
   }
 
   &__thumbnail-container {
@@ -333,7 +356,7 @@
     }
   }
 
-  &__content {
+  &__text {
     font-size: 14px;
     font-weight: 500;
     margin-bottom: 20px;
@@ -351,12 +374,12 @@
 
   &__actions {
     align-items: center;
-    background-color: var(--background-primary);
+    background-color: var(--background-toolbar);
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     margin-bottom: 20px;
     max-width: 100%;
-    padding: 10px 0;
+    padding: 10px;
     position: sticky;
     top: 0;
     z-index: 2;
@@ -367,15 +390,14 @@
     align-items: center;
     display: flex;
     gap: 10px;
-    position: absolute;
   }
 
   &__left-actions {
-    left: 0;
+    left: 10px;
   }
 
   &__right-actions {
-    right: 0;
+    right: 10px;
   }
 
   &__track {
@@ -395,7 +417,7 @@
   }
 
   &__track-label {
-    max-width: calc(100% - 220px);
+    max-width: calc(100% - 100px);
     overflow-x: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

@@ -31,6 +31,7 @@ const Video = observer(({
   playoutUrl,
   blank,
   muted=true,
+  autoplay=false,
   volume=1,
   Callback,
   className=""
@@ -133,7 +134,7 @@ const Video = observer(({
           ref={setVideo}
           crossOrigin="anonymous"
           muted={muted}
-          autoPlay={false}
+          autoPlay={autoplay}
           controls={false}
           preload="auto"
           onWheel={({deltaY}) => store.ScrollVolume(deltaY)}

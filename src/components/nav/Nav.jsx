@@ -16,7 +16,7 @@ import CompositionIcon from "@/assets/icons/v2/play-clip.svg";
 const S = CreateModuleClassMatcher(NavStyles);
 
 const Nav = observer(() => {
-  const { libraryId, objectId } = videoStore.videoObject || {};
+  const objectId = rootStore.selectedObjectId;
   const compositionObject = compositionStore.compositionObject;
 
   const pages = [
@@ -31,7 +31,7 @@ const Nav = observer(() => {
       label: "Simple Mode",
       key: "simple",
       disabled: !objectId || (videoStore.ready && !videoStore.isVideo),
-      to: !objectId ? "/" : UrlJoin("/", libraryId, objectId),
+      to: !objectId ? "/" : UrlJoin("/", objectId),
       icon: ClipIcon,
       active: rootStore.page === "simple"
     },
@@ -49,15 +49,15 @@ const Nav = observer(() => {
       label: "Tags",
       key: "tags",
       disabled: !objectId || (videoStore.ready && !videoStore.isVideo),
-      to: !objectId ? "/" : UrlJoin("/", libraryId, objectId, "tags"),
+      to: !objectId ? "/" : UrlJoin("/", objectId, "tags"),
       icon: TagIcon,
       active: ["tags", "clips"].includes(rootStore.page)
     },
     {
       label: "Assets",
       key: "assets",
-      disabled: !objectId || (videoStore.ready),
-      to: !objectId ? "/" : UrlJoin("/", libraryId, objectId, "assets"),
+      disabled: !objectId,
+      to: !objectId ? "/" : UrlJoin("/", objectId, "assets"),
       icon: AssetIcon,
       active: rootStore.page === "assets"
     }

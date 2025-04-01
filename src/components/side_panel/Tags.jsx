@@ -13,6 +13,7 @@ import {modals} from "@mantine/modals";
 import EditIcon from "@/assets/icons/Edit.svg";
 import PlayIcon from "@/assets/icons/Play.svg";
 import BackIcon from "@/assets/icons/v2/back.svg";
+import IsolateIcon from "@/assets/icons/v2/isolate.svg";
 import TimeIcon from "@/assets/icons/Clock.svg";
 import MarkInIcon from "@/assets/icons/marker-in.svg";
 import MarkOutIcon from "@/assets/icons/marker-out.svg";
@@ -69,6 +70,7 @@ const TagActions = observer(({tag, track}) => {
     <div className={S("tag-details__actions")}>
       <div className={S("tag-details__left-actions")}>
         <IconButton
+          highlight={tagStore.editing}
           label={
             tagStore.editing ?
               "Save changes and return to tag details" :
@@ -96,6 +98,20 @@ const TagActions = observer(({tag, track}) => {
           onClick={() => tagStore.PlayTag(tag)}
         />
         {
+          tagStore.isolatedTag?.tagId === tag.tagId ?
+            <IconButton
+              highlight
+              label="Show All Tags"
+              icon={IsolateIcon}
+              onClick={() => tagStore.ClearIsolatedTag()}
+            /> :
+            <IconButton
+              label="Isolate this tag"
+              icon={IsolateIcon}
+              onClick={() => tagStore.IsolateTag(tag)}
+            />
+        }
+        {
           tagStore.editing ?
             <IconButton
               label="Discard Changes"
@@ -103,11 +119,14 @@ const TagActions = observer(({tag, track}) => {
               onClick={() => tagStore.ClearEditing(false)}
             /> :
             <>
-              <IconButton
-                label="Edit Tag"
-                icon={EditIcon}
-                onClick={() => tagStore.SetEditing({id: tag.tagId, type: "tag"})}
-              />
+              {
+                tag.trackKey === "shot_tags" ? null :
+                  <IconButton
+                    label="Edit Tag"
+                    icon={EditIcon}
+                    onClick={() => tagStore.SetEditing({id: tag.tagId, type: "tag"})}
+                  />
+              }
               {
                 track.trackType === "primary-content" ? null :
                   <IconButton
@@ -182,109 +201,111 @@ const TagForm = observer(() => {
       className={S("tag-details", "form")}
     >
       <TagActions tag={tag} track={track} />
-      {
-        !videoStore.thumbnailStore.thumbnailStatus.available ? null :
-          <div style={{aspectRatio: videoStore.aspectRatio}} className={S("tag-details__thumbnail-container")}>
+      <div className={S("tag-details__content")}>
+        {
+          !videoStore.thumbnailStore.thumbnailStatus.available ? null :
+            <div style={{aspectRatio: videoStore.aspectRatio}} className={S("tag-details__thumbnail-container")}>
+              {
+                duration < 10 ?
+                  <img
+                    key={`preview-${tag.startTime}-${tag.endTime}`}
+                    src={videoStore.thumbnailStore.ThumbnailImage(tag.startTime)}
+                    className={S("tag-details__thumbnail")}
+                  /> :
+                  <PreviewThumbnail
+                    store={videoStore}
+                    key={`preview-${tag.startTime}-${tag.endTime}`}
+                    startFrame={videoStore.TimeToFrame(tag.startTime)}
+                    endFrame={videoStore.TimeToFrame(tag.endTime)}
+                    className={S("tag-details__thumbnail")}
+                  />
+              }
+            </div>
+        }
+        <FocusTrap active>
+          <div className={S("form__inputs")}>
             {
-              duration < 10 ?
-                <img
-                  key={`preview-${tag.startTime}-${tag.endTime}`}
-                  src={videoStore.thumbnailStore.ThumbnailImage(tag.startTime)}
-                  className={S("tag-details__thumbnail")}
-                /> :
-                <PreviewThumbnail
-                  store={videoStore}
-                  key={`preview-${tag.startTime}-${tag.endTime}`}
-                  startFrame={videoStore.TimeToFrame(tag.startTime)}
-                  endFrame={videoStore.TimeToFrame(tag.endTime)}
-                  className={S("tag-details__thumbnail")}
-                />
+              !tag.isNew ? null :
+                <div className={S("form__input-container")}>
+                  <FormSelect
+                    label="Category"
+                    value={tag.trackId.toString()}
+                    options={
+                      trackStore.viewTracks
+                        .map(track => ({
+                          label: track.label,
+                          value: track.trackId.toString()
+                        })
+                      )
+                    }
+                    onChange={trackId =>
+                      tagStore.UpdateEditedTag({
+                        ...tag,
+                        trackId: parseInt(trackId),
+                        trackKey: trackStore.Track(parseInt(trackId))?.key
+                      })}
+                    className={S("form__input")}
+                  />
+                </div>
             }
+            <div className={S("form__input-container")}>
+              <TagTextarea/>
+            </div>
+            <div className={S("form__input-container")}>
+              <SMPTEInput
+                label="Start Time"
+                value={videoStore.TimeToSMPTE(tag.startTime)}
+                formInput
+                onChange={({frame}) => UpdateTime({start: true, frame})}
+                rightSectionWidth={60}
+                rightSection={
+                  <div className={S("form__input-actions")}>
+                    <IconButton
+                      icon={MarkInIcon}
+                      label="Set to Clip In"
+                      onClick={() => UpdateTime({start: true, frame: videoStore.clipInFrame})}
+                    />
+                    <IconButton
+                      icon={TimeIcon}
+                      label="Set to Current Time"
+                      onClick={() => UpdateTime({start: true, frame: videoStore.frame})}
+                    />
+                  </div>
+                }
+                className={S("form__input")}
+              />
+            </div>
+            <div className={S("form__input-container")}>
+              <SMPTEInput
+                label="End Time"
+                value={videoStore.TimeToSMPTE(tag.endTime)}
+                formInput
+                onChange={({frame}) => UpdateTime({start: false, frame})}
+                rightSectionWidth={60}
+                rightSection={
+                  <div className={S("form__input-actions")}>
+                    <IconButton
+                      icon={MarkOutIcon}
+                      label="Set to Clip Out"
+                      onClick={() => UpdateTime({start: false, frame: videoStore.clipOutFrame})}
+                    />
+                    <IconButton
+                      icon={TimeIcon}
+                      label="Set to Current Time"
+                      onClick={() => UpdateTime({start: false, frame: videoStore.frame})}
+                    />
+                  </div>
+                }
+                className={S("form__input")}
+              />
+            </div>
+            <div className={S("form__input-note")}>
+              <label>Duration:</label>
+              <span>{videoStore.TimeToString(duration, true)}</span>
+            </div>
           </div>
-      }
-      <FocusTrap active>
-        <div className={S("form__inputs")}>
-          {
-            !tag.isNew ? null :
-              <div className={S("form__input-container")}>
-                <FormSelect
-                  label="Category"
-                  value={tag.trackId.toString()}
-                  options={
-                    trackStore.viewTracks
-                      .map(track => ({
-                        label: track.label,
-                        value: track.trackId.toString()
-                      })
-                    )
-                  }
-                  onChange={trackId =>
-                    tagStore.UpdateEditedTag({
-                      ...tag,
-                      trackId: parseInt(trackId),
-                      trackKey: trackStore.Track(parseInt(trackId))?.key
-                    })}
-                  className={S("form__input")}
-                />
-              </div>
-          }
-          <div className={S("form__input-container")}>
-            <TagTextarea/>
-          </div>
-          <div className={S("form__input-container")}>
-            <SMPTEInput
-              label="Start Time"
-              value={videoStore.TimeToSMPTE(tag.startTime)}
-              formInput
-              onChange={({frame}) => UpdateTime({start: true, frame})}
-              rightSectionWidth={60}
-              rightSection={
-                <div className={S("form__input-actions")}>
-                  <IconButton
-                    icon={MarkInIcon}
-                    label="Set to Clip In"
-                    onClick={() => UpdateTime({start: true, frame: videoStore.clipInFrame})}
-                  />
-                  <IconButton
-                    icon={TimeIcon}
-                    label="Set to Current Time"
-                    onClick={() => UpdateTime({start: true, frame: videoStore.frame})}
-                  />
-                </div>
-              }
-              className={S("form__input")}
-            />
-          </div>
-          <div className={S("form__input-container")}>
-            <SMPTEInput
-              label="End Time"
-              value={videoStore.TimeToSMPTE(tag.endTime)}
-              formInput
-              onChange={({frame}) => UpdateTime({start: false, frame})}
-              rightSectionWidth={60}
-              rightSection={
-                <div className={S("form__input-actions")}>
-                  <IconButton
-                    icon={MarkOutIcon}
-                    label="Set to Clip Out"
-                    onClick={() => UpdateTime({start: false, frame: videoStore.clipOutFrame})}
-                  />
-                  <IconButton
-                    icon={TimeIcon}
-                    label="Set to Current Time"
-                    onClick={() => UpdateTime({start: false, frame: videoStore.frame})}
-                  />
-                </div>
-              }
-              className={S("form__input")}
-            />
-          </div>
-          <div className={S("form__input-note")}>
-            <label>Duration:</label>
-            <span>{videoStore.TimeToString(duration, true)}</span>
-          </div>
-        </div>
-      </FocusTrap>
+        </FocusTrap>
+      </div>
     </form>
   );
 });
@@ -311,43 +332,45 @@ export const TagDetails = observer(() => {
     <>
       <div key={`tag-details-${tag.tagId}`} className={S("tag-details")}>
         <TagActions tag={tag} track={track}/>
-        {
-          !videoStore.thumbnailStore.thumbnailStatus.available ? null :
-            <div className={S("tag-details__thumbnail-container")}>
-              {
-                duration < 10 ?
-                  <img
-                    src={videoStore.thumbnailStore.ThumbnailImage(tag.startTime)}
-                    style={{aspectRatio: videoStore.aspectRatio}}
-                    className={S("tag-details__thumbnail")}
-                  /> :
-                  <PreviewThumbnail
-                    store={videoStore}
-                    startFrame={videoStore.TimeToFrame(tag.startTime)}
-                    endFrame={videoStore.TimeToFrame(tag.endTime)}
-                    className={S("tag-details__thumbnail")}
-                  />
-              }
-            </div>
-        }
-        <pre className={S("tag-details__content", tag.content ? "tag-details__content--json" : "")}>
-          {content}
-        </pre>
-        <div className={S("tag-details__detail")}>
-          <label>Category:</label>
-          <span>{track.label || track.trackKey}</span>
-        </div>
-        <div className={S("tag-details__detail")}>
-          <label>Start Time:</label>
-          <span className="monospace">{videoStore.TimeToSMPTE(tag.startTime)}</span>
-        </div>
-        <div className={S("tag-details__detail")}>
-          <label>End Time:</label>
-          <span className="monospace">{videoStore.TimeToSMPTE(tag.endTime)}</span>
-        </div>
-        <div className={S("tag-details__detail")}>
-          <label>Duration:</label>
-          <span>{videoStore.TimeToString(duration, true)}</span>
+        <div className={S("tag-details__content")}>
+          {
+            !videoStore.thumbnailStore.thumbnailStatus.available ? null :
+              <div className={S("tag-details__thumbnail-container")}>
+                {
+                  duration < 10 ?
+                    <img
+                      src={videoStore.thumbnailStore.ThumbnailImage(tag.startTime)}
+                      style={{aspectRatio: videoStore.aspectRatio}}
+                      className={S("tag-details__thumbnail")}
+                    /> :
+                    <PreviewThumbnail
+                      store={videoStore}
+                      startFrame={videoStore.TimeToFrame(tag.startTime)}
+                      endFrame={videoStore.TimeToFrame(tag.endTime)}
+                      className={S("tag-details__thumbnail")}
+                    />
+                }
+              </div>
+          }
+          <pre className={S("tag-details__text", tag.content ? "tag-details__text--json" : "")}>
+            {content}
+          </pre>
+          <div className={S("tag-details__detail")}>
+            <label>Category:</label>
+            <span>{track.label || track.trackKey}</span>
+          </div>
+          <div className={S("tag-details__detail")}>
+            <label>Start Time:</label>
+            <span className="monospace">{videoStore.TimeToSMPTE(tag.startTime)}</span>
+          </div>
+          <div className={S("tag-details__detail")}>
+            <label>End Time:</label>
+            <span className="monospace">{videoStore.TimeToSMPTE(tag.endTime)}</span>
+          </div>
+          <div className={S("tag-details__detail")}>
+            <label>Duration:</label>
+            <span>{videoStore.TimeToString(duration, true)}</span>
+          </div>
         </div>
       </div>
       {
@@ -404,7 +427,7 @@ const Tag = observer(({track, tag}) => {
                 <div className={S("tag__tooltip")}>{tag.textList.join(", ")}</div>
             }
           >
-            <div className={S("tag__content", `tag__content--${tag.content ? "json" : "text"}`)}>
+            <div className={S("tag__text", `tag__text--${tag.content ? "json" : "text"}`)}>
               {
                 tag.content ?
                   JSON.stringify(tag.content) :
@@ -421,16 +444,19 @@ const Tag = observer(({track, tag}) => {
         </div>
       </div>
       <div className={S("tag__actions")}>
-        <IconButton
-          label="Edit Tag"
-          icon={EditIcon}
-          onClick={event => {
-            event.stopPropagation();
-            tagStore.SetTags(track.trackId, tag.tagId, tag.startTime);
-            tagStore.SetEditing({id: tag.tagId, type: "tag"});
-          }}
-          className={S("tag__action")}
-        />
+        {
+          tag.trackKey === "shot_tags" ? null :
+            <IconButton
+              label="Edit Tag"
+              icon={EditIcon}
+              onClick={event => {
+                event.stopPropagation();
+                tagStore.SetTags(track.trackId, tag.tagId, tag.startTime);
+                tagStore.SetEditing({id: tag.tagId, type: "tag"});
+              }}
+              className={S("tag__action")}
+            />
+        }
         <IconButton
           label="Play Tag"
           icon={PlayIcon}
@@ -473,6 +499,7 @@ export const TagsList = observer(({mode="tags"}) => {
           trackStore.tracks.length,
           tagStore.filter,
           tagStore.selectedTagIds,
+          tagStore.isolatedTag,
           Object.keys(trackStore.activeTracks).length,
           Object.keys(trackStore.visibleClipTracks).length,
           trackStore.showPrimaryContent,

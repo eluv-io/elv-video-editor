@@ -9,7 +9,6 @@ class CompositionStore {
   myCompositions = {};
 
   videoStore;
-  name = "";
   loading = false;
   clipStores = {};
 
@@ -57,7 +56,6 @@ class CompositionStore {
   }
 
   Initialize = flow(function * () {
-    yield this.LoadWriteTokens();
     yield this.LoadMyCompositions();
   });
 
@@ -73,9 +71,8 @@ class CompositionStore {
     this.selectedClipId = undefined;
     this.originalSelectedClipId = undefined;
     this.sourceClipId = undefined;
-    this.name = "";
     this.filter = "";
-    this.compositionObject = {};
+    this.compositionObject = undefined;
     this.compositionPlayoutUrl = undefined;
     this.draggingClip = undefined;
     this.saved = false;
@@ -170,6 +167,11 @@ class CompositionStore {
 
   SetCompositionName(name) {
     this.compositionObject.name = name;
+
+    this.myCompositions[this.compositionObject.objectId][this.compositionObject.compositionKey].name = name;
+
+    this.UpdateComposition({updatePlayoutUrl: false});
+    this.SaveMyCompositions();
   }
 
   ClipIndexAt(frame) {
@@ -385,8 +387,6 @@ class CompositionStore {
     this.loading = true;
     yield this.videoStore.SetVideo({objectId, preferredOfferingKey});
 
-    this.name = this.videoStore.name;
-
     this.loading = false;
   });
 
@@ -477,7 +477,7 @@ class CompositionStore {
 
     try {
       const {objectId, compositionKey} = this.compositionObject;
-      const writeToken = yield this.WriteToken(objectId, false);
+      const writeToken = yield this.WriteToken({objectId, compositionKey, create: false});
 
       const playoutOptions = (yield this.client.PlayoutOptions({
         objectId,
@@ -546,7 +546,23 @@ class CompositionStore {
       frameRate = offeringOptions[videoKey].rate;
     }
 
-    const sourceWriteToken = yield this.WriteToken(sourceObjectId);
+    if(!this.myCompositions[sourceObjectId]) {
+      this.myCompositions[sourceObjectId] = {};
+    }
+
+    this.myCompositions[sourceObjectId][key] = {
+      objectId: sourceObjectId,
+      key,
+      label: name,
+      saved: false,
+      new: true
+    };
+
+    const sourceWriteToken = yield this.WriteToken({
+      objectId: sourceObjectId,
+      compositionKey: key,
+      create: true
+    });
 
     let items = [];
     if(type === "ai") {
@@ -593,17 +609,6 @@ class CompositionStore {
       metadata: Unproxy(channelMetadata)
     });
 
-    if(!this.myCompositions[sourceObjectId]) {
-      this.myCompositions[sourceObjectId] = {};
-    }
-
-    this.myCompositions[sourceObjectId][key] = {
-      key,
-      label: name,
-      writeToken: sourceWriteToken,
-      saved: false
-    };
-
     this.SaveMyCompositions();
   });
 
@@ -612,8 +617,8 @@ class CompositionStore {
 
     this.seekProgress = this.videoStore.seek;
 
-    const {libraryId, objectId, sourceObjectId, sourceOfferingKey, compositionKey} = this.compositionObject;
-    const writeToken = yield this.WriteToken(objectId);
+    const {name, libraryId, objectId, sourceObjectId, sourceOfferingKey, compositionKey} = this.compositionObject;
+    const writeToken = yield this.WriteToken({objectId, compositionKey, create: true});
     const sourceHash = yield this.client.LatestVersionHash({objectId: sourceObjectId});
 
     let sourceLink;
@@ -653,16 +658,39 @@ class CompositionStore {
       metadata: Unproxy(items)
     });
 
+    yield this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "display_name"),
+      metadata: name
+    });
+
     if(updatePlayoutUrl) {
       this.GetCompositionPlayoutUrl();
     }
   });
 
   SaveComposition = flow(function * () {
-    yield this.UpdateComposition({updatePlayoutUrl: false});
+    const {libraryId, objectId, compositionKey} = this.compositionObject;
+    const latestVersionHash = yield this.client.LatestVersionHash({objectId});
 
-    const {libraryId, objectId, name} = this.compositionObject;
-    const writeToken = yield this.WriteToken(objectId);
+    const writeTokenInfo = this.myCompositions[objectId]?.[compositionKey]?.writeTokenInfo;
+
+    if(
+      !writeTokenInfo ||
+      writeTokenInfo.versionHash !== latestVersionHash
+    ) {
+      // eslint-disable-next-line no-console
+      console.warn("Write token for this composition is based on previous version. Retrieving new write token.");
+      // Write token is based on old version. Discard and generate a new one
+      this.DiscardDraft({objectId, compositionKey, removeComposition: false});
+    }
+
+    const writeToken = yield this.WriteToken({objectId, compositionKey, create: true});
+
+    // Ensure composition is up to date
+    yield this.UpdateComposition({updatePlayoutUrl: false});
 
     this.compositionObject.versionHash = (
       yield this.client.FinalizeContentObject({
@@ -677,31 +705,15 @@ class CompositionStore {
 
     this.saved = true;
 
-    delete this.writeTokenInfo[objectId];
-
-    if(!this.myCompositions[objectId]) {
-      this.myCompositions[objectId] = {};
-    }
-
-    this.myCompositions[objectId][this.compositionObject.compositionKey] = {
-      key: this.compositionObject.compositionKey,
-      label: name,
-      saved: true
-    };
-
-    yield this.SaveWriteTokens();
-    yield this.SaveMyCompositions();
+    this.DiscardDraft({objectId, compositionKey, removeComposition: false});
 
     this.GetCompositionPlayoutUrl();
   });
 
   SetCompositionObject = flow(function * ({objectId, compositionKey}) {
-    yield this.LoadWriteTokens();
-
     const libraryId = yield this.client.ContentObjectLibraryId({objectId});
     const versionHash = yield this.client.LatestVersionHash({objectId});
-    const writeToken = yield this.WriteToken(objectId, false);
-
+    const writeToken = yield this.WriteToken({objectId, compositionKey, create: false});
 
     const sourceName = yield this.client.ContentObjectMetadata({
       libraryId,
@@ -730,7 +742,7 @@ class CompositionStore {
 
     let updatedClipList = {};
     this.clipIdList = yield Promise.all(
-      (metadata.items || []).map(async item => {
+      (metadata?.items || []).map(async item => {
         const clipId = this.rootStore.NextId();
         const clipVersionHash = ExtractHashFromLink(item.source) || versionHash;
         const objectId = this.client.utils.DecodeVersionHash(clipVersionHash).objectId;
@@ -771,10 +783,21 @@ class CompositionStore {
       sourceObjectId: objectId,
       sourceOfferingKey: metadata.source_info?.offeringKey || "default",
       sourceName,
-      name: metadata.display_name || metadata.name,
+      name: metadata?.display_name || metadata?.name,
       compositionKey,
       metadata
     };
+
+    // Add to my compositions
+    if(!this.myCompositions[objectId][compositionKey]) {
+      this.myCompositions[objectId][compositionKey] = {
+        objectId,
+        key: compositionKey,
+        label: this.compositionObject.name,
+        writeToken,
+        saved: true
+      };
+    }
 
     this.GetCompositionPlayoutUrl();
 
@@ -869,7 +892,6 @@ class CompositionStore {
     return result;
   }
 
-
   Undo() {
     if(this._actionStack.length === 0) { return; }
 
@@ -902,53 +924,50 @@ class CompositionStore {
     }
   }
 
-  WriteToken = flow(function * (objectId, create=true) {
-    objectId = objectId || this.compositionObject.objectId;
+  DiscardDraft({objectId, compositionKey, removeComposition=false}) {
+    if(this.myCompositions[objectId]?.[compositionKey]) {
+      if(removeComposition && this.myCompositions[objectId]?.[compositionKey]?.new) {
+        // Composition is new and not saved - remove entirely
+        delete this.myCompositions[objectId][compositionKey];
+      } else {
+        // Remove write token info and revert saved state
+        this.myCompositions[objectId][compositionKey] = {
+          ...this.myCompositions[objectId][compositionKey],
+          saved: true,
+          writeTokenInfo: undefined
+        };
+      }
 
-    if(!objectId) { return; }
-
-    if(!this.writeTokenInfo[objectId] && create) {
-      const libraryId = yield this.client.ContentObjectLibraryId({objectId});
-      this.writeTokenInfo[objectId] = yield this.client.EditContentObject({libraryId, objectId});
-
-      this.SaveWriteTokens();
+      this.SaveMyCompositions();
     }
-
-    return this.writeTokenInfo[objectId]?.write_token;
-  });
-
-  LoadWriteTokens = flow(function * () {
-    const tokens = yield this.client.walletClient.ProfileMetadata({
-      type: "app",
-      appId: "video-editor",
-      mode: "private",
-      key: `composition-write-tokens${window.location.hostname === "localhost" ? "-dev" : ""}`,
-    });
-
-    if(tokens) {
-      this.writeTokenInfo = JSON.parse(this.client.utils.FromB64(tokens));
-
-      // Ensure write token nodes are set
-      Object.keys(this.writeTokenInfo).forEach(objectId => {
-        this.client.RecordWriteToken({
-          writeToken: this.writeTokenInfo[objectId].write_token,
-          fabricNodeUrl: this.writeTokenInfo[objectId].nodeUrl
-        });
-      });
-    }
-  });
-
-  async SaveWriteTokens() {
-    await this.client.walletClient.SetProfileMetadata({
-      type: "app",
-      appId: "video-editor",
-      mode: "private",
-      key: `composition-write-tokens${window.location.hostname === "localhost" ? "-dev" : ""}`,
-      value: this.client.utils.B64(
-        JSON.stringify(this.writeTokenInfo || {})
-      )
-    });
   }
+
+  WriteToken = flow(function * ({objectId, compositionKey, create=true}) {
+    objectId = objectId || this.compositionObject?.objectId;
+    compositionKey = compositionKey || this.compositionObject?.compositionKey;
+
+    if(!objectId || !compositionKey) {
+      // eslint-disable-next-line no-console
+      console.log(new Error(`Attempting to retrieve write token without id or key ${objectId} ${compositionKey}`));
+      return;
+    }
+
+    if(!this.myCompositions[objectId]) {
+      this.myCompositions[objectId] = {};
+    }
+
+    if(!this.myCompositions[objectId][compositionKey]?.writeTokenInfo && create) {
+      const libraryId = yield this.client.ContentObjectLibraryId({objectId});
+      this.myCompositions[objectId][compositionKey].writeTokenInfo = {
+        ...(yield this.client.EditContentObject({libraryId, objectId})),
+        versionHash: yield this.client.LatestVersionHash({objectId})
+      };
+
+      this.SaveMyCompositions();
+    }
+
+    return this.myCompositions[objectId][compositionKey]?.writeTokenInfo?.write_token;
+  });
 
   LoadMyCompositions = flow(function * () {
     const compositions = yield this.client.walletClient.ProfileMetadata({
@@ -962,14 +981,15 @@ class CompositionStore {
       const myCompositions = JSON.parse(this.client.utils.FromB64(compositions));
 
       Object.keys(myCompositions).forEach(objectId => {
-        const writeToken = this.writeTokenInfo[objectId]?.write_token;
         Object.keys(myCompositions[objectId] || {}).forEach(compositionKey => {
-          const info = myCompositions[objectId][compositionKey] || {};
+          // Ensure nodes are set for write tokens
+          const writeTokenInfo = myCompositions[objectId][compositionKey].writeTokenInfo;
 
-          if(!info.saved && info.writeToken !== writeToken) {
-            // eslint-disable-next-line no-console
-            console.log("Removing unsaved composition with outdated write token: " + info.name);
-            delete myCompositions[objectId][compositionKey];
+          if(writeTokenInfo) {
+            this.client.RecordWriteToken({
+              writeToken: writeTokenInfo.write_token,
+              fabricNodeUrl: writeTokenInfo.nodeUrl
+            });
           }
         });
       });
@@ -1019,7 +1039,6 @@ class CompositionStore {
     return (this.client.ContentObjectMetadata({
       libraryId,
       objectId,
-      writeToken: await this.WriteToken(objectId, false),
       metadataSubtree: UrlJoin("/channel", "offerings", key, "playout_type")
     }));
   }

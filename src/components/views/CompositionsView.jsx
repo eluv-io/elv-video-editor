@@ -18,6 +18,7 @@ const CompositionsView = observer(() => {
     keyboardControlsStore.SetActiveStore(compositionStore.videoStore);
 
     if(objectId) {
+      rootStore.SetSelectedObjectId(objectId);
       compositionStore.SetCompositionObject({objectId, compositionKey});
     }
   }, [objectId]);

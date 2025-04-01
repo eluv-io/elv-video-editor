@@ -46,15 +46,19 @@ const Click = ({canvas, clientX, trackId}) => {
 const Hover = ({canvas, clientX, trackId}) => {
   const time = TimeAt({canvas, clientX});
 
-  let tags = Search({trackId, time})
-    .filter((v, i, s) => s.indexOf(v) === i);
+  let tags = [];
+  // No isolated tag or within isolated tag time range
+  if(!tagStore.isolatedTag || (time > tagStore.isolatedTag.startTime && time < tagStore.isolatedTag.endTime)) {
+    tags = Search({trackId, time})
+      .filter((v, i, s) => s.indexOf(v) === i);
 
-  // When editing tags, remove tag being edited and check if edited tag should be displayed
-  if(tagStore.editedTag && tagStore.editedTag.trackId === trackId) {
-    tags = tags.filter(tagId => tagId !== tagStore.editedTag?.tagId);
+    // When editing tags, remove tag being edited and check if edited tag should be displayed
+    if(tagStore.editedTag && tagStore.editedTag.trackId === trackId) {
+      tags = tags.filter(tagId => tagId !== tagStore.editedTag?.tagId);
 
-    if(time >= tagStore.editedTag.startTime && time <= tagStore.editedTag.endTime) {
-      tags.push("edited");
+      if(time >= tagStore.editedTag.startTime && time <= tagStore.editedTag.endTime) {
+        tags.push("edited");
+      }
     }
   }
 
@@ -110,6 +114,33 @@ const InitializeTrackReactions = ({track, worker}) => {
           operation: "SetFilter",
           trackId: track.trackId,
           filter: tagStore.filter
+        });
+      },
+      {delay: 100 * trackStore.uiUpdateDelayFactor}
+    )
+  );
+
+
+  // Update on isolated tag change
+  reactionDisposals.push(
+    reaction(
+      () => ({
+        isolatedTag: tagStore.isolatedTag
+      }),
+      () => {
+        if(track.trackType === "clip") {
+          return;
+        }
+
+        worker.postMessage({
+          operation: "SetIsolatedTag",
+          trackId: track.trackId,
+          isolatedTag: !tagStore.isolatedTag ? undefined :
+            {
+              startTime: tagStore.isolatedTag.startTime,
+              endTime: tagStore.isolatedTag.endTime,
+              tagId: tagStore.isolatedTag.tagId
+            }
         });
       },
       {delay: 100 * trackStore.uiUpdateDelayFactor}

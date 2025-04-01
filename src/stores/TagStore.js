@@ -24,6 +24,8 @@ class TagStore {
   editedAsset;
   editedAssetTag;
 
+  isolatedTag;
+
   filter = "";
 
   editing = false;
@@ -104,7 +106,8 @@ class TagStore {
     this.ClearSelectedTrack();
     this.ClearTags();
     this.ClearHoverTags();
-    this.filter = "";
+    this.ClearIsolatedTag();
+    this.ClearFilter();
   }
 
   TimeToSMPTE(time) {
@@ -117,21 +120,6 @@ class TagStore {
 
   ClearFilter() {
     this.filter = "";
-  }
-
-  FilteredTags(tags) {
-    const formatString = string => (string || "").toString().toLowerCase();
-    const filter = formatString(this.rootStore.tagStore.filter);
-
-    const minTime = this.rootStore.videoStore.scaleMinTime;
-    const maxTime = this.rootStore.videoStore.scaleMaxTime;
-
-    return tags
-      .filter(({startTime, endTime, textList}) =>
-        (!filter || formatString(textList.join(" ")).includes(filter)) &&
-        endTime >= minTime && startTime <= maxTime
-      )
-      .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
   }
 
   Tags({mode="tags", startFrame=0, endFrame, limit=100, selectedOnly=false}={}) {
@@ -160,6 +148,8 @@ class TagStore {
             (!startTime || tag.endTime >= startTime) &&
             // Include tags that start before end time
             (!endTime || tag.startTime <= endTime) &&
+            // Include tags that are within the isolated tag range
+            (!this.isolatedTag || (tag.startTime < this.isolatedTag.endTime && tag.endTime > this.isolatedTag.startTime)) &&
             // Text filter
             (!filter || (tag.textList?.join(" ") || JSON.stringify(tag.content || {})).toLowerCase().includes(filter)) &&
             // Selected tags
@@ -190,6 +180,23 @@ class TagStore {
       this.rootStore.videoStore.TimeToFrame(tag.startTime),
       this.rootStore.videoStore.TimeToFrame(tag.endTime)
     );
+  }
+
+  IsolateTag(tag) {
+    this.isolatedTag = tag;
+
+    this.rootStore.videoStore.SetScale(
+      this.rootStore.videoStore.TimeToProgress(tag.startTime) - 0.5,
+      this.rootStore.videoStore.TimeToProgress(tag.endTime) + 0.5,
+    );
+
+    this.CancelIsolateListener = event => event.key === "Escape" && this.ClearIsolatedTag();
+    document.body.addEventListener("keydown", this.CancelIsolateListener);
+  }
+
+  ClearIsolatedTag() {
+    this.isolatedTag = undefined;
+    document.body.removeEventListener("keydown", this.CancelIsolateListener);
   }
 
   SetSelectedTrack(trackId) {

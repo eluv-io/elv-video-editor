@@ -358,8 +358,6 @@ class VideoStore {
           }
         }
 
-        delete metadataTags.shot_tags;
-
         this.rootStore.trackStore.InitializeTracks(metadataTags);
 
         this.ready = true;

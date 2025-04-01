@@ -94,8 +94,8 @@ const PageControls = observer(({currentPage, pages, maxSpread=15, SetPage}) => {
 const SearchBar = observer(({filter, setFilter, delay=500, Select}) => {
   const [updateTimeout, setUpdateTimeout] = useState(undefined);
   const [input, setInput] = useState(filter);
-  // eslint-disable-next-line no-unused-vars
-  const [_, navigate] = useLocation();
+
+  const [, navigate] = useLocation();
 
   useEffect(() => {
     clearTimeout(updateTimeout);
@@ -275,8 +275,8 @@ const ChannelBrowser = observer(({channelInfo, Select, Back, className=""}) => {
         Load={async ({page, perPage, filter}) => {
           const content = [
             {id: "", name: `Main Content - ${channelInfo.objectName}`},
-            ...(channelInfo.channels.map(({key, label}) =>
-              ({id: key, name: `Composition - ${label}`})
+            ...(channelInfo.channels.map(({key, name, label}) =>
+              ({id: key, name: `Composition - ${name || label}`})
             ))
           ]
             .filter(({name}) => !filter || name.toLowerCase().includes(filter.toLowerCase()));
@@ -394,7 +394,8 @@ const Browser = observer(() => {
     if(!objectId) { return; }
 
     if(!isVideo && hasAssets) {
-      setRedirect(UrlJoin("/", libraryId || selectedLibraryId, objectId, "assets"));
+      setRedirect(UrlJoin("/", objectId, "assets"));
+      return;
     }
 
     if(hasChannels) {
@@ -405,7 +406,7 @@ const Browser = observer(() => {
         channels
       });
     } else {
-      setRedirect(UrlJoin("/", libraryId || selectedLibraryId, objectId));
+      setRedirect(UrlJoin("/", objectId));
     }
   };
 

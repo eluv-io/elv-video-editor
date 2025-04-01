@@ -44,6 +44,8 @@ class RootStore {
   libraryIds = {};
   versionHashes = {};
 
+  selectedObjectId;
+
   constructor() {
     makeAutoObservable(this);
 
@@ -91,6 +93,10 @@ class RootStore {
 
   SetSubpage(subpage) {
     this.subpage = subpage;
+  }
+
+  SetSelectedObjectId(selectedObjectId) {
+    this.selectedObjectId = selectedObjectId;
   }
 
   InitializeClient = flow(function * () {

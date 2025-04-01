@@ -17,8 +17,8 @@ import SimpleView from "@/components/views/SimpleView.jsx";
 
 // Keep track of the current page
 const SetView = observer(() => {
-  // eslint-disable-next-line no-unused-vars
-  const [_, params] = useRoute("/:objectId/:libraryId/:view/*?");
+   
+  const [, params] = useRoute("/:objectId/:view/*?");
   const [location, navigate] = useLocation();
 
   useEffect(() => {
@@ -29,11 +29,13 @@ const SetView = observer(() => {
   }, [params, videoStore.ready]);
 });
 
-// All routes after content is selected - route will contain /:libraryId/:objectId
+// All routes after content is selected - route will contain /:objectId
 const DefaultContentRoutes = observer(() => {
   const { objectId } = useParams();
 
   useEffect(() => {
+    rootStore.SetSelectedObjectId(objectId);
+
     if(objectId && !videoStore.loading && videoStore.videoObject?.objectId !== objectId) {
       videoStore.SetVideo({objectId});
     }
@@ -57,16 +59,16 @@ const DefaultContentRoutes = observer(() => {
         <SimpleView />
       </Route>
       <Route path="/tags">
-        <TagsAndClipsView mode="tags" />
+        <TagsAndClipsView key="tags" mode="tags" />
       </Route>
       <Route path="/my-tags">
-        <TagsAndClipsView mode="clips" />
+        <TagsAndClipsView key="clips" mode="clips" />
       </Route>
       <Route path="/assets/:assetKey?">
         <AssetsView />
       </Route>
       <Route>
-        <Redirect to={videoStore.isVideo ? "/clips" : "/assets"} replace />
+        <Redirect to={videoStore.isVideo ? "/" : "/assets"} replace />
       </Route>
     </Switch>
   );
@@ -127,10 +129,10 @@ const App = observer(() => {
               <Route path="/compositions/:objectId/:compositionKey">
                 <CompositionsView key="selected" />
               </Route>
-              <Route path="/:libraryId?">
+              <Route path="/">
                 <Browser />
               </Route>
-              <Route path="/:libraryId/:objectId" nest>
+              <Route path="/:objectId" nest>
                 <DefaultContentRoutes />
               </Route>
               <Route>
