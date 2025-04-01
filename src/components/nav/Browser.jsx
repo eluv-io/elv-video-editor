@@ -284,7 +284,7 @@ const ChannelBrowser = observer(({channelInfo, Select, Back, className=""}) => {
           const total = content.length;
 
           return {
-            content,
+            content: content.slice((page - 1) * perPage, page * perPage),
             paging: {
               page,
               pages: Math.ceil(total / perPage),
