@@ -6,7 +6,7 @@ import {rootStore, browserStore, compositionStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {IconButton, Linkish, Loader} from "@/components/common/Common";
 import SVG from "react-inlinesvg";
-import {Redirect, useLocation} from "wouter";
+import {Redirect} from "wouter";
 import UrlJoin from "url-join";
 
 import LibraryIcon from "@/assets/icons/v2/library.svg";
@@ -95,8 +95,6 @@ const SearchBar = observer(({filter, setFilter, delay=500, Select}) => {
   const [updateTimeout, setUpdateTimeout] = useState(undefined);
   const [input, setInput] = useState(filter);
 
-  const [, navigate] = useLocation();
-
   useEffect(() => {
     clearTimeout(updateTimeout);
 
@@ -114,13 +112,7 @@ const SearchBar = observer(({filter, setFilter, delay=500, Select}) => {
         if(["ilib", "iq__", "hq__", "0x"].find(prefix => event.target.value.trim().startsWith(prefix))) {
           const result = await browserStore.LookupContent(event.target.value);
 
-          if(Select) {
-            Select(result);
-          } else if(result.objectId) {
-            navigate(`/${result.libraryId}/${result.objectId}`);
-          } else if(result.libraryId) {
-            navigate(`/${result.libraryId}`);
-          }
+          Select?.(result);
         }
       }}
       className={S("search-bar")}
@@ -379,7 +371,7 @@ const Browser = observer(() => {
           setRedirect(
             compositionKey ?
               UrlJoin("/compositions", channelInfo.objectId, compositionKey) :
-              UrlJoin("/", channelInfo.libraryId, channelInfo.objectId)
+              UrlJoin("/", channelInfo.objectId)
           );
         }}
       />
