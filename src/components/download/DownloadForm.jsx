@@ -1,7 +1,7 @@
 import DownloadStyles from "@/assets/stylesheets/modules/download.module.scss";
 
 import {observer} from "mobx-react-lite";
-import {videoStore, downloadStore} from "@/stores/index.js";
+import {downloadStore} from "@/stores/index.js";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import {AsyncButton, CopyButton, FormSelect, FormTextInput} from "@/components/common/Common.jsx";
 import {Button} from "@mantine/core";
@@ -10,57 +10,69 @@ import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 
 const S = CreateModuleClassMatcher(DownloadStyles);
 
-export const DownloadPreview = observer(({options}) => {
+export const DownloadPreview = observer(({store, options}) => {
   const clipInFrame = options.noClip ? 0 : options.clipInFrame || 0;
-  const clipOutFrame = options.noClip ? videoStore.totalFrames - 1 : options.clipOutFrame || videoStore.totalFrames - 1;
+  const clipOutFrame = options.noClip ? store.totalFrames - 1 : options.clipOutFrame || store.totalFrames - 1;
 
   return (
     <div className={S("preview")}>
       {
-        !videoStore.thumbnailStore.thumbnailStatus.available ? null :
-          <div style={{aspectRatio: videoStore.aspectRatio}} className={S("preview__thumbnail-container")}>
+        !store.thumbnailStore.thumbnailStatus.available ? null :
+          <div style={{aspectRatio: store.aspectRatio}} className={S("preview__thumbnail-container")}>
             <PreviewThumbnail
-              store={videoStore}
+              store={store}
               key={`thumbnail-${options.noClip}`}
               startFrame={clipInFrame}
               endFrame={clipOutFrame}
               className={S("preview__thumbnail")}
             />
             <div className={S("preview__thumbnail-duration")}>
-              {videoStore.videoHandler.FrameToString({frame: clipOutFrame - clipInFrame})}
+              {store.videoHandler.FrameToString({frame: clipOutFrame - clipInFrame})}
             </div>
           </div>
       }
-      <div className={S("preview__title")}>{videoStore.name}</div>
+      <div className={S("preview__title")}>{store.name}</div>
       <div className={S("preview__time")}>
         <span>
-          {videoStore.videoHandler.FrameToSMPTE(clipInFrame)}
+          {store.videoHandler.FrameToSMPTE(clipInFrame)}
         </span>
         <span>-</span>
         <span>
-          {videoStore.videoHandler.FrameToSMPTE(clipOutFrame)}
+          {store.videoHandler.FrameToSMPTE(clipOutFrame)}
         </span>
         <span>
-          ({videoStore.videoHandler.FrameToString({frame: clipOutFrame - clipInFrame})})
+          ({store.videoHandler.FrameToString({frame: clipOutFrame - clipInFrame})})
         </span>
       </div>
       <div className={S("preview__object-id")}>
-        {videoStore.videoObject.objectId}
+        {store.videoObject.objectId}
         <CopyButton label="Copy Object ID" value={options.objectId} small />
       </div>
       {
-        !videoStore.metadata?.public?.description ? null :
+        !store.metadata?.public?.description ? null :
           <div className={S("preview__description")}>
-            {videoStore.metadata.public.description}
+            {store.metadata.public.description}
           </div>
       }
     </div>
   );
 });
 
-export const DownloadFormFields = observer(({autoFocus=false, options={}, setOptions}) => {
-  const representations = videoStore.ResolutionOptions(options.offering);
-  const audioRepresentations = videoStore.AudioOptions(options.offering);
+export const DownloadFormFields = observer(({
+  store,
+  autoFocus=false,
+  options={},
+  setOptions,
+  fields={
+    filename: true,
+    offering: true,
+    videoRepresentation: true,
+    audioRepresentation: true,
+    format: true
+  }
+}) => {
+  const representations = store.ResolutionOptions(options.offering);
+  const audioRepresentations = store.AudioOptions(options.offering);
 
   // Update
   useEffect(() => {
@@ -70,11 +82,14 @@ export const DownloadFormFields = observer(({autoFocus=false, options={}, setOpt
       offering: options.offering,
       representationInfo: representations?.find(rep => rep.key === options.representation),
       audioRepresentationInfo: audioTrack,
-      clipInFrame: videoStore.clipInFrame,
-      clipOutFrame: videoStore.clipOutFrame
+      clipInFrame: store.clipInFrame,
+      clipOutFrame: store.clipOutFrame
     });
+
     setOptions({
       ...options,
+      representations,
+      audioRepresentations,
       defaultFilename,
       filename: options.filename === options.defaultFilename ?
         defaultFilename : options.filename
@@ -102,28 +117,34 @@ export const DownloadFormFields = observer(({autoFocus=false, options={}, setOpt
 
   return (
     <>
-      <FormTextInput
-        label="File Name"
-        autoFocus={autoFocus}
-        name="filename"
-        value={options.filename}
-        onChange={event => setOptions({...setOptions, filename: event.target.value})}
-        placeholder={options.defaultFilename}
-      />
-      <FormSelect
-        label="Offering"
-        name="offering"
-        value={options.offering}
-        onChange={value => setOptions({...options, offering: value || options.offering})}
-        data={
-          Object.keys(videoStore.availableOfferings).map(offeringKey => ({
-            label: offeringKey === "default" ? "Default" : videoStore.availableOfferings[offeringKey].display_name || offeringKey,
-            value: offeringKey,
-          }))
-        }
-      />
       {
-        !representations || representations.length === 0 ? null :
+        !fields.filename ? null :
+          <FormTextInput
+            label="File Name"
+            autoFocus={autoFocus}
+            name="filename"
+            value={options.filename}
+            onChange={event => setOptions({...setOptions, filename: event.target.value})}
+            placeholder={options.defaultFilename}
+          />
+      }
+      {
+        !fields.offering ? null :
+          <FormSelect
+            label="Offering"
+            name="offering"
+            value={options.offering}
+            onChange={value => setOptions({...options, offering: value || options.offering})}
+            data={
+              Object.keys(store.availableOfferings).map(offeringKey => ({
+                label: offeringKey === "default" ? "Default" : store.availableOfferings[offeringKey].display_name || offeringKey,
+                value: offeringKey,
+              }))
+            }
+          />
+      }
+      {
+        !fields.videoRepresentation || !representations || representations.length === 0 ? null :
           <FormSelect
             label="Resolution"
             name="representation"
@@ -133,7 +154,7 @@ export const DownloadFormFields = observer(({autoFocus=false, options={}, setOpt
           />
       }
       {
-        !audioRepresentations || audioRepresentations.length === 0 ? null :
+        !fields.audioRepresentation || !audioRepresentations || audioRepresentations.length === 0 ? null :
           <FormSelect
             label="Audio"
             name="audioRepresentation"
@@ -142,36 +163,39 @@ export const DownloadFormFields = observer(({autoFocus=false, options={}, setOpt
             data={audioRepresentations.map(rep => ({label: rep.string, value: rep.key}))}
           />
       }
-      <FormSelect
-        label="Format"
-        name="format"
-        value={options.format}
-        onChange={value => setOptions({...options, format: value || options.format})}
-        data={[{label: "MP4", value: "mp4"}, {label: "ProRes", value: "prores"}]}
-      />
+      {
+        !fields.format ? null :
+          <FormSelect
+            label="Format"
+            name="format"
+            value={options.format}
+            onChange={value => setOptions({...options, format: value || options.format})}
+            data={[{label: "MP4", value: "mp4"}, {label: "ProRes", value: "prores"}]}
+          />
+      }
     </>
   );
 });
 
-const DownloadForm = observer(({buttonText="Download", Submit, Close}) => {
+const DownloadForm = observer(({store, buttonText="Download", Submit, Close}) => {
   const [downloadOptions, setDownloadOptions] = useState({
-    objectId: videoStore.videoObject.objectId,
+    objectId: store.videoObject.objectId,
     format: "mp4",
     filename: "",
     defaultFilename: "",
     representation: "",
     audioRepresentation: "",
-    offering: videoStore.offeringKey,
-    clipInFrame: videoStore.clipInFrame,
-    clipOutFrame: videoStore.clipOutFrame
+    offering: store.offeringKey,
+    clipInFrame: store.clipInFrame,
+    clipOutFrame: store.clipOutFrame
   });
 
   return (
     <div className={S("download-container")}>
       <div className={S("download")}>
-        <DownloadPreview options={downloadOptions}/>
+        <DownloadPreview store={store} options={downloadOptions}/>
         <div className={S("download__form")}>
-          <DownloadFormFields autoFocus options={downloadOptions} setOptions={setDownloadOptions} />
+          <DownloadFormFields store={store} autoFocus options={downloadOptions} setOptions={setDownloadOptions} />
         </div>
       </div>
       <div className={S("download__actions")}>

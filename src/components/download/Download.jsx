@@ -333,7 +333,7 @@ const DownloadModalContent = observer(({tab, setTab, setConfirming, Close}) => {
       }
       {
         tab === "details" ?
-          <DownloadForm Submit={Submit} Close={Close} /> :
+          <DownloadForm store={videoStore} Submit={Submit} Close={Close} /> :
           <DownloadHistory highlightedJobId={jobId} setConfirming={setConfirming} />
       }
     </div>

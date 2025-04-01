@@ -151,7 +151,7 @@ const ClipSeekBar = observer(() => {
   const store = compositionStore.selectedClipStore;
   const clip = compositionStore.selectedClip;
 
-  if(!store.initialized) {
+  if(!store.initialized || !store.ready) {
     return null;
   }
 
@@ -273,34 +273,34 @@ const Title = observer(({clipView}) => {
           {name}
         </div>
       </Tooltip>
-      <IconButton
-        faded
-        small
-        label="Edit Name"
-        icon={EditIcon}
-        onClick={() => setEditing(true)}
-      />
-      {
-        !clipView || compositionStore.videoStore.fullScreen ? null :
-          <IconButton
-            faded
-            small
-            label="Remove Clip from Composition"
-            icon={TrashIcon}
-            onClick={() => compositionStore.RemoveClip(compositionStore.selectedClipId)}
-          />
-      }
-      {
-        !clipView || compositionStore.videoStore.fullScreen ? null :
-          <IconButton
-            faded
-            small
-            label="Close"
-            icon={XIcon}
-            onClick={() => compositionStore.ClearSelectedClip()}
-          />
-      }
       <div className={S("video-section__title-actions")}>
+        <IconButton
+          faded
+          small
+          label="Edit Name"
+          icon={EditIcon}
+          onClick={() => setEditing(true)}
+        />
+        {
+          !clipView || compositionStore.videoStore.fullScreen ? null :
+            <IconButton
+              faded
+              small
+              label="Remove Clip from Composition"
+              icon={TrashIcon}
+              onClick={() => compositionStore.RemoveClip(compositionStore.selectedClipId)}
+            />
+        }
+        {
+          !clipView || compositionStore.videoStore.fullScreen ? null :
+            <IconButton
+              faded
+              small
+              label="Close"
+              icon={XIcon}
+              onClick={() => compositionStore.ClearSelectedClip()}
+            />
+        }
         {
           clipView ? null :
             <>
@@ -310,7 +310,7 @@ const Title = observer(({clipView}) => {
                 autoContrast
                 h={30}
                 px="xs"
-                disabled={compositionStore.saved}
+                disabled={!compositionStore.hasUnsavedChanges}
                 onClick={async () => {
                   if(!await new Promise(resolve =>
                     modals.openConfirmModal({
@@ -386,9 +386,10 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
   }, [active]);
 
   useEffect(() => {
-    if(!clipView || !store || !store.initialized || !store.videoHandler) { return; }
+    if(!clipView || !store || !store.initialized || !store.videoHandler || !store.totalFrames) { return; }
 
     const clip = compositionStore.selectedClip;
+
     // Set initial scale for clip
 
     const clipOutFrame = clip.clipOutFrame || store.totalFrames - 1;

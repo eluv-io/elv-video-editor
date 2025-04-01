@@ -23,6 +23,8 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
         "offerings/*/exit_point_rat",
         "offerings/*/media_struct/duration_rat",
         "offerings/*/media_struct/streams/*/rate",
+        "offerings/*/media_struct/streams/*/duration/rat",
+        "offerings/*/media_struct/streams/*/codec_type",
         //"offerings/*/media_struct/streams/*/sources",
         "offerings/*/media_struct/streams/*/label",
         "offerings/*/media_struct/streams/*/default_for_media_type",
@@ -124,6 +126,17 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
       if(!hasHlsOfferings) { throw Error("No offerings with HLS Clear or AES-128 playout found."); }
 
       videoObject.offeringKey = offeringKey;
+
+
+      // Determine duration and framerate
+      videoObject.streamKey = Object.keys(metadata.offerings[videoObject.offeringKey].media_struct.streams)
+        .find(streamKey =>
+          metadata.offerings[videoObject.offeringKey].media_struct.streams[streamKey].codec_type === "video"
+        );
+
+      videoObject.duration = FrameAccurateVideo.ParseRat(
+        metadata.offerings[videoObject.offeringKey].media_struct.streams[videoObject.streamKey].duration.rat
+      );
 
       // Specify playout for full, untrimmed content
       const playoutMethods = offeringPlayoutOptions[offeringKey]["hls"].playoutMethods;

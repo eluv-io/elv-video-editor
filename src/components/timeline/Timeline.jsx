@@ -31,6 +31,7 @@ import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
 import UploadIcon from "@/assets/icons/v2/upload.svg";
 import SaveIcon from "@/assets/icons/v2/save.svg";
 import QuestionMarkIcon from "@/assets/icons/v2/question-mark.svg";
+import ZoomOutFullIcon from "@/assets/icons/v2/arrows-horizontal.svg";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -130,8 +131,8 @@ const TimelineTopBar = observer(({simple}) => {
           onClick={() => videoStore.SetClipMark({outFrame: videoStore.frame})}
         />
         <div className={S("toolbar__separator")}/>
-        <Download/>
-        <Share />
+        <Download />
+        <Share store={videoStore} />
       </div>
     </div>
   );
@@ -196,6 +197,16 @@ const TimelineBottomBar = observer(({simple}) => {
             />
       }
       <div className={S("toolbar__spacer")}/>
+      <IconButton
+        disabled={videoStore.scaleMagnitude === 100}
+        highlight={videoStore.scaleMagnitude !== 100}
+        icon={ZoomOutFullIcon}
+        onClick={() => {
+          videoStore.SetScale(0, 100);
+          tagStore.ClearIsolatedTag();
+        }}
+        label="Reset Timeline Scale"
+      />
     </div>
   );
 });
@@ -230,7 +241,7 @@ const TimelineSeekBar = observer(({hoverSeek}) => {
       <MarkedSlider
         min={videoStore.scaleMin}
         max={videoStore.scaleMax}
-        handles={[{ position: videoStore.seek }]}
+        handles={[{ position: videoStore.seek, style: "arrow" }]}
         indicators={indicators}
         showMarks
         topMarks

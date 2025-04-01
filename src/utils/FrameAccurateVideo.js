@@ -34,10 +34,11 @@ export const FrameRates = {
 };
 
 class FrameAccurateVideo {
-  constructor({video, frameRate, frameRateRat, dropFrame=false, callback}) {
+  constructor({video, frameRate, frameRateRat, dropFrame=false, duration, callback}) {
     this.video = video;
     this.SetFrameRate({rate: frameRate, rateRat: frameRateRat});
     this.callback = callback;
+    this.duration = duration;
 
     // Only set drop frame if appropriate based on frame rate
     const frameRateKey = FrameAccurateVideo.FractionToRateKey(`${this.frameRateNumerator}/${this.frameRateDenominator}`);
@@ -144,13 +145,13 @@ class FrameAccurateVideo {
   }
 
   ProgressToTime(progress) {
-    const duration = this.video?.duration || 0;
+    const duration = this.duration || 0;
 
     return Fraction(progress).mul(duration).valueOf();
   }
 
   ProgressToSMPTE(progress) {
-    const duration = this.video?.duration || 0;
+    const duration = this.duration || 0;
 
     return this.TimeToSMPTE(Fraction(progress).mul(duration));
   }
@@ -247,13 +248,13 @@ class FrameAccurateVideo {
   }
 
   Progress() {
-    if(isNaN(this.video?.duration)) { return Fraction(0); }
+    if(isNaN(this.duration)) { return Fraction(0); }
 
-    return Fraction(this.video?.currentTime || 0).div(this.video?.duration || 1);
+    return Fraction(this.video?.currentTime || 0).div(this.duration || 1);
   }
 
   TotalFrames() {
-    return Math.floor(Fraction(this.video?.duration || 0).mul(this.frameRate).valueOf());
+    return Math.floor(Fraction(this.duration || 0).mul(this.frameRate).valueOf());
   }
 
   FrameToString({frame, includeFractionalSeconds}) {

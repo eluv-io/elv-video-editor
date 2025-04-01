@@ -14,7 +14,7 @@ import {
 import {Copy, CreateModuleClassMatcher, ValidEmail} from "@/utils/Utils.js";
 import {Button, FocusTrap, Tabs, Text} from "@mantine/core";
 import {DownloadFormFields, DownloadPreview} from "@/components/download/DownloadForm.jsx";
-import {videoStore, downloadStore} from "@/stores/index.js";
+import {rootStore, downloadStore, compositionStore} from "@/stores/index.js";
 import {modals} from "@mantine/modals";
 
 import ShareIcon from "@/assets/icons/v2/share.svg";
@@ -136,10 +136,18 @@ const ShareEditForm = observer(({existingShare, setShowShareForm}) => {
   );
 });
 
-const ShareCreateForm = observer(({mode="recipients", downloadOptions, setDownloadOptions, setShowShareForm, setSelectedShare}) => {
+const ShareCreateForm = observer(({
+  store,
+  mode="recipients",
+  downloadOptions,
+  setDownloadOptions,
+  setShowShareForm,
+  setSelectedShare
+}) => {
+  const isComposition = rootStore.page === "compositions";
   const [shareOptions, setShareOptions] = useState({
     type: mode,
-    title: videoStore.name,
+    title: store.name,
     email: "",
     label: "",
     permissions: "stream",
@@ -197,6 +205,7 @@ const ShareCreateForm = observer(({mode="recipients", downloadOptions, setDownlo
           }
           <FormSelect
             label="Permissions"
+            disabled={isComposition}
             value={shareOptions.permissions}
             onChange={value => setShareOptions({...shareOptions, permissions: value})}
             options={[
@@ -206,7 +215,7 @@ const ShareCreateForm = observer(({mode="recipients", downloadOptions, setDownlo
             ]}
           />
           {
-            !(downloadOptions.clipInFrame > 0 || downloadOptions.clipOutFrame < videoStore.totalFrames - 1) ? null :
+            !(downloadOptions.clipInFrame > 0 || downloadOptions.clipOutFrame < store.totalFrames - 1) ? null :
               <FormSelect
                 label="Content"
                 value={downloadOptions.noClip || ""}
@@ -241,22 +250,20 @@ const ShareCreateForm = observer(({mode="recipients", downloadOptions, setDownlo
                   Download Options
                 </div>
                 <DownloadFormFields
+                  store={store}
                   options={downloadOptions}
                   setOptions={setDownloadOptions}
                 />
               </> :
-              // Stream case only needs offering selected
-              <FormSelect
-                label="Offering"
-                name="offering"
-                value={downloadOptions.offering}
-                onChange={value => setDownloadOptions({...options, offering: value || options.offering})}
-                data={
-                  Object.keys(videoStore.availableOfferings).map(offeringKey => ({
-                    label: offeringKey === "default" ? "Default" : videoStore.availableOfferings[offeringKey].display_name || offeringKey,
-                    value: offeringKey,
-                  }))
-                }
+              // Stream case only needs offering and audio selected
+              <DownloadFormFields
+                store={store}
+                options={downloadOptions}
+                setOptions={setDownloadOptions}
+                fields={{
+                  offering: !isComposition,
+                  audioRepresentation: true
+                }}
               />
           }
         </div>
@@ -273,11 +280,15 @@ const ShareCreateForm = observer(({mode="recipients", downloadOptions, setDownlo
                 delete options.clipInFrame;
               }
 
-              if(shareOptions.noClip || options.clipOutFrame >= videoStore.totalFrames - 1) {
+              if(shareOptions.noClip || options.clipOutFrame >= store.totalFrames - 1) {
                 delete options.clipOutFrame;
               }
 
-              let submittedShareOptions = {...shareOptions};
+              let submittedShareOptions = {
+                ...shareOptions,
+                compositionKey: !isComposition ? undefined :
+                  compositionStore.compositionObject.compositionKey,
+              };
 
               if(mode === "recipients") {
                 delete submittedShareOptions.label;
@@ -286,6 +297,7 @@ const ShareCreateForm = observer(({mode="recipients", downloadOptions, setDownlo
 
                 for(const email of emails) {
                   await downloadStore.CreateShare({
+                    store,
                     shareOptions: {
                       ...submittedShareOptions,
                       email
@@ -298,6 +310,7 @@ const ShareCreateForm = observer(({mode="recipients", downloadOptions, setDownlo
 
                 setSelectedShare(
                   await downloadStore.CreateShare({
+                    store,
                     shareOptions: submittedShareOptions,
                     downloadOptions: options
                   })
@@ -380,7 +393,7 @@ const Share = observer(({share, setEditingShare, setSelectedShare, Reload}) => {
             />
         }
         {
-          !share.active ? null :
+          !active ? null :
             <IconButton
               small
               icon={XIcon}
@@ -394,7 +407,7 @@ const Share = observer(({share, setEditingShare, setSelectedShare, Reload}) => {
                     title: "Revoke Access",
                     centered: true,
                     children: <Text fz="sm">Are you sure you want to revoke access to this content
-                      from {share.recipient || "this person"}?</Text>,
+                      from {share.recipient || "this share"}?</Text>,
                     labels: {confirm: "Confirm", cancel: "Cancel"},
                     onConfirm: async () => {
                       await downloadStore.RevokeShare({shareId: share.share_id});
@@ -412,17 +425,23 @@ const Share = observer(({share, setEditingShare, setSelectedShare, Reload}) => {
   );
 });
 
-const Shares = observer(({setSelectedShare, setEditingShare}) => {
+const Shares = observer(({store, setSelectedShare, setEditingShare}) => {
   const [shares, setShares] = useState(undefined);
   const [tab, setTab] = useState("active");
   const [key, setKey] = useState(0);
 
+  const isComposition = rootStore.page === "compositions";
+
   useEffect(() => {
     setShares(undefined);
 
-    downloadStore.Shares()
+    downloadStore.Shares({
+      store,
+      compositionKey: isComposition ?
+          compositionStore.compositionObject?.compositionKey : "main"
+    })
       .then(s => setShares(s));
-  }, [key]);
+  }, [key, compositionStore.compositionObject]);
 
   if(!shares) {
     return (
@@ -476,7 +495,7 @@ const Shares = observer(({setSelectedShare, setEditingShare}) => {
   );
 });
 
-const SharesInfo = observer(({setShowShareForm, setSelectedShare}) => {
+const SharesInfo = observer(({store, setShowShareForm, setSelectedShare}) => {
   const [editingShare, setEditingShare] = useState(undefined);
 
   if(editingShare) {
@@ -507,22 +526,27 @@ const SharesInfo = observer(({setShowShareForm, setSelectedShare}) => {
           Share Manually
         </Button>
       </div>
-      <Shares setSelectedShare={setSelectedShare} setEditingShare={setEditingShare} />
+      <Shares
+        store={store}
+        setSelectedShare={setSelectedShare}
+        setEditingShare={setEditingShare}
+      />
     </div>
   );
 });
 
 // Shares list + share form
-const ShareModalContent = observer(({downloadOptions, setDownloadOptions, setSelectedShare, Close}) => {
+const ShareModalContent = observer(({store, downloadOptions, setDownloadOptions, setSelectedShare, Close}) => {
   const [showShareForm, setShowShareForm] = useState(false);
 
   return (
     <div className={S("share-container")}>
       <div className={S("share")}>
-        <DownloadPreview options={downloadOptions}/>
+        <DownloadPreview store={store} options={downloadOptions}/>
         {
           showShareForm ?
             <ShareCreateForm
+              store={store}
               mode={showShareForm}
               downloadOptions={downloadOptions}
               setDownloadOptions={setDownloadOptions}
@@ -530,6 +554,7 @@ const ShareModalContent = observer(({downloadOptions, setDownloadOptions, setSel
               setSelectedShare={setSelectedShare}
             /> :
             <SharesInfo
+              store={store}
               setSelectedShare={setSelectedShare}
               setShowShareForm={setShowShareForm}
             />
@@ -587,7 +612,7 @@ const ShareSocialLinks = observer(({share, embedUrl}) => {
 });
 
 // Detailed info about specific share
-const ShareDetails = observer(({selectedShare, Back, Close}) => {
+const ShareDetails = observer(({store, selectedShare, Back, Close}) => {
   const [shortUrls, setShortUrls] = useState({});
 
   useEffect(() => {
@@ -602,8 +627,8 @@ const ShareDetails = observer(({selectedShare, Back, Close}) => {
       .then(([embedUrl, downloadUrl]) => setShortUrls({embedUrl, downloadUrl}));
   }, [selectedShare?.embedUrl, selectedShare?.downloadUrl]);
 
-  const representations = videoStore.ResolutionOptions(selectedShare.offering);
-  const audioRepresentations = videoStore.AudioOptions(selectedShare.offering);
+  const representations = store.ResolutionOptions(selectedShare.offering);
+  const audioRepresentations = store.AudioOptions(selectedShare.offering);
 
   const resolutionLabel = representations?.find(rep => rep.key === selectedShare.downloadOptions?.representation)?.string;
   const audioTrackLabel = audioRepresentations?.find(rep => rep.key === selectedShare.downloadOptions?.audioRepresentation)?.label;
@@ -622,7 +647,7 @@ const ShareDetails = observer(({selectedShare, Back, Close}) => {
           <ShareDownloadJobStatusChecker share={selectedShare} />
       }
       <div className={S("share")}>
-        <DownloadPreview options={selectedShare.downloadOptions || {}}/>
+        <DownloadPreview store={store} options={selectedShare.downloadOptions || {}}/>
         <div className={S("share-details")}>
           <div className={S("share-details__title")}>
             <IconButton icon={BackIcon} onClick={Back}/>
@@ -703,27 +728,34 @@ const ShareDetails = observer(({selectedShare, Back, Close}) => {
 
               <div className={S("share-details__detail")}>
                 <label>Start Time:</label>
-                <span className="monospace">{videoStore.FrameToSMPTE(selectedShare.clipDetails.clipInFrame || 0)}</span>
+                <span className="monospace">{store.FrameToSMPTE(selectedShare.clipDetails.clipInFrame || 0)}</span>
               </div>
               <div className={S("share-details__detail")}>
                 <label>End Time:</label>
                 <span
-                  className="monospace">{videoStore.FrameToSMPTE(selectedShare.clipDetails.clipOutFrame || videoStore.totalFrames - 1)}</span>
+                  className="monospace">{store.FrameToSMPTE(selectedShare.clipDetails.clipOutFrame || store.totalFrames - 1)}</span>
               </div>
               <div className={S("share-details__detail")}>
                 <label>Duration:</label>
                 <span>{selectedShare.clipDetails.durationString}</span>
               </div>
-              <div className={S("share-details__detail")}>
-                <label>Offering:</label>
-                <span>{selectedShare.offering === "default" ? "Default" : selectedShare.offering || "Default"}</span>
-              </div>
+              {
+                selectedShare.compositionKey === "main" ?
+                  <div className={S("share-details__detail")}>
+                    <label>Offering:</label>
+                    <span>{selectedShare.offering === "default" ? "Default" : selectedShare.offering || "Default"}</span>
+                  </div> :
+                  <div className={S("share-details__detail")}>
+                    <label>Composition:</label>
+                    <span>{ selectedShare.compositionKey }</span>
+                  </div>
+              }
               {
                 !["download", "both"].includes(selectedShare.permissions) ? null :
-                  <>
-                    {
-                      !resolutionLabel ? null :
-                        <div className={S("share-details__detail")}>
+                <>
+              {
+                !resolutionLabel ? null :
+                <div className={S("share-details__detail")}>
                           <label>Resolution:</label>
                           <span>{resolutionLabel}</span>
                         </div>
@@ -762,24 +794,24 @@ const ShareDetails = observer(({selectedShare, Back, Close}) => {
   );
 });
 
-const ShareModal = observer(props => {
+const ShareModal = observer(({store, ...props}) => {
   const [selectedShare, setSelectedShare] = useState(undefined);
   const [downloadOptions, setDownloadOptions] = useState(undefined);
 
   useEffect(() => {
     setDownloadOptions({
-      objectId: videoStore.videoObject?.objectId,
+      objectId: store.videoObject?.objectId,
       format: "mp4",
-      title: videoStore.name,
+      title: store.name,
       filename: "",
       defaultFilename: "",
       representation: "",
       audioRepresentation: "",
-      offering: videoStore.offeringKey,
-      clipInFrame: videoStore.clipInFrame,
-      clipOutFrame: videoStore.clipOutFrame
+      offering: store.offeringKey || "default",
+      clipInFrame: store.clipInFrame,
+      clipOutFrame: store.clipOutFrame
     });
-  }, [videoStore.clipInFrame, videoStore.clipOutFrame]);
+  }, [store.clipInFrame, store.clipOutFrame]);
 
   if(!downloadOptions) {
     return null;
@@ -792,7 +824,12 @@ const ShareModal = observer(props => {
         <div className={S("header")}>
           <Icon icon={ShareIcon}/>
           <div className={S("header__text")}>
-            {selectedShare ? "Share Details" : "Share Clip"}
+            {
+              selectedShare ?
+                "Share Details" :
+                rootStore.page === "compositions" ?
+                  "Share Composition" : "Share Clip"
+            }
           </div>
         </div>
       }
@@ -802,11 +839,13 @@ const ShareModal = observer(props => {
       {
         selectedShare ?
           <ShareDetails
+            store={store}
             selectedShare={selectedShare}
             Back={() => setSelectedShare(undefined)}
             Close={props.onClose}
           /> :
           <ShareModalContent
+            store={store}
             downloadOptions={downloadOptions}
             setDownloadOptions={setDownloadOptions}
             selectedShare={selectedShare}
@@ -818,12 +857,12 @@ const ShareModal = observer(props => {
   );
 });
 
-const ShareModalButton = observer(() => {
+const ShareModalButton = observer(({store, ...props}) => {
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     if(showModal) {
-      videoStore.PlayPause(true);
+      store.PlayPause(true);
     }
   }, [showModal]);
 
@@ -833,11 +872,16 @@ const ShareModalButton = observer(() => {
         icon={ShareIcon}
         label="Share Current Clip"
         onClick={() => setShowModal(true)}
+        {...props}
       />
-      <ShareModal
-        opened={showModal}
-        onClose={() => setShowModal(false)}
-      />
+      {
+        !showModal || !store.initialized ? null :
+          <ShareModal
+            store={store}
+            opened={showModal}
+            onClose={() => setShowModal(false)}
+          />
+      }
     </>
   );
 });

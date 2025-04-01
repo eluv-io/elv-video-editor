@@ -62,7 +62,6 @@ class CompositionStore {
   Reset() {
     this.videoStore = new VideoStore(this.rootStore, {tags: false, channel: true});
     this.videoStore.id = "Composition Store";
-    this.saved = false;
 
     this.clipStores = {};
     this.clips = {};
@@ -77,6 +76,10 @@ class CompositionStore {
     this.draggingClip = undefined;
     this.saved = false;
 
+    this.ResetActions();
+  }
+
+  ResetActions() {
     this._actionStack = [];
     this._redoStack = [];
     this._position = 0;
@@ -88,6 +91,10 @@ class CompositionStore {
 
   get nextRedoAction() {
     return this._redoStack.slice(-1)[0];
+  }
+
+  get hasUnsavedChanges() {
+    return this._position > 0;
   }
 
   get initialized() {
@@ -167,6 +174,7 @@ class CompositionStore {
 
   SetCompositionName(name) {
     this.compositionObject.name = name;
+    this.videoStore.name = name;
 
     this.myCompositions[this.compositionObject.objectId][this.compositionObject.compositionKey].name = name;
 
@@ -271,7 +279,6 @@ class CompositionStore {
         Action: Modify
       });
     }
-
   }
 
   RemoveClip(clipId) {
@@ -444,7 +451,7 @@ class CompositionStore {
     const clipId = this.rootStore.NextId();
     this.clips[clipId] = {
       clipId,
-      name: `${store.name} Clip`,
+      name: `${store.videoObject?.name || store.name} Clip`,
       libraryId: store.videoObject.libraryId,
       objectId: store.videoObject.objectId,
       versionHash: store.videoObject.versionHash,
@@ -704,6 +711,10 @@ class CompositionStore {
     yield new Promise(resolve => setTimeout(resolve, 3000));
 
     this.saved = true;
+    this.myCompositions[objectId][compositionKey].saved = true;
+    this.SaveMyCompositions();
+
+    this.ResetActions();
 
     this.DiscardDraft({objectId, compositionKey, removeComposition: false});
 
@@ -731,6 +742,8 @@ class CompositionStore {
 
     this.sourceClipId = yield this.InitializeClip({objectId, source: true});
     this.SetSelectedClip(this.sourceClipId);
+
+    this.videoStore.sourceVideoStore = this.sourceVideoStore;
 
     yield this.videoStore.SetVideo({objectId, preferredOfferingKey: compositionKey, noTags: true});
 
@@ -781,12 +794,14 @@ class CompositionStore {
       objectId,
       versionHash,
       sourceObjectId: objectId,
-      sourceOfferingKey: metadata.source_info?.offeringKey || "default",
+      sourceOfferingKey: metadata?.source_info?.offeringKey || "default",
       sourceName,
       name: metadata?.display_name || metadata?.name,
       compositionKey,
       metadata
     };
+
+    this.videoStore.name = this.compositionObject.name;
 
     // Add to my compositions
     if(!this.myCompositions[objectId][compositionKey]) {
@@ -798,6 +813,8 @@ class CompositionStore {
         saved: true
       };
     }
+
+    this.saved = this.myCompositions[objectId][compositionKey].saved;
 
     this.GetCompositionPlayoutUrl();
 
@@ -884,8 +901,6 @@ class CompositionStore {
     if(!fromRedo) {
       this._redoStack = [];
     }
-
-    this.saved = false;
 
     this.updateTimeout = setTimeout(() => this.UpdateComposition(), 500);
 
@@ -1035,6 +1050,8 @@ class CompositionStore {
   }
 
   async __CheckCompositionKeyExists({objectId, key}) {
+    if(key === "main") { return true; }
+
     const libraryId = await this.client.ContentObjectLibraryId({objectId});
     return (this.client.ContentObjectMetadata({
       libraryId,

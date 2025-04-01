@@ -22,7 +22,7 @@ class DownloadStore {
 
   DownloadJobDefaultFilename({format="mp4", offering="default", clipInFrame, clipOutFrame, representationInfo, audioRepresentationInfo}) {
     clipInFrame = clipInFrame || 0;
-    clipOutFrame = clipOutFrame || this.rootStore.videoStore.totalFrames - 1;
+    clipOutFrame = clipOutFrame || store.totalFrames - 1;
 
     let filename = this.rootStore.videoStore.name;
 
@@ -238,7 +238,16 @@ class DownloadStore {
     this.SaveDownloadJobInfo();
   }
 
-  CreateEmbedUrl = flow(function * ({offeringKey, audioTrackLabel, clipInFrame, clipOutFrame, shareId, title}) {
+  CreateEmbedUrl = flow(function * ({
+    store,
+    offeringKey,
+    compositionKey,
+    audioTrackLabel,
+    clipInFrame,
+    clipOutFrame,
+    shareId,
+    title
+  }) {
     let options = {
       autoplay: true,
     };
@@ -247,22 +256,26 @@ class DownloadStore {
       options.offerings = [offeringKey];
     }
 
-
     if(clipInFrame > 0) {
-      options.clipStart = this.rootStore.videoStore.FrameToTime(clipInFrame);
+      options.clipStart = store.FrameToTime(clipInFrame);
     }
 
-    if(this.rootStore.videoStore.totalFrames > clipOutFrame + 1) {
-      options.clipEnd = this.rootStore.videoStore.FrameToTime(clipOutFrame + 1);
+    if(store.totalFrames > clipOutFrame + 1) {
+      options.clipEnd = store.FrameToTime(clipOutFrame + 1);
     }
 
     const url = new URL(
       yield this.rootStore.client.EmbedUrl({
-        objectId: this.rootStore.videoStore.videoObject.objectId,
+        objectId: store.videoObject.objectId,
         duration: 7 * 24 * 60 * 60 * 1000,
         options
       })
     );
+
+    if(compositionKey && compositionKey !== "main") {
+      url.searchParams.delete("off");
+      url.searchParams.set("ch", compositionKey);
+    }
 
     if(audioTrackLabel) {
       url.searchParams.set("aud", this.rootStore.client.utils.B64(audioTrackLabel));
@@ -282,26 +295,38 @@ class DownloadStore {
     return url.toString();
   });
 
-  CreateShare = flow(function * ({shareOptions, downloadOptions}) {
-    const objectId = this.rootStore.videoStore.videoObject.objectId;
+  CreateShare = flow(function * ({store, shareOptions, downloadOptions}) {
+    const objectId = store.videoObject.objectId;
 
     downloadOptions = Unproxy(downloadOptions);
 
     if(downloadOptions.noClip){
       delete downloadOptions.noClip;
       downloadOptions.clipInFrame = 0;
-      downloadOptions.clipOutFrame = this.rootStore.videoStore.totalFrames - 1;
+      downloadOptions.clipOutFrame = store.totalFrames - 1;
     }
 
     let attributes = {
       source: ["evie"],
       type: [shareOptions.type],
+      composition: [shareOptions.compositionKey || "main"],
       title: [shareOptions.title || ""],
       note: [shareOptions.note || ""],
       permissions: [shareOptions.permissions],
       shareOptions: [JSON.stringify(shareOptions)],
       downloadOptions: [JSON.stringify(downloadOptions)],
     };
+
+    if(downloadOptions.audioRepresentations?.length > 1) {
+      // Multiple audio tracks
+      const selectedTrack = downloadOptions.audioRepresentations.find(rep =>
+        rep.key === downloadOptions?.audioRepresentation
+      );
+
+      if(selectedTrack && !selectedTrack.default) {
+        attributes.audioTrackLabel = [selectedTrack.label];
+      }
+    }
 
     if(["download", "both"].includes(shareOptions.permissions)) {
       attributes.downloadJobId = [
@@ -311,7 +336,7 @@ class DownloadStore {
         })).jobId
       ];
 
-      attributes.versionHash = [this.rootStore.videoStore.videoObject.versionHash];
+      attributes.versionHash = [store.videoObject.versionHash];
       attributes.filename = [downloadOptions.filename || downloadOptions.defaultFilename];
     }
 
@@ -323,27 +348,33 @@ class DownloadStore {
 
     let params = {};
     if(downloadOptions.clipInFrame > 0) {
-      attributes.clipIn = [this.rootStore.videoStore.FrameToTime(downloadOptions.clipInFrame).toString(), downloadOptions.clipInFrame.toString()];
-      params.clip_start = Math.floor(this.rootStore.videoStore.FrameToTime(downloadOptions.clipInFrame));
+      attributes.clipIn = [store.FrameToTime(downloadOptions.clipInFrame).toString(), downloadOptions.clipInFrame.toString()];
+      params.clip_start = Math.floor(store.FrameToTime(downloadOptions.clipInFrame));
     }
 
-    if(downloadOptions.clipOutFrame < this.rootStore.videoStore.totalFrames - 1) {
-      attributes.clipOut = [this.rootStore.videoStore.FrameToTime(downloadOptions.clipOutFrame).toString(), downloadOptions.clipOutFrame.toString()];
-      params.clip_end = Math.ceil(this.rootStore.videoStore.FrameToTime(downloadOptions.clipOutFrame));
+    if(downloadOptions.clipOutFrame < store.totalFrames - 1) {
+      attributes.clipOut = [store.FrameToTime(downloadOptions.clipOutFrame).toString(), downloadOptions.clipOutFrame.toString()];
+      params.clip_end = Math.ceil(store.FrameToTime(downloadOptions.clipOutFrame));
     }
 
-    return yield this.FormatShare(
-      (yield this.rootStore.client.CreateShare({
+    let options = {
+      ...params,
+      sharing_type: "public",
+      attributes
+    };
+
+    if(!shareOptions.compositionKey) {
+      options.offering = downloadOptions.offering;
+    }
+
+    return yield this.FormatShare({
+      store,
+      share: (yield this.rootStore.client.CreateShare({
         objectId,
         expiresAt: shareOptions.expiresAt,
-        params: Unproxy({
-          ...params,
-          offering: downloadOptions.offering,
-          sharing_type: "public",
-          attributes
-        })
+        params: Unproxy(options)
       })).share
-    );
+    });
   });
 
   CreateShortURL = flow(function * (url) {
@@ -363,7 +394,7 @@ class DownloadStore {
     }
   });
 
-  async FormatShare(share) {
+  async FormatShare({store, share}) {
     let clipDetails = {};
     if(share.attributes?.clipIn) {
       const [clipInTime, clipInFrame] = share.attributes.clipIn;
@@ -379,9 +410,13 @@ class DownloadStore {
       clipDetails.isClipped = true;
     }
 
-    clipDetails.durationFrames = (clipDetails.clipOutFrame || this.rootStore.videoStore.totalFrames - 1) - (clipDetails.clipInFrame || 0);
-    clipDetails.duration = this.rootStore.videoStore.FrameToTime(clipDetails.durationFrames);
-    clipDetails.durationString = this.rootStore.videoStore.TimeToString(clipDetails.duration);
+    clipDetails.durationFrames = (clipDetails.clipOutFrame || store.totalFrames - 1) - (clipDetails.clipInFrame || 0);
+    clipDetails.duration = store.FrameToTime(clipDetails.durationFrames);
+    clipDetails.durationString = store.TimeToString(clipDetails.duration);
+
+    if(share.attributes?.audioTrackLabel) {
+      share.audioTrackLabel = share.attributes.audioTrackLabel[0];
+    }
 
     if(share.attributes?.downloadJobId) {
       share.downloadJobId = share.attributes.downloadJobId[0];
@@ -414,12 +449,19 @@ class DownloadStore {
     }
 
     if(clipDetails.isClipped) {
-      clipDetails.string = `${this.rootStore.videoStore.FrameToSMPTE(clipDetails.clipInFrame || 0)} - ${this.rootStore.videoStore.FrameToSMPTE(clipDetails.clipOutFrame || this.rootStore.videoStore.totalFrames - 1)} (${this.rootStore.videoStore.TimeToString(clipDetails.duration)})`;
+      clipDetails.string = `${store.FrameToSMPTE(clipDetails.clipInFrame || 0)} - ${store.FrameToSMPTE(clipDetails.clipOutFrame || store.totalFrames - 1)} (${store.TimeToString(clipDetails.duration)})`;
+    }
+
+    if(share.attributes?.composition) {
+      share.compositionKey = share.attributes.composition[0];
     }
 
     const embedUrl = new URL(
       await this.CreateEmbedUrl({
+        store,
         offeringKey: share.downloadOptions?.offering,
+        audioTrackLabel: share.audioTrackLabel,
+        compositionKey: share.compositionKey,
         clipInFrame: clipDetails.clipInFrame ? clipDetails.clipInTime : undefined,
         clipOutFrame: share.clipOutFrame ? share.clipOutTime : undefined,
         shareId: share.share_id,
@@ -449,16 +491,24 @@ class DownloadStore {
     };
   }
 
-  Shares = flow(function * () {
-    const objectId = this.rootStore.videoStore.videoObject.objectId;
+  Shares = flow(function * ({store, compositionKey="main"}) {
+    const objectId = store.videoObject.objectId;
 
-    const {shares} = yield this.rootStore.client.Shares({objectId, limit: 10000});
+    const {shares} = yield this.rootStore.client.Shares({
+      objectId,
+      limit: 10000,
+      params: {
+        attributes: {
+          composition: [ compositionKey ]
+        }
+      }
+    });
 
     return yield Promise.all(
       (shares || [])
         .filter(share => share.attributes?.source?.[0] === "evie")
         .sort((a, b) => a.updated < b.updated ? 1 : -1)
-        .map(async share => await this.FormatShare(share))
+        .map(async share => await this.FormatShare({store, share}))
     );
   });
 

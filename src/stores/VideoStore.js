@@ -115,7 +115,8 @@ class VideoStore {
     makeAutoObservable(
       this,
       {
-        metadata: false
+        metadata: false,
+        sourceVideoStore: false
       }
     );
 
@@ -281,11 +282,16 @@ class VideoStore {
         console.error("Unable to determine frame rate");
       }
 
+      this.duration = videoObject.duration;
       this.videoHandler = new FrameAccurateVideo({
         frameRate: this.frameRate,
         frameRateRat: this.frameRateRat,
-        dropFrame: this.dropFrame
+        dropFrame: this.dropFrame,
+        duration: this.duration
       });
+
+      this.durationSMPTE = this.videoHandler?.TimeToSMPTE(this.duration);
+      this.totalFrames = this.videoHandler?.TotalFrames();
 
       if(this.thumbnailTrackUrl) {
         this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl);
@@ -409,7 +415,8 @@ class VideoStore {
       frameRate: this.frameRate,
       frameRateRat: this.frameRateRat,
       dropFrame: this.dropFrame,
-      callback: this.Update
+      callback: this.Update,
+      duration: this.duration
     });
 
     this.videoHandler = videoHandler;
@@ -672,15 +679,16 @@ class VideoStore {
     if(!this.video || !this.video.duration) { return; }
 
     this.frame = Math.floor(frame);
-    this.totalFrames = this.videoHandler?.TotalFrames() || this.totalFrames;
+    this.duration = this.duration || this.video.duration;
+    this.durationSMPTE = this.videoHandler?.TimeToSMPTE(this.duration);
+    this.videoHandler.duration = this.video.duration;
+    this.totalFrames = this.totalFrames || this.videoHandler?.TotalFrames();
     if(this.clipOutFrame >= this.totalFrames - 2) {
       // Minor shift in duration from channels may cause unset clip out point to show
       this.clipOutFrame = this.totalFrames - 1;
     }
     this.smpte = smpte;
     this.seek = progress * 100;
-    this.duration = this.video.duration || this.duration;
-    this.durationSMPTE = this.videoHandler?.TimeToSMPTE(this.duration);
     this.currentTime = this.video.currentTime;
 
     /*
@@ -1027,6 +1035,11 @@ class VideoStore {
   // Video/Audio track info
 
   ResolutionOptions(offering) {
+    // Defer to source for channels
+    if(this.sourceVideoStore) {
+      return this.sourceVideoStore.ResolutionOptions(this.sourceVideoStore.offeringKey);
+    }
+
     const repMetadata = this?.metadata?.offerings?.[offering]?.playout?.streams?.video?.representations || {};
 
     const repInfo = (
@@ -1061,6 +1074,11 @@ class VideoStore {
   }
 
   AudioOptions(offering) {
+    // Defer to source for channels
+    if(this.sourceVideoStore) {
+      return this.sourceVideoStore.AudioOptions(this.sourceVideoStore.offeringKey);
+    }
+
     const audioRepMetadata = this.metadata.offerings?.[offering]?.playout?.streams || {};
     const mediaStruct = this.metadata.offerings?.[offering]?.media_struct?.streams || {};
 

@@ -108,9 +108,18 @@ const TimelineTopBar = observer(() => {
         <IconButton
           icon={LinkIcon}
           label="View Composition in Fabric Browser"
+          disabled={!compositionStore.saved}
           onClick={() => compositionStore.OpenFabricBrowserLink()}
         />
-        <Share />
+        <Share
+          disabled={!compositionStore.saved || compositionStore.hasUnsavedChanges}
+          store={compositionStore.videoStore}
+          label={
+            !compositionStore.saved || compositionStore.hasUnsavedChanges ?
+              "Please save your changes before sharing this composition" :
+              "Share Composition"
+          }
+        />
       </div>
     </div>
   );
@@ -187,7 +196,7 @@ const TimelineSeekBar = observer(({hoverSeek}) => {
       <MarkedSlider
         min={compositionStore.videoStore.scaleMin}
         max={compositionStore.videoStore.scaleMax}
-        handles={[{ position: compositionStore.videoStore.seek }]}
+        handles={[{ position: compositionStore.videoStore.seek, style: "arrow" }]}
         indicators={indicators}
         showMarks
         topMarks
