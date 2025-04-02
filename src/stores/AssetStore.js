@@ -1,4 +1,4 @@
-import {makeAutoObservable} from "mobx";
+import {flow, makeAutoObservable} from "mobx";
 import UrlJoin from "url-join";
 import {Capitalize, Unproxy} from "@/utils/Utils.js";
 
@@ -271,6 +271,18 @@ class AssetStore {
       this.activeTracks[key] = true;
     }
   }
+
+  GenerateSummary = flow(function * ({objectId, asset}) {
+    const filePath = asset?.file?.["/"]?.replace("./files/", "");
+
+    return yield this.rootStore.compositionStore.QueryAIAPI({
+      server: "ai-02",
+      method: "GET",
+      path: UrlJoin("ml", "summary", "q", objectId, "rep", "image_summarize"),
+      objectId,
+      queryParams: { path: filePath }
+    });
+  });
 }
 
 export default AssetStore;

@@ -1,19 +1,21 @@
 import AssetStyles from "@/assets/stylesheets/modules/assets.module.scss";
 
 import {observer} from "mobx-react-lite";
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, DownloadFromUrl} from "@/utils/Utils.js";
 import {assetStore, editStore, tagStore} from "@/stores/index.js";
 import {Icon, IconButton, LoaderImage} from "@/components/common/Common.jsx";
 import {Tooltip} from "@mantine/core";
 import Overlay from "@/components/video/Overlay.jsx";
+import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
+import {useParams} from "wouter";
 
 import DownloadIcon from "@/assets/icons/download.svg";
 import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
 import AddTagIcon from "@/assets/icons/v2/add-new-item.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
-import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
+import DescriptionIcon from "@/assets/icons/v2/description.svg";
 
 const S = CreateModuleClassMatcher(AssetStyles);
 
@@ -104,7 +106,14 @@ const AssetTags = observer(({asset, setHoverTag}) => {
 });
 
 const AssetContent = observer(({asset, hoverTag}) => {
+  const {objectId} = useParams();
   const [imageElement, setImageElement] = useState(undefined);
+  const [summary, setSummary] = useState(undefined);
+
+  useEffect(() => {
+    assetStore.GenerateSummary({objectId, asset})
+      .then(setSummary);
+  }, []);
 
   return (
     <div className={S("asset")}>
@@ -145,7 +154,35 @@ const AssetContent = observer(({asset, hoverTag}) => {
           label="Add New Tag"
           onClick={() => tagStore.AddAssetTag({asset})}
         />
-        <div className={S("toolbar__spacer")} />
+        <div className={S("toolbar__separator")}/>
+        <IconButton
+          icon={DescriptionIcon}
+          disabled={!summary}
+          label={
+            !summary ? null :
+              <div className={S("asset-summary")}>
+                {
+                  !summary.title ? null :
+                    <div className={S("asset-summary__title")}>
+                      { summary.title }
+                    </div>
+                }
+                {
+                  !summary.summary ? null :
+                    <div className={S("asset-summary__summary")}>
+                      { summary.summary }
+                    </div>
+                }
+                {
+                  !summary.hashtags ? null :
+                    <div className={S("asset-summary__hashtags")}>
+                      { summary.hashtags.join(" ") }
+                    </div>
+                }
+              </div>
+          }
+        />
+        <div className={S("toolbar__spacer")}/>
         <IconButton
           icon={EditIcon}
           label="Edit Asset"

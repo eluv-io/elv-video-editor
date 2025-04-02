@@ -103,66 +103,68 @@ const AssetTagForm = observer(() => {
       className={S("tag-details", "form")}
     >
       <AssetTagActions tag={tag} track={track} />
-      <FocusTrap active>
-        <div className={S("form__inputs")}>
-          {
-            !tag.isNew ? null :
-              <div className={S("form__input-container")}>
-                <FormSelect
-                  label="Category"
-                  value={tag.trackKey.toString()}
-                  options={
-                    assetStore.tracks
-                      .map(track => ({
-                        label: track.label,
-                        value: track.key
-                      }))
+      <div className={S("tag-details__content")}>
+        <FocusTrap active>
+          <div className={S("form__inputs")}>
+            {
+              !tag.isNew ? null :
+                <div className={S("form__input-container")}>
+                  <FormSelect
+                    label="Category"
+                    value={tag.trackKey.toString()}
+                    options={
+                      assetStore.tracks
+                        .map(track => ({
+                          label: track.label,
+                          value: track.key
+                        }))
+                    }
+                    onChange={trackKey =>
+                      tagStore.UpdateEditedAssetTag({
+                        ...tag,
+                        trackKey
+                      })}
+                    className={S("form__input")}
+                  />
+                </div>
+            }
+            <div className={S("form__input-container")}>
+              <FormTextArea
+                label="Text"
+                value={tag.text}
+                placeholder="Text"
+                onChange={event => tagStore.UpdateEditedAssetTag({...tag, text: event.target.value})}
+              />
+            </div>
+            <div className={S("form__input-container")}>
+              <FormNumberInput
+                label="Confidence"
+                value={Round((tag.confidence || 1) * 100, 3)}
+                onChange={value => tagStore.UpdateEditedAssetTag({...tag, confidence: Round(value / 100, 3)})}
+              />
+            </div>
+            <div className={S("form__input-container")}>
+              <FormSelect
+                label="Draw Mode"
+                disabled={false}
+                value={tag.mode || "rectangle"}
+                options={[
+                  {label: "Rectangle", value: "rectangle"},
+                  {label: "Polygon", value: "polygon"},
+                ]}
+                onChange={mode => {
+                  if(mode === "Rectangle") {
+                    tagStore.UpdateEditedAssetTag({...tag, mode: "rectangle", box: BoxToRectangle(tag.box)});
+                  } else {
+                    tagStore.UpdateEditedAssetTag({...tag, mode: "polygon", box: BoxToPolygon(tag.box)});
                   }
-                  onChange={trackKey =>
-                    tagStore.UpdateEditedAssetTag({
-                      ...tag,
-                      trackKey
-                    })}
-                  className={S("form__input")}
-                />
-              </div>
-          }
-          <div className={S("form__input-container")}>
-            <FormTextArea
-              label="Text"
-              value={tag.text}
-              placeholder="Text"
-              onChange={event => tagStore.UpdateEditedAssetTag({...tag, text: event.target.value})}
-            />
+                }}
+                className={S("form__input")}
+              />
+            </div>
           </div>
-          <div className={S("form__input-container")}>
-            <FormNumberInput
-              label="Confidence"
-              value={Round((tag.confidence || 1) * 100, 3)}
-              onChange={value => tagStore.UpdateEditedAssetTag({...tag, confidence: Round(value / 100, 3)})}
-            />
-          </div>
-          <div className={S("form__input-container")}>
-            <FormSelect
-              label="Draw Mode"
-              disabled={false}
-              value={tag.mode || "rectangle"}
-              options={[
-                {label: "Rectangle", value: "rectangle"},
-                {label: "Polygon", value: "polygon"},
-              ]}
-              onChange={mode => {
-                if(mode === "Rectangle") {
-                  tagStore.UpdateEditedAssetTag({...tag, mode: "rectangle", box: BoxToRectangle(tag.box)});
-                } else {
-                  tagStore.UpdateEditedAssetTag({...tag, mode: "polygon", box: BoxToPolygon(tag.box)});
-                }
-              }}
-              className={S("form__input")}
-            />
-          </div>
-        </div>
-      </FocusTrap>
+        </FocusTrap>
+      </div>
     </form>
   );
 });
@@ -186,16 +188,18 @@ export const AssetTagDetails = observer(() => {
     <>
       <div key={`tag-details-${tag.tagId}-${!!tagStore.editedOverlayTag}`} className={S("tag-details")}>
         <AssetTagActions tag={tag} track={track}/>
-        <pre className={S("tag-details__content", tag.content ? "tag-details__content--json" : "")}>
-          {tag.text}
-        </pre>
-        <div className={S("tag-details__detail")}>
-          <label>Category:</label>
-          <span>{track.label || track.trackKey}</span>
-        </div>
-        <div className={S("tag-details__detail")}>
-          <label>Confidence:</label>
-          <span>{FormatConfidence(tag.confidence)}</span>
+        <div className={S("tag-details__content")}>
+          <pre className={S("tag-details__text", tag.content ? "tag-details__text--json" : "")}>
+            {tag.text}
+          </pre>
+          <div className={S("tag-details__detail")}>
+            <label>Category:</label>
+            <span>{track.label || track.trackKey}</span>
+          </div>
+          <div className={S("tag-details__detail")}>
+            <label>Confidence:</label>
+            <span>{FormatConfidence(tag.confidence)}</span>
+          </div>
         </div>
       </div>
       {
@@ -441,10 +445,6 @@ const AssetsList = observer(() => {
 
   const { assetKey } = useParams();
 
-  useEffect(() => {
-    //rootStore.SetExpandedPanel("sidePanel");
-  }, []);
-
   return (
     <>
       <div className={S("count")}>
@@ -459,6 +459,7 @@ const AssetsList = observer(() => {
           assetStore.filter,
           assetStore.assets.length,
           tagStore.editedAsset,
+          tagStore.editing,
           Object.keys(assetStore.activeTracks).length
         ]}
         batchSize={60}

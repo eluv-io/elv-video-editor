@@ -154,3 +154,27 @@
     z-index: 0;
   }
 }
+
+.asset-summary {
+  display: grid;
+  gap: 10px;
+  max-width: 400px;
+  padding: 10px 5px;
+
+  &__title,
+  &__summary,
+  &__hashtags {
+    max-width: 100%;
+    white-space: pre-wrap;
+  }
+
+  &__title {
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  &__hashtags {
+    color: var(--text-tertiary);
+  }
+}

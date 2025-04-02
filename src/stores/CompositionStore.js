@@ -863,8 +863,9 @@ class CompositionStore {
     }
   });
 
-  QueryAIAPI = flow(function * ({method="GET", objectId, queryParams={}}) {
-    const url = new URL(`https://ai.contentfabric.io/ml/highlight_composition/q/${objectId}`);
+  QueryAIAPI = flow(function * ({server="ai", method="GET", path, objectId, queryParams={}}) {
+    const url = new URL(`https://${server}.contentfabric.io/`);
+    url.pathname = path;
 
     Object.keys(queryParams).forEach(key =>
       queryParams[key] && url.searchParams.set(key, queryParams[key])
@@ -892,7 +893,12 @@ class CompositionStore {
 
   GenerateAIHighlights = flow(function * ({objectId, prompt, regenerate=false, wait=true, StatusCallback}) {
     if(regenerate) {
-      yield this.QueryAIAPI({method: "POST", objectId, queryParams: {prompt, regenerate: true}});
+      yield this.QueryAIAPI({
+        method: "POST",
+        path: UrlJoin("ml", "highlight_composition", "q", objectId),
+        objectId,
+        queryParams: {prompt, regenerate: true}
+      });
       yield new Promise(resolve => setTimeout(resolve, 1000));
     }
 
@@ -903,7 +909,12 @@ class CompositionStore {
         yield new Promise(resolve => setTimeout(resolve, 5000));
       }
 
-      status = yield this.QueryAIAPI({objectId, prompt});
+      status = yield this.QueryAIAPI({
+        method: "GET",
+        path: UrlJoin("ml", "highlight_composition", "q", objectId),
+        objectId,
+        queryParams: {prompt}
+      });
 
       if(!wait) {
         return status;
