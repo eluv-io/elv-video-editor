@@ -94,7 +94,7 @@ class CompositionStore {
   }
 
   get hasUnsavedChanges() {
-    return this._position > 0;
+    return this._position > 0 || (!this.saved && this.clipIdList.length > 0);
   }
 
   get initialized() {
@@ -618,7 +618,9 @@ class CompositionStore {
         objectId: sourceObjectId,
         name: sourceMetadata?.public?.name,
         offeringKey,
-        frameRate
+        frameRate,
+        type,
+        prompt
       }
     };
 
@@ -696,22 +698,38 @@ class CompositionStore {
     const {libraryId, objectId, compositionKey} = this.compositionObject;
     const latestVersionHash = yield this.client.LatestVersionHash({objectId});
 
-    const writeTokenInfo = this.myCompositions[objectId]?.[compositionKey]?.writeTokenInfo;
-
-    if(
-      !writeTokenInfo ||
-      writeTokenInfo.versionHash !== latestVersionHash
-    ) {
-      // eslint-disable-next-line no-console
-      console.warn("Write token for this composition is based on previous version. Retrieving new write token.");
-      // Write token is based on old version. Discard and generate a new one
-      this.DiscardDraft({objectId, compositionKey, removeComposition: false});
-    }
-
-    const writeToken = yield this.WriteToken({objectId, compositionKey, create: true});
-
     // Ensure composition is up to date
     yield this.UpdateComposition({updatePlayoutUrl: false});
+
+    const writeTokenInfo = this.myCompositions[objectId]?.[compositionKey]?.writeTokenInfo;
+    let writeToken = yield this.WriteToken({objectId, compositionKey, create: true});
+
+    if(writeTokenInfo && writeTokenInfo.versionHash !== latestVersionHash) {
+      // Write token is based on old version. Discard and generate a new one
+
+      // eslint-disable-next-line no-console
+      console.warn("Write token for this composition is based on previous version. Retrieving new write token.");
+
+      const compositionMetadata = yield this.client.ContentObjectMetadata({
+        libraryId,
+        objectId,
+        writeToken,
+        metadataSubtree: UrlJoin("/channel", "offerings", compositionKey)
+      });
+
+      this.DiscardDraft({objectId, compositionKey, removeComposition: false});
+
+      writeToken = yield this.WriteToken({objectId, compositionKey, create: true});
+
+      // Update new write token with composition metadata
+      yield this.client.ReplaceMetadata({
+        libraryId,
+        objectId,
+        writeToken,
+        metadataSubtree: UrlJoin("/channel", "offerings", compositionKey),
+        metadata: compositionMetadata
+      });
+    }
 
     this.compositionObject.versionHash = (
       yield this.client.FinalizeContentObject({

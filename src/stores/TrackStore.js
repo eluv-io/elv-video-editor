@@ -48,8 +48,8 @@ class TrackStore {
   colors = [
     "#FFFFFF",
     "#19ded3",
-    "#e02b10",
-    "#ffc806",
+    "#ff2100",
+    "#b700ff",
     "#f10fbf",
     "#8a0c0c",
     "#405ff5",
