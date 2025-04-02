@@ -517,7 +517,15 @@ class CompositionStore {
   });
 
   // Create/update/load channel objects
-  CreateComposition = flow(function * ({type, sourceObjectId, name, key, prompt}) {
+  CreateComposition = flow(function * ({
+    type,
+    sourceObjectId,
+    name,
+    key,
+    prompt,
+    regenerate=false,
+    StatusCallback
+  }) {
     /*
     const contentTypes = yield this.client.ContentTypes();
     const channelType =
@@ -573,7 +581,13 @@ class CompositionStore {
 
     let items = [];
     if(type === "ai") {
-      const highlights = yield this.GenerateAIHighlights({objectId: sourceObjectId, prompt});
+      const highlights = (yield this.GenerateAIHighlights({
+        objectId: sourceObjectId,
+        prompt,
+        regenerate,
+        StatusCallback
+      })).clips;
+
       const videoHandler = new FrameAccurateVideo({frameRateRat: frameRate});
 
       items = highlights.map(clip => {
@@ -819,7 +833,7 @@ class CompositionStore {
     this.GetCompositionPlayoutUrl();
 
     try {
-      const highlights = yield this.GenerateAIHighlights({objectId});
+      const highlights = (yield this.GenerateAIHighlights({objectId, wait: false}))?.clips || [];
 
       let aiClipIds = [];
       for(const clip of highlights) {
@@ -849,28 +863,58 @@ class CompositionStore {
     }
   });
 
-  GenerateAIHighlights = flow(function * ({objectId, prompt}) {
-    // TODO: Actually deal with generating status
+  QueryAIAPI = flow(function * ({method="GET", objectId, queryParams={}}) {
     const url = new URL(`https://ai.contentfabric.io/ml/highlight_composition/q/${objectId}`);
 
-    if(prompt) {
-      url.searchParams.set("customization", prompt);
-    }
+    Object.keys(queryParams).forEach(key =>
+      queryParams[key] && url.searchParams.set(key, queryParams[key])
+    );
 
-    const signedToken = yield this.rootStore.client.CreateSignedToken({objectId, duration: 24 * 60 * 60 * 1000});
+    const signedToken = yield this.rootStore.client.CreateSignedToken({
+      objectId,
+      duration: 24 * 60 * 60 * 1000
+    });
 
     return (
       yield (
         yield fetch(
           url,
           {
+            method,
             headers: {
               Authorization: `Bearer ${signedToken}`
             }
           }
         )
       ).json()
-    ).clips;
+    );
+  });
+
+  GenerateAIHighlights = flow(function * ({objectId, prompt, regenerate=false, wait=true, StatusCallback}) {
+    if(regenerate) {
+      yield this.QueryAIAPI({method: "POST", objectId, queryParams: {prompt, regenerate: true}});
+      yield new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    let status;
+    do {
+      if(status) {
+        StatusCallback?.(status);
+        yield new Promise(resolve => setTimeout(resolve, 5000));
+      }
+
+      status = yield this.QueryAIAPI({objectId, prompt});
+
+      if(!wait) {
+        return status;
+      }
+
+      if(status?.status === "ERROR") {
+        throw status;
+      }
+    } while(status?.status !== "COMPLETE");
+
+    return status;
   });
 
   PerformAction({label, Action, ...attrs}, fromRedo=false) {

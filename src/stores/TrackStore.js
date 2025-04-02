@@ -695,7 +695,15 @@ class TrackStore {
     this.activeTracks = {};
   }
 
-  ToggleTrackSelected(key) {
+  ToggleTrackSelected(key, value) {
+    if(typeof value !== "undefined") {
+      value ?
+        this.activeTracks[key] = true :
+        delete this.activeTracks[key];
+
+      return;
+    }
+
     if(this.activeTracks[key]) {
       delete this.activeTracks[key];
     } else {
@@ -707,7 +715,15 @@ class TrackStore {
     this.activeClipTracks = {};
   }
 
-  ToggleClipTrackSelected(key) {
+  ToggleClipTrackSelected(key, value) {
+    if(typeof value !== "undefined") {
+      value ?
+        this.activeClipTracks[key] = true :
+        delete this.activeClipTracks[key];
+
+      return;
+    }
+
     if(this.activeClipTracks[key]) {
       delete this.activeClipTracks[key];
     } else {

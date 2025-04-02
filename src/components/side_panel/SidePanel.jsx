@@ -1,9 +1,9 @@
 import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss";
 
-import React, {useEffect} from "react";
+import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-import {Input} from "@/components/common/Common.jsx";
+import {IconButton, Input} from "@/components/common/Common.jsx";
 import {useDebouncedState} from "@mantine/hooks";
 import {rootStore, assetStore, compositionStore, tagStore, trackStore} from "@/stores/index.js";
 import {TagDetails, TagsList} from "@/components/side_panel/Tags.jsx";
@@ -12,8 +12,10 @@ import {TrackDetails} from "@/components/side_panel/Tracks.jsx";
 
 import {OverlayTagDetails, OverlayTagsList} from "@/components/side_panel/OverlayTags.jsx";
 import {CompositionClips} from "@/components/side_panel/Compositions.jsx";
-import {Switch} from "@mantine/core";
+import {Combobox, PillsInput, Switch, useCombobox} from "@mantine/core";
 import {useLocation} from "wouter";
+
+import XIcon from "@/assets/icons/v2/x.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -52,46 +54,146 @@ const SidebarFilter = observer(({store, label, showTagSwitch=false}) => {
   );
 });
 
-const TrackSelection = observer(({mode="tags"}) => {
+const TrackSelection = observer(({mode = "tags"}) => {
+  const [optionsElement, setOptionsElement] = useState(undefined);
+  const [scroll, setScroll] = useState(false);
+
+  useEffect(() => {
+    if(!optionsElement) { return; }
+
+    const resizeObserver = new ResizeObserver(() =>
+      setScroll(optionsElement.scrollHeight > 200)
+    );
+
+    resizeObserver.observe(optionsElement);
+
+    return () => resizeObserver.disconnect();
+  }, [optionsElement]);
+
+
   let tracks, activeTracks, Toggle;
   switch(mode) {
     case "tags":
       activeTracks = trackStore.activeTracks;
-      Toggle = key => trackStore.ToggleTrackSelected(key);
+      Toggle = (key, value) => trackStore.ToggleTrackSelected(key, value);
       tracks = trackStore.metadataTracks;
       break;
     case "clips":
       activeTracks = trackStore.activeClipTracks;
-      Toggle = key => trackStore.ToggleClipTrackSelected(key);
+      Toggle = (key, value) => trackStore.ToggleClipTrackSelected(key, value);
       tracks = trackStore.clipTracks;
       break;
     case "assets":
       activeTracks = assetStore.activeTracks;
-      Toggle = key => assetStore.ToggleTrackSelected(key);
+      Toggle = (key, value) => assetStore.ToggleTrackSelected(key, value);
       tracks = assetStore.tracks;
       break;
   }
 
-  return (
-    <div className={S("tracks")}>
-      <div className={S("tracks__content")}>
-        {
-          tracks.map(track =>
-            <button
-              key={`track-${track.trackId}`}
-              onClick={() => Toggle(track.key)}
-              className={S("track", activeTracks[track.key] ? "track--selected" : "")}
-            >
-              <div
-                style={{backgroundColor: `rgb(${track.color.r} ${track.color.g} ${track.color.b}`}}
-                className={S("track__color")}
-              />
-              <div className={S("track__label")}>{ track.label }</div>
-            </button>
-          )
-        }
+
+  const combobox = useCombobox({
+    onDropdownClose: () => combobox.resetSelectedOption(),
+    onDropdownOpen: () => combobox.updateSelectedOptionIndex("active"),
+  });
+
+  const selectedTracks = Object.keys(activeTracks).map(trackKey => {
+    const track = tracks.find(track => track.key === trackKey);
+
+    return (
+      <div
+        key={trackKey}
+        className={S("track-option", "track-option--pill")}
+      >
+        <div
+          style={{backgroundColor: `rgb(${track.color.r} ${track.color.g} ${track.color.b}`}}
+          className={S("track-option__color")}
+        />
+        <span>{track.label}</span>
+        <IconButton
+          icon={XIcon}
+          small
+          faded
+          label="Remove"
+          onClick={event => {
+            event.stopPropagation();
+            Toggle(trackKey, false);
+          }}
+        />
       </div>
-    </div>
+    );
+  });
+
+  const options = tracks
+    .filter(track => !activeTracks[track.key])
+    .map(track =>
+      <Combobox.Option value={track.key} key={track.key}>
+        <button onClick={() => Toggle(track.key, true)} className={S("track-option")}>
+          <div
+            style={{backgroundColor: `rgb(${track.color.r} ${track.color.g} ${track.color.b}`}}
+            className={S("track-option__color")}
+          />
+          <span>{track.label}</span>
+        </button>
+      </Combobox.Option>
+    );
+
+  return (
+    <Combobox
+      offset={3}
+      store={combobox}
+      onOptionSubmit={trackKey => Toggle(trackKey, true)}
+      classNames={{
+        dropdown: S("track-options__dropdown"),
+      }}
+    >
+      <Combobox.DropdownTarget>
+        <div
+          ref={setOptionsElement}
+          role="menu"
+          onClick={() => combobox.toggleDropdown()}
+          style={!scroll ? undefined : {maxHeight: 200, overflowY: "auto"}}
+          className={S("track-options")}
+        >
+          {
+            selectedTracks.length > 0 ?
+              selectedTracks :
+              <div className={S("track-options__placeholder")}>Filter by Category</div>
+          }
+
+          {
+            selectedTracks.length === 0 ? null :
+              <IconButton
+                icon={XIcon}
+                label="Clear"
+                onClick={event => {
+                  event.stopPropagation();
+
+                  Object.keys(activeTracks).forEach(trackKey =>
+                    Toggle(trackKey, false)
+                  );
+                }}
+                faded
+                small
+                className={S("track-options__clear")}
+              />
+          }
+
+          <Combobox.EventsTarget>
+            <PillsInput.Field
+              type="hidden"
+              onBlur={() => combobox.closeDropdown()}
+            />
+          </Combobox.EventsTarget>
+        </div>
+      </Combobox.DropdownTarget>
+
+      {
+        options.length === 0 ? null :
+          <Combobox.Dropdown>
+            <Combobox.Options mah={250} style={{ overflowY: "auto" }}>{options}</Combobox.Options>
+          </Combobox.Dropdown>
+      }
+    </Combobox>
   );
 });
 

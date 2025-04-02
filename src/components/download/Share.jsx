@@ -523,7 +523,7 @@ const SharesInfo = observer(({store, setShowShareForm, setSelectedShare}) => {
           color="gray.1"
           onClick={() => setShowShareForm("manual")}
         >
-          Share Manually
+          Share to Anyone
         </Button>
       </div>
       <Shares
@@ -752,26 +752,26 @@ const ShareDetails = observer(({store, selectedShare, Back, Close}) => {
               }
               {
                 !["download", "both"].includes(selectedShare.permissions) ? null :
-                <>
-              {
-                !resolutionLabel ? null :
-                <div className={S("share-details__detail")}>
-                          <label>Resolution:</label>
-                          <span>{resolutionLabel}</span>
-                        </div>
-                    }
-                    {
-                      !audioTrackLabel ? null :
-                        <div className={S("share-details__detail")}>
-                          <label>Audio:</label>
-                          <span>{audioTrackLabel}</span>
-                        </div>
-                    }
+                  <>
                     <div className={S("share-details__detail")}>
                       <label>Format:</label>
                       <span>{selectedShare.downloadOptions?.format}</span>
                     </div>
+                    {
+                      !resolutionLabel ? null :
+                        <div className={S("share-details__detail")}>
+                          <label>Resolution:</label>
+                          <span>{resolutionLabel}</span>
+                        </div>
+                    }
                   </>
+              }
+              {
+                !audioTrackLabel && !selectedShare.audioTrackLabel ? null :
+                  <div className={S("share-details__detail")}>
+                    <label>Audio:</label>
+                    <span>{selectedShare.audioTrackLabel || audioTrackLabel}</span>
+                  </div>
               }
             </div>
           </div>

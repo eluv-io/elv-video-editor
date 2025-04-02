@@ -93,7 +93,10 @@ const TimelineTopBar = observer(({simple}) => {
             label="Jump to"
             aria-label="Jump to"
             value={videoStore.smpte}
-            onChange={({frame}) => videoStore.Seek(frame)}
+            onChange={({frame}) => {
+              videoStore.Seek(frame);
+              videoStore.SetScale(0, 100);
+            }}
           />
         </div>
       </div>

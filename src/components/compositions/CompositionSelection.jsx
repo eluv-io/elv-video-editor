@@ -7,7 +7,7 @@ import {AsyncButton, FormTextArea, FormTextInput, IconButton, Loader, Modal} fro
 import {LibraryBrowser, ObjectBrowser} from "@/components/nav/Browser.jsx";
 import {Redirect} from "wouter";
 import {compositionStore} from "@/stores/index.js";
-import {Button} from "@mantine/core";
+import {Button, Checkbox, Group} from "@mantine/core";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 import ManualCompositionSelectionImage from "@/assets/images/composition-manual.svg";
@@ -59,8 +59,11 @@ const CompositionForm = observer(({type, Cancel}) => {
     name: "",
     key: "",
     prompt: "",
+    regenerate: false,
     length: undefined
   });
+
+  const [createStatus, setCreateStatus] = useState(undefined);
 
   const key = options.key || Slugify(options.name);
 
@@ -81,13 +84,27 @@ const CompositionForm = observer(({type, Cancel}) => {
   }
 
   if(creating) {
+    const progress = createStatus?.progress?.split("/");
+
     return (
       <div className={S("composition-selection")}>
         <div className={S("composition-selection__creating")}>
           <div className={S("composition-selection__title")}>
-            Initializing Composition...
+            {
+              createStatus ?
+                "Generating AI Highlights..." :
+                "Initializing Composition..."
+            }
           </div>
-          <Loader />
+          {
+            !progress || progress[0] === "?" || parseInt(progress?.[0]) >= parseInt(progress?.[1]) ?
+              <Loader/> :
+              <progress
+                value={parseInt(progress[0])}
+                max={parseInt(progress[1])}
+                className={S("composition-selection__progress")}
+              />
+          }
         </div>
       </div>
     );
@@ -146,6 +163,13 @@ const CompositionForm = observer(({type, Cancel}) => {
               onChange={event => setOptions({...options, prompt: event.target.value})}
             />
         }
+        <Group my="xs" justify="end">
+          <Checkbox
+            label="Regenerate Results (if present)"
+            checked={options.regenerate}
+            onChange={event => setOptions({...options, regenerate: event.currentTarget.checked})}
+          />
+        </Group>
         <div className={S("composition-form__actions")}>
           <AsyncButton
             tooltip={error}
@@ -163,7 +187,9 @@ const CompositionForm = observer(({type, Cancel}) => {
                   sourceObjectId: options.sourceId,
                   name: options.name,
                   key,
-                  prompt: options.prompt
+                  prompt: options.prompt,
+                  regenerate: options.regenerate,
+                  StatusCallback: status => setCreateStatus(status),
                 });
 
                 setCreated(true);

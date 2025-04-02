@@ -246,6 +246,10 @@
     padding-top: 30px;
   }
 
+  &__multiselect {
+    height: max-content;
+  }
+
   &__color-section {
     bottom: 0;
     height: calc(100% - 20px);

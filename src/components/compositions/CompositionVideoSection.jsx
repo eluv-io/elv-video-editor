@@ -258,8 +258,29 @@ const Title = observer(({clipView}) => {
 
   if(!name) {
     return (
-      <h1 className={S("video-section__title")} />
-    );
+      <h1 className={S("video-section__title")}>
+        <div />
+        {
+          clipView ? null :
+            <Button
+              autoContrast
+              h={30}
+              px="xs"
+              color="gray.5"
+              variant="outline"
+              onClick={() => {
+                navigate("/compositions");
+                compositionStore.Reset();
+              }}
+            >
+              <Icon style={{height: 18, width: 18}} icon={XIcon}/>
+              <span style={{marginLeft: 10}}>
+                Close
+              </span>
+            </Button>
+        }
+      </h1>
+  );
   }
 
   return (

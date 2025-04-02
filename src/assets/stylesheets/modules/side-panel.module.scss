@@ -82,57 +82,60 @@
   margin-left: 15px
 }
 
-.tracks {
-  display: flex;
-  margin-bottom: 5px;
-  max-height: 110px;
-  min-height: 60px;
-  overflow-y: auto;
-  padding: 10px 25px 10px 10px;
-  position: relative;
-
-  &__content {
-    display: grid;
-    gap: 10px;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    height: max-content;
-    padding-bottom: 5px;
-    width: 100%;
-  }
-}
-
-.track {
+.track-options {
   align-items: center;
-  border: 2px solid var(--background-active);
-  border-radius: 20px;
+  background-color: var(--background-secondary);
+  cursor: pointer;
   display: flex;
-  gap: 5px;
-  padding: 5px 10px;
-  transition: background-color 0.1s ease;
+  flex-wrap: wrap;
+  gap: 6px;
+  height: max-content;
+  padding: 10px 25px 10px 15px;
+  position: relative;
+  user-select: none;
 
-  &:hover {
-    &:not(.track--selected) {
-      background-color: var(--background-secondary);
+  &__placeholder {
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  &__clear {
+    position: absolute;
+    right: 5px;
+    top: 5px;
+
+    &:hover {
+      background-color: transparent!important;
     }
   }
 
-  &--selected {
-    background-color: var(--background-active);
+  &__dropdown {
+    animation: var(--animation-fadein) 0.15s ease;
+    background-color: var(--background-toolbar);
+    border: 1px solid var(--background-toolbar--active);
+    border-top: 0;
+    box-shadow: 8px 8px 10px var(--background-secondary);
+  }
+}
+
+.track-option {
+  align-items: center;
+  display: flex;
+  font-weight: 500;
+  gap: 10px;
+
+  &--pill {
+    background-color: var(--background-toolbar);
+    border-radius: 10px;
+    font-size: 12px;
+    padding: 3px 8px 3px 10px;
   }
 
   &__color {
     border-radius: 100%;
     min-height: 10px;
     min-width: 10px;
-  }
-
-  &__label {
-    font-size: 10px;
-    font-weight: 600;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    user-select: none;
-    white-space: nowrap;
   }
 }
 
@@ -474,7 +477,7 @@
   transition: opacity 0.25s ease;
 
   &--active {
-    box-shadow: 0 0 5px var(--text-highlight-secondary);
+    box-shadow: 0 0 5px var(--text-highlight);
   }
 
   &:hover {

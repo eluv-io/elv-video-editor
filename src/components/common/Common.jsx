@@ -5,7 +5,7 @@ import {ConvertColor, Copy, CreateModuleClassMatcher, JoinClassNames, TextWidth}
 import {
   Button,
   ColorInput,
-  Modal as MantineModal,
+  Modal as MantineModal, MultiSelect,
   NumberInput,
   Select,
   Switch,
@@ -469,6 +469,18 @@ export const FormSelect = observer(props =>
       root: S("form-input"),
       label: S("form-input__label"),
       input: S("form-input__input")
+    }}
+  />
+);
+
+export const FormMultiSelect = observer(props =>
+  <MultiSelect
+    {...props}
+    data={props.options || props.data}
+    classNames={{
+      root: S("form-input"),
+      label: S("form-input__label"),
+      input: S("form-input__input", "form-input__multiselect")
     }}
   />
 );

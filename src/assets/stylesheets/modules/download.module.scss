@@ -233,35 +233,6 @@
       color: var(--text-tertiary);
     }
   }
-
-  progress {
-    background-color: var(--background-secondary);
-    border: 0;
-    border-radius: 20px;
-    height: 5px;
-    width: 100%;
-  }
-
-  progress::-webkit-progress-bar {
-    background-color: var(--background-active);
-    border: 0;
-    border-radius: 20px;
-    height: 5px;
-  }
-
-  progress::-webkit-progress-value {
-    background-color: var(--text-highlight);
-    border: 0;
-    border-radius: 20px;
-    height: 5px;
-  }
-
-  progress::-moz-progress-bar {
-    background-color: var(--text-highlight);
-    border: 0;
-    border-radius: 20px;
-    height: 5px;
-  }
 }
 
 .job-details {

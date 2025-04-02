@@ -256,7 +256,15 @@ class AssetStore {
     this.filter = filter;
   }
 
-  ToggleTrackSelected(key) {
+  ToggleTrackSelected(key, value) {
+    if(typeof value !== "undefined") {
+      value ?
+        this.activeTracks[key] = true :
+        delete this.activeTracks[key];
+
+      return;
+    }
+
     if(this.activeTracks[key]) {
       delete this.activeTracks[key];
     } else {
