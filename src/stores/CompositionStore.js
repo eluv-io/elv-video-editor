@@ -907,18 +907,14 @@ class CompositionStore {
       duration: 24 * 60 * 60 * 1000
     });
 
-    return (
-      yield (
-        yield fetch(
-          url,
-          {
-            method,
-            headers: {
-              Authorization: `Bearer ${signedToken}`
-            }
-          }
-        )
-      ).json()
+    return fetch(
+      url,
+      {
+        method,
+        headers: {
+          Authorization: `Bearer ${signedToken}`
+        }
+      }
     );
   });
 
@@ -930,6 +926,7 @@ class CompositionStore {
         objectId,
         queryParams: {customization: prompt, regenerate: true}
       });
+
       yield new Promise(resolve => setTimeout(resolve, 1000));
     }
 
@@ -940,12 +937,18 @@ class CompositionStore {
         yield new Promise(resolve => setTimeout(resolve, 5000));
       }
 
-      status = yield this.QueryAIAPI({
+      const response = yield this.QueryAIAPI({
         method: "GET",
         path: UrlJoin("ml", "highlight_composition", "q", objectId),
         objectId,
         queryParams: {customization: prompt}
       });
+
+      if(response.status === 204 && !regenerate) {
+        return this.GenerateAIHighlights({...arguments[0], regenerate: true});
+      }
+
+      status = yield response.json();
 
       if(!wait) {
         return status;

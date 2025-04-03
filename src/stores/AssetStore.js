@@ -275,13 +275,13 @@ class AssetStore {
   GenerateSummary = flow(function * ({objectId, asset}) {
     const filePath = asset?.file?.["/"]?.replace("./files/", "");
 
-    return yield this.rootStore.compositionStore.QueryAIAPI({
+    return yield (yield this.rootStore.compositionStore.QueryAIAPI({
       server: "ai-02",
       method: "GET",
       path: UrlJoin("ml", "summary", "q", objectId, "rep", "image_summarize"),
       objectId,
       queryParams: { path: filePath, engine: "caption" }
-    });
+    })).json();
   });
 }
 
