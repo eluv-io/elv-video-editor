@@ -458,6 +458,7 @@
     inset: 0;
     pointer-events: none;
     position: absolute;
+    width: 100%;
 
     &--current {
       z-index: 1;

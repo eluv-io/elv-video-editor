@@ -140,7 +140,7 @@ const TimelineBottomBar = observer(() => {
             px="xs"
             color="gray.6"
             variant="outline"
-            disabled={compositionStore.saved}
+            disabled={compositionStore.saved && !compositionStore.hasUnsavedChanges}
             onClick={async () => {
               if(!await new Promise(resolve =>
                   modals.openConfirmModal({

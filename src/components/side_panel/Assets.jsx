@@ -367,51 +367,53 @@ const AssetForm = observer(() => {
       className={S("tag-details", "form")}
     >
       <AssetFormActions asset={asset} />
-      <FocusTrap active>
-        <div className={S("form__inputs")}>
-          <div className={S("form__input-container")}>
-            <FormTextInput
-              disabled={!asset.isNew}
-              label="Key"
-              value={asset.key}
-              placeholder="Key"
-              onChange={event => tagStore.UpdateEditedAsset({...asset, key: event.target.value})}
-            />
+      <div className={S("tag-details__content")}>
+        <FocusTrap active>
+          <div className={S("form__inputs")}>
+            <div className={S("form__input-container")}>
+              <FormTextInput
+                disabled={!asset.isNew}
+                label="Key"
+                value={asset.key}
+                placeholder="Key"
+                onChange={event => tagStore.UpdateEditedAsset({...asset, key: event.target.value})}
+              />
+            </div>
+            <div className={S("form__input-container")}>
+              <FormTextInput
+                disabled
+                label="Asset File"
+                value={asset.file?.["/"]?.split("./files")[1] || ""}
+              />
+            </div>
+            <div className={S("form__input-container")}>
+              <FileBrowserButton
+                fileBrowserProps={{
+                  objectId: videoStore.videoObject.objectId,
+                  extensions: "image",
+                  title: "Select an Asset",
+                  Submit: ({fullPath}) => {
+                    tagStore.UpdateEditedAsset({
+                      ...asset,
+                      file: {
+                        "/": UrlJoin("./files", fullPath)
+                      }
+                    });
+                  }
+                }}
+              >
+                Select Asset File
+              </FileBrowserButton>
+            </div>
+            <div style={{marginTop: 20}} className={S("form__input-container")}>
+              <LoaderImage
+                src={assetStore.AssetLink("edited")}
+                width={300}
+              />
+            </div>
           </div>
-          <div className={S("form__input-container")}>
-            <FormTextInput
-              disabled
-              label="Asset File"
-              value={asset.file?.["/"]?.split("./files")[1] || ""}
-            />
-          </div>
-          <div className={S("form__input-container")}>
-            <FileBrowserButton
-              fileBrowserProps={{
-                objectId: videoStore.videoObject.objectId,
-                extensions: "image",
-                title: "Select an Asset",
-                Submit: ({fullPath}) => {
-                  tagStore.UpdateEditedAsset({
-                    ...asset,
-                    file: {
-                      "/": UrlJoin("./files", fullPath)
-                    }
-                  });
-                }
-              }}
-            >
-              Select Asset File
-            </FileBrowserButton>
-          </div>
-          <div style={{marginTop: 20}} className={S("form__input-container")}>
-            <LoaderImage
-              src={assetStore.AssetLink("edited")}
-              width={300}
-            />
-          </div>
-        </div>
-      </FocusTrap>
+        </FocusTrap>
+      </div>
     </form>
   );
 });

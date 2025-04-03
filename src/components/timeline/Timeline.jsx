@@ -94,55 +94,55 @@ const ClipModalButton = observer(() => {
                 endFrame={videoStore.clipOutFrame}
                 className={S("clip-form__preview")}
               />
-            </div>
-            <div className={S("form__inputs")}>
-              <div className={S("clip-form__title")}>
-                { videoStore.name }
+              <div className={S("form__inputs")}>
+                <div className={S("clip-form__title")}>
+                  { videoStore.name }
+                </div>
+                <div className={S("clip-form__details")}>
+                  <span>
+                    {videoStore.FrameToSMPTE(videoStore.clipInFrame)}
+                  </span>
+                  <span>-</span>
+                  <span>
+                    {videoStore.FrameToSMPTE(videoStore.clipOutFrame)}
+                  </span>
+                  <span>
+                    ({videoStore.videoHandler.FrameToString({frame: videoStore.clipOutFrame - videoStore.clipInFrame})})
+                  </span>
+                </div>
+                <FormTextArea
+                  autoFocus
+                  label="Clip Description"
+                  autosize
+                  value={name}
+                  onChange={event => setName(event.target.value)}
+                  onKeyPress={event => {
+                    if(event.key === "Enter") {
+                      Submit();
+                    }
+                  }}
+                />
+                <div className={S("form__actions")}>
+                  <Button
+                    w={150}
+                    color="gray.5"
+                    onClick={() => setShowModal(false)}
+                    variant="subtle"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    w={150}
+                    loading={submitting}
+                    autoContrast
+                    color="gray.5"
+                    disabled={!name}
+                    onClick={Submit}
+                  >
+                    Submit
+                  </Button>
+                </div>
               </div>
-              <div className={S("clip-form__details")}>
-                <span>
-                  {videoStore.FrameToSMPTE(videoStore.clipInFrame)}
-                </span>
-                <span>-</span>
-                <span>
-                  {videoStore.FrameToSMPTE(videoStore.clipOutFrame)}
-                </span>
-                <span>
-                  ({videoStore.videoHandler.FrameToString({frame: videoStore.clipOutFrame - videoStore.clipInFrame})})
-                </span>
-              </div>
-              <FormTextArea
-                autoFocus
-                label="Clip Description"
-                autosize
-                value={name}
-                onChange={event => setName(event.target.value)}
-                onKeyPress={event => {
-                  if(event.key === "Enter") {
-                    Submit();
-                  }
-                }}
-              />
-            </div>
-            <div className={S("form__actions")}>
-              <Button
-                w={150}
-                color="gray.5"
-                onClick={() => setShowModal(false)}
-                variant="subtle"
-              >
-                Cancel
-              </Button>
-              <Button
-                w={150}
-                loading={submitting}
-                autoContrast
-                color="gray.5"
-                disabled={!name}
-                onClick={Submit}
-              >
-                Submit
-              </Button>
             </div>
           </Modal>
       }
