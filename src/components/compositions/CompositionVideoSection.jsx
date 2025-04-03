@@ -262,7 +262,7 @@ const Title = observer(({clipView}) => {
       <h1 className={S("video-section__title")}>
         <div />
         {
-          clipView ? null :
+          clipView || !compositionStore.compositionObject ? null :
             <Button
               autoContrast
               h={30}

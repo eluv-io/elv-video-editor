@@ -54,8 +54,8 @@ const CompositionForm = observer(({type, Cancel}) => {
   const [keyExists, setKeyExists] = useState(false);
   const [options, setOptions] = useState({
     type: undefined,
-    sourceId: undefined,
-    sourceName: "",
+    sourceId: rootStore.selectedObjectId,
+    sourceName: rootStore.selectedObjectName,
     name: "",
     key: "",
     prompt: "",
@@ -124,6 +124,7 @@ const CompositionForm = observer(({type, Cancel}) => {
       <form onSubmit={event => event.preventDefault()} className={S("composition-form")}>
         <div className={S("composition-form__title")}>
           <IconButton
+            type="button"
             icon={BackIcon}
             onClick={Cancel}
           />

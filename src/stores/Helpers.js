@@ -11,7 +11,7 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
 
     const versionHash = await rootStore.client.LatestVersionHash({objectId});
 
-    const metadata = await rootStore.client.ContentObjectMetadata({
+    const metadata = (await rootStore.client.ContentObjectMetadata({
       versionHash,
       resolveLinks: true,
       resolveIgnoreErrors: true,
@@ -34,7 +34,7 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
         "mime_types",
         "assets"
       ]
-    });
+    })) || { public: {}};
 
     const videoObject = {
       libraryId,

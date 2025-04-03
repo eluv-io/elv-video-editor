@@ -28,6 +28,7 @@ import Download from "@/components/download/Download.jsx";
 import Share from "@/components/download/Share.jsx";
 import Track from "@/components/timeline/Track.jsx";
 import {CreateTrackButton} from "@/components/forms/CreateTrack.jsx";
+import {Button} from "@mantine/core";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
@@ -41,7 +42,7 @@ import QuestionMarkIcon from "@/assets/icons/v2/question-mark.svg";
 import ZoomOutFullIcon from "@/assets/icons/v2/arrows-horizontal.svg";
 import ClipIcon from "@/assets/icons/v2/clip.svg";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
-import {Button} from "@mantine/core";
+import IsolateClipIcon from "@/assets/icons/v2/isolate.svg";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -325,6 +326,18 @@ const TimelineBottomBar = observer(({simple}) => {
             />
       }
       <div className={S("toolbar__spacer")}/>
+      {
+        !tagStore.isolatedTag ? null :
+          <IconButton
+            highlight
+            icon={IsolateClipIcon}
+            onClick={() => tagStore.ClearIsolatedTag()}
+            label="Clear Isolated Tag"
+            tooltipProps={{
+              withinPortal: false
+            }}
+          />
+      }
       <IconButton
         disabled={videoStore.scaleMagnitude === 100}
         highlight={videoStore.scaleMagnitude !== 100}

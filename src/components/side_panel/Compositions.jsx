@@ -4,14 +4,16 @@ import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, DragHandler} from "@/utils/Utils.js";
 import {browserStore, compositionStore, rootStore} from "@/stores/index.js";
-import {Icon, Linkish, Loader} from "@/components/common/Common.jsx";
-import {Tooltip} from "@mantine/core";
+import {Icon, IconButton, Linkish, Loader} from "@/components/common/Common.jsx";
+import {Text, Tooltip} from "@mantine/core";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import UrlJoin from "url-join";
+import {modals} from "@mantine/modals";
 
 import ClipIcon from "@/assets/icons/v2/clip.svg";
 import MediaIcon from "@/assets/icons/v2/play-clip.svg";
 import AISparkleIcon from "@/assets/icons/v2/ai-sparkle1.svg";
+import XIcon from "@/assets/icons/X.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -48,6 +50,32 @@ const SidePanelClip = observer(({clip}) => {
           { clip.name }
         </div>
       </Tooltip>
+      {
+        !compositionStore.myClipIds.includes(clip.clipId) ? null :
+          <IconButton
+            icon={XIcon}
+            small
+            className={S("clip__remove")}
+            onClick={async event => {
+              event.stopPropagation();
+
+              if(!await new Promise(resolve =>
+                modals.openConfirmModal({
+                  title: "Remove from My Clips",
+                  centered: true,
+                  children: <Text fz="sm">Are you sure you want to remove this clip?</Text>,
+                  labels: {confirm: "Remove", cancel: "Cancel"},
+                  onConfirm: () => resolve(true),
+                  onCancel: () => resolve(false)
+                })
+              )) {
+                return;
+              }
+
+              compositionStore.RemoveMyClip(clip.clipId);
+            }}
+          />
+      }
     </div>
   );
 });

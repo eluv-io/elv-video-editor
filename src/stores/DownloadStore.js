@@ -256,12 +256,9 @@ class DownloadStore {
       options.offerings = [offeringKey];
     }
 
-    if(clipInFrame > 0) {
-      options.clipStart = store.FrameToTime(clipInFrame);
-    }
-
-    if(store.totalFrames > clipOutFrame + 1) {
-      options.clipEnd = store.FrameToTime(clipOutFrame + 1);
+    if(clipInFrame > 0 || clipOutFrame <= store.totalFrames - 1) {
+      options.clipStart = store.FrameToTime(clipInFrame || 0);
+      options.clipEnd = store.FrameToTime(clipOutFrame || store.totalFrames - 1);
     }
 
     const url = new URL(

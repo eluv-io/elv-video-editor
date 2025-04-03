@@ -373,7 +373,7 @@ const Share = observer(({share, setEditingShare, setSelectedShare, Reload}) => {
                 !jobStatus ? "" :
                   jobStatus?.status === "completed" ? "Download Available" :
                     jobStatus?.status === "failed" ? "Download Generation Failed" :
-                      `Download Generating - ${(100 * jobStatus.progress / 100).toFixed(0)}%`
+                      `Generating - ${(100 * jobStatus.progress / 100).toFixed(0)}%`
               }
             </div>
         }

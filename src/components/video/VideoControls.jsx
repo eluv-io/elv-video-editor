@@ -90,7 +90,7 @@ export const QualityControls = observer(({store}) => {
 });
 
 export const OfferingControls = observer(({store}) => {
-  let offerings = Object.keys(store.availableOfferings)
+  let offerings = Object.keys(store.availableOfferings || {})
     .sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: "base"}))
     .map(offeringKey => ({
       value: offeringKey,

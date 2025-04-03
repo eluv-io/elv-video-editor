@@ -3,7 +3,7 @@ import React, {useEffect, useState} from "react";
 import {ClipSidePanel, TagSidePanel} from "@/components/side_panel/SidePanel.jsx";
 import VideoSection from "@/components/video/VideoSection.jsx";
 import {ClipTimeline, TagTimeline} from "@/components/timeline/Timeline.jsx";
-import {keyboardControlsStore, rootStore, videoStore} from "@/stores/index.js";
+import {keyboardControlsStore, rootStore, trackStore, videoStore} from "@/stores/index.js";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 
 const TagsAndClipsView = observer(({mode}) => {
@@ -27,9 +27,13 @@ const TagsAndClipsView = observer(({mode}) => {
     return () => resizeObserver?.disconnect();
   }, [sidePanel]);
 
+  const trackCount = mode === "tags" ?
+    trackStore.metadataTracks.length :
+    trackStore.clipTracks.length;
+
   return (
     <PanelGroup direction="vertical" className="panel-group">
-      <Panel defaultSize={50} minSize={30}>
+      <Panel defaultSize={trackCount > 2 ? 45 : 60} minSize={30}>
         <PanelGroup direction="horizontal" className="panel-group">
           <Panel style={{"--panel-width": `${sidePanelDimensions?.width}px`}} defaultSize={30} minSize={20}>
             {

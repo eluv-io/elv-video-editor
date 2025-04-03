@@ -17,7 +17,7 @@ import SimpleView from "@/components/views/SimpleView.jsx";
 
 // Keep track of the current page
 const SetView = observer(() => {
-   
+
   const [, params] = useRoute("/:objectId/:view/*?");
   const [location, navigate] = useLocation();
 
@@ -34,10 +34,9 @@ const DefaultContentRoutes = observer(() => {
   const { objectId } = useParams();
 
   useEffect(() => {
-    rootStore.SetSelectedObjectId(objectId);
-
     if(objectId && !videoStore.loading && videoStore.videoObject?.objectId !== objectId) {
-      videoStore.SetVideo({objectId});
+      videoStore.SetVideo({objectId})
+        .then(() => rootStore.SetSelectedObjectId(objectId, videoStore.name));
     }
   }, [objectId]);
 

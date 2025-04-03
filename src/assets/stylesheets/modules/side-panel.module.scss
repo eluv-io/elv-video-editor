@@ -496,14 +496,19 @@
   border-radius: 5px;
   cursor: pointer;
   padding: 5px;
+  position: relative;
   transition: opacity 0.25s ease;
-
-  &--active {
-    box-shadow: 0 0 5px var(--text-highlight);
-  }
 
   &:hover {
     opacity: 0.8;
+
+    .clip__remove {
+      opacity: 1;
+    }
+  }
+
+  &--active {
+    box-shadow: 0 0 5px var(--text-highlight);
   }
 
   &__image {
@@ -513,11 +518,33 @@
   &__name {
     font-size: 12px;
   }
+
+  &__remove {
+    background-color: var(--background-active);
+    border-radius: 5px;
+    color: var(--text-primary);
+    opacity: 0;
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    transition: opacity 0.25s ease;
+    z-index: 1;
+  }
 }
 
 .composition-browser {
   height: 100%;
   overflow-y: hidden;
+
+  &__empty {
+    align-items: center;
+    color: var(--text-tertiary);
+    display: flex;
+    font-weight: 500;
+    height: 100%;
+    justify-content: center;
+    width: 100%;
+  }
 
   &__content {
     display: flex;

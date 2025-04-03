@@ -19,9 +19,9 @@ const CompositionsView = observer(() => {
     keyboardControlsStore.SetActiveStore(compositionStore.videoStore);
 
     if(objectId) {
-      rootStore.SetSelectedObjectId(objectId);
       compositionStore.LoadMyClips({objectId});
-      compositionStore.SetCompositionObject({objectId, compositionKey});
+      compositionStore.SetCompositionObject({objectId, compositionKey})
+        .then(() => rootStore.SetSelectedObjectId(objectId, compositionStore.videoStore.sourceVideoStore.name));
     }
   }, [objectId, compositionKey]);
 
@@ -47,7 +47,7 @@ const CompositionsView = observer(() => {
                   <CompositionBrowserPanel />
                 </Panel>
             }
-            <Panel defaultSize={30}>
+            <Panel defaultSize={50}>
               <CompositionVideoSection store={compositionStore.videoStore} />
             </Panel>
           </PanelGroup>

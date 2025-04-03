@@ -15,7 +15,6 @@ import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
 import AddTagIcon from "@/assets/icons/v2/add-new-item.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
-import DescriptionIcon from "@/assets/icons/v2/description.svg";
 
 const S = CreateModuleClassMatcher(AssetStyles);
 
@@ -106,14 +105,7 @@ const AssetTags = observer(({asset, setHoverTag}) => {
 });
 
 const AssetContent = observer(({asset, hoverTag}) => {
-  const {objectId} = useParams();
   const [imageElement, setImageElement] = useState(undefined);
-  const [summary, setSummary] = useState(undefined);
-
-  useEffect(() => {
-    assetStore.GenerateSummary({objectId, asset})
-      .then(setSummary);
-  }, []);
 
   return (
     <div className={S("asset")}>
@@ -154,34 +146,6 @@ const AssetContent = observer(({asset, hoverTag}) => {
           label="Add New Tag"
           onClick={() => tagStore.AddAssetTag({asset})}
         />
-        <div className={S("toolbar__separator")}/>
-        <IconButton
-          icon={DescriptionIcon}
-          disabled={!summary}
-          label={
-            !summary ? null :
-              <div className={S("asset-summary")}>
-                {
-                  !summary.title ? null :
-                    <div className={S("asset-summary__title")}>
-                      { summary.title }
-                    </div>
-                }
-                {
-                  !summary.summary ? null :
-                    <div className={S("asset-summary__summary")}>
-                      { summary.summary }
-                    </div>
-                }
-                {
-                  !summary.hashtags ? null :
-                    <div className={S("asset-summary__hashtags")}>
-                      { summary.hashtags.join(" ") }
-                    </div>
-                }
-              </div>
-          }
-        />
         <div className={S("toolbar__spacer")}/>
         <IconButton
           icon={EditIcon}
@@ -205,19 +169,52 @@ const AssetContent = observer(({asset, hoverTag}) => {
   );
 });
 
-const AssetDetails = observer(({asset, setHoverTag}) => {
+const AssetDetails = observer(({asset, summary, setHoverTag}) => {
   return (
     <div className={S("asset-details")}>
       <AssetTags
         asset={asset}
         setHoverTag={setHoverTag}
       />
+      {
+        !summary ? null :
+          <div className={S("asset-summary")}>
+            <div className={S("asset-summary__header")}>Summary</div>
+            {
+              !summary.title ? null :
+                <div className={S("asset-summary__title")}>
+                  {summary.title}
+                </div>
+            }
+            {
+              !summary.summary ? null :
+                <div className={S("asset-summary__summary")}>
+                  {summary.summary}
+                </div>
+            }
+            {
+              !summary.hashtags ? null :
+                <div className={S("asset-summary__hashtags")}>
+                  {summary.hashtags.join(" ")}
+                </div>
+            }
+          </div>
+      }
     </div>
   );
 });
 
 const SelectedAsset = observer(({assetKey}) => {
+  const {objectId} = useParams();
   const [hoverTag, setHoverTag] = useState(undefined);
+  const [summary, setSummary] = useState(undefined);
+
+  useEffect(() => {
+    setSummary(undefined);
+
+    assetStore.GenerateSummary({objectId, asset})
+      .then(setSummary);
+  }, [assetKey]);
 
   const asset = assetStore.Asset(assetKey);
 
@@ -232,11 +229,11 @@ const SelectedAsset = observer(({assetKey}) => {
   return (
     <PanelGroup direction="vertical" className="panel-group">
       <Panel minSize={30}>
-        <AssetContent asset={asset} hoverTag={hoverTag} />
+        <AssetContent asset={asset} summary={summary} hoverTag={hoverTag} />
       </Panel>
       <PanelResizeHandle />
       <Panel minSize={30}>
-        <AssetDetails asset={asset} setHoverTag={setHoverTag} />
+        <AssetDetails asset={asset} summary={summary} setHoverTag={setHoverTag} />
       </Panel>
     </PanelGroup>
   );

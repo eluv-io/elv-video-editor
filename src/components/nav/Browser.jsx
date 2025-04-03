@@ -378,14 +378,14 @@ const Browser = observer(() => {
     );
   }
 
-  const Select = ({libraryId, objectId, name, isVideo, hasAssets, hasChannels, channels}) => {
+  const Select = ({libraryId, objectId, name, isVideo, hasChannels, channels}) => {
     if(libraryId) {
       setSelectedLibraryId(libraryId);
     }
 
     if(!objectId) { return; }
 
-    if(!isVideo && hasAssets) {
+    if(!isVideo) {
       setRedirect(UrlJoin("/", objectId, "assets"));
       return;
     }

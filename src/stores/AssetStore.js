@@ -280,7 +280,7 @@ class AssetStore {
       method: "GET",
       path: UrlJoin("ml", "summary", "q", objectId, "rep", "image_summarize"),
       objectId,
-      queryParams: { path: filePath }
+      queryParams: { path: filePath, engine: "caption" }
     });
   });
 }

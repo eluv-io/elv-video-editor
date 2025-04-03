@@ -287,16 +287,18 @@ class VideoStore {
         frameRate: this.frameRate,
         frameRateRat: this.frameRateRat,
         dropFrame: this.dropFrame,
-        duration: this.duration
+        duration: this.duration || 1
       });
 
-      this.durationSMPTE = this.videoHandler?.TimeToSMPTE(this.duration);
-      this.totalFrames = this.videoHandler?.TotalFrames();
+      if(this.duration) {
+        this.durationSMPTE = this.videoHandler?.TimeToSMPTE(this.duration);
+        this.totalFrames = this.videoHandler?.TotalFrames();
 
-      this.SetClipMark({
-        inFrame: 0,
-        outFrame: this.videoHandler.TotalFrames()
-      });
+        this.SetClipMark({
+          inFrame: 0,
+          outFrame: this.videoHandler.TotalFrames()
+        });
+      }
 
       if(this.thumbnailTrackUrl) {
         this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl);
@@ -522,6 +524,11 @@ class VideoStore {
 
         if(this.initialClipPoints) {
           this.SetClipMark(this.initialClipPoints);
+        } else if(!this.clipOutFrame || this.clipOutFrame < 1) {
+          this.SetClipMark({
+            inFrame: 0,
+            outFrame: this.videoHandler.TotalFrames()
+          });
         }
 
         this.aspectRatio = this.video.videoWidth / this.video.videoHeight;
