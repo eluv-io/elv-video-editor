@@ -129,7 +129,7 @@ class RootStore {
       }
     }, 1000);
 
-    yield client.SetNodes({fabricURIs: ["https://host-76-74-28-230.contentfabric.io"]});
+    //yield client.SetNodes({fabricURIs: ["https://host-76-74-28-230.contentfabric.io"]});
 
     this.address = yield this.client.CurrentAccountAddress();
     this.network = (yield this.client.NetworkInfo()).name;
