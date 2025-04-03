@@ -38,6 +38,9 @@ class RootStore {
   errorMessage = undefined;
   l10n = LocalizationEN;
 
+  tenantContractId;
+  searchIndexes = [];
+
   signedToken;
   authToken;
 
@@ -129,14 +132,71 @@ class RootStore {
       }
     }, 1000);
 
-    //yield client.SetNodes({fabricURIs: ["https://host-76-74-28-230.contentfabric.io"]});
+    yield client.SetNodes({fabricURIs: ["https://host-76-74-28-230.contentfabric.io"]});
 
     this.address = yield this.client.CurrentAccountAddress();
     this.network = (yield this.client.NetworkInfo()).name;
     this.publicToken = client.utils.B64(JSON.stringify({qspace_id: yield this.client.ContentSpaceId()}));
     this.signedToken = yield client.CreateSignedToken({duration: 24 * 60 * 60 * 1000});
 
+
+    this.tenantContractId = yield client.userProfileClient.TenantContractId();
+    this.searchIndexes = (yield client.ContentObjectMetadata({
+      libraryId: this.tenantContractId.replace(/^iten/, "ilib"),
+      objectId: this.tenantContractId.replace(/^iten/, "iq__"),
+      metadataSubtree: "/public/search/indexes"
+    })) || [];
+
+    this.searchIndexes.forEach((_, index) =>
+      this.GetSearchFields(index)
+    );
+
     this.compositionStore.Initialize();
+  });
+
+  GetSearchFields = flow(function * (index) {
+    const indexId = this.searchIndexes[index]?.id;
+
+    if(!indexId) { return; }
+
+    try {
+      const versionHash = yield this.client.LatestVersionHash({objectId: indexId});
+
+      const indexerFields = yield this.client.ContentObjectMetadata({
+        versionHash,
+        metadataSubtree: "indexer/config/indexer/arguments/fields"
+      });
+
+      if(!indexerFields) { return; }
+
+      const fuzzySearchFields = {};
+      const excludedFields = ["music", "action", "segment", "title_type", "asset_type"];
+      Object.keys(indexerFields || {})
+        .filter(field => {
+          const isTextType = indexerFields[field].type === "text";
+          const isNotExcluded = !excludedFields.some(exclusion => field.includes(exclusion));
+          return isTextType && isNotExcluded;
+        })
+        .forEach(field => {
+          fuzzySearchFields[`f_${field}`] = {
+            label: field,
+            value: true
+          };
+        });
+
+      // Fields for all tenants that are not configured in the meta
+      ["movie_characters"].forEach(field => {
+        fuzzySearchFields[`f_${field}`] = {
+          label: field,
+          value: true
+        };
+      });
+
+      this.searchIndexes[index].fields = fuzzySearchFields;
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error("Unable to load search fields", error);
+    }
   });
 
   FabricUrl({libraryId, objectId, writeToken, versionHash, noWriteToken=false, path="", auth, resolve=true, width}) {
