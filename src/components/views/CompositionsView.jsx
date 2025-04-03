@@ -1,6 +1,6 @@
 import {observer} from "mobx-react-lite";
 import React, {useEffect} from "react";
-import {CompositionSidePanel} from "@/components/side_panel/SidePanel.jsx";
+import {CompositionSidePanel, CompositionBrowserPanel} from "@/components/side_panel/SidePanel.jsx";
 import {compositionStore, keyboardControlsStore, rootStore} from "@/stores/index.js";
 import CompositionTimeline from "@/components/compositions/CompositionTimeline.jsx";
 import CompositionVideoSection from "@/components/compositions/CompositionVideoSection.jsx";
@@ -15,13 +15,15 @@ const CompositionsView = observer(() => {
   useEffect(() => {
     rootStore.SetPage("compositions");
     rootStore.SetSubpage(objectId);
+    compositionStore.SetFilter("");
     keyboardControlsStore.SetActiveStore(compositionStore.videoStore);
 
     if(objectId) {
       rootStore.SetSelectedObjectId(objectId);
+      compositionStore.LoadMyClips({objectId});
       compositionStore.SetCompositionObject({objectId, compositionKey});
     }
-  }, [objectId]);
+  }, [objectId, compositionKey]);
 
   if(rootStore.errorMessage) {
     return (
@@ -38,7 +40,17 @@ const CompositionsView = observer(() => {
     return (
       <PanelGroup direction="vertical" className="panel-group">
         <Panel minSize={30} defaultSize={30}>
-          <CompositionVideoSection store={compositionStore.videoStore} />
+          <PanelGroup direction="horizontal" className="panel-group">
+            {
+              !rootStore.selectedObjectId ? null :
+                <Panel>
+                  <CompositionBrowserPanel />
+                </Panel>
+            }
+            <Panel defaultSize={30}>
+              <CompositionVideoSection store={compositionStore.videoStore} />
+            </Panel>
+          </PanelGroup>
         </Panel>
         <PanelResizeHandle />
         <Panel minSize={50}>

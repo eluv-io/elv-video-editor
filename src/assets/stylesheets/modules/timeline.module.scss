@@ -210,6 +210,28 @@
   }
 }
 
+.clip-form {
+  &__preview {
+    border-radius: 10px;
+    margin-bottom: 5px;
+  }
+
+  &__title {
+    font-weight: 600;
+  }
+
+  &__details {
+    color: var(--text-tertiary);
+    display: flex;
+    font-size: 14px;
+    font-weight: 500;
+    gap: 5px;
+    margin-bottom: 20px;
+    text-align: center;
+    width: 100%;
+  }
+}
+
 
 .error-message {
   align-items: center;

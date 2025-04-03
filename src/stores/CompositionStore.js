@@ -7,6 +7,7 @@ import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 
 class CompositionStore {
   myCompositions = {};
+  myClipIds = [];
 
   videoStore;
   loading = false;
@@ -22,6 +23,7 @@ class CompositionStore {
   clips = {};
   clipIdList = [];
   selectedClipId;
+  selectedClipSource;
   originalSelectedClipId;
   aiClipIds = [];
 
@@ -145,6 +147,15 @@ class CompositionStore {
           endFrame: clipEndFrame
         };
       });
+  }
+
+  get myClips() {
+    return this.myClipIds
+      .map(clipId => this.clips[clipId])
+      .filter(clip =>
+        !this.filter ||
+        clip.name?.toLowerCase()?.includes(this.filter)
+      );
   }
 
   get aiClips() {
@@ -291,7 +302,7 @@ class CompositionStore {
     });
 
     if(this.selectedClipId === clipId) {
-      this.SetSelectedClip(this.sourceClipId);
+      this.SetSelectedClip({clipId: this.sourceClipId, source: "source-content"});
     }
   }
 
@@ -342,7 +353,7 @@ class CompositionStore {
     });
 
     if(this.selectedClipId === clip.clipId) {
-      this.SetSelectedClip(clip1.clipId);
+      this.SetSelectedClip({clipId: clip1.clipId, source: "timeline"});
     }
   }
 
@@ -359,9 +370,10 @@ class CompositionStore {
     this.mousePositionY = event.clientY;
   }
 
-  SetDragging({clip, showDragShadow, createNewClip}) {
+  SetDragging({source, clip, showDragShadow, createNewClip}) {
     this.draggingClip = {
       ...clip,
+      source,
       clipId: createNewClip ? this.rootStore.NextId() : clip.clipId,
     };
 
@@ -403,9 +415,9 @@ class CompositionStore {
     return this.clipStores[key];
   }
 
-  SetSelectedClip(clipId, onTimeline=false) {
-    if(onTimeline) {
-      // Clip is on timeline, changes should apply to it directly
+  SetSelectedClip({clipId, source}) {
+    if(source === "timeline" || (source === "side-panel" && this.myClipIds.includes(clipId))) {
+      // Clip is on timeline or from my clips, changes should apply to it directly
       this.selectedClipId = clipId;
     } else {
       // Clip was selected from sidebar, do not change source clip
@@ -418,6 +430,7 @@ class CompositionStore {
       }
     }
 
+    this.selectedClipSource = source;
     this.originalSelectedClipId = clipId;
   }
 
@@ -773,7 +786,7 @@ class CompositionStore {
     });
 
     this.sourceClipId = yield this.InitializeClip({objectId, source: true});
-    this.SetSelectedClip(this.sourceClipId);
+    this.SetSelectedClip({clipId: this.sourceClipId, source: "source-content"});
 
     this.videoStore.sourceVideoStore = this.sourceVideoStore;
 
@@ -915,7 +928,7 @@ class CompositionStore {
         method: "POST",
         path: UrlJoin("ml", "highlight_composition", "q", objectId),
         objectId,
-        queryParams: {prompt, regenerate: true}
+        queryParams: {customization: prompt, regenerate: true}
       });
       yield new Promise(resolve => setTimeout(resolve, 1000));
     }
@@ -931,7 +944,7 @@ class CompositionStore {
         method: "GET",
         path: UrlJoin("ml", "highlight_composition", "q", objectId),
         objectId,
-        queryParams: {prompt}
+        queryParams: {customization: prompt}
       });
 
       if(!wait) {
@@ -1097,6 +1110,82 @@ class CompositionStore {
       )
     });
   }
+
+  LoadMyClips = flow(function * ({objectId}) {
+    const clips = yield this.client.walletClient.ProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: `my-clips-${objectId}${window.location.hostname === "localhost" ? "-dev" : ""}`
+    });
+
+    if(clips) {
+      this.myClipIds = JSON.parse(this.client.utils.FromB64(clips))
+        // Update clip IDs
+        .map(clip => {
+          clip = {...clip, clipId: this.rootStore.NextId() };
+
+          this.clips[clip.clipId] = clip;
+
+          return clip.clipId;
+        });
+    }
+  });
+
+  AddMyClip({clip}) {
+    clip = {
+      clipId: this.rootStore.NextId(),
+      name: clip.name || "Saved Clip",
+      libraryId: clip.libraryId,
+      objectId: clip.objectId,
+      offering: clip.offering,
+      versionHash: clip.versionHash,
+      storeKey: `${clip.objectId}-${clip.offering}`,
+      clipKey: `${clip.objectId}-${clip.offeringKey}-${clip.clipInFrame}-${clip.clipOutFrame}`,
+      clipInFrame: clip.clipInFrame || 0,
+      clipOutFrame: clip.clipOutFrame || this.ClipStore({...clip}).totalFrames - 1
+    };
+
+    this.clips[clip.clipId] = clip;
+
+    this.myClipIds = [
+      ...this.myClipIds,
+      clip.clipId
+    ]
+      .sort((a, b) => this.clips[a].clipInFrame < this.clips[b].clipInFrame ? -1 : 1);
+
+    this.SaveMyClips({objectId: clip.objectId});
+
+    this.SetSelectedClip({clipId: clip.clipId, source: "side-panel"});
+  }
+
+  RemoveMyClip(clipId) {
+    this.myClipIds = this.myClipIds.filter(id => id !== clipId);
+
+    const clip = this.clips[clipId];
+
+    if(this.selectedClipId === clipId) {
+      this.SetSelectedClip({clipId: this.sourceClipId, source: "source-content"});
+    }
+
+    if(clip) {
+      delete this.clips[clipId];
+      this.SaveMyClips({objectId: clip.objectId});
+    }
+  }
+
+  async SaveMyClips({objectId}) {
+    await this.client.walletClient.SetProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: `my-clips-${objectId}${window.location.hostname === "localhost" ? "-dev" : ""}`,
+      value: this.client.utils.B64(
+        JSON.stringify(this.myClips || {})
+      )
+    });
+  }
+
 
   OpenFabricBrowserLink() {
     this.client.SendMessage({

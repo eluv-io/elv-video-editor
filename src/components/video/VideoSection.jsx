@@ -37,11 +37,11 @@ const VideoSection = observer(({showOverlay}) => {
       </h1>
       <Video store={videoStore} showOverlay={showOverlay} showFrameDownload />
       <div className={S("toolbar")}>
-        <Tooltip label={videoStore.videoObject.description} w={500} multiline openDelay={1000}>
+        <Tooltip label={videoStore.videoObject?.description} w={500} multiline openDelay={1000}>
           <div className={S("toolbar__description")}>
             <SVG src={DescriptionIcon} className={S("icon", "toolbar__description-icon")} />
             <div className={S("toolbar__description-text")}>
-              { videoStore.videoObject.description }
+              { videoStore.videoObject?.description }
             </div>
           </div>
         </Tooltip>

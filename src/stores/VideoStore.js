@@ -293,6 +293,11 @@ class VideoStore {
       this.durationSMPTE = this.videoHandler?.TimeToSMPTE(this.duration);
       this.totalFrames = this.videoHandler?.TotalFrames();
 
+      this.SetClipMark({
+        inFrame: 0,
+        outFrame: this.videoHandler.TotalFrames()
+      });
+
       if(this.thumbnailTrackUrl) {
         this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl);
       }
@@ -514,11 +519,6 @@ class VideoStore {
         if(!this.primaryContentEndTime) {
           this.primaryContentEndTime = Number((this.video.duration).toFixed(3));
         }
-
-        this.SetClipMark({
-          inFrame: 0,
-          outFrame: this.videoHandler.TotalFrames()
-        });
 
         if(this.initialClipPoints) {
           this.SetClipMark(this.initialClipPoints);

@@ -102,15 +102,20 @@ export const DraggedClip = observer(() => {
   );
 });
 
-export const Clip = observer(({clip, containerDimensions}) => {
+export const TimelineClip = observer(({clip, containerDimensions}) => {
   const {clipLeft, clipWidth} = CalculateClipPosition({clip, containerDimensions});
 
   return (
     <div
       draggable
-      onDragStart={DragHandler(() => compositionStore.SetDragging({clip, showDragShadow: true, createNewClip: false}))}
+      onDragStart={DragHandler(() => compositionStore.SetDragging({
+        source: "timeline",
+        clip,
+        showDragShadow: true,
+        createNewClip: false
+      }))}
       onDragEnd={() => compositionStore.EndDrag()}
-      onClick={() => compositionStore.SetSelectedClip(clip.clipId, true)}
+      onClick={() => compositionStore.SetSelectedClip({clipId: clip.clipId, source: "timeline"})}
       style={{
         left: clipLeft,
         width: clipWidth,

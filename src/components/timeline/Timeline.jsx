@@ -2,9 +2,16 @@ import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
 
 import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react-lite";
-import {editStore, rootStore, tagStore, trackStore, videoStore} from "@/stores";
+import {compositionStore, editStore, rootStore, tagStore, trackStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
-import {IconButton, Linkish, SMPTEInput, SwitchInput} from "@/components/common/Common";
+import {
+  FormTextArea,
+  IconButton,
+  Linkish,
+  Modal,
+  SMPTEInput,
+  SwitchInput
+} from "@/components/common/Common";
 import MarkedSlider from "@/components/common/MarkedSlider";
 
 import ThumbnailTrack from "@/components/timeline/ThumbnailTrack.jsx";
@@ -32,8 +39,122 @@ import UploadIcon from "@/assets/icons/v2/upload.svg";
 import SaveIcon from "@/assets/icons/v2/save.svg";
 import QuestionMarkIcon from "@/assets/icons/v2/question-mark.svg";
 import ZoomOutFullIcon from "@/assets/icons/v2/arrows-horizontal.svg";
+import ClipIcon from "@/assets/icons/v2/clip.svg";
+import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
+import {Button} from "@mantine/core";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
+
+const ClipModalButton = observer(() => {
+  const [showModal, setShowModal] = useState(false);
+  const [name, setName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setName("");
+    setSubmitting(false);
+  }, [showModal]);
+
+  const Submit = async () => {
+    if(!name) { return; }
+
+    setSubmitting(true);
+
+    compositionStore.AddMyClip({
+      clip: {
+        name,
+        libraryId: videoStore.videoObject.libraryId,
+        objectId: videoStore.videoObject.objectId,
+        versionHash: videoStore.videoObject.versionHash,
+        offering: videoStore.offeringKey,
+        clipInFrame: videoStore.clipInFrame || 0,
+        clipOutFrame: videoStore.clipOutFrame || videoStore.totalFrames - 1
+      }
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    setShowModal(false);
+  };
+
+  return (
+    <>
+      {
+        !showModal ? null :
+          <Modal
+            title={<div className={S("form__title")}>Save to My Clips</div>}
+            opened
+            centered
+            onClose={() => setShowModal(false)}
+          >
+            <div className={S("form", "clip-form")}>
+              <PreviewThumbnail
+                store={videoStore}
+                startFrame={videoStore.clipInFrame}
+                endFrame={videoStore.clipOutFrame}
+                className={S("clip-form__preview")}
+              />
+            </div>
+            <div className={S("form__inputs")}>
+              <div className={S("clip-form__title")}>
+                { videoStore.name }
+              </div>
+              <div className={S("clip-form__details")}>
+                <span>
+                  {videoStore.FrameToSMPTE(videoStore.clipInFrame)}
+                </span>
+                <span>-</span>
+                <span>
+                  {videoStore.FrameToSMPTE(videoStore.clipOutFrame)}
+                </span>
+                <span>
+                  ({videoStore.videoHandler.FrameToString({frame: videoStore.clipOutFrame - videoStore.clipInFrame})})
+                </span>
+              </div>
+              <FormTextArea
+                autoFocus
+                label="Clip Description"
+                autosize
+                value={name}
+                onChange={event => setName(event.target.value)}
+                onKeyPress={event => {
+                  if(event.key === "Enter") {
+                    Submit();
+                  }
+                }}
+              />
+            </div>
+            <div className={S("form__actions")}>
+              <Button
+                w={150}
+                color="gray.5"
+                onClick={() => setShowModal(false)}
+                variant="subtle"
+              >
+                Cancel
+              </Button>
+              <Button
+                w={150}
+                loading={submitting}
+                autoContrast
+                color="gray.5"
+                disabled={!name}
+                onClick={Submit}
+              >
+                Submit
+              </Button>
+            </div>
+          </Modal>
+      }
+      <IconButton
+        icon={ClipIcon}
+        disabled={!videoStore.clipInFrame && videoStore.clipOutFrame >= videoStore.totalFrames - 1}
+        label="Save Clip"
+        onClick={() => setShowModal(true)}
+      />
+    </>
+  );
+});
 
 const TimelineTopBar = observer(({simple}) => {
   return (
@@ -133,9 +254,13 @@ const TimelineTopBar = observer(({simple}) => {
           label="Set Clip Out to Current Frame"
           onClick={() => videoStore.SetClipMark({outFrame: videoStore.frame})}
         />
+        {
+          !simple ? null :
+            <ClipModalButton/>
+        }
         <div className={S("toolbar__separator")}/>
-        <Download />
-        <Share store={videoStore} />
+        <Download/>
+        <Share store={videoStore}/>
       </div>
     </div>
   );
@@ -294,12 +419,12 @@ const TimelineScaleBar = observer(({hoverSeek}) => {
          max={100}
          showTopMarks={false}
          handles={[
-           { position: videoStore.scaleMin },
-           { position: videoStore.scaleMax }
+           { position: videoStore.scaleMin, style: "arrow-bottom" },
+           { position: videoStore.scaleMax, style: "arrow-bottom" }
          ]}
          handleSeparator={100 * videoStore.currentTime / (videoStore.duration || 1)}
          indicators={[
-           { position: 100 * videoStore.currentTime / (videoStore.duration || 1) },
+           { position: videoStore.seek },
            ...indicators
          ]}
          showMarks

@@ -442,6 +442,7 @@
 // Compositions
 
 .composition-clips {
+  height: 100%;
   overflow-y: auto;
   padding: 10px;
 
@@ -466,6 +467,28 @@
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     padding-bottom: 20px;
   }
+
+  &__drag-indicator {
+    align-items: center;
+    background-color: var(--background-primary);
+    display: flex;
+    font-size: 20px;
+    font-weight: 500;
+    gap: 10px;
+    inset: 0;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    transition: opacity 0.15s ease;
+    user-select: none;
+    z-index: 1;
+
+    &--active {
+      opacity: 0.8;
+      pointer-events: unset;
+    }
+  }
 }
 
 .clip {
@@ -489,5 +512,35 @@
 
   &__name {
     font-size: 12px;
+  }
+}
+
+.composition-browser {
+  height: 100%;
+  overflow-y: hidden;
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    padding: 0 10px 20px;
+  }
+
+  &__item {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    min-height:  40px;
+    padding: 5px;
+    transition: background-color 0.15s ease;
+
+    &:hover {
+      background-color: var(--background-active);
+    }
+
+    &:not(:last-child) {
+      border-bottom: 1px solid var(--table-border-color);
+    }
   }
 }

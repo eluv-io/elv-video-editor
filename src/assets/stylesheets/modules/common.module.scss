@@ -381,6 +381,15 @@
       justify-content: center;
       padding-bottom: calc(var(--slider-height) - 8px);
     }
+
+    &--arrow-bottom {
+      align-items: center;
+      color: var(--slider-color);
+      display: flex;
+      font-size: 14px;
+      justify-content: center;
+      padding-top: calc(var(--slider-height) - 8px);
+    }
   }
 
   &__connection {

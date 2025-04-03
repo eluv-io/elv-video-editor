@@ -22,7 +22,14 @@ const Handle = observer(({
 }) => {
   //if(handle.position < min || handle.position > max) { return null; }
 
-  let style = {left: `${PositionToPixels(handle.position) - (handle.style === "end" ? 4 : 1)}px`};
+  let offset = 1;
+  if(handle.style === "start") {
+    offset = 3;
+  } else if (handle.style === "end") {
+    offset = 7;
+  }
+
+  let style = {left: `${PositionToPixels(handle.position) - (offset)}px`};
   if(handle.opacity) {
     style.opacity = handle.opacity;
   }
@@ -62,7 +69,7 @@ const Handle = observer(({
               onClick={handle.disabled ? undefined : HandleChange}
               {...(handle.additionalProps || {})}
             >
-              { handle.style === "arrow" ? "▼" : null }
+              { handle.style === "arrow" ? "▼" : handle.style === "arrow-bottom" ? "▲" : null }
             </div>
           </Tooltip>
       }

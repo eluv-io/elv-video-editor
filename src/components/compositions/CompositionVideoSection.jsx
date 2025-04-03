@@ -135,6 +135,7 @@ const ClipControls = observer(() => {
           draggable
           onDragStart={DragHandler(() =>
             compositionStore.SetDragging({
+              source: "video",
               clip: compositionStore.selectedClip,
               showDragShadow: true,
               createNewClip: true
@@ -303,13 +304,41 @@ const Title = observer(({clipView}) => {
           onClick={() => setEditing(true)}
         />
         {
-          !clipView || compositionStore.videoStore.fullScreen ? null :
+          !clipView || compositionStore.videoStore.fullScreen || compositionStore.selectedClipSource !== "timeline" ? null :
             <IconButton
               faded
               small
               label="Remove Clip from Composition"
               icon={TrashIcon}
               onClick={() => compositionStore.RemoveClip(compositionStore.selectedClipId)}
+            />
+        }
+        {
+          !clipView ||
+          compositionStore.videoStore.fullScreen ||
+          compositionStore.selectedClipSource !== "side-panel" ||
+          !compositionStore.myClipIds.includes(compositionStore.selectedClipId) ? null :
+            <IconButton
+              faded
+              small
+              label="Remove from My Clips"
+              icon={TrashIcon}
+              onClick={async () => {
+                if(!await new Promise(resolve =>
+                  modals.openConfirmModal({
+                    title: "Remove from My Clips",
+                    centered: true,
+                    children: <Text fz="sm">Are you sure you want to remove this clip?</Text>,
+                    labels: {confirm: "Remove", cancel: "Cancel"},
+                    onConfirm: () => resolve(true),
+                    onCancel: () => resolve(false)
+                  })
+                )) {
+                  return;
+                }
+
+                compositionStore.RemoveMyClip(compositionStore.selectedClipId);
+              }}
             />
         }
         {

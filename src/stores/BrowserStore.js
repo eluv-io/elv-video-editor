@@ -118,10 +118,13 @@ class BrowserStore {
 
         if(savedChannels) {
           channels = [
-            ...Object.values(savedChannels),
+            ...Object.values(savedChannels)
+              .filter(channel => channel.writeTokenInfo),
             ...channels.filter(({key}) => !Object.values(savedChannels).find(channel => channel.key === key))
           ];
         }
+
+        channels = channels.sort((a, b) => a.label?.toLowerCase() < b.label?.toLowerCase() ? -1 : 1);
       }
 
       lastModified = metadata?.commit?.timestamp;

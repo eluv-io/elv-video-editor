@@ -11,7 +11,7 @@ import Assets, {AssetTagDetails, AssetTagsList} from "@/components/side_panel/As
 import {TrackDetails} from "@/components/side_panel/Tracks.jsx";
 
 import {OverlayTagDetails, OverlayTagsList} from "@/components/side_panel/OverlayTags.jsx";
-import {CompositionClips} from "@/components/side_panel/Compositions.jsx";
+import {CompositionBrowser, CompositionClips} from "@/components/side_panel/Compositions.jsx";
 import {Combobox, PillsInput, Switch, useCombobox} from "@mantine/core";
 import {useLocation} from "wouter";
 
@@ -286,6 +286,17 @@ export const CompositionSidePanel = observer(() => {
       <div className={S("side-panel")}>
         <SidebarFilter store={compositionStore} label="Search Clips"/>
         <CompositionClips />
+      </div>
+    </div>
+  );
+});
+
+export const CompositionBrowserPanel = observer(() => {
+  return (
+    <div className={S("content-block", "side-panel-section")}>
+      <div className={S("side-panel")}>
+        <SidebarFilter key="composition-browser" store={compositionStore} label="Search Compositions" />
+        <CompositionBrowser />
       </div>
     </div>
   );

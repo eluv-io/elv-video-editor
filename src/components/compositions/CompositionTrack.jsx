@@ -4,7 +4,7 @@ import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {compositionStore} from "@/stores/index.js";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-import {Clip, DropIndicator} from "@/components/compositions/Clips.jsx";
+import {TimelineClip, DropIndicator} from "@/components/compositions/Clips.jsx";
 
 const S = CreateModuleClassMatcher(CompositionStyles);
 
@@ -33,7 +33,7 @@ const CompositionTrack = observer(() => {
       <div className={S("composition-track__content")}>
         {
           compositionStore.clipList.map(clip =>
-            <Clip
+            <TimelineClip
               key={`clip-${clip.clipId}`}
               clip={clip}
               containerDimensions={dimensions}
