@@ -23,10 +23,8 @@ const Handle = observer(({
   //if(handle.position < min || handle.position > max) { return null; }
 
   let offset = 1;
-  if(handle.style === "start") {
-    offset = 3;
-  } else if (handle.style === "end") {
-    offset = 7;
+  if(handle.style === "end") {
+    offset = 6;
   }
 
   let style = {left: `${PositionToPixels(handle.position) - (offset)}px`};

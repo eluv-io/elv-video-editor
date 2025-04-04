@@ -842,6 +842,7 @@ class CompositionStore {
       sourceObjectId: objectId,
       sourceOfferingKey: metadata?.source_info?.offeringKey || "default",
       sourceName,
+      initialPrompt: metadata?.source_info?.prompt,
       name: metadata?.display_name || metadata?.name,
       compositionKey,
       metadata
@@ -864,25 +865,33 @@ class CompositionStore {
 
     this.GetCompositionPlayoutUrl();
 
+    this.LoadHighlights();
+  });
+
+  LoadHighlights = flow(function * () {
     try {
-      const highlights = (yield this.GenerateAIHighlights({objectId, wait: false}))?.clips || [];
+      const highlights = (yield this.GenerateAIHighlights({
+        objectId: this.compositionObject.objectId,
+        prompt: this.compositionObject.initialPrompt,
+        wait: true
+      }))?.clips || [];
 
       let aiClipIds = [];
       for(const clip of highlights) {
-        const clipInFrame = videoHandler.TimeToFrame(clip.start_time / 1000);
-        const clipOutFrame = videoHandler.TimeToFrame(clip.end_time / 1000);
+        const clipInFrame = this.sourceVideoStore.videoHandler.TimeToFrame(clip.start_time / 1000);
+        const clipOutFrame = this.sourceVideoStore.videoHandler.TimeToFrame(clip.end_time / 1000);
         const clipId = this.rootStore.NextId();
         this.clips[clipId] = {
           clipId,
           name: clip.reason,
-          libraryId,
-          objectId,
-          versionHash,
+          libraryId: this.compositionObject.libraryId,
+          objectId: this.compositionObject.objectId,
+          versionHash: this.compositionObject.versionHash,
           offering: "default",
           clipInFrame,
           clipOutFrame,
-          storeKey: `${objectId}-default`,
-          clipKey: `${objectId}-default-${clipInFrame}-${clipOutFrame}`
+          storeKey: `${this.compositionObject.objectId}-default`,
+          clipKey: `${this.compositionObject.objectId}-default-${clipInFrame}-${clipOutFrame}`
         };
 
         aiClipIds.push(clipId);

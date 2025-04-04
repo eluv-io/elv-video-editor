@@ -67,6 +67,7 @@ export const DownloadFormFields = observer(({
   useEffect(() => {
     const audioTrack = audioRepresentations?.find(rep => rep.key === options.audioRepresentation);
     const defaultFilename = downloadStore.DownloadJobDefaultFilename({
+      store,
       format: options.format,
       offering: options.offering,
       representationInfo: representations?.find(rep => rep.key === options.representation),

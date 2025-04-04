@@ -5,6 +5,7 @@ import {observer} from "mobx-react-lite";
 import {compositionStore, editStore, rootStore, tagStore, trackStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
 import {
+  Confirm,
   FormTextArea,
   IconButton,
   Linkish,
@@ -43,6 +44,7 @@ import ZoomOutFullIcon from "@/assets/icons/v2/arrows-horizontal.svg";
 import ClipIcon from "@/assets/icons/v2/clip.svg";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import IsolateClipIcon from "@/assets/icons/v2/isolate.svg";
+import ReloadIcon from "@/assets/icons/v2/reload.svg";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -259,6 +261,16 @@ const TimelineTopBar = observer(({simple}) => {
           !simple ? null :
             <ClipModalButton/>
         }
+        <div className={S("toolbar__separator")}/>
+        <IconButton
+          icon={ReloadIcon}
+          label="Reload"
+          onClick={async () => Confirm({
+            title: "Reload Content",
+            text: "Are you sure you want to reload this content? Any changes you have made will be lost.",
+            onConfirm: async () => await videoStore.Reload()
+          })}
+        />
         <div className={S("toolbar__separator")}/>
         <Download/>
         <Share store={videoStore}/>

@@ -195,6 +195,8 @@ class VideoStore {
     }
   }
 
+
+
   ToggleVideoControls(enable) {
     this.showVideoControls = enable;
   }
@@ -384,6 +386,14 @@ class VideoStore {
     } finally {
       this.loading = false;
     }
+  });
+
+  Reload = flow(function * () {
+    const objectId = this.videoObject?.objectId;
+    const offering = this.offeringKey;
+
+    this.Reset();
+    yield this.SetVideo({objectId, preferredOfferingKey: offering});
   });
 
   ReloadMetadata = flow(function * () {
@@ -681,7 +691,7 @@ class VideoStore {
     return this.videoHandler.TimeToString({time, includeFractionalSeconds});
   }
 
-  Update({frame, smpte, progress}) {
+  Update({frame, smpte}) {
     if(!this.video || !this.video.duration) { return; }
 
     this.frame = Math.floor(frame);
@@ -694,7 +704,7 @@ class VideoStore {
       this.clipOutFrame = this.totalFrames - 1;
     }
     this.smpte = smpte;
-    this.seek = progress * 100;
+    this.seek = 100 * frame / (this.totalFrames || 1);
     this.currentTime = this.video.currentTime;
 
     /*

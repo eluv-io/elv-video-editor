@@ -20,7 +20,7 @@ class DownloadStore {
     this.rootStore = rootStore;
   }
 
-  DownloadJobDefaultFilename({format="mp4", offering="default", clipInFrame, clipOutFrame, representationInfo, audioRepresentationInfo}) {
+  DownloadJobDefaultFilename({store, format="mp4", offering="default", clipInFrame, clipOutFrame, representationInfo, audioRepresentationInfo}) {
     clipInFrame = clipInFrame || 0;
     clipOutFrame = clipOutFrame || store.totalFrames - 1;
 
@@ -30,9 +30,9 @@ class DownloadStore {
       filename = `${filename} (${offering})`;
     }
 
-    if(clipInFrame || (clipOutFrame && clipOutFrame < this.rootStore.videoStore.totalFrames - 1)) {
-      const startTime = this.rootStore.videoStore.videoHandler.FrameToString({frame: clipInFrame}).replaceAll(" ", "");
-      const endTime = this.rootStore.videoStore.videoHandler.FrameToString({frame: clipOutFrame || this.rootStore.videoStore.totalFrames}).replaceAll(" ", "");
+    if(clipInFrame || (clipOutFrame && clipOutFrame < store.totalFrames - 1)) {
+      const startTime = store.videoHandler.FrameToString({frame: clipInFrame}).replaceAll(" ", "");
+      const endTime = store.videoHandler.FrameToString({frame: clipOutFrame || store.totalFrames}).replaceAll(" ", "");
       filename = `${filename} (${startTime} - ${endTime})`;
     }
 

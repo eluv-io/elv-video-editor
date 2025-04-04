@@ -584,16 +584,25 @@ export const ClipTimeInfo = observer(({store, clipInFrame, clipOutFrame, classNa
 });
 
 export const Confirm = async ({title, text, labels={}, onConfirm, onCancel}) => {
-  if(!await new Promise(resolve =>
+  if(!await new Promise(resolve => {
+    const Title = () => {
+      // For some reason, closing the modal any way except the cancel button *doesn't* call onCancel
+      // Detect when one of the components is unrendered to ensure the promise is resolved
+      useEffect(() => () => setTimeout(() => resolve(false), 100), []);
+
+      return <div className={S("confirm__title")}>{title || "Confirm"}</div>;
+    };
+
     modals.openConfirmModal({
-      title: <div className={S("confirm__title")}>{title || "Confirm"}</div>,
+      title: <Title />,
       centered: true,
+      withCloseButton: false,
       children: <div className={S("confirm__text")}>{text}</div>,
       labels: {confirm: labels.confirm || "Confirm", cancel: labels.cancel || "Cancel"},
       onConfirm: () => resolve(true),
       onCancel: () => resolve(false)
-    })
-  )) {
+    });
+  })) {
     onCancel?.();
     return;
   }
