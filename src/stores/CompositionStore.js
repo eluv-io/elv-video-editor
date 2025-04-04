@@ -609,7 +609,7 @@ class CompositionStore {
         const clipOutFrame = videoHandler.TimeToFrame(clip.end_time / 1000);
 
         return {
-          display_name: clip.reason,
+          display_name: clip.reason || "Clip",
           source: {
             "/": UrlJoin("./", "rep", "playout", offeringKey)
           },
@@ -622,7 +622,7 @@ class CompositionStore {
     }
 
     let channelMetadata = {
-      display_name: name,
+      display_name: name || "Composition",
       key,
       playout_type: "ch_vod",
       playout: playoutMetadata,
@@ -678,7 +678,7 @@ class CompositionStore {
       let clipOutFrame = Math.min(clip.clipOutFrame, sourceEndFrame - 1);
 
       return {
-        display_name: clip.name,
+        display_name: clip.name || "Clip",
         source: sourceLink,
         slice_start_rat: store.videoHandler.FrameToRat(clip.clipInFrame || 0),
         slice_end_rat: store.videoHandler.FrameToRat(clipOutFrame || store.totalFrames - 1),
@@ -700,7 +700,7 @@ class CompositionStore {
       objectId,
       writeToken,
       metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "display_name"),
-      metadata: name
+      metadata: name || "Composition"
     });
 
     if(updatePlayoutUrl) {

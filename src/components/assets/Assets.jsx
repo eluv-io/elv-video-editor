@@ -228,11 +228,11 @@ const SelectedAsset = observer(({assetKey}) => {
 
   return (
     <PanelGroup direction="vertical" className="panel-group">
-      <Panel id="asset-top" minSize={30}>
+      <Panel id="asset-top" order={1} minSize={30}>
         <AssetContent asset={asset} summary={summary} hoverTag={hoverTag} />
       </Panel>
       <PanelResizeHandle />
-      <Panel id="asset-bottom" minSize={30}>
+      <Panel id="asset-bottom" order={2} minSize={30}>
         <AssetDetails asset={asset} summary={summary} setHoverTag={setHoverTag} />
       </Panel>
     </PanelGroup>

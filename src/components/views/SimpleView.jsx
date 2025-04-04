@@ -14,11 +14,11 @@ const SimpleView = observer(() => {
 
   return (
     <PanelGroup direction="vertical" className="panel-group">
-      <Panel id="top" defaultSize={65}>
+      <Panel id="top" order={1} defaultSize={65}>
         <VideoSection />
       </Panel>
       <PanelResizeHandle />
-      <Panel id="bottom" minSize={35}>
+      <Panel id="bottom" order={2} minSize={35}>
         <SimpleTimeline />
       </Panel>
     </PanelGroup>

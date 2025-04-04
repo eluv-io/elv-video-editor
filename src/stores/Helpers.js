@@ -267,6 +267,8 @@ export const CreateTrackIntervalTree = (tags, label) => {
       console.warn(`Invalid tag in track '${label}'`);
       // eslint-disable-next-line no-console
       console.warn(JSON.stringify(tag, null, 2));
+      // eslint-disable-next-line no-console
+      console.warn(error);
     }
   });
 

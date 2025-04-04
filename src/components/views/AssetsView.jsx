@@ -17,11 +17,11 @@ const AssetsView = observer(() => {
 
   return (
     <PanelGroup direction="horizontal" className="panel-group">
-      <Panel id="side-panel" minSize={30}>
+      <Panel id="side-panel" order={1} minSize={30}>
         <AssetSidePanel />
       </Panel>
       <PanelResizeHandle />
-      <Panel id="content" minSize={30}>
+      <Panel id="content" order={2} minSize={30}>
         <SelectedAsset key={assetKey} assetKey={assetKey} />
       </Panel>
     </PanelGroup>

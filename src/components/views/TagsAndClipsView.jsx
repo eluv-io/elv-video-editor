@@ -33,9 +33,9 @@ const TagsAndClipsView = observer(({mode}) => {
 
   return (
     <PanelGroup direction="vertical" className="panel-group">
-      <Panel id="top" defaultSize={trackCount > 2 ? 45 : 60} minSize={30}>
+      <Panel id="top" order={1} defaultSize={trackCount > 2 ? 45 : 60} minSize={30}>
         <PanelGroup direction="horizontal" className="panel-group">
-          <Panel id="side-panel" style={{"--panel-width": `${sidePanelDimensions?.width}px`}} defaultSize={30} minSize={20}>
+          <Panel id="side-panel" order={1} style={{"--panel-width": `${sidePanelDimensions?.width}px`}} defaultSize={30} minSize={20}>
             {
               mode === "tags" ?
                 <TagSidePanel setElement={setSidePanel} /> :
@@ -43,13 +43,13 @@ const TagsAndClipsView = observer(({mode}) => {
             }
           </Panel>
           <PanelResizeHandle />
-          <Panel id="content">
+          <Panel id="content" order={2}>
             <VideoSection showOverlay />
           </Panel>
         </PanelGroup>
       </Panel>
       <PanelResizeHandle />
-      <Panel id="bottom">
+      <Panel id="bottom" order={2}>
         {
           mode === "tags" ?
             <TagTimeline /> :
