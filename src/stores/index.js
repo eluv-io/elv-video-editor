@@ -40,6 +40,7 @@ class RootStore {
 
   tenantContractId;
   searchIndexes = [];
+  selectedSearchIndexId;
 
   signedToken;
   authToken;
@@ -68,6 +69,10 @@ class RootStore {
     this.InitializeClient();
 
     window.rootStore = this;
+  }
+
+  get searchIndex() {
+    return this.searchIndexes.find(index => index.id === this.selectedSearchIndexId);
   }
 
   Reset() {
@@ -102,6 +107,14 @@ class RootStore {
   SetSelectedObjectId(selectedObjectId, name) {
     this.selectedObjectId = selectedObjectId;
     this.selectedObjectName = name || "";
+
+    if(
+      this.page !== "compositions" &&
+      this.compositionStore.compositionObject &&
+      this.compositionStore.compositionObject.objectId !== selectedObjectId
+    ) {
+      this.compositionStore.Reset();
+    }
   }
 
   InitializeClient = flow(function * () {
@@ -139,20 +152,25 @@ class RootStore {
     this.publicToken = client.utils.B64(JSON.stringify({qspace_id: yield this.client.ContentSpaceId()}));
     this.signedToken = yield client.CreateSignedToken({duration: 24 * 60 * 60 * 1000});
 
-
     this.tenantContractId = yield client.userProfileClient.TenantContractId();
-    this.searchIndexes = (yield client.ContentObjectMetadata({
+    this.searchIndexes = ((yield client.ContentObjectMetadata({
       libraryId: this.tenantContractId.replace(/^iten/, "ilib"),
       objectId: this.tenantContractId.replace(/^iten/, "iq__"),
       metadataSubtree: "/public/search/indexes"
-    })) || [];
+    })) || [])
+      .filter((x, i, a) => a.findIndex(other => x.id === other.id) === i);
 
-    this.searchIndexes.forEach((_, index) =>
-      this.GetSearchFields(index)
-    );
+    this.searchIndexes
+      .forEach((_, index) =>
+        this.GetSearchFields(index)
+      );
 
     this.compositionStore.Initialize();
   });
+
+  SetSelectedSearchIndex(id) {
+    this.selectedSearchIndexId = id;
+  }
 
   GetSearchFields = flow(function * (index) {
     const indexId = this.searchIndexes[index]?.id;
@@ -161,6 +179,8 @@ class RootStore {
 
     try {
       const versionHash = yield this.client.LatestVersionHash({objectId: indexId});
+
+      this.searchIndexes[index].versionHash = versionHash;
 
       const indexerFields = yield this.client.ContentObjectMetadata({
         versionHash,
@@ -193,6 +213,7 @@ class RootStore {
       });
 
       this.searchIndexes[index].fields = fuzzySearchFields;
+      this.SetSelectedSearchIndex(this.searchIndexes[0]?.id);
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error("Unable to load search fields", error);

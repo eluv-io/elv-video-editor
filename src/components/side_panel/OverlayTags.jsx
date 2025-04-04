@@ -95,71 +95,73 @@ const OverlayTagForm = observer(() => {
       className={S("tag-details", "form")}
     >
       <OverlayTagActions tag={tag} track={track} />
-      <FocusTrap active>
-        <div className={S("form__inputs")}>
-          {
-            !tag.isNew ? null :
-              <div className={S("form__input-container")}>
-                <FormSelect
-                  label="Category"
-                  value={tag.trackId.toString()}
-                  options={
-                    trackStore.viewTracks
-                      .filter(track => track.key !== "shot_detection")
-                      .map(track => ({
-                          label: track.label,
-                          value: track.trackId.toString()
-                        })
-                      )
+      <div className={S("tag-details__content")}>
+        <FocusTrap active>
+          <div className={S("form__inputs")}>
+            {
+              !tag.isNew ? null :
+                <div className={S("form__input-container")}>
+                  <FormSelect
+                    label="Category"
+                    value={tag.trackId.toString()}
+                    options={
+                      trackStore.viewTracks
+                        .filter(track => track.key !== "shot_detection")
+                        .map(track => ({
+                            label: track.label,
+                            value: track.trackId.toString()
+                          })
+                        )
+                    }
+                    onChange={trackId =>
+                      tagStore.UpdateEditedOverlayTag({
+                        ...tag,
+                        trackId: parseInt(trackId),
+                        trackKey: trackStore.Track(parseInt(trackId))?.key
+                      })}
+                    className={S("form__input")}
+                  />
+                </div>
+            }
+            <div className={S("form__input-container")}>
+              <FormTextArea
+                label="Text"
+                value={tag.text}
+                placeholder="Text"
+                onChange={event => tagStore.UpdateEditedOverlayTag({...tag, text: event.target.value})}
+              />
+            </div>
+            {
+              rootStore.page !== "tags" ? null :
+                <div className={S("form__input-container")}>
+                  <FormNumberInput
+                    label="Confidence"
+                    value={Round((tag.confidence || 1) * 100, 0)}
+                    onChange={value => tagStore.UpdateEditedOverlayTag({...tag, confidence: Round(value / 100, 4)})}
+                  />
+                </div>
+            }
+            <div className={S("form__input-container")}>
+              <FormSelect
+                label="Draw Mode"
+                value={tag.mode || "rectangle"}
+                options={[
+                  {label: "Rectangle", value: "rectangle"},
+                  {label: "Polygon", value: "polygon"},
+                ]}
+                onChange={mode => {
+                  if(mode === "Rectangle") {
+                    tagStore.UpdateEditedOverlayTag({...tag, mode: "rectangle", box: BoxToRectangle(tag.box)});
+                  } else {
+                    tagStore.UpdateEditedOverlayTag({...tag, mode: "polygon", box: BoxToPolygon(tag.box)});
                   }
-                  onChange={trackId =>
-                    tagStore.UpdateEditedOverlayTag({
-                      ...tag,
-                      trackId: parseInt(trackId),
-                      trackKey: trackStore.Track(parseInt(trackId))?.key
-                    })}
-                  className={S("form__input")}
-                />
-              </div>
-          }
-          <div className={S("form__input-container")}>
-            <FormTextArea
-              label="Text"
-              value={tag.text}
-              placeholder="Text"
-              onChange={event => tagStore.UpdateEditedOverlayTag({...tag, text: event.target.value})}
-            />
+                }}
+                className={S("form__input")}
+              />
+            </div>
           </div>
-          {
-            rootStore.page !== "tags" ? null :
-              <div className={S("form__input-container")}>
-                <FormNumberInput
-                  label="Confidence"
-                  value={Round((tag.confidence || 1) * 100, 0)}
-                  onChange={value => tagStore.UpdateEditedOverlayTag({...tag, confidence: Round(value / 100, 4)})}
-                />
-              </div>
-          }
-          <div className={S("form__input-container")}>
-            <FormSelect
-              label="Draw Mode"
-              value={tag.mode || "rectangle"}
-              options={[
-                {label: "Rectangle", value: "rectangle"},
-                {label: "Polygon", value: "polygon"},
-              ]}
-              onChange={mode => {
-                if(mode === "Rectangle") {
-                  tagStore.UpdateEditedOverlayTag({...tag, mode: "rectangle", box: BoxToRectangle(tag.box)});
-                } else {
-                  tagStore.UpdateEditedOverlayTag({...tag, mode: "polygon", box: BoxToPolygon(tag.box)});
-                }
-              }}
-              className={S("form__input")}
-            />
-          </div>
-        </div>
-      </FocusTrap>
+        </FocusTrap>
+      </div>
     </form>
   );
 });
@@ -183,16 +185,18 @@ export const OverlayTagDetails = observer(() => {
     <>
       <div key={`tag-details-${tag.tagId}-${!!tagStore.editedOverlayTag}`} className={S("tag-details")}>
         <OverlayTagActions tag={tag} track={track}/>
-        <pre className={S("tag-details__content", tag.content ? "tag-details__content--json" : "")}>
-          {tag.text}
-        </pre>
-        {
-          rootStore.page !== "tags" ? null :
-            <div className={S("tag-details__detail")}>
-              <label>Confidence:</label>
-              <span>{FormatConfidence(tag.confidence)}</span>
-            </div>
-        }
+        <div className={S("tag-details__content")}>
+          <pre className={S("tag-details__text", tag.content ? "tag-details__text--json" : "")}>
+            {tag.text}
+          </pre>
+          {
+            rootStore.page !== "tags" ? null :
+              <div className={S("tag-details__detail")}>
+                <label>Confidence:</label>
+                <span>{FormatConfidence(tag.confidence)}</span>
+              </div>
+          }
+        </div>
       </div>
       {
         !tagStore.editing ? null :

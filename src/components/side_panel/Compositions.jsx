@@ -4,7 +4,7 @@ import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, DragHandler} from "@/utils/Utils.js";
 import {browserStore, compositionStore, rootStore} from "@/stores/index.js";
-import {Icon, IconButton, Linkish, Loader} from "@/components/common/Common.jsx";
+import {ClipTimeInfo, Icon, IconButton, Linkish, Loader} from "@/components/common/Common.jsx";
 import {Text, Tooltip} from "@mantine/core";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import UrlJoin from "url-join";
@@ -47,9 +47,18 @@ const SidePanelClip = observer(({clip}) => {
       />
       <Tooltip disabled={!!compositionStore.draggingClip} label={clip.name} multiline maw={300}>
         <div draggable={false} className={S("clip__name", "ellipsis")}>
-          { clip.name }
+          {clip.name}
         </div>
       </Tooltip>
+      {
+        clip.clipId === compositionStore.sourceClipId ? null :
+          <ClipTimeInfo
+            store={store}
+            clipInFrame={clip.clipInFrame}
+            clipOutFrame={clip.clipOutFrame}
+            className={S("clip__time")}
+          />
+      }
       {
         !compositionStore.myClipIds.includes(clip.clipId) ? null :
           <IconButton
@@ -80,6 +89,50 @@ const SidePanelClip = observer(({clip}) => {
   );
 });
 
+let searchTimeout;
+const AIClips = observer(() => {
+  const [loading, setLoading] = useState(false);
+  const [clipIds, setClipIds] = useState([]);
+
+  useEffect(() => {
+    clearTimeout(searchTimeout);
+
+    searchTimeout = setTimeout(() => {
+      setLoading(true);
+
+      if(!compositionStore.filter) {
+        setClipIds(compositionStore.aiClipIds);
+        setLoading(false);
+      } else {
+        compositionStore.SearchClips(compositionStore.filter)
+          .then(() => setClipIds(compositionStore.searchClipIds))
+          .finally(() => setLoading(false));
+      }
+    }, 1000);
+  }, [compositionStore.filter, rootStore.selectedSearchIndexId]);
+
+  return  (
+    !loading && clipIds.length === 0 ? null :
+      <>
+        <div className={S("composition-clips__title")}>
+          <Icon icon={AISparkleIcon}/>
+          Suggestions
+        </div>
+        {
+          loading ?
+            <Loader className={S("composition-clips__loader")} /> :
+            <div className={S("composition-clips__list")}>
+              {
+                clipIds.map(clipId =>
+                  <SidePanelClip clip={compositionStore.clips[clipId]} key={`clip-${clipId}`} />
+                )
+              }
+            </div>
+        }
+      </>
+  );
+});
+
 export const CompositionClips = observer(() => {
   const [showDragIndicator, setShowDragIndicator] = useState(false);
 
@@ -107,27 +160,17 @@ export const CompositionClips = observer(() => {
           }}
         />
         {
-          compositionStore.myClips.map(clip =>
-            <SidePanelClip key={`clip-${clip.clipId}`} clip={clip} />
-          )
+          compositionStore.myClips
+            .filter(clip =>
+              !compositionStore.filter ||
+              clip.name?.toLowerCase()?.includes(compositionStore.filter.toLowerCase())
+            )
+            .map(clip =>
+              <SidePanelClip key={`clip-${clip.clipId}`} clip={clip} />
+            )
         }
       </div>
-      {
-        compositionStore.aiClips.length === 0 ? null :
-          <>
-            <div className={S("composition-clips__title")}>
-              <Icon icon={AISparkleIcon}/>
-              Suggestions
-            </div>
-            <div className={S("composition-clips__list")}>
-              {
-                compositionStore.aiClips.map(clip =>
-                  <SidePanelClip clip={clip} key={`clip-${clip.clipId}`} />
-                )
-              }
-            </div>
-          </>
-      }
+      <AIClips />
       <div
         onDrop={() => {
           setShowDragIndicator(false);

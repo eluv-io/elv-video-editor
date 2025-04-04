@@ -26,6 +26,7 @@ class CompositionStore {
   selectedClipSource;
   originalSelectedClipId;
   aiClipIds = [];
+  searchClipIds = [];
 
   draggingClip;
   showDragShadow = false;
@@ -894,74 +895,6 @@ class CompositionStore {
     }
   });
 
-  QueryAIAPI = flow(function * ({server="ai", method="GET", path, objectId, queryParams={}}) {
-    const url = new URL(`https://${server}.contentfabric.io/`);
-    url.pathname = path;
-
-    Object.keys(queryParams).forEach(key =>
-      queryParams[key] && url.searchParams.set(key, queryParams[key])
-    );
-
-    const signedToken = yield this.rootStore.client.CreateSignedToken({
-      objectId,
-      duration: 24 * 60 * 60 * 1000
-    });
-
-    return fetch(
-      url,
-      {
-        method,
-        headers: {
-          Authorization: `Bearer ${signedToken}`
-        }
-      }
-    );
-  });
-
-  GenerateAIHighlights = flow(function * ({objectId, prompt, regenerate=false, wait=true, StatusCallback}) {
-    if(regenerate) {
-      yield this.QueryAIAPI({
-        method: "POST",
-        path: UrlJoin("ml", "highlight_composition", "q", objectId),
-        objectId,
-        queryParams: {customization: prompt, regenerate: true}
-      });
-
-      yield new Promise(resolve => setTimeout(resolve, 1000));
-    }
-
-    let status;
-    do {
-      if(status) {
-        StatusCallback?.(status);
-        yield new Promise(resolve => setTimeout(resolve, 5000));
-      }
-
-      const response = yield this.QueryAIAPI({
-        method: "GET",
-        path: UrlJoin("ml", "highlight_composition", "q", objectId),
-        objectId,
-        queryParams: {customization: prompt}
-      });
-
-      if(response.status === 204 && !regenerate) {
-        return this.GenerateAIHighlights({...arguments[0], regenerate: true});
-      }
-
-      status = yield response.json();
-
-      if(!wait) {
-        return status;
-      }
-
-      if(status?.status === "ERROR") {
-        throw status;
-      }
-    } while(status?.status !== "COMPLETE");
-
-    return status;
-  });
-
   PerformAction({label, Action, ...attrs}, fromRedo=false) {
     clearTimeout(this.updateTimeout);
 
@@ -1189,6 +1122,134 @@ class CompositionStore {
     });
   }
 
+  // Search and AI
+  QueryAIAPI = flow(function * ({server="ai", method="GET", path, objectId, channelAuth=false, queryParams={}}) {
+    const url = new URL(`https://${server}.contentfabric.io/`);
+    url.pathname = path;
+
+    Object.keys(queryParams).forEach(key =>
+      queryParams[key] && url.searchParams.set(key, queryParams[key])
+    );
+
+    let authorizationToken;
+    if(!channelAuth) {
+      authorizationToken = yield this.rootStore.client.CreateSignedToken({
+        objectId,
+        duration: 24 * 60 * 60 * 1000
+      });
+    } else {
+      authorizationToken = new URL(yield this.client.FabricUrl({
+        versionHash: yield this.client.LatestVersionHash({objectId: objectId}),
+        channelAuth: true
+      })).searchParams.get("authorization");
+    }
+
+    url.searchParams.set("authorization", authorizationToken);
+
+    return fetch(url, {method});
+  });
+
+  GenerateAIHighlights = flow(function * ({objectId, prompt, regenerate=false, wait=true, StatusCallback}) {
+    if(regenerate) {
+      yield this.QueryAIAPI({
+        method: "POST",
+        path: UrlJoin("ml", "highlight_composition", "q", objectId),
+        objectId,
+        queryParams: {customization: prompt, regenerate: true}
+      });
+
+      yield new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    let status;
+    do {
+      if(status) {
+        StatusCallback?.(status);
+        yield new Promise(resolve => setTimeout(resolve, 5000));
+      }
+
+      const response = yield this.QueryAIAPI({
+        method: "GET",
+        path: UrlJoin("ml", "highlight_composition", "q", objectId),
+        objectId,
+        queryParams: {customization: prompt}
+      });
+
+      if(response.status === 204 && !regenerate) {
+        return this.GenerateAIHighlights({...arguments[0], regenerate: true});
+      }
+
+      status = yield response.json();
+
+      if(!wait) {
+        return status;
+      }
+
+      if(status?.status === "ERROR") {
+        throw status;
+      }
+    } while(status?.status !== "COMPLETE");
+
+    return status;
+  });
+
+  SearchClips = flow(function * (query) {
+    const index = this.rootStore.searchIndex;
+
+    if(!index) { return; }
+
+    const clips = (yield (yield this.QueryAIAPI({
+      server: "ai",
+      objectId: index.id,
+      path: UrlJoin("search", "q", index.versionHash, "rep", "search"),
+      channelAuth: true,
+      queryParams: {
+        terms: query,
+        search_fields: Object.keys(index.fields || {}).join(","),
+        display_fields: "f_speech_to_text",
+        clips: true,
+        clips_include_source_tags: true,
+        debug: true,
+        max_total: 100,
+        start: 0,
+        limit: 100,
+        filters: `id:${this.compositionObject.objectId}`,
+        select: "/public/asset_metadata/title,/public/name,public/asset_metadata/display_title"
+      }
+    })).json())?.contents || [];
+
+    console.log(clips);
+
+    let searchClipIds = [];
+    for(const clip of clips) {
+      const clipInFrame = this.sourceVideoStore.TimeToFrame(clip.start_time / 1000);
+      const clipOutFrame = this.sourceVideoStore.TimeToFrame(clip.end_time / 1000);
+      const clipId = this.rootStore.NextId();
+      this.clips[clipId] = {
+        clipId,
+        name: clip.reason,
+        libraryId: this.compositionObject.libraryId,
+        objectId: this.compositionObject.objectId,
+        versionHash: this.compositionObject.versionHash,
+        offering: "default",
+        clipInFrame,
+        clipOutFrame,
+        storeKey: `${this.compositionObject.objectId}-default`,
+        clipKey: `${this.compositionObject.objectId}-default-${clipInFrame}-${clipOutFrame}`
+      };
+
+      searchClipIds.push(clipId);
+    }
+
+    // Clear old search results
+    const oldClipIds = this.searchClipIds;
+    this.searchClipIds = [];
+    for(const clipId of oldClipIds) {
+      delete this.clips[clipId];
+    }
+
+    this.searchClipIds = searchClipIds;
+  });
 
   OpenFabricBrowserLink() {
     this.client.SendMessage({

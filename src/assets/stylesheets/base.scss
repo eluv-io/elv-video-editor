@@ -127,3 +127,9 @@ progress::-moz-progress-bar {
 .monospace {
   font-family: var(--font-monospace);
 }
+
+
+::selection {
+  background: var(--color-highlight);
+  color: white;
+}

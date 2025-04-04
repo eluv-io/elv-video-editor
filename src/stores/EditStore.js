@@ -22,6 +22,10 @@ class EditStore {
     return this.rootStore.client;
   }
 
+  get hasUnsavedChanges() {
+    return this.position > 0;
+  }
+
   get page() {
     return this.rootStore.page;
   }
@@ -101,7 +105,11 @@ class EditStore {
     this.saving = false;
   }
 
-  Save = flow(function * ({trimOfferings}) {
+  SaveClips = flow(function * () {
+
+  });
+
+  Save2 = flow(function * ({trimOfferings}) {
     if(this.saving || this.rootStore.videoStore.loading) { return; }
 
     this.saving = true;

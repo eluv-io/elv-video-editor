@@ -3,7 +3,7 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-import {IconButton, Input} from "@/components/common/Common.jsx";
+import {Icon, IconButton, Input} from "@/components/common/Common.jsx";
 import {useDebouncedState} from "@mantine/hooks";
 import {rootStore, assetStore, compositionStore, tagStore, trackStore} from "@/stores/index.js";
 import {TagDetails, TagsList} from "@/components/side_panel/Tags.jsx";
@@ -12,16 +12,82 @@ import {TrackDetails} from "@/components/side_panel/Tracks.jsx";
 
 import {OverlayTagDetails, OverlayTagsList} from "@/components/side_panel/OverlayTags.jsx";
 import {CompositionBrowser, CompositionClips} from "@/components/side_panel/Compositions.jsx";
-import {Combobox, PillsInput, Switch, useCombobox} from "@mantine/core";
+import {Combobox, Menu, PillsInput, Switch, useCombobox} from "@mantine/core";
 import {useLocation} from "wouter";
 
+import SelectArrowsIcon from "@/assets/icons/v2/select-arrows.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
+import SettingsIcon from "@/assets/icons/v2/settings.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
-const SidebarFilter = observer(({store, label, showTagSwitch=false}) => {
-  const [filter, setFilter] = useDebouncedState(store.filter, 100);
+const TagSwitch = observer(() => {
   const [, navigate] = useLocation();
+
+  return (
+    <div className={S("search__toggle")}>
+      <label>Generated</label>
+      <Switch
+        color="var(--color-highlight)"
+        size="xs"
+        checked={rootStore.page === "clips"}
+        classNames={{track: S("search__toggle-bg")}}
+        onChange={event => navigate(event.currentTarget.checked ? "/my-tags" : "/tags")}
+      />
+      <label>My Clips</label>
+    </div>
+  );
+});
+
+const SearchIndexSelection = observer(() => {
+  const [showMenu, setShowMenu] = useState(false);
+  if(rootStore.searchIndexes.length === 0) { return null; }
+
+  return (
+    <Menu
+      opened={showMenu}
+      onChange={setShowMenu}
+      shadow="md"
+      width={250}
+      offset={15}
+      position="bottom-end"
+    >
+      <Menu.Target>
+        <button
+          onClick={() => setShowMenu(!showMenu)}
+          className={S("search__button")}
+        >
+          <Icon icon={SettingsIcon} />
+        </button>
+      </Menu.Target>
+
+      <Menu.Dropdown bg="var(--background-toolbar)">
+        <div className={S("search__index-menu")}>
+          <div className={S("search__index-title")}>
+            Search Index
+          </div>
+          {
+            rootStore.searchIndexes.map(index =>
+              <button
+                key={`index-${index.id}`}
+                onClick={() => {
+                  rootStore.SetSelectedSearchIndex(index.id);
+                  setShowMenu(false);
+                }}
+                className={S("search__index-option", rootStore.selectedSearchIndexId === index.id ? "search__index-option--active" : "")}
+              >
+                { index.name || index.id }
+              </button>
+            )
+          }
+        </div>
+      </Menu.Dropdown>
+    </Menu>
+  );
+});
+
+const SidebarFilter = observer(({store, label, sideContent}) => {
+  const [filter, setFilter] = useDebouncedState(store.filter, 100);
 
   useEffect(() => {
     store.SetFilter(filter);
@@ -36,20 +102,9 @@ const SidebarFilter = observer(({store, label, showTagSwitch=false}) => {
         onChange={event => setFilter(event.currentTarget.value)}
         aria-label={label}
         className={S("search__input")}
+        rightSection={sideContent}
+        rightSectionWidth="max-content"
       />
-      {
-        !showTagSwitch ? null :
-          <div className={S("search__toggle")}>
-            <label>Generated</label>
-            <Switch
-              color="var(--color-highlight)"
-              size="xs"
-              checked={rootStore.page === "clips"}
-              onChange={event => navigate(event.currentTarget.checked ? "/my-tags" : "/tags")}
-            />
-            <label>My Clips</label>
-          </div>
-      }
     </div>
   );
 });
@@ -147,7 +202,7 @@ const TrackSelection = observer(({mode = "tags"}) => {
       }}
     >
       <Combobox.DropdownTarget>
-        <div
+        <button
           ref={setOptionsElement}
           role="menu"
           onClick={() => combobox.toggleDropdown()}
@@ -157,7 +212,10 @@ const TrackSelection = observer(({mode = "tags"}) => {
           {
             selectedTracks.length > 0 ?
               selectedTracks :
-              <div className={S("track-options__placeholder")}>Filter by Category</div>
+              <div className={S("track-options__placeholder")}>
+                <span>Filter by Category</span>
+                <Icon icon={SelectArrowsIcon} />
+              </div>
           }
 
           {
@@ -184,7 +242,7 @@ const TrackSelection = observer(({mode = "tags"}) => {
               onBlur={() => combobox.closeDropdown()}
             />
           </Combobox.EventsTarget>
-        </div>
+        </button>
       </Combobox.DropdownTarget>
 
       {
@@ -203,7 +261,7 @@ export const TagSidePanel = observer(({setElement}) => {
   return (
     <div ref={setElement} className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
-        <SidebarFilter showTagSwitch store={tagStore} label="Search within tags" />
+        <SidebarFilter sideContent={<TagSwitch />} store={tagStore} label="Search within tags" />
         <TrackSelection mode="tags" />
         <TagsList mode="tags" />
 
@@ -234,7 +292,7 @@ export const ClipSidePanel = observer(({setElement}) => {
   return (
     <div ref={setElement} className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
-        <SidebarFilter showTagSwitch store={tagStore} label="Search clips" />
+        <SidebarFilter sideContent={<TagSwitch />} store={tagStore} label="Search clips" />
         <TrackSelection mode="clips" />
         <TagsList mode="clips" />
 
@@ -284,7 +342,7 @@ export const CompositionSidePanel = observer(() => {
   return (
     <div className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
-        <SidebarFilter store={compositionStore} label="Search Clips"/>
+        <SidebarFilter sideContent={<SearchIndexSelection />} store={compositionStore} label="Search Clips"/>
         <CompositionClips />
       </div>
     </div>

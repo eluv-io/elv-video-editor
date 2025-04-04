@@ -62,7 +62,10 @@ class ThumbnailStore {
       return;
     }
 
-    const vttData = yield (yield fetch(thumbnailTrackUrl)).text();
+    thumbnailTrackUrl = new URL(thumbnailTrackUrl);
+    const authToken = thumbnailTrackUrl.searchParams.get("authorization");
+    thumbnailTrackUrl.searchParams.delete("authorization");
+    const vttData = yield (yield fetch(thumbnailTrackUrl, {headers: {Authorization: `Bearer ${authToken}`}})).text();
 
     let tags = yield ParseVTTTrack({track: {label: "Thumbnails", vttData}, store: this.parentStore});
 
@@ -73,6 +76,7 @@ class ThumbnailStore {
       const positionParams = hash.split("=")[1].split(",").map(n => parseInt(n));
       const queryParams = new URLSearchParams(`?${query}`);
       const url = new URL(thumbnailTrackUrl);
+      url.searchParams.set("authorization", authToken);
       url.pathname = UrlJoin(url.pathname.split("/").slice(0, -1).join("/"), path);
       queryParams.forEach((key, value) =>
         url.searchParams.set(key, value)

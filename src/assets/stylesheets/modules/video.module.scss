@@ -9,7 +9,7 @@
   width: 100%;
 
   &--active {
-    border: 1px solid var(--color-highlight);
+    border: 1px solid rgba(var(--rgb-color-highlight), 0.75);
   }
 
   &__title {

@@ -32,6 +32,7 @@ const Video = observer(({
   blank,
   muted=true,
   autoplay=false,
+  contentId,
   volume=1,
   Callback,
   className=""
@@ -42,6 +43,13 @@ const Video = observer(({
   const [videoId] = useState(rootStore.NextId());
 
   playoutUrl = playoutUrl || store.playoutUrl;
+
+  useEffect(() => {
+    if(!video || video.paused) { return; }
+
+    // Pause video when content changes (e.g. different clip selected)
+    store.PlayPause(true);
+  }, [video, contentId]);
 
   useEffect(() => {
     if(!video || !playoutUrl || !store.isVideo || blank) {

@@ -89,45 +89,46 @@ const TrackForm = observer(() => {
       className={S("tag-details", "form")}
     >
       <TrackActions track={track}/>
-
-      <FocusTrap active>
-      <div className={S("form__inputs")}>
-          <div className={S("form__input-container")}>
-            <FormTextInput
-              label="Label"
-              data-autofocus
-              value={track.label || ""}
-              onChange={event => tagStore.UpdateEditedTrack({...track, label: event.target.value})}
-              className={S("form__input")}
-            />
+      <div className={S("tag-details__content")}>
+        <FocusTrap active>
+          <div className={S("form__inputs")}>
+            <div className={S("form__input-container")}>
+              <FormTextInput
+                label="Label"
+                data-autofocus
+                value={track.label || ""}
+                onChange={event => tagStore.UpdateEditedTrack({...track, label: event.target.value})}
+                className={S("form__input")}
+              />
+            </div>
+            <div className={S("form__input-container")}>
+              <FormTextInput
+                label="Metadata Key"
+                disabled
+                value={track.key || ""}
+                onChange={event => tagStore.UpdateEditedTrack({...track, key: event.target.value})}
+                className={S("form__input")}
+              />
+            </div>
+            <div className={S("form__input-container")}>
+              <FormColorInput
+                label="Color"
+                value={track.color}
+                onChange={rgb => tagStore.UpdateEditedTrack({...track, color: {...rgb, a: track.color.a}})}
+                className={S("form__input")}
+              />
+            </div>
+            <div className={S("form__input-container")}>
+              <FormTextArea
+                label="Description"
+                value={track.description || ""}
+                onChange={event => tagStore.UpdateEditedTrack({...track, description: event.target.value})}
+                className={S("form__input")}
+              />
+            </div>
           </div>
-          <div className={S("form__input-container")}>
-            <FormTextInput
-              label="Metadata Key"
-              disabled
-              value={track.key || ""}
-              onChange={event => tagStore.UpdateEditedTrack({...track, key: event.target.value})}
-              className={S("form__input")}
-            />
-          </div>
-          <div className={S("form__input-container")}>
-            <FormColorInput
-              label="Color"
-              value={track.color}
-              onChange={rgb => tagStore.UpdateEditedTrack({...track, color: {...rgb, a: track.color.a}})}
-              className={S("form__input")}
-            />
-          </div>
-          <div className={S("form__input-container")}>
-            <FormTextArea
-              label="Description"
-              value={track.description || ""}
-              onChange={event => tagStore.UpdateEditedTrack({...track, description: event.target.value})}
-              className={S("form__input")}
-            />
-          </div>
-        </div>
-      </FocusTrap>
+        </FocusTrap>
+      </div>
     </form>
   );
 });
@@ -149,24 +150,26 @@ export const TrackDetails = observer(() => {
     <>
       <div key={`tag-details-${track.trackId}`} className={S("tag-details", "tag-details--track")}>
         <TrackActions track={track}/>
-        <div className={S("tag-details__detail")}>
-          <label>Category:</label>
-          <span>{track.label || track.key}</span>
-        </div>
-        <div className={S("tag-details__detail")}>
-          <label>Metadata Key:</label>
-          <span className={S("ellipsis")}>{track.key}</span>
-        </div>
-        {
-          !track.description ? null :
-            <div className={S("tag-details__detail")}>
-              <label>Description:</label>
-              <span>{track.description || ""}</span>
-            </div>
-        }
-        <div className={S("tag-details__detail")}>
-          <label>{ track.trackType === "metadata" ? "Tags:" : "Clips:"}</label>
-          <span>{Object.keys(trackStore.TrackTags(track.trackId) || {}).length}</span>
+        <div className={S("tag-details__content")}>
+          <div className={S("tag-details__detail")}>
+            <label>Category:</label>
+            <span>{track.label || track.key}</span>
+          </div>
+          <div className={S("tag-details__detail")}>
+            <label>Metadata Key:</label>
+            <span className={S("ellipsis")}>{track.key}</span>
+          </div>
+          {
+            !track.description ? null :
+              <div className={S("tag-details__detail")}>
+                <label>Description:</label>
+                <span>{track.description || ""}</span>
+              </div>
+          }
+          <div className={S("tag-details__detail")}>
+            <label>{track.trackType === "metadata" ? "Tags:" : "Clips:"}</label>
+            <span>{Object.keys(trackStore.TrackTags(track.trackId) || {}).length}</span>
+          </div>
         </div>
       </div>
       {

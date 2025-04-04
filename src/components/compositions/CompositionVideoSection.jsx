@@ -508,6 +508,7 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
             playoutUrl={clipView ? undefined : compositionStore.compositionPlayoutUrl}
             autoplay={clipView ? false : compositionStore.videoStore.playing}
             key={clipView ? undefined : compositionStore.compositionPlayoutUrl}
+            contentId={clipView ? compositionStore.originalSelectedClipId || compositionStore.selectedClipId : compositionStore.compositionPlayoutUrl}
             Callback={video => {
               video.addEventListener("volumechange", () => compositionStore.__UpdateVideoSettings(
                 clipView ? "clip" : "composition",
@@ -530,19 +531,24 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
           </>
       }
       <div className={S("toolbar")}>
-        <div className={S("toolbar__spacer")}/>
-        <div className={S("toolbar__controls-group")}>
-          <PlaybackRateControl store={store}/>
-          {
-            !clipView ? null :
-              <>
-                <OfferingControls store={store}/>
-                <SubtitleControls store={store}/>
-              </>
-          }
-          <QualityControls store={store}/>
-          <AudioControls store={store}/>
-        </div>
+        {
+          !store.ready ? null :
+            <>
+              <div className={S("toolbar__spacer")}/>
+              <div className={S("toolbar__controls-group")}>
+                <PlaybackRateControl store={store}/>
+                {
+                  !clipView ? null :
+                    <>
+                      <OfferingControls store={store}/>
+                      <SubtitleControls store={store}/>
+                    </>
+                }
+                <QualityControls store={store}/>
+                <AudioControls store={store}/>
+              </div>
+            </>
+        }
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
 import { flow, makeAutoObservable } from "mobx";
 
 class OverlayStore {
-  overlayEnabled = false;
+  overlayEnabled = true;
+  overlayTags = {};
   overlayCanvasDimensions = {width: 0, height: 0};
 
   constructor(rootStore) {
@@ -29,7 +30,7 @@ class OverlayStore {
   }
 
   Reset() {
-    this.overlayTags = undefined;
+    this.overlayTags = {};
     this.overlayEnabled = false;
   }
 

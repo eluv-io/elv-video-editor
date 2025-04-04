@@ -3,7 +3,7 @@ import DownloadStyles from "@/assets/stylesheets/modules/download.module.scss";
 import {observer} from "mobx-react-lite";
 import {downloadStore} from "@/stores/index.js";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
-import {AsyncButton, CopyButton, FormSelect, FormTextInput} from "@/components/common/Common.jsx";
+import {AsyncButton, ClipTimeInfo, CopyButton, FormSelect, FormTextInput} from "@/components/common/Common.jsx";
 import {Button} from "@mantine/core";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
@@ -32,18 +32,7 @@ export const DownloadPreview = observer(({store, options}) => {
           </div>
       }
       <div className={S("preview__title")}>{store.name}</div>
-      <div className={S("preview__time")}>
-        <span>
-          {store.videoHandler.FrameToSMPTE(clipInFrame)}
-        </span>
-        <span>-</span>
-        <span>
-          {store.videoHandler.FrameToSMPTE(clipOutFrame)}
-        </span>
-        <span>
-          ({store.videoHandler.FrameToString({frame: clipOutFrame - clipInFrame})})
-        </span>
-      </div>
+      <ClipTimeInfo store={store} clipInFrame={clipInFrame} clipOutFrame={clipOutFrame} />
       <div className={S("preview__object-id")}>
         {store.videoObject.objectId}
         <CopyButton label="Copy Object ID" value={options.objectId} small />

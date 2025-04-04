@@ -244,7 +244,7 @@ export const ParseVTTTrack = async ({track, store}) => {
 
   textTrack.mode = "hidden";
 
-  await new Promise(resolve => setTimeout(resolve, 250));
+  await new Promise(resolve => setTimeout(resolve, 500));
 
   let cues = {};
   Array.from(textTrack.cues)

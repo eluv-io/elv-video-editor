@@ -39,21 +39,22 @@ const CompositionsView = observer(() => {
     // Selection view
     return (
       <PanelGroup direction="vertical" className="panel-group">
-        <Panel minSize={30} defaultSize={30}>
+        <Panel id="top" minSize={30} defaultSize={30}>
           <PanelGroup direction="horizontal" className="panel-group">
             {
               !rootStore.selectedObjectId ? null :
-                <Panel>
+                <Panel id="browser">
                   <CompositionBrowserPanel />
                 </Panel>
             }
-            <Panel defaultSize={50}>
+            <PanelResizeHandle />
+            <Panel id="video" defaultSize={50}>
               <CompositionVideoSection store={compositionStore.videoStore} />
             </Panel>
           </PanelGroup>
         </Panel>
         <PanelResizeHandle />
-        <Panel minSize={50}>
+        <Panel id="bottom" minSize={50}>
           <CompositionTimeline />
         </Panel>
       </PanelGroup>
@@ -63,18 +64,18 @@ const CompositionsView = observer(() => {
   return (
     <>
       <PanelGroup direction="vertical" className="panel-group">
-        <Panel minSize={35} defaultSize={65}>
+        <Panel id="top" minSize={35} defaultSize={65}>
           <PanelGroup direction="horizontal" className="panel-group">
-            <Panel defaultSize={25}>
+            <Panel id="side-panel" defaultSize={25}>
               <CompositionSidePanel />
             </Panel>
             <PanelResizeHandle />
-            <Panel>
+            <Panel id="videos">
               <PanelGroup direction="horizontal" className="panel-group">
                 {
                   !compositionStore.selectedClip ? null :
                     <>
-                      <Panel>
+                      <Panel id="clip">
                         <CompositionVideoSection
                           clipView
                           key={`clip-${compositionStore.selectedClip.storeKey}`}
@@ -84,7 +85,7 @@ const CompositionsView = observer(() => {
                     </>
                 }
                 <PanelResizeHandle />
-                <Panel>
+                <Panel id="content">
                   <CompositionVideoSection store={compositionStore.videoStore} />
                 </Panel>
               </PanelGroup>
@@ -93,7 +94,7 @@ const CompositionsView = observer(() => {
           <PanelResizeHandle />
         </Panel>
         <PanelResizeHandle />
-        <Panel minSize={32}>
+        <Panel id="bottom" minSize={32}>
           <CompositionTimeline />
         </Panel>
       </PanelGroup>

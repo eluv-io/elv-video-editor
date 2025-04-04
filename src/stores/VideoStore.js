@@ -310,7 +310,6 @@ class VideoStore {
         return;
       }
 
-
       // Load tags and assets
       this.rootStore.assetStore.SetAssets(videoObject.metadata.assets);
       this.rootStore.downloadStore.LoadDownloadJobInfo();

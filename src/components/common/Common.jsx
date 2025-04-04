@@ -561,3 +561,23 @@ export const Modal = observer((props) => {
 
   return <MantineModal {...props} />;
 });
+
+export const ClipTimeInfo = observer(({store, clipInFrame, clipOutFrame, className=""}) => {
+  clipInFrame = clipInFrame || 0;
+  clipOutFrame = clipOutFrame || store.totalFrames - 1;
+
+  return (
+    <div className={JoinClassNames(S("clip-time"), className)}>
+      <span>
+        {store.videoHandler.FrameToSMPTE(clipInFrame)}
+      </span>
+      <span>-</span>
+      <span>
+        {store.videoHandler.FrameToSMPTE(clipOutFrame)}
+      </span>
+      <span>
+        ({store.videoHandler.FrameToString({frame: clipOutFrame - clipInFrame})})
+      </span>
+    </div>
+  );
+});
