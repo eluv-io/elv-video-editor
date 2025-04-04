@@ -3,15 +3,15 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 import React, {useEffect} from "react";
 import {observer} from "mobx-react-lite";
 import {rootStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
-import {FocusTrap, Text, Tooltip} from "@mantine/core";
+import {FocusTrap, Tooltip} from "@mantine/core";
 import {
+  Confirm,
   FormNumberInput,
   FormSelect,
   FormTextArea,
   IconButton,
 } from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher, FormatConfidence, Round} from "@/utils/Utils.js";
-import {modals} from "@mantine/modals";
 import {BoxToPolygon, BoxToRectangle} from "@/utils/Geometry.js";
 
 import EditIcon from "@/assets/icons/Edit.svg";
@@ -64,18 +64,14 @@ const OverlayTagActions = observer(({tag, track}) => {
               <IconButton
                 label="Remove Tag"
                 icon={TrashIcon}
-                onClick={() =>
-                  modals.openConfirmModal({
-                    title: "Remove Tag",
-                    centered: true,
-                    children: <Text fz="sm">Are you sure you want to remove this overlay tag?</Text>,
-                    labels: { confirm: "Remove", cancel: "Cancel" },
-                    onConfirm: () => {
-                      tagStore.DeleteOverlayTag({trackId: track.trackId, frame: tag.frame, tag});
-                      tagStore.ClearSelectedOverlayTag();
-                    }
-                  })
-                }
+                onClick={async () => await Confirm({
+                  title: "Remove Tag",
+                  text: "Are you sure you want to remove this overlay tag?",
+                  onConfirm: () => {
+                    tagStore.DeleteOverlayTag({trackId: track.trackId, frame: tag.frame, tag});
+                    tagStore.ClearSelectedOverlayTag();
+                  }
+                })}
               />
             </>
         }

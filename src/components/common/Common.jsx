@@ -21,6 +21,7 @@ import {keyboardControlsStore, videoStore} from "@/stores/index.js";
 
 import CopyIcon from "@/assets/icons/v2/copy.svg";
 import CheckIcon from "@/assets/icons/check-circle.svg";
+import {modals} from "@mantine/modals";
 
 const S = CreateModuleClassMatcher(CommonStyles);
 
@@ -581,3 +582,21 @@ export const ClipTimeInfo = observer(({store, clipInFrame, clipOutFrame, classNa
     </div>
   );
 });
+
+export const Confirm = async ({title, text, labels={}, onConfirm, onCancel}) => {
+  if(!await new Promise(resolve =>
+    modals.openConfirmModal({
+      title: <div className={S("confirm__title")}>{title || "Confirm"}</div>,
+      centered: true,
+      children: <div className={S("confirm__text")}>{text}</div>,
+      labels: {confirm: labels.confirm || "Confirm", cancel: labels.cancel || "Cancel"},
+      onConfirm: () => resolve(true),
+      onCancel: () => resolve(false)
+    })
+  )) {
+    onCancel?.();
+    return;
+  }
+
+  onConfirm();
+};

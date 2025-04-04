@@ -4,7 +4,7 @@ import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {rootStore, compositionStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
-import {AsyncButton, Icon, IconButton, SMPTEInput} from "@/components/common/Common";
+import {AsyncButton, Confirm, Icon, IconButton, SMPTEInput} from "@/components/common/Common";
 import MarkedSlider from "@/components/common/MarkedSlider";
 
 import {
@@ -20,7 +20,6 @@ import CompositionTrack from "@/components/compositions/CompositionTrack.jsx";
 import {useLocation, useParams} from "wouter";
 import CompositionSelection from "@/components/compositions/CompositionSelection.jsx";
 import Share from "@/components/download/Share.jsx";
-import {Text} from "@mantine/core";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
@@ -29,8 +28,6 @@ import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
 import SplitIcon from "@/assets/icons/v2/split.svg";
 import LinkIcon from "@/assets/icons/v2/external-link.svg";
 import DiscardDraftIcon from "@/assets/icons/v2/discard-draft.svg";
-import {modals} from "@mantine/modals";
-
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -112,11 +109,11 @@ const TimelineTopBar = observer(() => {
           onClick={() => compositionStore.OpenFabricBrowserLink()}
         />
         <Share
-          disabled={!compositionStore.saved || compositionStore.hasUnsavedChanges}
+          disabled={!compositionStore.saved}
           store={compositionStore.videoStore}
           label={
-            !compositionStore.saved || compositionStore.hasUnsavedChanges ?
-              "Please save your changes before sharing this composition" :
+            !compositionStore.saved ?
+              "Please publish your changes before sharing this composition" :
               "Share Composition"
           }
         />
@@ -141,22 +138,15 @@ const TimelineBottomBar = observer(() => {
             color="gray.6"
             variant="outline"
             disabled={compositionStore.saved && !compositionStore.hasUnsavedChanges}
-            onClick={async () => {
-              if(!await new Promise(resolve =>
-                  modals.openConfirmModal({
-                    title: "Publish Composition",
-                    centered: true,
-                    children: <Text fz="sm">Are you sure you want to discard changes to this composition? This action cannot be undone.</Text>,
-                    labels: {confirm: "Discard", cancel: "Cancel"},
-                    onConfirm: () => resolve(true),
-                    onCancel: () => resolve(false)
-                  })
-              )) { return; }
-
-              navigate("/compositions");
-              compositionStore.DiscardDraft({...compositionStore.compositionObject, removeComposition: true});
-              compositionStore.Reset();
-            }}
+            onClick={async () => await Confirm({
+              title: "Discard Changes",
+              text: "Are you sure you want to discard changes to this composition? This action cannot be undone",
+              onConfirm: () => {
+                navigate("/compositions");
+                compositionStore.DiscardDraft({...compositionStore.compositionObject, removeComposition: true});
+                compositionStore.Reset();
+              }
+            })}
           >
             <Icon style={{height: 18, width: 18}} icon={DiscardDraftIcon}/>
             <span style={{marginLeft: 10}}>

@@ -15,9 +15,8 @@ import {
 } from "@/components/video/VideoControls";
 import Video from "@/components/video/Video";
 import SVG from "react-inlinesvg";
-import {Text, Tooltip} from "@mantine/core";
-import {AsyncButton, Icon} from "@/components/common/Common.jsx";
-import {modals} from "@mantine/modals";
+import {Tooltip} from "@mantine/core";
+import {AsyncButton, Confirm, Icon} from "@/components/common/Common.jsx";
 
 import SaveIcon from "@/assets/icons/Save.svg";
 import DescriptionIcon from "@/assets/icons/v2/description.svg";
@@ -46,22 +45,11 @@ const VideoSection = observer(({showOverlay}) => {
             h={30}
             px="xs"
             disabled={!editStore.hasUnsavedChanges}
-            onClick={async () => {
-              if(!await new Promise(resolve =>
-                modals.openConfirmModal({
-                  title: "Save Changes",
-                  centered: true,
-                  children: <Text fz="sm">Are you sure you want to save your changes?</Text>,
-                  labels: {confirm: "Save", cancel: "Cancel"},
-                  onConfirm: () => resolve(true),
-                  onCancel: () => resolve(false)
-                })
-              )) {
-                return;
-              }
-
-              await editStore.SaveClips();
-            }}
+            onClick={async () => await Confirm({
+              title: "Save Changes",
+              text: "Are you sure you want to save your changes?",
+              onConfirm: async () => await editStore.SaveClips()
+            })}
           >
             <Icon style={{height: 18}} icon={SaveIcon}/>
             <span style={{marginLeft: 5}}>

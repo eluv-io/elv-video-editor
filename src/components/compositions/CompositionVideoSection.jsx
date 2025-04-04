@@ -13,9 +13,8 @@ import {
 } from "@/components/video/VideoControls";
 import Video from "@/components/video/Video";
 import MarkedSlider from "@/components/common/MarkedSlider.jsx";
-import {AsyncButton, FormTextArea, Icon, IconButton, Modal} from "@/components/common/Common.jsx";
-import {Button, Text, Tooltip} from "@mantine/core";
-import {modals} from "@mantine/modals";
+import {AsyncButton, Confirm, FormTextArea, Icon, IconButton, Modal} from "@/components/common/Common.jsx";
+import {Button, Tooltip} from "@mantine/core";
 import {useLocation} from "wouter";
 
 import ZoomInIcon from "@/assets/icons/v2/zoom-in.svg";
@@ -323,22 +322,11 @@ const Title = observer(({clipView}) => {
               small
               label="Remove from My Clips"
               icon={TrashIcon}
-              onClick={async () => {
-                if(!await new Promise(resolve =>
-                  modals.openConfirmModal({
-                    title: "Remove from My Clips",
-                    centered: true,
-                    children: <Text fz="sm">Are you sure you want to remove this clip?</Text>,
-                    labels: {confirm: "Remove", cancel: "Cancel"},
-                    onConfirm: () => resolve(true),
-                    onCancel: () => resolve(false)
-                  })
-                )) {
-                  return;
-                }
-
-                compositionStore.RemoveMyClip(compositionStore.selectedClipId);
-              }}
+              onClick={async () => await Confirm({
+                title: "Remove from My Clips",
+                text: "Are you sure you want to remove this clip?",
+                onConfirm: () => compositionStore.RemoveMyClip(compositionStore.selectedClipId)
+              })}
             />
         }
         {
@@ -361,22 +349,11 @@ const Title = observer(({clipView}) => {
                 h={30}
                 px="xs"
                 disabled={!compositionStore.hasUnsavedChanges}
-                onClick={async () => {
-                  if(!await new Promise(resolve =>
-                    modals.openConfirmModal({
-                      title: "Publish Composition",
-                      centered: true,
-                      children: <Text fz="sm">Are you sure you want to publish this composition?</Text>,
-                      labels: {confirm: "Publish", cancel: "Cancel"},
-                      onConfirm: () => resolve(true),
-                      onCancel: () => resolve(false)
-                    })
-                  )) {
-                    return;
-                  }
-
-                  await compositionStore.SaveComposition();
-                }}
+                onClick={async () => await Confirm({
+                  title: "Publish Composition",
+                  text: "Are you sure you want to publish this composition?",
+                  onConfirm: async () => await compositionStore.SaveComposition()
+                })}
               >
                 <Icon icon={PublishIcon}/>
                 <span style={{marginLeft: 10}}>

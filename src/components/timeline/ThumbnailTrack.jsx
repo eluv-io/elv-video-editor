@@ -3,9 +3,8 @@ import TrackStyles from "@/assets/stylesheets/modules/track.module.scss";
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
-import {Button, Tooltip, Text, Progress} from "@mantine/core";
-import {modals} from "@mantine/modals";
-import {AsyncButton, LoaderImage} from "@/components/common/Common.jsx";
+import {Button, Tooltip, Progress} from "@mantine/core";
+import {AsyncButton, Confirm, LoaderImage} from "@/components/common/Common.jsx";
 
 const S = CreateModuleClassMatcher(TrackStyles);
 
@@ -34,24 +33,16 @@ const ThumbnailCreationTrack = observer(({store}) => {
             size="xs"
             color="gray.9"
             h={25}
-            onClick={async () => {
-              if(!await new Promise(resolve =>
-                modals.openConfirmModal({
-                  title: "Finalize Thumbnails",
-                  centered: true,
-                  children: <Text fz="sm">Warning: Finalizing the thumbnails for this content will cause the page to reload. If you have any changes, they will be lost.</Text>,
-                  labels: { confirm: "Finalize Thumbnails", cancel: "Cancel" },
-                  onConfirm: () => resolve(true),
-                  onCancel: () => resolve(false)
-                })
-              )) { return; }
-
-              await store.thumbnailStore.ThumbnailGenerationStatus({finalize: true});
-              await new Promise(resolve => setTimeout(resolve, 2000));
-              window.location.reload();
-
-              await new Promise(resolve => setTimeout(resolve, 20000));
-            }}
+            onClick={async () => await Confirm({
+              title: "Finalize Thumbnails",
+              text: "Warning: Finalizing the thumbnails for this content will cause the page to reload. If you have any changes, they will be lost.",
+              onConfirm: async () => {
+                await store.thumbnailStore.ThumbnailGenerationStatus({finalize: true});
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                window.location.reload();
+                await new Promise(resolve => setTimeout(resolve, 20000));
+              }
+            })}
           >
             Reload
           </AsyncButton>
@@ -64,15 +55,11 @@ const ThumbnailCreationTrack = observer(({store}) => {
         <Button
           size="xs"
           color="gray.9"
-          onClick={() =>
-            modals.openConfirmModal({
-              title: "Generate Thumbnails",
-              centered: true,
-              children: <Text fz="sm">Are you sure you want to generate thumbnails for this content? It should take about 30 seconds to several minutes, depending on the content</Text>,
-              labels: { confirm: "Generate Thumbnails", cancel: "Cancel" },
-              onConfirm: () => store.thumbnailStore.GenerateVideoThumbnails()
-            })
-          }
+          onClick={async () => await Confirm({
+            title: "Generate Thumbnails",
+            text: "Are you sure you want to generate thumbnails for this content?",
+            onConfirm: () => store.thumbnailStore.GenerateVideoThumbnails()
+          })}
         >
           Generate Thumbnails
         </Button>

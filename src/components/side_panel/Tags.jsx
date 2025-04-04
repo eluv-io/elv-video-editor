@@ -3,12 +3,11 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {tagStore, trackStore, videoStore} from "@/stores/index.js";
-import {FocusTrap, Text, Tooltip} from "@mantine/core";
-import {FormSelect, FormTextArea, IconButton, SMPTEInput} from "@/components/common/Common.jsx";
+import {FocusTrap, Tooltip} from "@mantine/core";
+import {Confirm, FormSelect, FormTextArea, IconButton, SMPTEInput} from "@/components/common/Common.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
-import {modals} from "@mantine/modals";
 
 import EditIcon from "@/assets/icons/Edit.svg";
 import PlayIcon from "@/assets/icons/Play.svg";
@@ -132,18 +131,14 @@ const TagActions = observer(({tag, track}) => {
                   <IconButton
                     label="Remove Tag"
                     icon={TrashIcon}
-                    onClick={() =>
-                      modals.openConfirmModal({
-                        title: "Remove Tag",
-                        centered: true,
-                        children: <Text fz="sm">Are you sure you want to remove this tag?</Text>,
-                        labels: { confirm: "Remove", cancel: "Cancel" },
-                        onConfirm: () => {
-                          tagStore.DeleteTag({trackId: track.trackId, tag});
-                          tagStore.ClearSelectedTag();
-                        }
-                      })
-                    }
+                    onClick={async () => await Confirm({
+                      title: "Remove Tag",
+                      text: "Are you sure you want to remove this tag?",
+                      onConfirm: () => {
+                        tagStore.DeleteTag({trackId: track.trackId, tag});
+                        tagStore.ClearSelectedTag();
+                      }
+                    })}
                   />
               }
             </>

@@ -4,13 +4,13 @@ import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {
+  Confirm,
   Icon,
   IconButton,
   Modal
 } from "@/components/common/Common.jsx";
-import {Tabs, Text} from "@mantine/core";
+import {Tabs} from "@mantine/core";
 import {rootStore, videoStore, downloadStore} from "@/stores/index.js";
-import {modals} from "@mantine/modals";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import DownloadForm from "@/components/download/DownloadForm.jsx";
 
@@ -33,19 +33,18 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
           icon={RetryIcon}
           title="Retry"
           small
-          onClick={() => {
+          onClick={async () => {
             setConfirming(true);
 
-            modals.openConfirmModal({
+            await Confirm({
               title: "Retry Download",
-              children: <Text fz={14}>Are you sure you want to retry this download?</Text>,
-              centered: true,
-              labels: { confirm: "Retry", cancel: "Cancel" },
-              onConfirm: () => {
+              text: "Are you sure you want to retry this download?",
+              onConfirm: async () => {
                 const jobInfo = downloadStore.downloadJobInfo[job.jobId];
-                downloadStore.RemoveDownloadJob({jobId: job.jobId});
-                downloadStore.StartDownloadJob({...jobInfo})
-                  .then(() => Reload());
+                await downloadStore.RemoveDownloadJob({jobId: job.jobId});
+                await downloadStore.StartDownloadJob({...jobInfo});
+                Reload();
+
                 setConfirming(false);
               },
               onCancel: () => setConfirming(false)
@@ -56,14 +55,12 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
           icon={XIcon}
           label="Remove"
           small
-          onClick={() => {
+          onClick={async () => {
             setConfirming(true);
 
-            modals.openConfirmModal({
+            await Confirm({
               title: "Remove Download",
-              children: <Text fz={14}>Are you sure you want to remove this download from your history?</Text>,
-              centered: true,
-              labels: { confirm: "Remove", cancel: "Cancel" },
+              text: "Are you sure you want to remove this download from your history?",
               onConfirm: () => {
                 downloadStore.RemoveDownloadJob({jobId: job.jobId});
                 setConfirming(false);
@@ -88,14 +85,12 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
           icon={XIcon}
           label="Remove Download"
           small
-          onClick={() => {
+          onClick={async () => {
             setConfirming(true);
 
-            modals.openConfirmModal({
+            await Confirm({
               title: "Remove Download",
-              children: <Text fz={14}>Are you sure you want to remove this download from your history?</Text>,
-              centered: true,
-              labels: { confirm: "Remove", cancel: "Cancel" },
+              text: "Are you sure you want to remove this download from your history?",
               onConfirm: () => {
                 downloadStore.RemoveDownloadJob({jobId: job.jobId});
                 setConfirming(false);

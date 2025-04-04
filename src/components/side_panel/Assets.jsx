@@ -2,6 +2,7 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 
 import {observer} from "mobx-react-lite";
 import {
+  Confirm,
   FormNumberInput,
   FormSelect,
   FormTextArea, FormTextInput, Icon,
@@ -15,8 +16,7 @@ import React, {useEffect, useState} from "react";
 import {useParams} from "wouter";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import {CreateModuleClassMatcher, FormatConfidence, Round} from "@/utils/Utils.js";
-import {FocusTrap, Text, Tooltip} from "@mantine/core";
-import {modals} from "@mantine/modals";
+import {FocusTrap, Tooltip} from "@mantine/core";
 import {BoxToPolygon, BoxToRectangle} from "@/utils/Geometry.js";
 import {FileBrowserButton} from "@/components/common/FileBrowser.jsx";
 
@@ -71,18 +71,14 @@ const AssetTagActions = observer(({tag, track}) => {
               <IconButton
                 label="Remove Tag"
                 icon={TrashIcon}
-                onClick={() =>
-                  modals.openConfirmModal({
-                    title: "Remove Tag",
-                    centered: true,
-                    children: <Text fz="sm">Are you sure you want to remove this tag?</Text>,
-                    labels: { confirm: "Remove", cancel: "Cancel" },
-                    onConfirm: () => {
-                      tagStore.DeleteAssetTag(tag);
-                      tagStore.ClearSelectedOverlayTag();
-                    }
-                  })
-                }
+                onClick={async () => await Confirm({
+                  title: "Remove Tag",
+                  text: "Are you sure you want to remove this tag?",
+                  onConfirm: () => {
+                    tagStore.DeleteAssetTag(tag);
+                    tagStore.ClearSelectedOverlayTag();
+                  }
+                })}
               />
             </>
         }
@@ -332,15 +328,11 @@ const AssetFormActions = observer(({asset}) => {
             <IconButton
               label="Remove Asset"
               icon={TrashIcon}
-              onClick={() =>
-                modals.openConfirmModal({
-                  title: "Remove Asset",
-                  centered: true,
-                  children: <Text fz="sm">Are you sure you want to remove this asset?</Text>,
-                  labels: { confirm: "Remove", cancel: "Cancel" },
-                  onConfirm: () => tagStore.DeleteAsset(asset)
-                })
-              }
+              onClick={async () => await Confirm({
+                title: "Remove Asset",
+                text: "Are you sure you want to remove this asset?",
+                onConfirm: () => tagStore.DeleteAsset(asset)
+              })}
             />
         }
       </div>

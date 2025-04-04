@@ -262,6 +262,7 @@ const TimelineTopBar = observer(({simple}) => {
         <div className={S("toolbar__separator")}/>
         <Download/>
         <Share store={videoStore}/>
+
       </div>
     </div>
   );

@@ -76,7 +76,15 @@ const SearchIndexSelection = observer(() => {
                 }}
                 className={S("search__index-option", rootStore.selectedSearchIndexId === index.id ? "search__index-option--active" : "")}
               >
-                { index.name || index.id }
+                <div className={S("search__index-option-name")}>
+                  { index.name || index.id }
+                </div>
+                {
+                  !index.name ? null :
+                    <div className={S("search__index-option-id")}>
+                      { index.id }
+                    </div>
+                }
               </button>
             )
           }

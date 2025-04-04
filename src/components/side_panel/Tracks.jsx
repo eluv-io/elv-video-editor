@@ -3,15 +3,14 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 import React, {useEffect} from "react";
 import {observer} from "mobx-react-lite";
 import {tagStore, trackStore} from "@/stores/index.js";
-import {FormColorInput, FormTextArea, FormTextInput, IconButton} from "@/components/common/Common.jsx";
+import {Confirm, FormColorInput, FormTextArea, FormTextInput, IconButton} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 
 import EditIcon from "@/assets/icons/Edit.svg";
 import BackIcon from "@/assets/icons/v2/back.svg";
 import XIcon from "@/assets/icons/X.svg";
-import {FocusTrap, Text} from "@mantine/core";
+import {FocusTrap} from "@mantine/core";
 import TrashIcon from "@/assets/icons/trash.svg";
-import {modals} from "@mantine/modals";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -48,31 +47,26 @@ const TrackActions = observer(({track}) => {
               icon={XIcon}
               onClick={() => tagStore.ClearEditing(false)}
             /> :
-
-                track.trackType === "primary-content" ? null :
-                  <>
-                    <IconButton
-                      label="Edit Category"
-                      icon={EditIcon}
-                      onClick={() => tagStore.SetEditing({id: track.trackId, type: "track"})}
-                    />
-                    <IconButton
-                      label="Remove Category"
-                      icon={TrashIcon}
-                      onClick={() =>
-                        modals.openConfirmModal({
-                          title: "Remove Category",
-                          centered: true,
-                          children: <Text fz="sm">Are you sure you want to remove this category?</Text>,
-                          labels: { confirm: "Remove", cancel: "Cancel" },
-                          onConfirm: () => {
-                            tagStore.DeleteTrack({trackId: track.trackId});
-                            tagStore.ClearSelectedTrack();
-                          }
-                        })
-                      }
-                    />
-                  </>
+            track.trackType === "primary-content" ? null :
+              <>
+                <IconButton
+                  label="Edit Category"
+                  icon={EditIcon}
+                  onClick={() => tagStore.SetEditing({id: track.trackId, type: "track"})}
+                />
+                <IconButton
+                  label="Remove Category"
+                  icon={TrashIcon}
+                  onClick={async () => await Confirm({
+                    title: "Remove Category",
+                    text: "Are you sure you want to remove this category?",
+                    onConfirm: () => {
+                      tagStore.DeleteTrack({trackId: track.trackId});
+                      tagStore.ClearSelectedTrack();
+                    }
+                  })}
+                />
+              </>
         }
       </div>
     </div>

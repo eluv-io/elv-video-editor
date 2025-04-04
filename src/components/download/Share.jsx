@@ -3,7 +3,7 @@ import DownloadStyles from "@/assets/stylesheets/modules/download.module.scss";
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {
-  AsyncButton,
+  AsyncButton, Confirm,
   FormDateTimeInput,
   FormSelect, FormTextArea,
   FormTextInput,
@@ -12,10 +12,9 @@ import {
   Modal
 } from "@/components/common/Common.jsx";
 import {Copy, CreateModuleClassMatcher, ValidEmail} from "@/utils/Utils.js";
-import {Button, FocusTrap, Tabs, Text} from "@mantine/core";
+import {Button, FocusTrap, Tabs} from "@mantine/core";
 import {DownloadFormFields, DownloadPreview} from "@/components/download/DownloadForm.jsx";
 import {rootStore, downloadStore, compositionStore} from "@/stores/index.js";
-import {modals} from "@mantine/modals";
 
 import ShareIcon from "@/assets/icons/v2/share.svg";
 import BackIcon from "@/assets/icons/v2/back.svg";
@@ -402,21 +401,15 @@ const Share = observer(({share, setEditingShare, setSelectedShare, Reload}) => {
                 event.preventDefault();
                 event.stopPropagation();
 
-                await new Promise(resolve =>
-                  modals.openConfirmModal({
-                    title: "Revoke Access",
-                    centered: true,
-                    children: <Text fz="sm">Are you sure you want to revoke access to this content
-                      from {share.recipient || "this share"}?</Text>,
-                    labels: {confirm: "Confirm", cancel: "Cancel"},
-                    onConfirm: async () => {
-                      await downloadStore.RevokeShare({shareId: share.share_id});
+                await Confirm({
+                  title: "Revoke Access",
+                  text: `Are you sure you want to revoke access to this content from ${share.recipient || "this share"}?`,
+                  onConfirm: async () => {
+                    await downloadStore.RevokeShare({shareId: share.share_id});
                       Reload();
                       resolve();
-                    },
-                    onCancel: () => resolve()
-                  })
-                );
+                  }
+                });
               }}
             />
         }

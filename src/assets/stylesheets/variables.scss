@@ -50,6 +50,8 @@
   --track-height: 45px;
   --track-height--thumbnails: 60px;
   --track-height--compositions: 80px;
+  --mantine-primary-color-filled: var(--background-toolbar--highlight);
+  --mantine-primary-color-filled-hover: var(--color-highlight);
 
   @keyframes fadein {
     0% {

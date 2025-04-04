@@ -481,3 +481,15 @@
   font-size: 14px;
   gap: 5px;
 }
+
+.confirm {
+  &__title {
+    font-size: 20px;
+    font-weight: 500;
+  }
+
+  &__text {
+    font-size: 16p;
+    margin-bottom: 30px;
+  }
+}
