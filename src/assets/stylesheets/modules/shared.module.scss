@@ -217,6 +217,24 @@
     transition: background-color 0.15s ease, color 0.15s ease;
     width: 150px;
   }
+
+  &__image-selection {
+    background-color: var(--background-input);
+    border: 1px solid var(--table-border-color);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 5px;
+    max-width: 300px;
+    padding: 10px;
+
+    button,
+    img,
+    object {
+      width: 100%;
+    }
+  }
 }
 
 .thumbnail-hover {

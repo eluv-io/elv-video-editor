@@ -1,61 +1,81 @@
 import {flow, makeAutoObservable } from "mobx";
-import {diff} from "deep-object-diff";
-import {SortTags, StorageHandler} from "@/utils/Utils";
-import FrameAccurateVideo from "@/utils/FrameAccurateVideo";
 
 class EditStore {
-  writeInfo = {};
   saving = false;
-  saveFailed = false;
-  position = 0;
-
-  _actionStack = [];
-  _redoStack = [];
+  writeInfo = {};
+  editInfo = {};
 
   constructor(rootStore) {
     makeAutoObservable(this);
 
     this.rootStore = rootStore;
+
+    this.Reset();
   }
 
   get client() {
     return this.rootStore.client;
   }
 
-  get hasUnsavedChanges() {
-    return this.position > 0;
-  }
-
   get page() {
     return this.rootStore.page;
   }
 
+  get position() {
+    return this.editInfo[this.page]?.position;
+  }
+
+  get hasUnsavedChanges() {
+    return this.position > 0;
+  }
+
+  // Undo / redo segregated by subpage, e.g. different assets
   get undoStack() {
-    return this._actionStack.filter(action =>
-      action.page === this.rootStore.page &&
+    return this.editInfo[this.page]?.actionStack?.filter(action =>
       action.subpage === this.rootStore.subpage
     );
   }
 
   get redoStack() {
-    return this._redoStack.filter(action =>
-      action.page === this.rootStore.page &&
+    return this.editInfo[this.page]?.redoStack?.filter(action =>
       action.subpage === this.rootStore.subpage
     );
   }
 
   get nextUndoAction() {
-    return this.undoStack.slice(-1)[0];
+    return this.undoStack?.slice(-1)[0];
   }
 
   get nextRedoAction() {
-    return this.redoStack.slice(-1)[0];
+    return this.redoStack?.slice(-1)[0];
+  }
+
+  Reset() {
+    this.saving = false;
+
+    this.editInfo = {
+      tags: {
+        position: 0,
+        actionStack: [],
+        redoStack: []
+      },
+      clips: {
+        position: 0,
+        actionStack: [],
+        redoStack: []
+      },
+      assets: {
+        position: 0,
+        actionStack: [],
+        redoStack: []
+      }
+    };
   }
 
   PerformAction({label, Action, Undo, ...attrs}, fromRedo=false) {
     const result = Action();
 
-    this._actionStack.push({
+    this.editInfo[this.page].actionStack.push({
       id: this.rootStore.NextId(),
       label,
       Action,
@@ -66,12 +86,11 @@ class EditStore {
       ...attrs
     });
 
-    this.position++;
+    this.editInfo[this.page].position += 1;
 
     // Undid action(s), but performed new action - Drop redo stack for this context
     if(!fromRedo) {
-      this._redoStack = this._redoStack.filter(action =>
-        action.page !== this.rootStore.page ||
+      this.editInfo[this.page].redoStack = this.editInfo[this.page].redoStack.filter(action =>
         action.subpage !== this.rootStore.subpage
       );
     }
@@ -83,31 +102,74 @@ class EditStore {
     if(this.undoStack.length === 0) { return; }
 
     const action = this.nextUndoAction;
-    this._actionStack = this._actionStack.filter(otherAction => otherAction.id !== action.id);
+    this.editInfo[this.page].actionStack = this.editInfo[this.page].actionStack
+      .filter(otherAction => otherAction.id !== action.id);
 
     action.Undo();
 
-    this._redoStack.push(action);
-
-    this.position--;
+    this.editInfo[this.page].redoStack.push(action);
+    this.editInfo[this.page].position -= 1;
   }
 
   Redo() {
     if(this.redoStack.length === 0) { return; }
 
     const action = this.nextRedoAction;
-    this._redoStack = this._redoStack.filter(otherAction => otherAction.id !== action.id);
+
+    this.editInfo[this.page].redoStack = this.editInfo[this.page].redoStack
+      .filter(otherAction => otherAction.id !== action.id);
 
     this.PerformAction(action, true);
   }
 
-  Reset() {
-    this.saving = false;
+  WriteToken({objectId}) {
+    return this.writeInfo[objectId]?.write_token;
   }
+
+  DiscardWriteToken({objectId}) {
+    delete this.writeInfo[objectId];
+  }
+
+  InitializeWrite = flow(function * ({objectId}) {
+    if(!this.writeInfo[objectId]) {
+      const libraryId = yield this.rootStore.LibraryId({objectId});
+
+      this.writeInfo[objectId] = yield this.client.EditContentObject({
+        libraryId,
+        objectId
+      });
+    }
+
+    return this.writeInfo[objectId].write_token;
+  });
+
+  Finalize = flow(function * ({objectId, commitMessage}) {
+    const libraryId = yield this.rootStore.LibraryId({objectId});
+
+    const writeInfo = this.writeInfo[objectId];
+
+    if(!writeInfo) {
+      return;
+    }
+
+    const response = yield this.client.FinalizeContentObject({
+      libraryId,
+      objectId,
+      writeToken: writeInfo.writeToken,
+      commitMessage
+    });
+
+    this.DiscardWriteToken({objectId});
+
+    return response;
+  });
+
 
   SaveClips = flow(function * () {
 
   });
+
+  /*
 
   Save2 = flow(function * ({trimOfferings}) {
     if(this.saving || this.rootStore.videoStore.loading) { return; }
@@ -497,61 +559,7 @@ class EditStore {
 
 
 
-  WriteToken({objectId}) {
-    return this.writeInfo[objectId]?.writeToken;
-  }
-
-  DiscardWriteToken({objectId}) {
-    delete this.writeInfo[objectId];
-  }
-
-  InitializeWrite = flow(function * ({objectId}) {
-    if(this.WriteToken({objectId})) {
-      return this.WriteToken({objectId});
-    }
-
-    const libraryId = yield this.rootStore.LibraryId({objectId});
-
-    const { writeToken } = yield this.client.EditContentObject({
-      libraryId,
-      objectId
-    });
-
-    this.writeInfo[objectId] = {
-      writeToken,
-      fabricNodeUrl: yield this.client.WriteTokenNodeUrl({writeToken})
-    };
-
-    this.SaveWriteInfo();
-
-    return writeToken;
-  });
-
-  Finalize = flow(function * ({objectId, commitMessage}) {
-    const libraryId = yield this.rootStore.LibraryId({objectId});
-
-    const writeInfo = this.writeInfo[objectId];
-
-    if(!writeInfo) {
-      return;
-    }
-
-    const response = yield this.client.FinalizeContentObject({
-      libraryId,
-      objectId,
-      writeToken: writeInfo.writeToken,
-      commitMessage
-    });
-
-    delete this.writeInfo[objectId];
-    this.SaveWriteInfo();
-
-    return response;
-  });
-
-  SaveWriteInfo() {
-    StorageHandler.set({type: "local", key: "write-info", value: { ...this.writeInfo }, b64: true, json: true});
-  }
+   */
 }
 
 export default EditStore;

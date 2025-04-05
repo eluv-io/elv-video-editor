@@ -2,9 +2,9 @@ import AssetStyles from "@/assets/stylesheets/modules/assets.module.scss";
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
-import {CreateModuleClassMatcher, DownloadFromUrl} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, DownloadFromUrl, JoinClassNames} from "@/utils/Utils.js";
 import {assetStore, editStore, tagStore} from "@/stores/index.js";
-import {Icon, IconButton, LoaderImage} from "@/components/common/Common.jsx";
+import {AsyncButton, Confirm, Icon, IconButton, LoaderImage} from "@/components/common/Common.jsx";
 import {Tooltip} from "@mantine/core";
 import Overlay from "@/components/video/Overlay.jsx";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
@@ -15,6 +15,7 @@ import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
 import AddTagIcon from "@/assets/icons/v2/add-new-item.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
+import SaveIcon from "@/assets/icons/Save.svg";
 
 const S = CreateModuleClassMatcher(AssetStyles);
 
@@ -104,12 +105,40 @@ const AssetTags = observer(({asset, setHoverTag}) => {
   );
 });
 
+const SaveAssetButton = observer(({className=""}) =>
+  <AsyncButton
+    color="gray.5"
+    variant="outline"
+    autoContrast
+    h={28}
+    px="xs"
+    w={100}
+    disabled={!assetStore.hasUnsavedChanges}
+    onClick={async () => await Confirm({
+      title: "Save Assets",
+      text: "Are you sure you want to save changes to these assets?",
+      onConfirm: async () => await assetStore.SaveAssets()
+    })}
+    className={JoinClassNames(S("asset__save"), className)}
+  >
+    <Icon icon={SaveIcon}/>
+    <span style={{marginLeft: 10}}>
+      Save
+    </span>
+  </AsyncButton>
+);
+
 const AssetContent = observer(({asset, hoverTag}) => {
   const [imageElement, setImageElement] = useState(undefined);
 
   return (
     <div className={S("asset")}>
-      <h2 className={S("asset__toolbar", "asset__title")}>{asset.label || asset.key}</h2>
+      <h2 className={S("asset__toolbar", "asset__title")}>
+        <div>
+          {asset.label || asset.key}
+        </div>
+        <SaveAssetButton />
+      </h2>
       <div className={S("asset__image-container")}>
         <LoaderImage
           setRef={setImageElement}
@@ -177,7 +206,7 @@ const AssetDetails = observer(({asset, summary, setHoverTag}) => {
         setHoverTag={setHoverTag}
       />
       {
-        !summary ? null :
+        !summary || summary.error ? null :
           <div className={S("asset-summary")}>
             <div className={S("asset-summary__header")}>Summary</div>
             {
@@ -222,6 +251,7 @@ const SelectedAsset = observer(({assetKey}) => {
     return (
       <div className={S("empty")}>
         Select an asset from the list to view details
+        <SaveAssetButton className={S("empty__save")} />
       </div>
     );
   }

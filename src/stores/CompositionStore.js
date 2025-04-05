@@ -1227,8 +1227,6 @@ class CompositionStore {
       }
     })).json())?.contents || [];
 
-    console.log(clips);
-
     let searchClipIds = [];
     for(const clip of clips) {
       const clipInFrame = this.sourceVideoStore.TimeToFrame(clip.start_time / 1000);

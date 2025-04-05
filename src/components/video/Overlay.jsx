@@ -396,7 +396,7 @@ const Draw = ({canvas, tags, hoverTags, elementSize}) => {
       (!tagStore.selectedOverlayTagId && tagStore.selectedOverlayTagIds.includes(tag.tagId)) ||
       assetStore.selectedTags.find(selectedTag => tag.tagId === selectedTag.tagId)
     ) {
-      context.globalAlpha = 0.8;
+      context.globalAlpha = 1;
     } else {
       context.globalAlpha = 0.4;
     }

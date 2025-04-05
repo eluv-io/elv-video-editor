@@ -187,6 +187,7 @@ export const IconButton = ({
   faded,
   small,
   withinPortal=false,
+  noHover,
   ...props
 }) => {
   const [submitting, setSubmitting] = useState(false);
@@ -241,6 +242,7 @@ export const IconButton = ({
               faded ? "icon-button--faded" : "",
               highlight ? "icon-button--highlight" : "",
               small ? "icon-button--small" : "",
+              noHover ? "icon-button--no-hover" : ""
             ),
           props.className || ""
         )
@@ -302,7 +304,7 @@ export const AsyncButton = observer(({onClick, tooltip, ...props}) => {
         setLoading(true);
 
         try {
-          await onClick(event);
+          await onClick?.(event);
         } finally {
           setLoading(false);
         }

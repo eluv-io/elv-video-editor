@@ -3,6 +3,22 @@ import {createTheme, em, Modal, Tooltip} from "@mantine/core";
 import MantineStyles from "@/assets/stylesheets/modules/mantine.module.scss";
 
 const MantineTheme = createTheme({
+  primaryColor: "purple",
+  primaryShade: 5,
+  colors: {
+    "purple": [
+      "#ca81ff",
+      "#b674e6",
+      "#a368cd",
+      "#8f5cb5",
+      "#7d509d",
+      "#6b4586",
+      "#593a70",
+      "#482f5a",
+      "#382446",
+      "#281a32"
+    ]
+  },
   /** Put your mantine theme override here */
   fontSizes: {
     xs: em(12),

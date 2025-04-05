@@ -85,25 +85,41 @@
     }
   }
 
+  &__buttons {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    margin-right: 10px;
+  }
+
   &__button {
     align-items: center;
     color: var(--text-tertiary);
     display: flex;
     height: 20px;
     justify-content: center;
-    margin-right: 10px;
     width: 20px;
   }
 
+  &__index-menu {
+    max-height: 400px;
+    overflow-y: auto;
+    position: relative;
+  }
+
   &__index-title {
+    background-color: var(--background-toolbar);
+    box-shadow: 0 0 3px var(--background-primary);
     font-weight: 500;
     padding: 10px;
+    position: sticky;
+    top: 0;
   }
 
   &__index-option {
     font-size: 14px;
-    height: 45px;
-    padding: 0 10px;
+    min-height: 45px;
+    padding: 10px;
     text-align: left;
     transition: background-color 0.15s ease, color 0.15s ease;
     width: 100%;
@@ -221,7 +237,7 @@
   height: 100%;
   max-width: 100%;
   min-height: 0;
-  overflow: hidden auto;
+  overflow: hidden scroll;
   padding: 0 10px 10px;
   width: 100%;
 }
@@ -342,7 +358,7 @@
   height: 100%;
   max-width: 100%;
   min-height: 0;
-  overflow: hidden auto;
+  overflow: hidden scroll;
   padding: 15px 10px;
   width: 100%;
 }

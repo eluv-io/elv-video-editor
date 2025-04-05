@@ -124,6 +124,10 @@ progress::-moz-progress-bar {
   }
 }
 
+button {
+  transition: background-color 0.15s ease;
+}
+
 .monospace {
   font-family: var(--font-monospace);
 }

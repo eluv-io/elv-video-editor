@@ -195,6 +195,8 @@ class VideoStore {
       this.rootStore.tagStore.ClearTags();
       this.rootStore.trackStore.Reset();
     }
+
+    this.rootStore.editStore.Reset();
   }
 
   ToggleVideoControls(enable) {
@@ -417,6 +419,29 @@ class VideoStore {
     if(this.videoObject) {
       this.videoObject.metadata = this.metadata;
     }
+  });
+
+  // Update version hash and urls without reloading (e.g. uploading files)
+  UpdateObjectVersion = flow(function * () {
+    if(!this.videoObject.objectId) { return; }
+
+    this.versionHash = yield this.rootStore.client.LatestVersionHash({objectId: this.videoObject.objectId});
+
+    this.baseUrl = yield this.rootStore.client.FabricUrl({
+      versionHash: this.versionHash
+    });
+
+    this.baseStateChannelUrl = yield this.rootStore.client.FabricUrl({
+      versionHash: this.versionHash,
+      channelAuth: true
+    });
+
+    this.baseFileUrl = yield this.rootStore.client.FileUrl({
+      versionHash: this.versionHash,
+      filePath: "/"
+    });
+
+    this.videoObject.versionHash = this.versionHash;
   });
 
   Initialize(video, player) {

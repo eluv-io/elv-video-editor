@@ -13,7 +13,7 @@ import {
 import UrlJoin from "url-join";
 import {assetStore, rootStore, tagStore, videoStore} from "@/stores/index.js";
 import React, {useEffect, useState} from "react";
-import {useParams} from "wouter";
+import {useLocation, useParams} from "wouter";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import {CreateModuleClassMatcher, FormatConfidence, Round} from "@/utils/Utils.js";
 import {FocusTrap, Tooltip} from "@mantine/core";
@@ -34,6 +34,7 @@ const AssetTagActions = observer(({tag, track}) => {
     <div className={S("tag-details__actions")}>
       <div className={S("tag-details__left-actions")}>
         <IconButton
+          highlight
           label={
             tagStore.editing ?
               "Save changes and return to tag details" :
@@ -86,7 +87,6 @@ const AssetTagActions = observer(({tag, track}) => {
     </div>
   );
 });
-
 
 const AssetTagForm = observer(() => {
   const tag = tagStore.editedAssetTag;
@@ -170,8 +170,11 @@ export const AssetTagDetails = observer(() => {
   const track = assetStore.AssetTrack(tag?.trackKey);
 
   useEffect(() => {
-    if(!tag || !track) {
+    if(tagStore.editing && tagStore.editedAssetTag?.tagId !== tag?.tagId) {
       tagStore.ClearEditing();
+    }
+
+    if(!tag || !track) {
       assetStore.ClearSelectedTag();
     }
   }, [tag, track]);
@@ -282,6 +285,7 @@ export const AssetTagsList = observer(() => {
 });
 
 const AssetFormActions = observer(({asset}) => {
+  const [, navigate] = useLocation();
   const existingAsset = assetStore.Asset(asset.key);
 
   let error;
@@ -297,6 +301,7 @@ const AssetFormActions = observer(({asset}) => {
     <div className={S("tag-details__actions")}>
       <div className={S("tag-details__left-actions")}>
         <IconButton
+          highlight
           disabled={!!error}
           label={error || "Save changes and return to assets"}
           icon={CheckmarkIcon}
@@ -318,11 +323,6 @@ const AssetFormActions = observer(({asset}) => {
         { asset.key || "<Asset>" }
       </div>
       <div className={S("tag-details__right-actions")}>
-        <IconButton
-          label="Discard Changes"
-          icon={XIcon}
-          onClick={() => tagStore.ClearEditing(false)}
-        />
         {
           asset.isNew ? null :
             <IconButton
@@ -331,10 +331,18 @@ const AssetFormActions = observer(({asset}) => {
               onClick={async () => await Confirm({
                 title: "Remove Asset",
                 text: "Are you sure you want to remove this asset?",
-                onConfirm: () => tagStore.DeleteAsset(asset)
+                onConfirm: () => {
+                  tagStore.DeleteAsset(asset);
+                  navigate("/assets");
+                }
               })}
             />
         }
+        <IconButton
+          label="Discard Changes"
+          icon={XIcon}
+          onClick={() => tagStore.ClearEditing(false)}
+        />
       </div>
     </div>
   );
@@ -378,7 +386,7 @@ const AssetForm = observer(() => {
                 value={asset.file?.["/"]?.split("./files")[1] || ""}
               />
             </div>
-            <div className={S("form__input-container")}>
+            <div className={S("form__image-selection")}>
               <FileBrowserButton
                 fileBrowserProps={{
                   objectId: videoStore.videoObject.objectId,
@@ -396,11 +404,13 @@ const AssetForm = observer(() => {
               >
                 Select Asset File
               </FileBrowserButton>
-            </div>
-            <div style={{marginTop: 20}} className={S("form__input-container")}>
               <LoaderImage
+                key={assetStore.AssetLink("edited")}
+                loaderAspectRatio={16/9}
                 src={assetStore.AssetLink("edited")}
                 width={300}
+                loaderWidth={300}
+                className={S("form__selected-image")}
               />
             </div>
           </div>
@@ -484,6 +494,19 @@ const AssetsList = observer(() => {
           )
         }
       </InfiniteScroll>
+      {
+        assetStore.selectedTags.length === 0 ? null :
+          <div className={S("side-panel-modal")}>
+            <AssetTagsList />
+          </div>
+      }
+
+      {
+        !assetStore.selectedTag ? null :
+          <div className={S("side-panel-modal")}>
+            <AssetTagDetails />
+          </div>
+      }
 
       {
         !tagStore.editedAsset ? null :

@@ -17,6 +17,10 @@ class AssetStore {
     this.rootStore = rootStore;
   }
 
+  get hasUnsavedChanges() {
+    return this.rootStore.editStore.hasUnsavedChanges;
+  }
+
   get filteredAssetList() {
     const filterTerms = (this.filter
       .toLowerCase()
@@ -271,6 +275,112 @@ class AssetStore {
       this.activeTracks[key] = true;
     }
   }
+
+  SaveAssets = flow(function * () {
+    const actions = this.rootStore.editStore.editInfo.assets.actionStack;
+
+    if(actions.length === 0) { return; }
+
+    const objectId = this.rootStore.videoStore.videoObject.objectId;
+    const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
+    const writeToken = yield this.rootStore.editStore.InitializeWrite({objectId});
+
+    let assetsWithChangedTags = {};
+    for(const action of actions) {
+      if(action.type === "asset") {
+        let assetFields = ["asset_type", "attachment_content_type", "image_tags", "file", "display_metadata", "manual_metadata", "raw_metadata"];
+
+        switch(action.action) {
+          // Create new asset
+          case "create":
+            let newAsset = {};
+            assetFields.forEach(key => {
+              if(action.modifiedItem[key]) {
+                newAsset[key] = action.modifiedItem[key];
+              }
+            });
+
+            yield this.rootStore.client.ReplaceMetadata({
+              libraryId,
+              objectId,
+              writeToken,
+              metadataSubtree: UrlJoin("/assets", action.modifiedItem.key),
+              metadata: Unproxy(newAsset)
+            });
+
+            break;
+
+          case "modify":
+            // Modify asset file
+            yield this.rootStore.client.ReplaceMetadata({
+              libraryId,
+              objectId,
+              writeToken,
+              metadataSubtree: UrlJoin("/assets", action.modifiedItem.key, "file"),
+              metadata: {
+                "/": action.modifiedItem.file["/"]
+              }
+            });
+
+            break;
+
+          case "delete":
+            // Remove asset
+            yield this.rootStore.client.DeleteMetadata({
+              libraryId,
+              objectId,
+              writeToken,
+              metadataSubtree: UrlJoin("/assets", action.modifiedItem.key)
+            });
+
+            // Ignore any changes to tags
+            delete assetsWithChangedTags[action.modifiedItem.key];
+
+            break;
+        }
+      } else if(action.type === "assetTag") {
+        // Since fabric lists don't allow arbitrary inserts(?), let's just determine which asset + tracks changed and update all of them
+        if(!assetsWithChangedTags[action.modifiedItem.assetKey]) {
+          assetsWithChangedTags[action.modifiedItem.assetKey] = {};
+        }
+
+        if(!assetsWithChangedTags[action.modifiedItem.assetKey][action.modifiedItem.trackKey]) {
+          assetsWithChangedTags[action.modifiedItem.assetKey][action.modifiedItem.trackKey] = true;
+        }
+      }
+    }
+
+    let tagFields = ["box", "confidence", "text"];
+    for(const assetKey of Object.keys(assetsWithChangedTags)) {
+      for(const trackKey of Object.keys(assetsWithChangedTags[assetKey])) {
+        const updatedTags = this.assets
+          .find(asset => asset.key === assetKey).image_tags[trackKey].tags || []
+          .map(assetTag => {
+            let updatedTag = {};
+            tagFields.forEach(key => {
+              if(assetTag[key]) {
+                updatedTag[key] = assetTag[key];
+              }
+            });
+
+            return updatedTag;
+          });
+
+        yield this.rootStore.client.ReplaceMetadata({
+          libraryId,
+          objectId,
+          writeToken,
+          metadataSubtree: UrlJoin("/assets", assetKey, "image_tags", trackKey, "tags"),
+          metadata: Unproxy(updatedTags)
+        });
+      }
+    }
+
+    yield this.rootStore.editStore.Finalize({
+      objectId,
+      commitMessage: "EVIE - Update assets"
+    });
+  });
 
   GenerateSummary = flow(function * ({objectId, asset}) {
     const filePath = asset?.file?.["/"]?.replace("./files/", "");

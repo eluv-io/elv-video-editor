@@ -19,7 +19,14 @@ import {useEffect, useState} from "react";
 import {rootStore, fileBrowserStore} from "@/stores/index.js";
 import {DataTable} from "mantine-datatable";
 import PrettyBytes from "pretty-bytes";
-import {IconButton, CopyButton, LocalizeString, AsyncButton, LoaderImage} from "@/components/common/Common.jsx";
+import {
+  IconButton,
+  CopyButton,
+  LocalizeString,
+  AsyncButton,
+  LoaderImage,
+  Confirm
+} from "@/components/common/Common.jsx";
 import UrlJoin from "url-join";
 import {useDebouncedValue} from "@mantine/hooks";
 import {ScaleImage} from "@/utils/Utils.js";
@@ -208,7 +215,7 @@ const UploadForm = observer(({objectId, path, Close}) => {
             </Text>
           </Group>
           <Group justify="center" align="center">
-            <Text size="sm" mt="sm" inline color="dimmed">
+            <Text size="sm" mt="sm" inline>
               { rootStore.l10n.components.file_browser.upload_instructions_click }
             </Text>
           </Group>
@@ -376,7 +383,7 @@ const DownloadFileButton = ({objectId, path, filename, url, encrypted}) => {
 const CopyFileLinkButton = ({filename, url}) => {
   return (
     <CopyButton
-      color="blue.6"
+      color="purple.6"
       label={LocalizeString(rootStore.l10n.components.file_browser.copy_link, {filename})}
       Icon={IconLink}
       text={url}
@@ -393,10 +400,10 @@ const DeleteFileButton = ({filename, Delete}) => {
       color="red.5"
       loading={deleting}
       Icon={IconDelete}
-      onClick={() => {
-        ConfirmDelete({
+      onClick={async () => {
+        await Confirm({
           title: LocalizeString(rootStore.l10n.components.file_browser.delete, {filename}),
-          itemName: filename,
+          text: `Are you sure you want to delete ${filename || "this file"}?`,
           onConfirm: () => {
             setDeleting(true);
             Delete()
@@ -633,7 +640,7 @@ const FileBrowser = observer(({store, objectId, multiple, title, extensions=[], 
               <Group gap="xs" key={`path-token-${token}-${index}`}>
                 <Text>/</Text>
                 <UnstyledButton onClick={() => setPath(UrlJoin("/", ...pathTokens.slice(0, index + 1)))}>
-                  <Text fw={index === pathTokens.length - 1 ? 600 : 400} color="purple.6">
+                  <Text fw={index === pathTokens.length - 1 ? 600 : 400}>
                     {token}
                   </Text>
                 </UnstyledButton>
@@ -657,13 +664,13 @@ const FileBrowser = observer(({store, objectId, multiple, title, extensions=[], 
         <Group justify="space-between" mt="xs" px={5}>
           {
             !fileBrowserStore.files[selectedObjectId] ? <div /> :
-              <Text fz="xs" color="dimmed" fw={600}>
+              <Text fz="xs" fw={600}>
                 { LocalizeString(rootStore.l10n.components.file_browser.browsing, {label: fileBrowserStore.objectNames[selectedObjectId] || selectedObjectId})}
               </Text>
           }
           {
             extensions.length === 0 ? null :
-              <Text color="dimmed" fz="xs" fs="italic">
+              <Text fz="xs" fs="italic">
                 { LocalizeString(rootStore.l10n.components.file_browser.allowed_extensions, {extensions: extensions.join(", ")})}
               </Text>
           }
@@ -692,11 +699,14 @@ const FileBrowser = observer(({store, objectId, multiple, title, extensions=[], 
         }
         <Group mt="xl" justify="space-between">
           <Group>
-            <Button variant="light" onClick={() => setShowUploadForm(true)}>
+            <Button w={160} variant="outline" color="gray.5" autoContrast onClick={() => setShowUploadForm(true)}>
               { rootStore.l10n.components.actions.upload }
             </Button>
             <Button
-              variant="light"
+              w={160}
+              variant="outline"
+              color="gray.5"
+              autoContrast
               onClick={() =>
                 modals.open({
                   title: rootStore.l10n.components.file_browser.create_directory,
@@ -717,6 +727,7 @@ const FileBrowser = observer(({store, objectId, multiple, title, extensions=[], 
             <AsyncButton
               loading={saving === "cancel"}
               variant="subtle"
+              color="gray.5"
               w={200}
               onClick={async () => {
                 try {

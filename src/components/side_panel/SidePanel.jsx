@@ -4,10 +4,9 @@ import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Icon, IconButton, Input} from "@/components/common/Common.jsx";
-import {useDebouncedState} from "@mantine/hooks";
 import {rootStore, assetStore, compositionStore, tagStore, trackStore} from "@/stores/index.js";
 import {TagDetails, TagsList} from "@/components/side_panel/Tags.jsx";
-import Assets, {AssetTagDetails, AssetTagsList} from "@/components/side_panel/Assets.jsx";
+import Assets from "@/components/side_panel/Assets.jsx";
 import {TrackDetails} from "@/components/side_panel/Tracks.jsx";
 
 import {OverlayTagDetails, OverlayTagsList} from "@/components/side_panel/OverlayTags.jsx";
@@ -94,11 +93,14 @@ const SearchIndexSelection = observer(() => {
   );
 });
 
+let filterTimeout;
 const SidebarFilter = observer(({store, label, sideContent}) => {
-  const [filter, setFilter] = useDebouncedState(store.filter, 100);
+  const [filter, setFilter] = useState("");
 
   useEffect(() => {
-    store.SetFilter(filter);
+    clearTimeout(filterTimeout);
+
+    filterTimeout = setTimeout(() => store.SetFilter(filter), 100);
   }, [filter]);
 
   return (
@@ -106,11 +108,16 @@ const SidebarFilter = observer(({store, label, sideContent}) => {
       <Input
         placeholder={label}
         h={35}
-        defaultValue={filter}
+        value={filter}
         onChange={event => setFilter(event.currentTarget.value)}
         aria-label={label}
         className={S("search__input")}
-        rightSection={sideContent}
+        rightSection={
+          <div className={S("search__buttons")}>
+            {sideContent}
+            <IconButton noHover icon={XIcon} onClick={() => setFilter("")} className={S("search__button")} />
+          </div>
+          }
         rightSectionWidth="max-content"
       />
     </div>
@@ -329,19 +336,6 @@ export const AssetSidePanel = observer(() => {
         <TrackSelection mode="assets" />
         <Assets />
       </div>
-
-      {
-        assetStore.selectedTags.length === 0 ? null :
-          <div className={S("side-panel-modal")}>
-            <AssetTagsList />
-          </div>
-      }
-      {
-        !assetStore.selectedTag ? null :
-          <div className={S("side-panel-modal")}>
-            <AssetTagDetails />
-          </div>
-      }
     </div>
   );
 });

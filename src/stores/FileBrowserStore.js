@@ -10,11 +10,13 @@ class FileBrowserStore {
   activeUploadJobs = {};
   uploadStatus = {};
 
-
-
   constructor(rootStore) {
     this.rootStore = rootStore;
     makeAutoObservable(this);
+  }
+
+  WriteToken({objectId}) {
+    return this.writeInfo[objectId]?.write_token;
   }
 
   // Retrieve contents of the specified directory
@@ -62,7 +64,11 @@ class FileBrowserStore {
       .filter(file => file);
   }
 
-  LoadFiles = flow(function * ({objectId}) {
+  LoadFiles = flow(function * ({objectId, force=false}) {
+    if(this.files[objectId] && !force) {
+      return;
+    }
+
     const libraryId = yield this.rootStore.LibraryId({objectId});
     const writeToken = this.rootStore.editStore.WriteToken({objectId});
 
@@ -87,7 +93,7 @@ class FileBrowserStore {
 
   CreateDirectory = flow(function * ({objectId, path, filename}) {
     const libraryId = yield this.rootStore.LibraryId({objectId});
-    const writeToken = this.rootStore.editStore.InitializeWrite({objectId});
+    const writeToken = yield this.rootStore.editStore.InitializeWrite({objectId});
 
     yield this.client.CreateFileDirectories({
       libraryId,
@@ -101,7 +107,7 @@ class FileBrowserStore {
 
   RenameFile = flow(function * ({objectId, path, filename, newFilename}) {
     const libraryId = yield this.rootStore.LibraryId({objectId});
-    const writeToken = this.rootStore.editStore.InitializeWrite({objectId});
+    const writeToken = yield this.rootStore.editStore.InitializeWrite({objectId});
 
     yield this.client.MoveFiles({
       libraryId,
@@ -118,7 +124,7 @@ class FileBrowserStore {
 
   DeleteFile = flow(function * ({objectId, path, filename}) {
     const libraryId = yield this.rootStore.LibraryId({objectId});
-    const writeToken = this.rootStore.editStore.InitializeWrite({objectId});
+    const writeToken = yield this.rootStore.editStore.InitializeWrite({objectId});
 
     yield this.client.DeleteFiles({
       libraryId,
@@ -134,7 +140,7 @@ class FileBrowserStore {
 
   UploadFiles = flow(function * ({objectId, files}) {
     const libraryId = yield this.rootStore.LibraryId({objectId});
-    const writeToken = this.rootStore.editStore.InitializeWrite({objectId});
+    const writeToken = yield this.rootStore.editStore.InitializeWrite({objectId});
 
     this.activeUploadJobs[objectId] = (this.activeUploadJobs[objectId] || 0) + 1;
 
@@ -183,8 +189,10 @@ class FileBrowserStore {
   }
 
   Save = flow(function * ({objectId}) {
-    yield this.rootStore.editStore.Finalize({objectId});
+    yield this.rootStore.editStore.Finalize({objectId, commitMessage: "EVIE - Upload/Modify files"});
     yield this.rootStore.VersionHash({objectId, force: true});
+
+    yield this.rootStore.videoStore.UpdateObjectVersion();
   });
 
   get client() {
