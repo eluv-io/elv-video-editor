@@ -186,6 +186,8 @@ class VideoStore {
 
     this.consecutiveSegmentErrors = 0;
 
+    this.initialClipPoints = undefined;
+
     this.clipInFrame = undefined;
     this.clipOutFrame = undefined;
 
@@ -194,8 +196,6 @@ class VideoStore {
       this.rootStore.trackStore.Reset();
     }
   }
-
-
 
   ToggleVideoControls(enable) {
     this.showVideoControls = enable;
@@ -531,7 +531,7 @@ class VideoStore {
           this.primaryContentEndTime = Number((this.video.duration).toFixed(3));
         }
 
-        if(this.initialClipPoints) {
+        if(this.initialClipPoints && Object.keys(this.initialClipPoints).length > 0) {
           this.SetClipMark(this.initialClipPoints);
         } else if(!this.clipOutFrame || this.clipOutFrame < 1) {
           this.SetClipMark({
@@ -611,6 +611,35 @@ class VideoStore {
       clipInFrame: this.clipInFrame,
       clipOutFrame: this.clipOutFrame
     };
+  }
+
+  ParseClipParams() {
+    const params = new URLSearchParams(window.location.search);
+    let clipPoints = {};
+    if(params.has("sf")) {
+      clipPoints.inFrame = parseInt(params.get("sf"));
+    } else if(params.has("st")) {
+      clipPoints.inTime = parseFloat(params.get("st"));
+    }
+
+    if(params.has("ef")) {
+      clipPoints.outFrame = parseInt(params.get("ef"));
+    } else if(params.has("et")) {
+      clipPoints.outTime = parseFloat(params.get("et"));
+    }
+
+    return Object.keys(clipPoints).length > 0 ? clipPoints : undefined;
+  }
+
+  FocusView(clipParams) {
+    const {clipInFrame, clipOutFrame} = this.SetClipMark(clipParams);
+
+    this.SetScale(
+      this.FrameToProgress(clipInFrame) - 1,
+      this.FrameToProgress(clipOutFrame) + 1,
+    );
+
+    setTimeout(() => this.Seek(clipInFrame), 1000);
   }
 
   SMPTEToTime(smpte) {

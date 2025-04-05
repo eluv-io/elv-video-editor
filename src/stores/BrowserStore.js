@@ -101,9 +101,10 @@ class BrowserStore {
         ]
       });
 
-      const savedChannels = this.rootStore.compositionStore.myCompositions[objectId];
+      const savedChannels = Object.values(this.rootStore.compositionStore.myCompositions[objectId] || {})
+        .filter(channel => channel.writeTokenInfo);
 
-      hasChannels = !!metadata?.channel || savedChannels;
+      hasChannels = !!metadata?.channel || savedChannels.length > 0;
       hasAssets = !!metadata?.assets;
 
       if(hasChannels) {
@@ -116,11 +117,10 @@ class BrowserStore {
           }));
         }
 
-        if(savedChannels) {
+        if(savedChannels.length > 0) {
           channels = [
-            ...Object.values(savedChannels)
-              .filter(channel => channel.writeTokenInfo),
-            ...channels.filter(({key}) => !Object.values(savedChannels).find(channel => channel.key === key))
+            ...savedChannels,
+            ...channels.filter(({key}) => !savedChannels.find(channel => channel.key === key))
           ];
         }
 

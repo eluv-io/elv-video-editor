@@ -603,9 +603,9 @@ export const Confirm = async ({title, text, labels={}, onConfirm, onCancel}) => 
       onCancel: () => resolve(false)
     });
   })) {
-    onCancel?.();
+    await onCancel?.();
     return;
   }
 
-  onConfirm();
+  await onConfirm();
 };

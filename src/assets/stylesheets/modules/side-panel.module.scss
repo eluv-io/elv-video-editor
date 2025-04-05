@@ -574,7 +574,7 @@
   &:hover {
     opacity: 0.8;
 
-    .clip__remove {
+    .clip__action {
       opacity: 1;
     }
   }
@@ -598,7 +598,7 @@
     font-size: 10px;
   }
 
-  &__remove {
+  &__action {
     background-color: var(--background-active);
     border-radius: 5px;
     color: var(--text-primary);
@@ -607,7 +607,7 @@
     right: 10px;
     top: 10px;
     transition: opacity 0.25s ease;
-    z-index: 1;
+    z-index: 10;
   }
 }
 

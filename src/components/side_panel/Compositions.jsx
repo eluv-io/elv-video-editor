@@ -13,10 +13,11 @@ import ClipIcon from "@/assets/icons/v2/clip.svg";
 import MediaIcon from "@/assets/icons/v2/play-clip.svg";
 import AISparkleIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import XIcon from "@/assets/icons/X.svg";
+import TagIcon from "@/assets/icons/v2/tag.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
-const SidePanelClip = observer(({clip}) => {
+const SidePanelClip = observer(({clip, showTagLink=false}) => {
   if(!clip) { return null; }
 
   const store = compositionStore.ClipStore({clipId: clip.clipId});
@@ -63,7 +64,7 @@ const SidePanelClip = observer(({clip}) => {
           <IconButton
             icon={XIcon}
             small
-            className={S("clip__remove")}
+            className={S("clip__action")}
             onClick={async event => {
               event.stopPropagation();
 
@@ -75,6 +76,16 @@ const SidePanelClip = observer(({clip}) => {
             }}
           />
       }
+      {
+        !showTagLink ? null :
+          <IconButton
+            label="View in Tag Editor"
+            to={UrlJoin("/", clip.objectId, `tags?sf=${clip.clipInFrame}&ef=${clip.clipOutFrame}`)}
+            icon={TagIcon}
+            small
+            className={S("clip__action")}
+          />
+      }
     </div>
   );
 });
@@ -82,22 +93,29 @@ const SidePanelClip = observer(({clip}) => {
 let searchTimeout;
 const AIClips = observer(() => {
   const [loading, setLoading] = useState(false);
-  const [clipIds, setClipIds] = useState([]);
+  const [clipSource, setClipSource] = useState("highlights");
+  const clipIds = clipSource === "search" ?
+    compositionStore.searchClipIds : compositionStore.aiClipIds;
 
   useEffect(() => {
     clearTimeout(searchTimeout);
 
     searchTimeout = setTimeout(() => {
-      setLoading(true);
+      clearTimeout(searchTimeout);
 
       if(!compositionStore.filter) {
-        setClipIds(compositionStore.aiClipIds);
         setLoading(false);
-      } else {
-        compositionStore.SearchClips(compositionStore.filter)
-          .then(() => setClipIds(compositionStore.searchClipIds))
-          .finally(() => setLoading(false));
+        setClipSource("highlights");
+        return;
       }
+
+      setLoading(true);
+
+      compositionStore.SearchClips(compositionStore.filter)
+        .finally(() => {
+          setClipSource("search");
+          setLoading(false);
+        });
     }, 1000);
   }, [compositionStore.filter, rootStore.selectedSearchIndexId]);
 
@@ -114,7 +132,11 @@ const AIClips = observer(() => {
             <div className={S("composition-clips__list")}>
               {
                 clipIds.map(clipId =>
-                  <SidePanelClip clip={compositionStore.clips[clipId]} key={`clip-${clipId}`} />
+                  <SidePanelClip
+                    clip={compositionStore.clips[clipId]}
+                    key={`clip-${clipId}`}
+                    showTagLink
+                  />
                 )
               }
             </div>

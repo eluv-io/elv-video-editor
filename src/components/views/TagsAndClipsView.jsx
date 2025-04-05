@@ -13,7 +13,12 @@ const TagsAndClipsView = observer(({mode}) => {
   useEffect(() => {
     rootStore.SetPage(mode);
     keyboardControlsStore.SetActiveStore(videoStore);
-  }, []);
+
+    if(videoStore.ready) {
+      const clipPoints = videoStore.ParseClipParams();
+      clipPoints && videoStore.FocusView(clipPoints);
+    }
+  }, [videoStore.ready]);
 
   useEffect(() => {
     if(!sidePanel) { return; }

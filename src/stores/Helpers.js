@@ -160,6 +160,12 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
     // eslint-disable-next-line no-console
     console.log(error);
 
+    if(error.status === 403) {
+      window.location.pathname = "/";
+
+      await new Promise(resolve => setTimeout(resolve, 10000));
+    }
+
     rootStore.SetError(error.toString());
   }
 };

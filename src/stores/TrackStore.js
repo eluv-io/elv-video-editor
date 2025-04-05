@@ -499,7 +499,7 @@ class TrackStore {
           if(!tag) { return; }
         }
 
-        const parsedTag = Cue({
+        let parsedTag = Cue({
           trackKey: key,
           tagType: "metadata",
           startTime: millis ? (tag.start_time / 1000) : tag.start_time,
@@ -512,6 +512,10 @@ class TrackStore {
             ti: tag.ti
           }
         });
+
+        if(parsedTag.startTime >= parsedTag.endTime) {
+          parsedTag.endTime = parsedTag.startTime + this.rootStore.videoStore.videoHandler.FrameToTime(1);
+        }
 
         tags[parsedTag.tagId] = parsedTag;
       });

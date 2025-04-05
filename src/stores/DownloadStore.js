@@ -364,14 +364,16 @@ class DownloadStore {
       options.offering = downloadOptions.offering;
     }
 
-    return yield this.FormatShare({
-      store,
-      share: (yield this.rootStore.client.CreateShare({
-        objectId,
-        expiresAt: shareOptions.expiresAt,
-        params: Unproxy(options)
-      })).share
-    });
+    const share = (yield this.rootStore.client.CreateShare({
+      objectId,
+      expiresAt: shareOptions.expiresAt,
+      params: Unproxy(options)
+    })).share;
+
+    share.start_time = share.start_time ? new Date(share.start_time * 1000).toISOString() : null;
+    share.end_time = share.end_time ? new Date(share.end_time * 1000).toISOString() : null;
+
+    return yield this.FormatShare({store, share});
   });
 
   CreateShortURL = flow(function * (url) {
