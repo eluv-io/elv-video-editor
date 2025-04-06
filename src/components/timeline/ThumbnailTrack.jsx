@@ -38,7 +38,7 @@ const ThumbnailCreationTrack = observer(({store}) => {
               text: "Warning: Finalizing the thumbnails for this content will cause the page to reload. If you have any changes, they will be lost.",
               onConfirm: async () => {
                 await store.thumbnailStore.ThumbnailGenerationStatus({finalize: true});
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise(resolve => setTimeout(resolve, 5000));
                 window.location.reload();
                 await new Promise(resolve => setTimeout(resolve, 20000));
               }
