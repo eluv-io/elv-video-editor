@@ -461,8 +461,8 @@ class DownloadStore {
         offeringKey: share.downloadOptions?.offering,
         audioTrackLabel: share.audioTrackLabel,
         compositionKey: share.compositionKey,
-        clipInFrame: clipDetails.clipInFrame ? clipDetails.clipInTime : undefined,
-        clipOutFrame: share.clipOutFrame ? share.clipOutTime : undefined,
+        clipInFrame: clipDetails.clipInFrame ? clipDetails.clipInFrame : undefined,
+        clipOutFrame: clipDetails.clipOutFrame ? clipDetails.clipOutFrame : undefined,
         shareId: share.share_id,
         title: share.title
       })

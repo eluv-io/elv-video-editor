@@ -42,6 +42,8 @@ class CompositionStore {
 
   saved = false;
 
+  _authTokens = {};
+
   _actionStack = [];
   _redoStack = [];
   _position = 0;
@@ -78,6 +80,8 @@ class CompositionStore {
     this.compositionPlayoutUrl = undefined;
     this.draggingClip = undefined;
     this.saved = false;
+
+    this._authTokens = {};
 
     this.ResetActions();
   }
@@ -1140,20 +1144,23 @@ class CompositionStore {
       queryParams[key] && url.searchParams.set(key, queryParams[key])
     );
 
-    let authorizationToken;
-    if(!channelAuth) {
-      authorizationToken = yield this.rootStore.client.CreateSignedToken({
-        objectId,
-        duration: 24 * 60 * 60 * 1000
-      });
-    } else {
-      authorizationToken = new URL(yield this.client.FabricUrl({
+    if(!this._authTokens[objectId]) {
+      this._authTokens[objectId] = {};
+    }
+
+    if(channelAuth && !this._authTokens[objectId].channel) {
+      this._authTokens[objectId].channel = new URL(yield this.client.FabricUrl({
         versionHash: yield this.client.LatestVersionHash({objectId: objectId}),
         channelAuth: true
       })).searchParams.get("authorization");
+    } else if(!channelAuth && !this._authTokens[objectId].signed) {
+      this._authTokens[objectId].signed = yield this.rootStore.client.CreateSignedToken({
+        objectId,
+        duration: 24 * 60 * 60 * 1000
+      });
     }
 
-    url.searchParams.set("authorization", authorizationToken);
+    url.searchParams.set("authorization", this._authTokens[objectId][channelAuth ? "channel" : "signed"]);
 
     return fetch(url, {method});
   });

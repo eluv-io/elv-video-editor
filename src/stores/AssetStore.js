@@ -397,6 +397,7 @@ class AssetStore {
       method: "GET",
       path: UrlJoin("ml", "summary", "q", objectId, "rep", "image_summarize"),
       objectId,
+      channelAuth: true,
       queryParams: { path: filePath, engine: "caption" }
     })).json();
   });

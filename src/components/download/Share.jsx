@@ -676,6 +676,10 @@ const ShareDetails = observer(({store, selectedShare, Back, Close}) => {
                 <span>{permissions[selectedShare.permissions] || "Stream"}</span>
               </div>
               <div className={S("share-details__detail")}>
+                <label>Share ID:</label>
+                <span>{selectedShare.share_id}</span>
+              </div>
+              <div className={S("share-details__detail")}>
                 <label>Note:</label>
                 <span>{selectedShare.shareOptions?.note || ""}</span>
               </div>
