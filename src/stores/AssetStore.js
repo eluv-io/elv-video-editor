@@ -115,7 +115,14 @@ class AssetStore {
   }
 
   SetAssets(assets={}) {
-    let tagTracks = {};
+    let tagTracks = {
+      celebrity_detection: true,
+      llava_caption: true,
+      logo_detection: true,
+      object_detection: true,
+      optical_character_recognition: true
+    };
+
     this.assets = Object.keys(assets).sort().map(key => {
       let assetId = this.rootStore.NextId();
       let tags = assets[key].image_tags || {};
