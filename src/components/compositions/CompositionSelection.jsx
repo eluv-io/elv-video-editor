@@ -164,13 +164,16 @@ const CompositionForm = observer(({type, Cancel}) => {
               onChange={event => setOptions({...options, prompt: event.target.value})}
             />
         }
-        <Group my="xs" justify="end">
-          <Checkbox
-            label="Regenerate Results (if present)"
-            checked={options.regenerate}
-            onChange={event => setOptions({...options, regenerate: event.currentTarget.checked})}
-          />
-        </Group>
+        {
+          type !== "ai" ? null :
+            <Group my="xs" justify="end">
+              <Checkbox
+                label="Regenerate Results (if present)"
+                checked={options.regenerate}
+                onChange={event => setOptions({...options, regenerate: event.currentTarget.checked})}
+              />
+            </Group>
+        }
         <div className={S("composition-form__actions")}>
           <AsyncButton
             tooltip={error}
