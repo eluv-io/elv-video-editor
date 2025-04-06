@@ -197,6 +197,8 @@ class VideoStore {
     }
 
     this.rootStore.editStore.Reset();
+
+    this.thumbnailStore = new ThumbnailStore(this);
   }
 
   ToggleVideoControls(enable) {
