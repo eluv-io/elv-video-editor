@@ -4,7 +4,7 @@ import React, {useState, useEffect} from "react";
 import {observer} from "mobx-react-lite";
 import {rootStore, browserStore, compositionStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
-import {IconButton, Linkish, Loader} from "@/components/common/Common";
+import {Confirm, IconButton, Linkish, Loader} from "@/components/common/Common";
 import SVG from "react-inlinesvg";
 import {Redirect} from "wouter";
 import UrlJoin from "url-join";
@@ -17,6 +17,7 @@ import FirstPageIcon from "@/assets/icons/DoubleBackward.svg";
 import LastPageIcon from "@/assets/icons/DoubleForward.svg";
 import PageForwardIcon from "@/assets/icons/Forward.svg";
 import PageBackIcon from "@/assets/icons/Backward.svg";
+import DeleteIcon from "@/assets/icons/trash.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -120,11 +121,12 @@ const SearchBar = observer(({filter, setFilter, delay=500, Select}) => {
   );
 });
 
-const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="library", videoOnly}) => {
+const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="library", videoOnly, Delete}) => {
   const [loading, setLoading] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
   const [content, setContent] = useState(undefined);
   const [paging, setPaging] = useState({page: 1, perPage: 10});
+  const [deleting, setDeleting] = useState(undefined);
 
   const LoadPage = page => {
     if(loading) { return; }
@@ -147,8 +149,10 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
   };
 
   useEffect(() => {
+    if(deleting) { return; }
+
     LoadPage(1);
-  }, [filter]);
+  }, [filter, deleting]);
 
   let table;
   if(showLoader) {
@@ -191,7 +195,7 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
                 }
               }}
               key={`browser-row-${id}`}
-              disabled={forbidden || (videoOnly && !isVideo)}
+              disabled={deleting || forbidden || (videoOnly && !isVideo)}
               className={S("browser-table__row", "browser-table__row--content")}
             >
               <div title={name} className={S("browser-table__cell")}>
@@ -212,6 +216,27 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
                       {lastModified || "-"}
                     </div>
                   </>
+              }
+              {
+                !Delete || !id ? null :
+                  <div className={S("browser-table__cell", "browser-table__cell--centered")}>
+                    <IconButton
+                      label="Delete Item"
+                      icon={DeleteIcon}
+                      faded
+                      disabled={deleting}
+                      onClick={async event => {
+                        event.stopPropagation();
+                        setDeleting(true);
+
+                        try {
+                          await Delete({id, name});
+                        } finally {
+                          setDeleting(false);
+                        }
+                      }}
+                    />
+                  </div>
               }
             </Linkish>
           )
@@ -244,6 +269,7 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
 
 const ChannelBrowser = observer(({channelInfo, Select, Back, className=""}) => {
   const [filter, setFilter] = useState("");
+  const [deletedChannels, setDeletedChannels] = useState([]);
 
   return (
     <div className={JoinClassNames(S("browser", "browser--channel"), className)}>
@@ -262,7 +288,7 @@ const ChannelBrowser = observer(({channelInfo, Select, Back, className=""}) => {
       <BrowserTable
         filter={filter}
         defaultIcon={ObjectIcon}
-        contentType="channels"
+        contentType="composition"
         Select={Select}
         Load={async ({page, perPage, filter}) => {
           const content = [
@@ -271,6 +297,7 @@ const ChannelBrowser = observer(({channelInfo, Select, Back, className=""}) => {
               ({id: key, name: `Composition - ${name || label}`})
             ))
           ]
+            .filter(({id}) => !deletedChannels.includes(id))
             .filter(({name}) => !filter || name.toLowerCase().includes(filter.toLowerCase()));
 
           const total = content.length;
@@ -284,6 +311,17 @@ const ChannelBrowser = observer(({channelInfo, Select, Back, className=""}) => {
             }
           };
         }}
+        Delete={async ({id, name}) => await Confirm({
+          title: "Delete Composition",
+          text: `Are you sure you want to delete the composition '${name}'?`,
+          onConfirm: async () => {
+            await compositionStore.DeleteComposition({
+              objectId: channelInfo.objectId,
+              compositionKey: id
+            });
+
+            setDeletedChannels([...deletedChannels, id]);
+          }})}
       />
     </div>
   );

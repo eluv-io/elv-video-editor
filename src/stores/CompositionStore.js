@@ -544,17 +544,6 @@ class CompositionStore {
     regenerate=false,
     StatusCallback
   }) {
-    /*
-    const contentTypes = yield this.client.ContentTypes();
-    const channelType =
-      Object.values(contentTypes).find(type => type.name?.toLowerCase()?.includes("- channel")) ||
-      Object.values(contentTypes).find(type =>
-        type.name?.toLowerCase()?.includes("- title") &&
-        type.name?.toLowerCase()?.includes("master")
-      );
-
-     */
-
     const sourceLibraryId = yield this.client.ContentObjectLibraryId({objectId: sourceObjectId});
     const sourceMetadata = yield this.client.ContentObjectMetadata({
       libraryId: sourceLibraryId,
@@ -591,12 +580,6 @@ class CompositionStore {
       new: true
     };
 
-    const sourceWriteToken = yield this.WriteToken({
-      objectId: sourceObjectId,
-      compositionKey: key,
-      create: true
-    });
-
     let items = [];
     if(type === "ai") {
       const highlights = (yield this.GenerateAIHighlights({
@@ -631,6 +614,8 @@ class CompositionStore {
       playout_type: "ch_vod",
       playout: playoutMetadata,
       items,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       source_info: {
         libraryId: sourceLibraryId,
         objectId: sourceObjectId,
@@ -641,6 +626,12 @@ class CompositionStore {
         prompt
       }
     };
+
+    const sourceWriteToken = yield this.WriteToken({
+      objectId: sourceObjectId,
+      compositionKey: key,
+      create: true
+    });
 
     yield this.client.ReplaceMetadata({
       libraryId: sourceLibraryId,
@@ -705,6 +696,14 @@ class CompositionStore {
       writeToken,
       metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "display_name"),
       metadata: name || "Composition"
+    });
+
+    yield this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "updated_at"),
+      metadata: new Date().toISOString()
     });
 
     if(updatePlayoutUrl) {
@@ -991,6 +990,36 @@ class CompositionStore {
       this.SaveMyCompositions();
     }
   }
+
+  DeleteComposition = flow(function * ({objectId, compositionKey}) {
+    // Check if composition is saved in metadata and needs to be removed
+    const libraryId = yield this.client.ContentObjectLibraryId({objectId});
+    const compositionSaved = !!(yield this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      metadataSubtree: UrlJoin("/channel", "offerings", compositionKey),
+      remove: "playout"
+    }));
+
+    if(compositionSaved) {
+      yield this.client.EditAndFinalizeContentObject({
+        libraryId,
+        objectId,
+        callback: async ({writeToken}) => {
+          await this.client.DeleteMetadata({
+            libraryId,
+            objectId,
+            writeToken,
+            metadataSubtree: UrlJoin("/channel", "offerings", compositionKey)
+          });
+        },
+        commitMessage: `EVIE: Remove composition '${compositionKey}'`
+      });
+    }
+
+    // Remove from my compositions
+    yield this.DiscardDraft({objectId, compositionKey, removeComposition: true});
+  });
 
   WriteToken = flow(function * ({objectId, compositionKey, create=true}) {
     objectId = objectId || this.compositionObject?.objectId;

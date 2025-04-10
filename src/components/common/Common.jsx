@@ -596,6 +596,7 @@ export const Confirm = async ({title, text, labels={}, onConfirm, onCancel}) => 
     };
 
     modals.openConfirmModal({
+      size: 500,
       title: <Title />,
       centered: true,
       withCloseButton: false,

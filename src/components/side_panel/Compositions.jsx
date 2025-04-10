@@ -14,6 +14,7 @@ import MediaIcon from "@/assets/icons/v2/play-clip.svg";
 import AISparkleIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import XIcon from "@/assets/icons/X.svg";
 import TagIcon from "@/assets/icons/v2/tag.svg";
+import DeleteIcon from "@/assets/icons/trash.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -202,13 +203,14 @@ export const CompositionClips = observer(() => {
 
 export const CompositionBrowser = observer(() => {
   const [info, setInfo] = useState(undefined);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if(!rootStore.selectedObjectId) { return; }
+    if(!rootStore.selectedObjectId || deleting) { return; }
 
     browserStore.LookupContent(rootStore.selectedObjectId)
       .then(setInfo);
-  }, [rootStore.selectedObjectId]);
+  }, [rootStore.selectedObjectId, deleting]);
 
   if(!rootStore.selectedObjectId) { return null; }
 
@@ -231,13 +233,46 @@ export const CompositionBrowser = observer(() => {
           <div className={S("composition-browser__content")}>
             {compositions.map(({label, key}) =>
               <Linkish
+                disabled={deleting}
                 key={key}
                 onClick={() => compositionStore.SetFilter("")}
                 to={UrlJoin("/compositions", rootStore.selectedObjectId, key)}
                 className={S("composition-browser__item")}
               >
-                <Icon icon={MediaIcon} />
-                { label }
+                <span>
+                  <Icon icon={MediaIcon} />
+                  { label }
+                </span>
+                <span>
+                  <IconButton
+                    icon={DeleteIcon}
+                    label="Delete Composition"
+                    disabled={deleting}
+                    faded
+                    small
+                    loading={deleting === key}
+                    onClick={async event => {
+                      event.stopPropagation();
+                      event.preventDefault();
+
+                      await Confirm({
+                        title: "Delete Composition",
+                        text: `Are you sure you want to delete the composition '${label}'?`,
+                        onConfirm: async () => {
+                          setDeleting(key);
+                          try {
+                            await compositionStore.DeleteComposition({
+                              objectId: rootStore.selectedObjectId,
+                              compositionKey: key
+                            });
+                          } finally {
+                            setDeleting(false);
+                          }
+                        }
+                      });
+                    }}
+                  />
+                </span>
               </Linkish>
             )}
           </div>

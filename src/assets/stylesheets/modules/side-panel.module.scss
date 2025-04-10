@@ -653,9 +653,20 @@
     align-items: center;
     display: flex;
     gap: 10px;
+    justify-content: space-between;
     min-height:  40px;
-    padding: 5px;
+    padding: 5px 10px 5px 5px;
     transition: background-color 0.15s ease;
+
+    &:disabled {
+      color: var(--text-tertiary);
+    }
+
+    span {
+      align-items: center;
+      display: flex;
+      gap: 10px;
+    }
 
     &:hover {
       background-color: var(--background-active);

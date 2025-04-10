@@ -122,6 +122,20 @@
     font-size: 20px;
     font-weight: 600;
   }
+
+  &__error {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    text-align: center;
+    width: 250px;
+  }
+
+  &__error-message {
+    color: var(--text-error);
+    font-size: 16px;
+    font-weight: 500;
+  }
 }
 
 .selection-block {

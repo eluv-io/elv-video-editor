@@ -52,6 +52,7 @@ const CompositionForm = observer(({type, Cancel}) => {
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState(false);
   const [keyExists, setKeyExists] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [options, setOptions] = useState({
     type: undefined,
     sourceId: rootStore.selectedObjectId,
@@ -105,6 +106,25 @@ const CompositionForm = observer(({type, Cancel}) => {
                 className={S("composition-selection__progress")}
               />
           }
+        </div>
+      </div>
+    );
+  }
+
+  if(errorMessage) {
+    return (
+      <div className={S("composition-selection")}>
+        <div className={S("composition-selection__error")}>
+          <div className={S("composition-selection__error-message")}>
+            { errorMessage }
+          </div>
+          <Button
+            color="gray.5"
+            autoContrast
+            onClick={() => setErrorMessage("")}
+          >
+            Back
+          </Button>
         </div>
       </div>
     );
@@ -201,6 +221,10 @@ const CompositionForm = observer(({type, Cancel}) => {
                 // eslint-disable-next-line no-console
                 console.error(error);
                 setCreating(false);
+
+                if(error?.display_error) {
+                  setErrorMessage(error.display_error);
+                }
               }
             }}
           >

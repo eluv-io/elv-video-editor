@@ -51,6 +51,12 @@
     }
   }
 
+  &--composition {
+    .browser-table__row {
+      grid-template-columns: 1fr 50px;
+    }
+  }
+
   &__row {
     border-bottom: 1px solid var(--table-border-color);
     display: grid;
