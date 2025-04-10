@@ -376,7 +376,7 @@ class VideoStore {
           }
         }
 
-        this.rootStore.trackStore.InitializeTracks(metadataTags);
+        yield this.rootStore.trackStore.InitializeTracks(metadataTags);
 
         this.ready = true;
       }
@@ -655,16 +655,28 @@ class VideoStore {
       clipPoints.outTime = parseFloat(params.get("et"));
     }
 
+    if(params.has("isolate")) {
+      clipPoints.isolate = true;
+    }
+
     return Object.keys(clipPoints).length > 0 ? clipPoints : undefined;
   }
 
   FocusView(clipParams) {
     const {clipInFrame, clipOutFrame} = this.SetClipMark(clipParams);
 
-    this.SetScale(
-      this.FrameToProgress(clipInFrame) - 1,
-      this.FrameToProgress(clipOutFrame) + 1,
-    );
+    if(clipParams.isolate) {
+      this.rootStore.tagStore.IsolateTag({
+        tagId: this.rootStore.NextId(),
+        startTime: this.FrameToTime(clipInFrame),
+        endTime: this.FrameToTime(clipOutFrame)
+      });
+    } else {
+      this.SetScale(
+        this.FrameToProgress(clipInFrame) - 1,
+        this.FrameToProgress(clipOutFrame) + 1,
+      );
+    }
 
     setTimeout(() => this.Seek(clipInFrame), 1000);
   }

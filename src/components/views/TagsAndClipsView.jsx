@@ -16,7 +16,10 @@ const TagsAndClipsView = observer(({mode}) => {
 
     if(videoStore.ready) {
       const clipPoints = videoStore.ParseClipParams();
-      clipPoints && videoStore.FocusView(clipPoints);
+
+      if(!clipPoints) { return; }
+
+      videoStore.FocusView(clipPoints);
     }
   }, [videoStore.ready]);
 

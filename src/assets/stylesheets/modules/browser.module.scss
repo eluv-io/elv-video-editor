@@ -84,6 +84,17 @@
     }
   }
 
+  &__row-title-main {
+    align-items: center;
+    display: flex;
+    gap: 15px;
+  }
+
+  &__row-title-id {
+    color: var(--text-tertiary);
+    font-size: 11px;
+  }
+
   &__cell {
     align-items: center;
     display: flex;

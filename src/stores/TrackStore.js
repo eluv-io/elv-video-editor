@@ -685,12 +685,13 @@ class TrackStore {
   InitializeTracks = flow(function * (metadataTags) {
     if(this.initialized) { return; }
 
-    this.initialized = true;
-
     this.AddPrimaryContentTrack();
     yield this.AddSubtitleTracks();
     yield this.AddMetadataTracks(metadataTags);
-    yield this.rootStore.overlayStore.AddOverlayTracks();
+
+    this.initialized = true;
+
+    this.rootStore.overlayStore.AddOverlayTracks();
   });
 
   /* User Actions */

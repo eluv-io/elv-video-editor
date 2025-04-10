@@ -81,7 +81,7 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
         !showTagLink ? null :
           <IconButton
             label="View in Tag Editor"
-            to={UrlJoin("/", clip.objectId, `tags?sf=${clip.clipInFrame}&ef=${clip.clipOutFrame}`)}
+            to={UrlJoin("/", clip.objectId, `tags?sf=${clip.clipInFrame}&ef=${clip.clipOutFrame}&isolate=true`)}
             icon={TagIcon}
             small
             className={S("clip__action")}

@@ -125,6 +125,7 @@ const InitializeTrackReactions = ({track, worker}) => {
   reactionDisposals.push(
     reaction(
       () => ({
+        worker,
         isolatedTag: tagStore.isolatedTag
       }),
       () => {
@@ -372,7 +373,13 @@ const Track = observer(({track, noActive}) => {
         scaleMin: videoStore.scaleMin,
         scaleMax: videoStore.scaleMax
       },
-      duration: videoStore.duration
+      duration: videoStore.duration,
+      isolatedTag: !tagStore.isolatedTag ? undefined :
+        {
+          startTime: tagStore.isolatedTag.startTime,
+          endTime: tagStore.isolatedTag.endTime,
+          tagId: tagStore.isolatedTag.tagId
+        }
     });
 
     // Paint image from worker

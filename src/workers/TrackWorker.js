@@ -28,7 +28,7 @@ const isolatedColor = {
 };
 
 class TrackWorker {
-  constructor({trackId, trackLabel, color, height, width, tags, scale, duration, noActive}) {
+  constructor({trackId, trackLabel, color, height, width, tags, scale, duration, noActive, isolatedTag}) {
     this.trackId = trackId;
     this.trackLabel = trackLabel;
     this.color = color;
@@ -45,7 +45,7 @@ class TrackWorker {
     this.hoverTagIds = [];
     this.selectedTagIds = [];
 
-    this.isolatedTag = undefined;
+    this.isolatedTag = isolatedTag;
 
     this.editedTag = undefined;
   }

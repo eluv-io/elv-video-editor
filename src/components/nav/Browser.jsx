@@ -204,7 +204,14 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
                     <img src={image} alt={name} className={S("browser-table__cell-image")}/> :
                     <SVG src={duration ? VideoIcon : defaultIcon} className={S("browser-table__cell-icon")}/>
                 }
-                {name}
+                <div className={S("browser-table__row-title")}>
+                  <div className={S("browser-table__row-title-main")}>
+                    {name}
+                  </div>
+                  <div className={S("browser-table__row-title-id")}>
+                    {id}
+                  </div>
+                </div>
               </div>
               {
                 contentType !== "object" ? null :
