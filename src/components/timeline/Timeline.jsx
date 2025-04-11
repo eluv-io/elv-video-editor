@@ -662,6 +662,7 @@ const ClipTimelineContent = observer(() => {
                 {
                   track.trackType !== "primary-content" ? null :
                     <IconButton
+                      withinPortal
                       icon={QuestionMarkIcon}
                       label="Modifying the primary content tag allows you to specify the start and end times for this offering"
                       className={S("timeline-row__icon")}
