@@ -509,6 +509,28 @@ const TimelineThumbnailTrack = observer(() => {
     <div className={S("timeline-row", "timeline-row--thumbnails")}>
       <div className={S("timeline-row__label")}>
         Thumbnails
+        <IconButton
+          icon={ReloadIcon}
+          small
+          faded
+          withinPortal
+          label="Regenerate Thumbnails"
+          className={S("timeline-row__icon")}
+          onClick={async event => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            await Confirm({
+              title: "Regenerate Thumbnails",
+              text: "Are you sure you want to regenerate thumbnails for this content?",
+              onConfirm: async () => {
+                localStorage.setItem(`regenerate-thumbnails-${videoStore.videoObject.objectId}`, "true");
+
+                await videoStore.thumbnailStore.GenerateVideoThumbnails();
+              }
+            });
+          }}
+        />
       </div>
       <div className={S("timeline-row__content")}>
         <ThumbnailTrack

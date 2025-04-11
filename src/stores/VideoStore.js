@@ -306,9 +306,7 @@ class VideoStore {
         });
       }
 
-      if(this.thumbnailTrackUrl) {
-        this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl);
-      }
+      this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl);
 
       if(!this.tags) {
         this.initialized = true;

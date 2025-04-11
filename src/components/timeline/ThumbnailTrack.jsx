@@ -38,41 +38,46 @@ const ThumbnailCreationTrack = observer(({store}) => {
               text: "Warning: Finalizing the thumbnails for this content will cause the page to reload. If you have any changes, they will be lost.",
               onConfirm: async () => {
                 await store.thumbnailStore.ThumbnailGenerationStatus({finalize: true});
+                localStorage.removeItem(`regenerate-thumbnails-${store.videoObject.objectId}`);
                 await new Promise(resolve => setTimeout(resolve, 5000));
                 window.location.reload();
                 await new Promise(resolve => setTimeout(resolve, 20000));
               }
             })}
           >
-            Reload
+            Finalize
           </AsyncButton>
         </div>
       );
       break;
 
     default:
-      content = (
-        <Button
-          size="xs"
-          color="gray.9"
-          onClick={async () => await Confirm({
-            title: "Generate Thumbnails",
-            text: "Are you sure you want to generate thumbnails for this content?",
-            onConfirm: () => store.thumbnailStore.GenerateVideoThumbnails()
-          })}
-        >
-          Generate Thumbnails
-        </Button>
-      );
+      if(store.thumbnailStore.thumbnailStatus.loaded) {
+        content = (
+          <Button
+            size="xs"
+            color="gray.9"
+            onClick={async () => await Confirm({
+              title: "Generate Thumbnails",
+              text: "Are you sure you want to generate thumbnails for this content?",
+              onConfirm: () => store.thumbnailStore.GenerateVideoThumbnails()
+            })}
+          >
+            Generate Thumbnails
+          </Button>
+        );
+      }
   }
 
   useEffect(() => {
     if(
-      store.thumbnailStore.thumbnailStatus?.status &&
+      !store.thumbnailStore.thumbnailStatus?.status?.state ||
       !["running", "started"].includes(store.thumbnailStore.thumbnailStatus?.status?.state)
     ) {
       return;
     }
+
+    store.thumbnailStore.ThumbnailGenerationStatus();
 
     const statusInterval = setInterval(() => {
       store.thumbnailStore.ThumbnailGenerationStatus();
@@ -133,7 +138,13 @@ const ThumbnailTrack = observer(({
     return startProgress + ((event.clientX - dimensions.left) / dimensions.width) * scale;
   };
 
-  if(allowCreation && !store.thumbnailStore.thumbnailStatus.available) {
+  if(
+    allowCreation &&
+    (
+      !store.thumbnailStore.thumbnailStatus.available ||
+      localStorage.getItem(`regenerate-thumbnails-${store.videoObject.objectId}`)
+    )
+  ) {
     return <ThumbnailCreationTrack store={store} />;
   }
 
