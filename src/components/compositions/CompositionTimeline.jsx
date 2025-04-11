@@ -28,6 +28,7 @@ import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
 import SplitIcon from "@/assets/icons/v2/split.svg";
 import LinkIcon from "@/assets/icons/v2/external-link.svg";
 import DiscardDraftIcon from "@/assets/icons/v2/discard-draft.svg";
+import ReloadIcon from "@/assets/icons/v2/reload.svg";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -100,6 +101,16 @@ const TimelineTopBar = observer(() => {
           disabled={compositionStore.clipIdList.length === 0 || compositionStore.videoStore.frame === 0}
           onClick={() => compositionStore.SplitClip(compositionStore.videoStore.seek)}
           label="Split Clip at Playhead"
+        />
+        <div className={S("toolbar__separator")}/>
+        <IconButton
+          icon={ReloadIcon}
+          label="Reload"
+          onClick={async () => Confirm({
+            title: "Reload Content",
+            text: "Are you sure you want to reload this content?",
+            onConfirm: async () => await compositionStore.SetCompositionObject({...compositionStore.compositionObject})
+          })}
         />
         <div className={S("toolbar__separator")}/>
         <IconButton

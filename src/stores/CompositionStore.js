@@ -771,6 +771,8 @@ class CompositionStore {
   });
 
   SetCompositionObject = flow(function * ({objectId, compositionKey}) {
+    this.Reset();
+    
     const libraryId = yield this.client.ContentObjectLibraryId({objectId});
     const versionHash = yield this.client.LatestVersionHash({objectId});
     const writeToken = yield this.WriteToken({objectId, compositionKey, create: false});

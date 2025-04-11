@@ -76,7 +76,7 @@ const ThumbnailCreationTrack = observer(({store}) => {
 
     const statusInterval = setInterval(() => {
       store.thumbnailStore.ThumbnailGenerationStatus();
-    }, 3000);
+    }, 10000);
 
     return () => clearInterval(statusInterval);
   }, [store.thumbnailStore.thumbnailStatus?.status?.state]);
