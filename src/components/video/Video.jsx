@@ -102,6 +102,9 @@ const Video = observer(({
 
     store.Initialize(video, player);
 
+    // Ensure loading doesn't hang if the video doesn't want to preload
+    setTimeout(() => setReady(true), 2000);
+
     window.player = hlsPlayer;
 
     Callback?.(video);
