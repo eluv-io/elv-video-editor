@@ -772,17 +772,28 @@ class CompositionStore {
 
   SetCompositionObject = flow(function * ({objectId, compositionKey}) {
     this.Reset();
-    
+
     const libraryId = yield this.client.ContentObjectLibraryId({objectId});
     const versionHash = yield this.client.LatestVersionHash({objectId});
     const writeToken = yield this.WriteToken({objectId, compositionKey, create: false});
 
-    const sourceName = yield this.client.ContentObjectMetadata({
-      libraryId,
-      objectId,
-      writeToken,
-      metadataSubtree: "/public/name"
-    });
+    let sourceName;
+    try {
+      sourceName = yield this.client.ContentObjectMetadata({
+        libraryId,
+        objectId,
+        writeToken,
+        metadataSubtree: "/public/name"
+      });
+    } catch(error) {
+      if(error.status === 404 && error.message === "Not Found") {
+        // eslint-disable-next-line no-console
+        console.error(`Error: Dead write token for composition ${objectId}/${compositionKey}, discarding draft`);
+        this.DiscardDraft({objectId, compositionKey});
+
+        return yield this.SetCompositionObject({objectId, compositionKey});
+      }
+    }
 
     const metadata = yield this.client.ContentObjectMetadata({
       libraryId,
