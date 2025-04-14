@@ -82,6 +82,11 @@ class FrameAccurateVideo {
           return "NTSCHD";
         }
 
+        FrameRateNumerator.Unknown = parseInt(input.split("/")[0]);
+        FrameRateDenominator.Unknown = parseInt(input.split("/")[1]);
+        FrameRates.Unknown = rate;
+        return "Unknown";
+
         // eslint-disable-next-line no-console
         console.error(`Unknown playback rate: ${input}`);
     }
