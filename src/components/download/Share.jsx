@@ -614,7 +614,7 @@ const ShareDetails = observer(({store, selectedShare, Back, Close}) => {
     // Load short URLs
     Promise.all(
       [selectedShare?.embedUrl, selectedShare?.downloadUrl].map(async url =>
-        url && await downloadStore.CreateShortURL(url)
+        url && await downloadStore.CreateShortUrl(url)
       )
     )
       .then(([embedUrl, downloadUrl]) => setShortUrls({embedUrl, downloadUrl}));

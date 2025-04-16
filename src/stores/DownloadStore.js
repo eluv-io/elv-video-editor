@@ -373,10 +373,16 @@ class DownloadStore {
     share.start_time = share.start_time ? new Date(share.start_time * 1000).toISOString() : null;
     share.end_time = share.end_time ? new Date(share.end_time * 1000).toISOString() : null;
 
-    return yield this.FormatShare({store, share});
+    const formattedShare = yield this.FormatShare({store, share});
+
+    if(shareOptions.email) {
+      this.SendShareEmail({share: formattedShare});
+    }
+
+    return formattedShare;
   });
 
-  CreateShortURL = flow(function * (url) {
+  CreateShortUrl = flow(function * (url) {
     try {
       // Normalize URL
       url = new URL(url).toString();
@@ -517,6 +523,33 @@ class DownloadStore {
 
   RevokeShare = flow(function * ({shareId}) {
     return yield this.rootStore.client.RevokeShare({shareId});
+  });
+
+  SendShareEmail = flow(function * ({share}) {
+    const tenantId = yield this.rootStore.client.ContentObjectTenantId({objectId: share.object_id});
+
+    let options = {
+      tenant: tenantId,
+      email: share.recipient,
+      share_title: share.shareOptions.title || "",
+      share_description: share.shareOptions.note || "",
+    };
+
+    if(["stream", "both"].includes(share.shareOptions.permissions)) {
+      options.stream_button_link = yield this.CreateShortUrl(share.embedUrl);
+    }
+
+    if(["download", "both"].includes(share.shareOptions.permissions)) {
+      options.download_button_link = yield this.CreateShortUrl(share.downloadUrl);
+    }
+
+    return yield this.rootStore.client.MakeAuthServiceRequest({
+      format: "json",
+      path: "/as/wlt/ory/send_share_email",
+      method: "POST",
+      body: options,
+      headers: { Authorization: `Bearer ${this.rootStore.signedToken}` }
+    });
   });
 }
 

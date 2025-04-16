@@ -245,6 +245,7 @@
 .tag {
   align-items: center;
   background-color: var(--background-tag);
+  border: 1px solid transparent;
   border-radius: 5px;
   display: flex;
   gap: 15px;
@@ -255,7 +256,7 @@
   padding-left: 15px;
   position: relative;
   text-align: left;
-  transition: background-color 0.25s ease;
+  transition: background-color 0.25s ease, border-color 0.15s ease;
   width: 100%;
 
   &__left {
@@ -276,6 +277,10 @@
 
   &--hover {
     background-color: var(--background-tag--hover);
+
+    &:not(:hover) {
+      border: 1px solid rgba(var(--rgb-color-highlight), 0.75);
+    }
   }
 
   &--selected {

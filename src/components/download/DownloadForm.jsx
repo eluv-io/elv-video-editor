@@ -154,7 +154,9 @@ export const DownloadFormFields = observer(({
           />
       }
       {
-        !fields.format ? null :
+        // TODO: Re-enable when prores is implemented
+        // eslint-disable-next-line no-constant-condition
+        true || !fields.format ? null :
           <FormSelect
             label="Format"
             name="format"
