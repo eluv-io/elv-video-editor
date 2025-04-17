@@ -110,9 +110,8 @@ class OverlayStore {
                 frame: parseInt(frame),
                 trackId: trackIdMap[trackKey],
                 o: {
-                  f: frame,
                   tk: trackKey,
-                  i: tagIndex,
+                  ti: tagIndex,
                   lk: tagFileLinks[i]
                 }
               }));

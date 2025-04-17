@@ -35,11 +35,11 @@ const CreateTrackForm = observer(({Close}) => {
     error = "Category label is required";
   } else if(
     trackStore.tracks.find(otherTrack =>
-      otherTrack.trackType === trackType && otherTrack.key === track.key
+      otherTrack.trackType === trackType && otherTrack.key === track.key || track.defaultKey
     )
   ) {
     valid = false;
-    error = `Category with metadata key '${track.key}' already exists`;
+    error = `Category with metadata key '${track.key || track.defaultKey}' already exists`;
   }
 
   return (

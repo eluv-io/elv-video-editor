@@ -523,7 +523,7 @@ class TagStore {
     const trackId = this.rootStore.NextId();
     this.rootStore.editStore.PerformAction({
       label: "Add Category",
-      type: trackType,
+      type: "track",
       action: "create",
       modifiedItem: { trackId, trackType, key, label, description, color},
       Action: () => this.rootStore.trackStore.AddTrack({
@@ -548,8 +548,8 @@ class TagStore {
 
     this.rootStore.editStore.PerformAction({
       label: "Remove Category",
-      type: originalTrack.trackType,
-      action: "create",
+      type: "track",
+      action: "delete",
       modifiedItem: originalTrack,
       Action: () => this.rootStore.trackStore.DeleteTrack({trackId}),
       Undo: () => this.rootStore.trackStore.AddTrack({
@@ -647,7 +647,7 @@ class TagStore {
 
     this.rootStore.editStore.PerformAction({
       label: "Delete Tag",
-      type: "tag",
+      type: "overlay",
       action: "delete",
       modifiedItem: tag,
       Action: () => this.rootStore.overlayStore.DeleteTag({frame, tagId: originalTag.tagId}),

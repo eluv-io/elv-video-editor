@@ -46,7 +46,7 @@ const VideoSection = observer(({showOverlay}) => {
           onClick={async () => await Confirm({
             title: "Save Changes",
             text: "Are you sure you want to save your changes?",
-            onConfirm: async () => await editStore.SaveTags()
+            onConfirm: async () => await editStore.Save()
           })}
         >
           <Icon style={{height: 18}} icon={SaveIcon}/>

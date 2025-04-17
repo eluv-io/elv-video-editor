@@ -9,6 +9,8 @@ import {AsyncButton, Confirm, LoaderImage} from "@/components/common/Common.jsx"
 const S = CreateModuleClassMatcher(TrackStyles);
 
 const ThumbnailCreationTrack = observer(({store}) => {
+  const [finalizing, setFinalizing] = useState(false);
+
   let content;
   switch(store.thumbnailStore.thumbnailStatus?.status?.state) {
     case "started":
@@ -28,7 +30,10 @@ const ThumbnailCreationTrack = observer(({store}) => {
     case "finished":
       content = (
         <div className={S("thumbnail-creation-track__status")}>
-          <div>Thumbnail Generation Complete</div>
+          {
+            finalizing ? null :
+              <div>Thumbnail Generation Complete</div>
+          }
           <AsyncButton
             size="xs"
             color="gray.9"
@@ -37,6 +42,7 @@ const ThumbnailCreationTrack = observer(({store}) => {
               title: "Finalize Thumbnails",
               text: "Warning: Finalizing the thumbnails for this content will cause the page to reload. If you have any changes, they will be lost.",
               onConfirm: async () => {
+                setFinalizing(true);
                 await store.thumbnailStore.ThumbnailGenerationStatus({finalize: true});
                 localStorage.removeItem(`regenerate-thumbnails-${store.videoObject.objectId}`);
                 await new Promise(resolve => setTimeout(resolve, 5000));
