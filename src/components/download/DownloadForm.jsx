@@ -114,7 +114,7 @@ export const DownloadFormFields = observer(({
             autoFocus={autoFocus}
             name="filename"
             value={options.filename}
-            onChange={event => setOptions({...setOptions, filename: event.target.value})}
+            onChange={event => setOptions({...options, filename: event.target.value})}
             placeholder={options.defaultFilename}
           />
       }

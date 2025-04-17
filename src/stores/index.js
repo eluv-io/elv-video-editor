@@ -292,6 +292,15 @@ class RootStore {
     return Id.next();
   }
 
+  OpenExternalLink(url) {
+    this.client.SendMessage({
+      options: {
+        operation: "OpenExternalLink",
+        url
+      }
+    });
+  }
+
   LibraryId = flow(function * ({objectId, versionHash}) {
     if(!objectId && !versionHash) { return; }
 

@@ -383,7 +383,7 @@ const Share = observer(({share, setEditingShare, setSelectedShare, Reload}) => {
             <IconButton
               small
               icon={EditIcon}
-              title="Change Access"
+              label="Change Access"
               onClick={event => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -396,7 +396,7 @@ const Share = observer(({share, setEditingShare, setSelectedShare, Reload}) => {
             <IconButton
               small
               icon={XIcon}
-              title="Revoke Access"
+              label="Revoke Access"
               onClick={async event => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -571,33 +571,27 @@ const ShareSocialLinks = observer(({share, embedUrl}) => {
     twitterUrl.searchParams.set("text", share.title);
   }
 
-  const facebookUrl = new URL("https://www.facebook.com/sharer/sharer.php");
+  const facebookUrl = new URL("https://www.facebook.com/sharer.php");
   facebookUrl.searchParams.set("u", embedUrl.toString());
 
-  const linkedInIrl = new URL("https://www.linkedin.com/sharing/share-offsite/");
-  linkedInIrl.searchParams.set("url", embedUrl.toString());
+  const linkedInUrl = new URL("https://www.linkedin.com/sharing/share-offsite/");
+  linkedInUrl.searchParams.set("url", embedUrl.toString());
 
   return (
     <div className={S("share-details__social-links")}>
       <IconButton
         icon={TwitterIcon}
-        href={twitterUrl.toString()}
-        rel="noopener noreferrer"
-        target="_blank"
+        onClick={() => rootStore.OpenExternalLink(twitterUrl.toString())}
         className={S("share-details__social-link")}
       />
       <IconButton
         icon={FacebookIcon}
-        href={facebookUrl.toString()}
-        rel="noopener noreferrer"
-        target="_blank"
+        onClick={() => rootStore.OpenExternalLink(facebookUrl.toString())}
         className={S("share-details__social-link")}
       />
       <IconButton
         icon={LinkedInIcon}
-        href={linkedInIrl.toString()}
-        rel="noopener noreferrer"
-        target="_blank"
+        onClick={() => rootStore.OpenExternalLink(linkedInUrl.toString())}
         className={S("share-details__social-link")}
       />
     </div>

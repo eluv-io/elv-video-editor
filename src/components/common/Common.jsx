@@ -186,7 +186,7 @@ export const IconButton = ({
   highlight,
   faded,
   small,
-  withinPortal=false,
+  withinPortal=true,
   noHover,
   ...props
 }) => {

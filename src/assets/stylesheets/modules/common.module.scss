@@ -291,6 +291,8 @@
 
 .slider-container {
   height: calc(var(--slider-height) + 1.3em);
+  user-select: none;
+  user-select: none;
   width: 100%;
 
   --slider-height: 20px;

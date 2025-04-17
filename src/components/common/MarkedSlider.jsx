@@ -258,12 +258,16 @@ const MarkedSlider = observer(({
   const Drag = useCallback((event) => {
     clearTimeout(dragTimeout);
 
+    document.body.classList.add("noselect");
+
     dragTimeout = setTimeout(() => HandleChange(event), 10);
   }, [draggingHandleIndex, HandleChange]);
 
   const EndDrag = useCallback(() => {
     //setDraggingHandleIndex(undefined);
     draggingHandleIndex = undefined;
+
+    document.body.classList.remove("noselect");
 
     window.removeEventListener("mousemove", Drag);
     window.removeEventListener("mouseup", EndDrag);
