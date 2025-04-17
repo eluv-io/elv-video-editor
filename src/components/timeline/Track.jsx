@@ -272,7 +272,7 @@ const TooltipOverlay = observer(({trackId, ...props}) => {
         return null;
       }
 
-      if(filter && !formatString(tag.textList.join(" ")).includes(filter)) {
+      if(filter && !formatString(tag.text).includes(filter)) {
         return null;
       }
 
@@ -282,7 +282,7 @@ const TooltipOverlay = observer(({trackId, ...props}) => {
             {`${tagStore.TimeToSMPTE(tag.startTime)} - ${tagStore.TimeToSMPTE(tag.endTime)}`}
           </div>
           <div className={S("tooltip__content")}>
-            {tag.content ? <pre>{JSON.stringify(tag.content, null, 2)}</pre> : <p>{tag.textList.join(", ")}</p>}
+            {tag.content ? <pre>{JSON.stringify(tag.content, null, 2)}</pre> : <p>{tag.text}</p>}
           </div>
         </div>
       );

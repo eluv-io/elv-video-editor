@@ -75,7 +75,7 @@ class TrackWorker {
       tag.startTime <= endTime.valueOf() &&
       (!this.isolatedTag || tag.endTime > this.isolatedTag.startTime) &&
       (!this.isolatedTag || tag.startTime < this.isolatedTag.endTime) &&
-      (!filter || formatString(tag.textList.join(" ")).includes(filter)) &&
+      (!filter || formatString(tag.text).includes(filter)) &&
       (!this.editedTag || tag.tagId !== this.editedTag.tagId)
     );
 

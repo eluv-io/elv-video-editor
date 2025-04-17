@@ -196,8 +196,6 @@ class VideoStore {
       this.rootStore.trackStore.Reset();
     }
 
-    this.rootStore.editStore.Reset();
-
     this.thumbnailStore = new ThumbnailStore(this);
   }
 
@@ -339,14 +337,17 @@ class VideoStore {
             const tagData = yield this.rootStore.client.utils.LimitedMap(
               5,
               Object.keys(this.metadata.video_tags.metadata_tags),
-              async fileName => await this.rootStore.client.LinkData({
-                versionHash: this.versionHash,
-                linkPath: `video_tags/metadata_tags/${fileName}`,
-                format: "json"
+              async linkKey => ({
+                linkKey,
+                tags: await this.rootStore.client.LinkData({
+                  versionHash: this.versionHash,
+                  linkPath: `video_tags/metadata_tags/${linkKey}`,
+                  format: "json"
+                })
               })
             );
 
-            tagData.forEach((tags, fileIndex) => {
+            tagData.forEach(({tags, linkKey}) => {
               if(!tags) { return; }
 
               const tagVersion = tags.version || 0;
@@ -354,7 +355,7 @@ class VideoStore {
               if(tags.metadata_tags) {
                 Object.keys(tags.metadata_tags).forEach(trackKey => {
                   const trackTags = ((tags.metadata_tags[trackKey].tags) || [])
-                    .map((tag, tagIndex) => ({...tag, fi: fileIndex, tk: trackKey, ti: tagIndex}));
+                    .map((tag, tagIndex) => ({...tag, lk: linkKey, tk: trackKey, ti: tagIndex}));
 
                   if(metadataTags[trackKey]) {
                     metadataTags[trackKey].tags = metadataTags[trackKey].tags

@@ -36,27 +36,24 @@ const VideoSection = observer(({showOverlay}) => {
         <div className={S("ellipsis")}>
           {videoStore.name}
         </div>
-        {
-          rootStore.page !== "clips" ? null :
-           <AsyncButton
-            color="gray.5"
-            variant="outline"
-            autoContrast
-            h={30}
-            px="xs"
-            disabled={!editStore.hasUnsavedChanges}
-            onClick={async () => await Confirm({
-              title: "Save Changes",
-              text: "Are you sure you want to save your changes?",
-              onConfirm: async () => await editStore.SaveClips()
-            })}
-          >
-            <Icon style={{height: 18}} icon={SaveIcon}/>
-            <span style={{marginLeft: 5}}>
-              Save
-            </span>
-          </AsyncButton>
-        }
+        <AsyncButton
+          color="gray.5"
+          variant="outline"
+          autoContrast
+          h={30}
+          px="xs"
+          disabled={!editStore.hasUnsavedChanges}
+          onClick={async () => await Confirm({
+            title: "Save Changes",
+            text: "Are you sure you want to save your changes?",
+            onConfirm: async () => await editStore.SaveTags()
+          })}
+        >
+          <Icon style={{height: 18}} icon={SaveIcon}/>
+          <span style={{marginLeft: 5}}>
+            Save
+          </span>
+        </AsyncButton>
       </h1>
       <Video store={videoStore} showOverlay={showOverlay} showFrameDownload />
       <div className={S("toolbar")}>

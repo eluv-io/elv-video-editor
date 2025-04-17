@@ -81,60 +81,50 @@ class OverlayStore {
         return;
       }
 
-      let overlayTagChunks = [];
-      let overlayTagVersion = 0;
-      const tagFiles = Object.keys(metadata.video_tags.overlay_tags);
-      for(let i = 0; i < tagFiles.length; i++) {
-        const {overlay_tags, version} = yield this.rootStore.client.LinkData({
-          versionHash: this.rootStore.videoStore.versionHash,
-          linkPath: `video_tags/overlay_tags/${tagFiles[i]}`,
-          format: "json"
-        });
-
-        overlayTagVersion = version || 0;
-        overlayTagChunks.push(overlay_tags.frame_level_tags);
-      }
-
-      if(overlayTagChunks.length === 0) {
-        return;
-      }
-
-      const overlayTags = Object.assign({}, ...overlayTagChunks);
-      overlayTags.version = overlayTagVersion;
+      this.overlayEnabled = true;
 
       let trackIdMap = {};
       this.rootStore.trackStore.tracks.forEach(track =>
         trackIdMap[track.key] = track.trackId
       );
 
-      // Determine all tracks with overlay
-      let availableOverlayTrackKeys = {};
-      Object.keys(overlayTags).forEach(frame =>
-        Object.keys(overlayTags[frame]).forEach(trackKey => {
-          availableOverlayTrackKeys[trackKey] = true;
+      const tagFileLinks = Object.keys(metadata.video_tags.overlay_tags);
+      for(let i = 0; i < tagFileLinks.length; i++) {
+        const tagInfo = yield this.rootStore.client.LinkData({
+          versionHash: this.rootStore.videoStore.versionHash,
+          linkPath: `video_tags/overlay_tags/${tagFileLinks[i]}`,
+          format: "json"
+        });
 
-          if(typeof overlayTags[frame][trackKey] !== "object") {
-            return;
-          }
+        let overlayTags = tagInfo.overlay_tags?.frame_level_tags || {};
+        Object.keys(overlayTags).forEach(frame =>
+          Object.keys(overlayTags[frame]).forEach(trackKey => {
+            if(typeof overlayTags[frame][trackKey] !== "object") {
+              return;
+            }
 
-          overlayTags[frame][trackKey].tags = (overlayTags[frame][trackKey]?.tags || [])
-            .map((tag, tagIndex) => ({
-              ...tag,
-              tagId: this.rootStore.NextId(),
-              frame: parseInt(frame),
-              trackId: trackIdMap[trackKey],
-              o: {
-                f: frame,
-                tk: trackKey,
-                i: tagIndex
-              }
-            }));
-        })
-      );
+            overlayTags[frame][trackKey].tags = (overlayTags[frame][trackKey]?.tags || [])
+              .map((tag, tagIndex) => ({
+                ...tag,
+                tagId: this.rootStore.NextId(),
+                frame: parseInt(frame),
+                trackId: trackIdMap[trackKey],
+                o: {
+                  f: frame,
+                  tk: trackKey,
+                  i: tagIndex,
+                  lk: tagFileLinks[i]
+                }
+              }));
+          })
+        );
 
-      // Overlay track is not observable for memory purposes
-      this.overlayTags = overlayTags;
-      this.overlayEnabled = true;
+        this.overlayTags = {
+          ...this.overlayTags,
+          ...overlayTags,
+          version: tagInfo.version || this.overlayTags.version || 0,
+        };
+      }
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error("Failed to load overlay tracks:");

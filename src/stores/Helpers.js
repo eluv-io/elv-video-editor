@@ -180,14 +180,17 @@ export const Cue = ({store, tagType, label, startTime, endTime, text, tag, ...ex
     endTime = store.videoHandler.SMPTEToTime(endTime);
   }
 
-  let textList, content;
+  let content;
   if(Array.isArray(text)) {
-    textList = text;
+    text = text.join(", ");
   } else if(typeof text === "object") {
     content = text;
-    textList = [];
-  } else {
-    textList = [text];
+
+    try {
+      text = JSON.stringify(text, null, 2);
+    } catch(error) {
+      text = "";
+    }
   }
 
   return {
@@ -196,7 +199,7 @@ export const Cue = ({store, tagType, label, startTime, endTime, text, tag, ...ex
     label,
     startTime,
     endTime,
-    textList: Unproxy(textList),
+    text,
     content: Unproxy(content),
     tag,
     ...extra
@@ -232,7 +235,6 @@ const FormatVTTCue = ({label, cue, store}) => {
     startTime: cue.startTime,
     endTime: cue.endTime,
     text: cue.text,
-    textList: [cue.text],
     tag: cueCopy
   });
 };

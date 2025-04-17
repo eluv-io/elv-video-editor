@@ -1,4 +1,5 @@
 import {flow, makeAutoObservable } from "mobx";
+import UrlJoin from "url-join";
 
 class EditStore {
   saving = false;
@@ -53,22 +54,16 @@ class EditStore {
   Reset() {
     this.saving = false;
 
-    this.editInfo = {
-      tags: {
-        position: 0,
-        actionStack: [],
-        redoStack: []
-      },
-      clips: {
-        position: 0,
-        actionStack: [],
-        redoStack: []
-      },
-      assets: {
-        position: 0,
-        actionStack: [],
-        redoStack: []
-      }
+    this.ResetPage("tags");
+    this.ResetPage("clips");
+    this.ResetPage("assets");
+  }
+
+  ResetPage(page) {
+    this.editInfo[page] = {
+      position: 0,
+      actionStack: [],
+      redoStack: []
     };
   }
 
@@ -169,397 +164,188 @@ class EditStore {
 
   });
 
-  /*
+  SaveTags = flow(function * (callback) {
+    const actions = [...this.rootStore.editStore.editInfo.tags.actionStack].reverse();
 
-  Save2 = flow(function * ({trimOfferings}) {
-    if(this.saving || this.rootStore.videoStore.loading) { return; }
+    if(actions.length === 0) { return; }
 
-    this.saving = true;
+    const objectId = this.rootStore.videoStore.videoObject.objectId;
+    const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
 
-    try {
-      const client = this.rootStore.client;
-      const libraryId = this.rootStore.menuStore.selectedObject.libraryId;
-      const objectId = this.rootStore.menuStore.selectedObject.objectId;
-      const originalVersionHash = this.rootStore.menuStore.selectedObject.versionHash;
+    let indexModifications = {};
+    let modifiedFiles = {};
+    const LoadTagFile = async linkKey => {
+      if(modifiedFiles[linkKey]) { return; }
 
-      let metadata = {};
-      try {
-        metadata = yield client.LinkData({
-          libraryId,
-          objectId,
-          versionHash: originalVersionHash,
-          linkPath: "video_tags/metadata_tags"
-        });
-
-        metadata = metadata.metadata_tags || {};
-      } catch(error) {
-        // eslint-disable-next-line no-console
-        console.error("Unable to retrieve existing tags");
-      }
-
-      let newMetadata = {};
-      let updatedMetadata = {};
-
-      const metadataTracks = this.rootStore.trackStore.tracks.filter(track => track.trackType === "metadata");
-
-      metadataTracks.forEach(track => {
-        const tags = this.rootStore.trackStore.TrackTags(track.trackId);
-        const tagMetadata = Object.values(tags).map(tag => ({
-          ...tag.tag,
-          text: tag.content ? tag.content : tag.textList,
-          start_time: Math.floor(tag.startTime * 1000),
-          end_time: Math.floor(tag.endTime * 1000)
-        }));
-
-        const originalMetadata = metadata[track.key] || {};
-
-        const trackMetadata = {
-          ...originalMetadata,
-          version: 1,
-          label: track.label,
-          tags: SortTags(tagMetadata)
-        };
-
-        newMetadata[track.key] = trackMetadata;
-
-        if(originalMetadata) {
-          originalMetadata.tags = SortTags(originalMetadata.tags || []);
-
-          const trackDiff = diff(
-            originalMetadata,
-            trackMetadata
-          );
-
-          if(Object.keys(trackDiff).length === 0) {
-            return;
-          }
-        }
-
-        updatedMetadata[track.key] = trackMetadata;
+      modifiedFiles[linkKey] = await this.client.LinkData({
+        libraryId,
+        objectId,
+        linkPath: UrlJoin("video_tags", "metadata_tags", linkKey),
+        format: "json"
       });
 
-      const keys = metadataTracks.map(track => track.key);
-      const keysToDelete = Object.keys(metadata)
-        .filter(key => !keys.includes(key));
+      if(!modifiedFiles[linkKey] || modifiedFiles[linkKey]?.errors) {
+        modifiedFiles[linkKey] = {
+          version: 1,
+          new: true,
+          metadata_tags: {}
+        };
+      }
 
-      const {
-        clipChanged,
-        startTimeRat,
-        endTimeRat
-      } = this.DetermineTrimChange();
+      indexModifications[linkKey] = {};
+    };
 
-      const metadataChanged = Object.keys(updatedMetadata).length > 0 || keysToDelete.length > 0;
-
-      // No difference between current tags and saved tags, or clip timing
-      if(!metadataChanged && !clipChanged) {
-        this.saving = false;
-        this.saveFailed = false;
+    // Collapse actions by unique tag
+    let formattedActions = [];
+    actions.forEach(action => {
+      if(action.type !== "tag") {
+        // Not a tag action
         return;
       }
 
-      const {write_token} = yield client.EditContentObject({
-        libraryId,
-        objectId
-      });
-
-      if(metadataChanged) {
-        // Upload new JSON file
-        newMetadata = {
-          ...this.rootStore.videoStore.tags,
-          metadata_tags: newMetadata
-        };
-
-        const data = (new TextEncoder()).encode(JSON.stringify(newMetadata));
-        yield client.UploadFiles({
-          libraryId,
-          objectId,
-          writeToken: write_token,
-          fileInfo: [{
-            path: "MetadataTags.json",
-            mime_type: "application/json",
-            size: data.length,
-            data: data.buffer
-          }]
-        });
-
-        // Update link to tags
-        yield client.CreateLinks({
-          libraryId,
-          objectId,
-          writeToken: write_token,
-          links: [{
-            path: "video_tags/metadata_tags",
-            target: "MetadataTags.json",
-            type: "file"
-          }]
-        });
+      if(formattedActions.find(otherAction => otherAction.modifiedItem.tagId === action.modifiedItem.tagId)) {
+        // Only the most recent action matters per tag, disregard older actions on this tag
+        return;
       }
 
-      if(clipChanged) {
-        for(let i = 0; i < trimOfferings.length; i++) {
-          const offering = (trimOfferings || [this.rootStore.videoStore.offeringKey])[i];
-          yield client.ReplaceMetadata({
-            libraryId,
-            objectId,
-            writeToken: write_token,
-            metadataSubtree: `offerings/${offering}/tag_point_rat`,
-            metadata: startTimeRat
+      formattedActions.push({
+        ...action,
+        // If modified tag has no origin, it is a modification of a newly created tag
+        action: action.action === "modify" && !action.modifiedItem.o ? "create" : action.action
+      });
+    });
+
+    // Remove unnecessary delete of new tags and convert modification of ML tag to delete + create user tag
+    formattedActions = formattedActions.map(action => {
+      if(action.action === "delete" && !action.modifiedItem.o) {
+        // Deletion of newly created tag
+        return;
+      }
+
+      if(action.action !== "modify" || !action.modifiedItem.o || action.modifiedItem.o.lk === "user") {
+        return action;
+      }
+
+      // Modification of ML tag
+      return [
+        {
+          ...action,
+          action: "create"
+        },
+        {
+          ...action,
+          action: "delete"
+        }
+      ];
+    })
+      .flat()
+      .filter(a => a)
+      // Sort modifications by highest index first so deletes will not interfere with indices of other actions
+      .sort((a, b) => a.modifiedItem.o?.ti < b.modifiedItem.o?.ti ? 1 : -1);
+
+    yield LoadTagFile("user");
+    for(const action of formattedActions) {
+      const tag = action.modifiedItem;
+      const tagOrigin = action.modifiedItem.o;
+      let linkKey = tagOrigin ? tagOrigin.lk : "user";
+
+      yield LoadTagFile(linkKey);
+
+      switch(action.action) {
+        // Create new asset
+        case "create":
+          linkKey = "user";
+          // Ensure track is present in file
+          if(!modifiedFiles[linkKey].metadata_tags[tag.trackKey]) {
+            modifiedFiles[linkKey].metadata_tags[tag.trackKey] = {
+              label: this.rootStore.trackStore.Track(tag.trackKey).label,
+              tags: []
+            };
+          }
+
+          modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags.push({
+            text: action.modifiedItem.text,
+            start_time: Math.floor(action.modifiedItem.startTime * 1000),
+            end_time: Math.ceil(action.modifiedItem.endTime * 1000),
           });
 
-          yield client.ReplaceMetadata({
+          break;
+
+        case "modify":
+          modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags[tagOrigin.ti] = {
+            ...modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags[tagOrigin.ti],
+            text: action.modifiedItem.text,
+            start_time: Math.floor(action.modifiedItem.startTime * 1000),
+            end_time: Math.ceil(action.modifiedItem.endTime * 1000),
+          };
+
+          break;
+
+        case "delete":
+          modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags =
+            modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags
+              .filter((_, i) => i !== action.modifiedItem.o.ti);
+
+          break;
+      }
+    }
+
+
+    const writeToken = yield this.rootStore.editStore.InitializeWrite({objectId});
+
+    const linkInfo = yield this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      metadataSubtree: "/video_tags/metadata_tags"
+    });
+
+    let fileInfo = [];
+    yield Promise.all(
+      Object.keys(modifiedFiles).map(async linkKey => {
+        const filePath = linkKey === "user" ?
+          "/video_tags/source_tags/user/user-tags.json" :
+          UrlJoin("/video_tags", linkInfo[linkKey]["/"].split("/").slice(-1)[0]);
+
+        if(modifiedFiles[linkKey].new) {
+          await this.client.ReplaceMetadata({
             libraryId,
             objectId,
-            writeToken: write_token,
-            metadataSubtree: `offerings/${offering}/exit_point_rat`,
-            metadata: endTimeRat
+            writeToken,
+            metadataSubtree: UrlJoin("/video_tags", "metadata_tags", linkKey),
+            metadata: {
+              "/": UrlJoin("./files/", filePath)
+            }
           });
         }
-      }
 
-      const {hash} = yield client.FinalizeContentObject({
-        libraryId,
-        objectId,
-        writeToken: write_token,
-        commitMessage: "Video Editor"
-      });
+        delete modifiedFiles[linkKey].new;
 
-      this.rootStore.menuStore.UpdateVersionHash(hash);
-
-      yield this.rootStore.videoStore.ReloadMetadata();
-      this.rootStore.videoStore.availableOfferings = this.rootStore.videoStore.SetOfferingClipDetails({
-        metadata: this.rootStore.videoStore.metadata,
-        availableOfferings: this.rootStore.videoStore.availableOfferings,
-      });
-
-      this.saveFailed = false;
-    } catch(error) {
-      // eslint-disable-next-line no-console
-      console.error(error);
-      this.saveFailed = true;
-    }
-
-    this.saving = false;
-  });
-
-  DetermineTrimChange = () => {
-    // Start/end time clip
-    const {startTime, endTime} = this.rootStore.trackStore.ClipInfo();
-
-    const startFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(startTime);
-    const startTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(startFrame);
-    const endFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(endTime);
-    const endTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(endFrame);
-
-    const offering = this.rootStore.videoStore.metadata.offerings[this.rootStore.videoStore.offeringKey];
-
-    const clipChanged = offering.tag_point_rat !== startTimeRat || offering.exit_point_rat !== endTimeRat;
-
-    return {
-      clipChanged,
-      endTimeRat,
-      startTimeRat,
-      tagRevised: this.rootStore.videoStore.TimeToSMPTE(FrameAccurateVideo.ParseRat(startTimeRat)),
-      exitRevised: this.rootStore.videoStore.TimeToSMPTE(FrameAccurateVideo.ParseRat(endTimeRat)),
-      durationUntrimmed: this.rootStore.videoStore.scaleMaxSMPTE,
-      durationTrimmed: this.rootStore.videoStore.TimeToSMPTE(FrameAccurateVideo.ParseRat(endTimeRat) - FrameAccurateVideo.ParseRat(startTimeRat))
-    };
-  };
-
-  UploadMetadataTags = flow(function * ({metadataFiles, metadataFilesRemote, overlayFiles=[], overlayFilesRemote=[]}) {
-    if(this.rootStore.videoStore.loading) {
-      return;
-    }
-
-    const ReadFile = async file => await new Response(file).json();
-
-    let metadataTags, overlayTags;
-
-    // Read files and verify contents
-
-    if(metadataFiles.length > 0) {
-      metadataFiles = Array.from(metadataFiles).sort((a, b) => a.name < b.name);
-
-      metadataTags = yield Promise.all(
-        Array.from(metadataFiles).map(async file => {
-          const tags = await ReadFile(file);
-
-          if(!tags.metadata_tags && !tags.video_level_tags) {
-            throw Error(`No metadata tags present in ${file.name}`);
-          }
-
-          return {
-            tags
-          };
-        })
-      );
-    }
-
-    if(overlayFiles.length > 0) {
-      overlayTags = yield Promise.all(
-        Array.from(overlayFiles).map(async file => {
-          const tags = await ReadFile(file);
-
-          if(!tags.overlay_tags) {
-            throw Error(`No overlay tags present in ${file.name}`);
-          }
-
-          const frames = Object.keys(tags.overlay_tags.frame_level_tags).map(frame => parseInt(frame));
-
-          return {
-            tags,
-            startFrame: Math.min(...frames),
-            endFrame: Math.max(...frames)
-          };
-        })
-      );
-    }
-
-    if(!metadataTags && !overlayTags && metadataFilesRemote.length === 0 && overlayFilesRemote.length === 0) {
-      return;
-    }
-
-    const client = this.rootStore.client;
-    const libraryId = this.rootStore.menuStore.selectedObject.libraryId;
-    const objectId = this.rootStore.menuStore.selectedObject.objectId;
-
-    const {write_token} = yield client.EditContentObject({
-      libraryId,
-      objectId
-    });
-
-    // Local metadata tag files
-    if(metadataTags || metadataFilesRemote) {
-      // Clear any existing tags
-      yield client.DeleteMetadata({
-        libraryId,
-        objectId,
-        writeToken: write_token,
-        metadataSubtree: "video_tags/metadata_tags"
-      });
-    }
-
-    if(metadataTags) {
-      // Upload and create a link to each metadata tag file
-      for(let i = 0; i < metadataTags.length; i++) {
-        const data = (new TextEncoder()).encode(JSON.stringify(metadataTags[i].tags));
-        const filename = `video_tags/MetadataTags-${(i + 1).toString().padStart(3, "0")}.json`;
-        yield client.UploadFiles({
-          libraryId,
-          objectId,
-          writeToken: write_token,
-          fileInfo: [{
-            path: filename,
-            mime_type: "application/json",
-            size: data.length,
-            data: data.buffer
-          }]
+        const data = new TextEncoder().encode(JSON.stringify(modifiedFiles[linkKey])).buffer;
+        fileInfo.push({
+          mime_type: "application/json",
+          path: filePath,
+          size: data.byteLength,
+          data
         });
+      })
+    );
 
-        yield client.CreateLinks({
-          libraryId,
-          objectId,
-          writeToken: write_token,
-          links: [{
-            path: `video_tags/metadata_tags/${i}`,
-            target: filename,
-            type: "file"
-          }]
-        });
-      }
-    }
-
-    // Remote metadata tag files
-    if(metadataFilesRemote.length > 0) {
-      for(let i = 0; i < metadataFilesRemote.length; i++) {
-        yield client.CreateLinks({
-          libraryId,
-          objectId,
-          writeToken: write_token,
-          links: [{
-            path: `video_tags/metadata_tags/${i}`,
-            target: metadataFilesRemote[i],
-            type: "file"
-          }]
-        });
-      }
-    }
-
-    // Local overlay files
-    if(overlayTags) {
-      // Sort overlay tags by start frame
-      overlayTags = overlayTags.sort((a, b) => a.startFrame < b.startFrame ? -1 : 1);
-
-      // Clear any existing tags
-      yield client.DeleteMetadata({
-        libraryId,
-        objectId,
-        writeToken: write_token,
-        metadataSubtree: "video_tags/overlay_tags"
-      });
-
-      // Upload and create a link to each overlay tag file
-      for(let i = 0; i < overlayTags.length; i++) {
-        const data = (new TextEncoder()).encode(JSON.stringify(overlayTags[i].tags));
-        const filename = `video_tags/OverlayTags-${(i + 1).toString().padStart(3, "0")}.json`;
-        yield client.UploadFiles({
-          libraryId,
-          objectId,
-          writeToken: write_token,
-          fileInfo: [{
-            path: filename,
-            mime_type: "application/json",
-            size: data.length,
-            data: data.buffer
-          }]
-        });
-
-        // TODO: Add start/end info to links
-        yield client.CreateLinks({
-          libraryId,
-          objectId,
-          writeToken: write_token,
-          links: [{
-            path: `video_tags/overlay_tags/${i}`,
-            target: filename,
-            type: "file"
-          }]
-        });
-      }
-    }
-
-    // Remote overlay files
-    if(overlayFilesRemote.length > 0) {
-      for(let i = 0; i < overlayFilesRemote.length; i++) {
-        yield client.CreateLinks({
-          libraryId,
-          objectId,
-          writeToken: write_token,
-          links: [{
-            path: `video_tags/overlay_tags/${i}`,
-            target: overlayFilesRemote[i],
-            type: "file"
-          }]
-        });
-      }
-    }
-
-    const {hash} = yield client.FinalizeContentObject({
+    yield this.client.UploadFiles({
       libraryId,
       objectId,
-      writeToken: write_token
+      writeToken,
+      fileInfo,
+      callback
     });
 
-    // Reload video
-    this.rootStore.menuStore.SelectVideo({
-      libraryId,
+    yield this.Finalize({
       objectId,
-      versionHash: hash
+      commitMessage: "EVIE - Update tags"
     });
+
+    this.ResetPage("tags");
+    this.rootStore.videoStore.Reload();
   });
-
-
-
-   */
 }
 
 export default EditStore;

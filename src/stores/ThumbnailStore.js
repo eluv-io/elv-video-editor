@@ -88,7 +88,7 @@ class ThumbnailStore {
       imageUrls[url.toString()] = true;
 
       delete tags[id].tag.text;
-      delete tags[id].textList;
+      delete tags[id].text;
     });
 
     yield Promise.all(

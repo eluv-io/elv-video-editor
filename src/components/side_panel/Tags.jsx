@@ -31,9 +31,9 @@ const TagTextarea = observer(() => {
     setInput(
       tag.content ?
         JSON.stringify(tag.content, null, 2) :
-        tag.textList[0]
+        tag.text
     );
-  }, [tag.content, tag.textList]);
+  }, [tag.content, tag.text]);
 
   useEffect(() => {
     setError(undefined);
@@ -48,7 +48,7 @@ const TagTextarea = observer(() => {
       onChange={event => setInput(event.target.value)}
       onBlur={() => {
         if(!tag.content) {
-          tagStore.UpdateEditedTag({...tag, textList: [input]});
+          tagStore.UpdateEditedTag({...tag, text: input});
           return;
         }
 
@@ -320,7 +320,7 @@ export const TagDetails = observer(() => {
     return null;
   }
 
-  const content = tag.content ? JSON.stringify(tag.content, null, 2) : tag.textList?.[0] || "";
+  const content = tag.content ? JSON.stringify(tag.content, null, 2) : tag.text || "";
   const duration = parseFloat(tag.endTime - tag.startTime);
 
   return (
@@ -419,14 +419,14 @@ const Tag = observer(({track, tag}) => {
             label={
               tag.content ?
                 <pre className={S("tag__tooltip", "tag__tooltip--json")}>{JSON.stringify(tag.content, null, 2)}</pre> :
-                <div className={S("tag__tooltip")}>{tag.textList.join(", ")}</div>
+                <div className={S("tag__tooltip")}>{tag.text}</div>
             }
           >
             <div className={S("tag__text", `tag__text--${tag.content ? "json" : "text"}`)}>
               {
                 tag.content ?
                   JSON.stringify(tag.content) :
-                  tag.textList.join(", ")
+                  tag.text
               }
             </div>
           </Tooltip>

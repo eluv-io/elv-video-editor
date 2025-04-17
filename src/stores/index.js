@@ -220,23 +220,13 @@ class RootStore {
     }
   });
 
-  FabricUrl({libraryId, objectId, writeToken, versionHash, noWriteToken=false, path="", auth, resolve=true, width}) {
+  FabricUrl({libraryId, objectId, writeToken, versionHash, path="", auth, resolve=true, width}) {
     let url = new URL(
       this.network === "main" ?
         "https://main.net955305.contentfabric.io" :
         "https://demov3.net955210.contentfabric.io"
     );
 
-    if(!noWriteToken && editStore.writeInfo[objectId]) {
-      writeToken = editStore.writeInfo[objectId].writeToken || writeToken;
-      const fabricNodeUrl = editStore.writeInfo[objectId]?.fabricNodeUrl;
-
-      if(!fabricNodeUrl) {
-        return "";
-      }
-
-      url = new URL(fabricNodeUrl);
-    }
     let urlPath = UrlJoin("s", this.network);
     if(auth === "private") {
       urlPath = UrlJoin("t", this.authToken);

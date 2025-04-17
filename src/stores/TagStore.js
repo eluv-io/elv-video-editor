@@ -151,7 +151,7 @@ class TagStore {
             // Include tags that are within the isolated tag range
             (!this.isolatedTag || (tag.startTime < this.isolatedTag.endTime && tag.endTime > this.isolatedTag.startTime)) &&
             // Text filter
-            (!filter || (tag.textList?.join(" ") || JSON.stringify(tag.content || {})).toLowerCase().includes(filter)) &&
+            (!filter || (tag.text || JSON.stringify(tag.content || {})).toLowerCase().includes(filter)) &&
             // Selected tags
             (!selectedOnly || this.selectedTagIds.length === 0 || this.selectedTagIds.includes(tag.tagId))
           )
@@ -579,9 +579,6 @@ class TagStore {
       endTime: endTime || startTime + 5,
       tagType,
       text,
-      textList: [
-        text
-      ],
       isNew: true
     });
 

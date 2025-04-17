@@ -302,6 +302,12 @@
     display: flex;
     justify-content: flex-end;
     margin-top: 10px;
+    gap: 20px;
+  }
+
+  &__error {
+    color: var(--text-error);
+    font-size: 14px;
   }
 }
 

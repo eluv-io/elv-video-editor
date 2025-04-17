@@ -7,7 +7,7 @@ import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {IconButton} from "@/components/common/Common";
 import UrlJoin from "url-join";
 
-import SourceIcon from "@/assets/icons/v2/source.svg";
+import SourceIcon from "@/assets/icons/v2/folder.svg";
 import TagIcon from "@/assets/icons/v2/tag.svg";
 import ClipIcon from "@/assets/icons/v2/clip.svg";
 import AssetIcon from "@/assets/icons/v2/asset.svg";

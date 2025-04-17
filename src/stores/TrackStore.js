@@ -114,7 +114,12 @@ class TrackStore {
   }
 
   get viewTracks() {
-    return this.rootStore.page === "clips" ? this.clipTracks : this.metadataTracks;
+    return (
+      this.rootStore.page === "clips" ?
+        [...this.visibleClipTracks, ...this.clipTracks] :
+        [...this.visibleMetadataTracks, ...this.metadataTracks]
+    )
+      .filter((track, index, array) => array.findIndex(otherTrack => otherTrack.key === track.key) === index);
   }
 
   Reset() {
@@ -506,8 +511,8 @@ class TrackStore {
           endTime: millis ? (tag.end_time / 1000) : tag.end_time,
           text: tag.text,
           tag: Unproxy(tag),
-          origin: {
-            fi: tag.fi,
+          o: {
+            lk: tag.lk,
             tk: tag.tk,
             ti: tag.ti
           }

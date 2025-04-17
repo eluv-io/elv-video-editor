@@ -144,6 +144,7 @@ const ShareCreateForm = observer(({
   setSelectedShare
 }) => {
   const isComposition = rootStore.page === "compositions";
+  const [submitErrorMessage, setSubmitErrorMessage] = useState(undefined);
   const [shareOptions, setShareOptions] = useState({
     type: mode,
     title: store.name,
@@ -267,56 +268,71 @@ const ShareCreateForm = observer(({
           }
         </div>
         <div className={S("share-form__actions")}>
+          {
+            !submitErrorMessage ? null :
+              <div className={S("share-form__error")}>
+                { submitErrorMessage }
+              </div>
+          }
           <AsyncButton
             tooltip={error}
             disabled={!!error}
             autoContrast
             color="gray.1"
             onClick={async () => {
-              const options = {...downloadOptions};
+              try {
+                const options = {...downloadOptions};
 
-              if(shareOptions.noClip || options.clipInFrame === 0) {
-                delete options.clipInFrame;
-              }
-
-              if(shareOptions.noClip || options.clipOutFrame >= store.totalFrames - 1) {
-                delete options.clipOutFrame;
-              }
-
-              let submittedShareOptions = {
-                ...shareOptions,
-                compositionKey: !isComposition ? undefined :
-                  compositionStore.compositionObject.compositionKey,
-              };
-
-              if(mode === "recipients") {
-                delete submittedShareOptions.label;
-
-                const emails = shareOptions.email.split(",").map(email => email.trim());
-
-                for(const email of emails) {
-                  await downloadStore.CreateShare({
-                    store,
-                    shareOptions: {
-                      ...submittedShareOptions,
-                      email
-                    },
-                    downloadOptions: options
-                  });
+                if(shareOptions.noClip || options.clipInFrame === 0) {
+                  delete options.clipInFrame;
                 }
-              } else {
-                delete submittedShareOptions.email;
 
-                setSelectedShare(
-                  await downloadStore.CreateShare({
-                    store,
-                    shareOptions: submittedShareOptions,
-                    downloadOptions: options
-                  })
-                );
+                if(shareOptions.noClip || options.clipOutFrame >= store.totalFrames - 1) {
+                  delete options.clipOutFrame;
+                }
+
+                let submittedShareOptions = {
+                  ...shareOptions,
+                  compositionKey: !isComposition ? undefined :
+                    compositionStore.compositionObject.compositionKey,
+                };
+
+                if(mode === "recipients") {
+                  delete submittedShareOptions.label;
+
+                  const emails = shareOptions.email.split(",").map(email => email.trim());
+
+                  for(const email of emails) {
+                    await downloadStore.CreateShare({
+                      store,
+                      shareOptions: {
+                        ...submittedShareOptions,
+                        email
+                      },
+                      downloadOptions: options
+                    });
+                  }
+                } else {
+                  delete submittedShareOptions.email;
+
+                  setSelectedShare(
+                    await downloadStore.CreateShare({
+                      store,
+                      shareOptions: submittedShareOptions,
+                      downloadOptions: options
+                    })
+                  );
+                }
+
+                setShowShareForm(false);
+              } catch(error) {
+                if(error.status === 400 && error?.body?.error?.op?.includes("Could not get share signing address")) {
+                  setSubmitErrorMessage("Your tenancy is not set up for sharing. Please contact support.");
+                } else {
+                  setSubmitErrorMessage("Unable to create share");
+                }
+
               }
-
-              setShowShareForm(false);
             }}
             className={S("download__action", "download__action--secondary")}
           >
