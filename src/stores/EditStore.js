@@ -92,7 +92,7 @@ class EditStore {
       addedAt: Date.now(),
       ...attrs
     }, null, 2)
-    )
+    );
 
     this.editInfo[this.page].position += 1;
 

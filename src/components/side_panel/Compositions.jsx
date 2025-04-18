@@ -2,7 +2,7 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
-import {CreateModuleClassMatcher, DragHandler} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, DragHandler, StorageHandler} from "@/utils/Utils.js";
 import {browserStore, compositionStore, rootStore} from "@/stores/index.js";
 import {ClipTimeInfo, Confirm, Icon, IconButton, Linkish, Loader} from "@/components/common/Common.jsx";
 import {Tooltip} from "@mantine/core";
@@ -15,6 +15,8 @@ import AISparkleIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import XIcon from "@/assets/icons/X.svg";
 import TagIcon from "@/assets/icons/v2/tag.svg";
 import DeleteIcon from "@/assets/icons/trash.svg";
+import ChevronUpIcon from "@/assets/icons/chevron-up.svg";
+import ChevronDownIcon from "@/assets/icons/chevron-down.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -91,6 +93,57 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
   );
 });
 
+
+const ClipGroup = observer(({icon, title, subtitle, key, clipIds=[], loading=false, showTagLinks}) => {
+  const [hide, setHide] = useState(StorageHandler.get({type: "session", key: `hide-clips-${key}`}));
+
+  useEffect(() => {
+    if(hide) {
+      StorageHandler.set({type: "session", key: `hide-clips-${key}`, value: "true"});
+    } else {
+      StorageHandler.remove({type: "session", key: `hide-clips-${key}`});
+    }
+  }, [hide]);
+
+  return (
+    <div className={S("clip-group", hide ? "clip-group--closed" : "")}>
+      <button onClick={() => setHide(!hide)} className={S("clip-group__header")}>
+        {
+          !icon ? null :
+            <Icon icon={icon} className={S("clip-group__header-icon")} />
+        }
+        <div className={S("clip-group__text")}>
+          <div className={S("clip-group__title")}>
+            { title }
+          </div>
+          {
+            !subtitle ? null :
+              <div className={S("clip-group__subtitle")}>
+              </div>
+          }
+        </div>
+        <Icon icon={hide ? ChevronDownIcon : ChevronUpIcon} className={S("clip-group__header-indicator")} />
+      </button>
+      {
+        hide || !clipIds || clipIds.length === 0 ? null :
+          loading ?
+            <Loader className={S("clip-group__loader")} /> :
+            <div className={S("clip-group__clips")}>
+              {
+                clipIds.map(clipId =>
+                  <SidePanelClip
+                    clip={compositionStore.clips[clipId]}
+                    key={`clip-${clipId}`}
+                    showTagLink={showTagLinks}
+                  />
+                )
+              }
+            </div>
+      }
+    </div>
+  );
+});
+
 let searchTimeout;
 const AIClips = observer(() => {
   const [loading, setLoading] = useState(false);
@@ -122,27 +175,14 @@ const AIClips = observer(() => {
 
   return  (
     !loading && clipIds.length === 0 ? null :
-      <>
-        <div className={S("composition-clips__title")}>
-          <Icon icon={AISparkleIcon}/>
-          Suggestions
-        </div>
-        {
-          loading ?
-            <Loader className={S("composition-clips__loader")} /> :
-            <div className={S("composition-clips__list")}>
-              {
-                clipIds.map(clipId =>
-                  <SidePanelClip
-                    clip={compositionStore.clips[clipId]}
-                    key={`clip-${clipId}`}
-                    showTagLink
-                  />
-                )
-              }
-            </div>
-        }
-      </>
+      <ClipGroup
+        icon={AISparkleIcon}
+        showTagLinks
+        title="Suggestions"
+        subtitle={!compositionStore.filter ? "Prompt" : ""}
+        clipIds={clipIds}
+        loading={loading}
+      />
   );
 });
 
@@ -162,28 +202,23 @@ export const CompositionClips = observer(() => {
       onDragLeave={() => setShowDragIndicator(false)}
       className={S("composition-clips")}
     >
-      <div className={S("composition-clips__title")}>
-        My Clips
-      </div>
-      <div className={S("composition-clips__list")}>
-        <SidePanelClip
-          clip={{
-            ...compositionStore.sourceClip,
-            name: `Full Content: ${compositionStore.sourceClip.name}`
-          }}
-        />
-        {
-          compositionStore.myClips
+      <ClipGroup
+        title="My Clips"
+        key="my-clips"
+        clipIds={[
+          compositionStore.sourceClipId,
+          ...compositionStore.myClips
             .filter(clip =>
               !compositionStore.filter ||
               clip.name?.toLowerCase()?.includes(compositionStore.filter.toLowerCase())
             )
-            .map(clip =>
-              <SidePanelClip key={`clip-${clip.clipId}`} clip={clip} />
-            )
-        }
-      </div>
-      <AIClips />
+            .map(clip => clip.clipId)
+        ]}
+      />
+      {
+        !compositionStore.compositionObject?.objectId ? null :
+          <AIClips />
+      }
       <div
         onDrop={() => {
           setShowDragIndicator(false);

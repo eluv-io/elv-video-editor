@@ -15,10 +15,9 @@ const CompositionsView = observer(() => {
   useEffect(() => {
     rootStore.SetPage("compositions");
     rootStore.SetSubpage(objectId);
-    compositionStore.SetFilter("");
     keyboardControlsStore.SetActiveStore(compositionStore.videoStore);
 
-    if(objectId) {
+    if(objectId && objectId !== compositionStore.compositionObject?.objectId) {
       compositionStore.LoadMyClips({objectId});
       compositionStore.SetCompositionObject({objectId, compositionKey})
         .then(() => rootStore.SetSelectedObjectId(objectId, compositionStore.videoStore.sourceVideoStore.name));

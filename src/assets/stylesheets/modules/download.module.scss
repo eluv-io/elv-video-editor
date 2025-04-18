@@ -300,9 +300,9 @@
   &__actions {
     align-items: center;
     display: flex;
+    gap: 20px;
     justify-content: flex-end;
     margin-top: 10px;
-    gap: 20px;
   }
 
   &__error {
