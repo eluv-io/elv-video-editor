@@ -1257,7 +1257,7 @@ class CompositionStore {
     if(!index) { return; }
 
     const clips = (yield (yield this.QueryAIAPI({
-      server: "ai",
+      server: "ai-02",
       objectId: index.id,
       path: UrlJoin("search", "q", index.versionHash, "rep", "search"),
       channelAuth: true,
