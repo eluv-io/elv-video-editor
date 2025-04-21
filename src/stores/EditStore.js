@@ -1,5 +1,6 @@
 import {flow, makeAutoObservable } from "mobx";
 import UrlJoin from "url-join";
+import {Unproxy} from "@/utils/Utils.js";
 
 class EditStore {
   saving = false;
@@ -51,6 +52,10 @@ class EditStore {
     return this.redoStack?.slice(-1)[0];
   }
 
+  HasUnsavedChanges(type) {
+    return this.editInfo[type]?.position > 0;
+  }
+
   Reset() {
     this.saving = false;
 
@@ -80,19 +85,6 @@ class EditStore {
       addedAt: Date.now(),
       ...attrs
     });
-
-    console.log(
-      JSON.stringify({
-      id: this.rootStore.NextId(),
-      label,
-      Action,
-      Undo,
-      page: this.rootStore.page,
-      subpage: this.rootStore.subpage,
-      addedAt: Date.now(),
-      ...attrs
-    }, null, 2)
-    );
 
     this.editInfo[this.page].position += 1;
 
@@ -172,16 +164,13 @@ class EditStore {
     return response;
   });
 
+  FormatActions(actions, types=[]) {
+    types = Array.isArray(types) ? types : [types];
 
-  SaveClips = flow(function * () {
-
-  });
-
-  FormatActions(actions, type) {
     // Collapse actions by unique tag
     let formattedActions = [];
     actions.forEach(action => {
-      if(action.type !== type) {
+      if(!types.includes(action.type)) {
         // Not the right type
         return;
       }
@@ -243,7 +232,10 @@ class EditStore {
 
   SaveTags = flow(function * () {
     // Most recent actions first so older actions can be ignored
-    const actions = [...this.rootStore.editStore.editInfo.tags.actionStack].reverse();
+    const actions = [
+      ...this.rootStore.editStore.editInfo.tags.actionStack,
+      ...this.rootStore.editStore.editInfo.clips.actionStack
+    ].reverse();
 
     if(actions.length === 0) { return; }
 
@@ -254,14 +246,24 @@ class EditStore {
     const LoadTagFile = async linkKey => {
       if(modifiedFiles[linkKey]) { return; }
 
-      modifiedFiles[linkKey] = await this.client.LinkData({
-        libraryId,
-        objectId,
-        linkPath: UrlJoin("video_tags", "metadata_tags", linkKey),
-        format: "json"
-      });
+      // Clips are not actually saved into a file, but into metadata
+      if(linkKey === "clips") {
+        modifiedFiles[linkKey] = await this.client.ContentObjectMetadata({
+          libraryId,
+          objectId,
+          metadataSubtree: "/clips",
+          remove: "overlay_tags"
+        });
+      } else {
+        modifiedFiles[linkKey] = await this.client.LinkData({
+          libraryId,
+          objectId,
+          linkPath: UrlJoin("video_tags", "metadata_tags", linkKey),
+          format: "json"
+        });
+      }
 
-      if(!modifiedFiles[linkKey] || modifiedFiles[linkKey]?.errors) {
+      if(!modifiedFiles[linkKey] || modifiedFiles[linkKey]?.errors || !modifiedFiles[linkKey]?.metadata_tags) {
         modifiedFiles[linkKey] = {
           version: 1,
           new: true,
@@ -270,27 +272,30 @@ class EditStore {
       }
     };
 
-    const formattedActions = this.FormatActions(actions, "tag");
+    const formattedActions = this.FormatActions(actions, ["tag", "clip"]);
 
     if(formattedActions.length === 0) { return;}
 
-    yield LoadTagFile("user");
     for(const action of formattedActions) {
       const tag = action.modifiedItem;
       const tagOrigin = action.modifiedItem.o;
-      let linkKey = tagOrigin ? tagOrigin.lk : "user";
+      let linkKey = tagOrigin ? tagOrigin.lk :
+        action.type === "tag" ? "user" : "clips";
 
       yield LoadTagFile(linkKey);
 
       switch(action.action) {
         // Create new tag
         case "create":
-          linkKey = "user";
+          linkKey = action.type === "tag" ? "user" : "clips";
+          yield LoadTagFile(linkKey);
+
           // Ensure track is present in file
           if(!modifiedFiles[linkKey].metadata_tags[tag.trackKey]) {
             modifiedFiles[linkKey].metadata_tags[tag.trackKey] = {
               label: this.rootStore.trackStore.Track(tag.trackKey).label,
-              tags: []
+              tags: [],
+              version: 1
             };
           }
 
@@ -332,6 +337,21 @@ class EditStore {
     let fileInfo = [];
     yield Promise.all(
       Object.keys(modifiedFiles).map(async linkKey => {
+        // Save clips to metadata
+        if(linkKey === "clips") {
+          delete modifiedFiles[linkKey].new;
+
+          await this.client.ReplaceMetadata({
+            libraryId,
+            objectId,
+            writeToken,
+            metadataSubtree: "/clips/metadata_tags",
+            metadata: Unproxy(modifiedFiles[linkKey]?.metadata_tags)
+          });
+
+          return;
+        }
+
         const filePath = linkKey === "user" ?
           "/video_tags/source_tags/user/user-tags.json" :
           UrlJoin("/video_tags", linkInfo[linkKey]["/"].split("/").slice(-1)[0]);
@@ -360,17 +380,22 @@ class EditStore {
       })
     );
 
-    yield this.client.UploadFiles({
-      libraryId,
-      objectId,
-      writeToken,
-      fileInfo
-    });
+    if(fileInfo.length > 0) {
+      yield this.client.UploadFiles({
+        libraryId,
+        objectId,
+        writeToken,
+        fileInfo
+      });
+    }
   });
 
   SaveOverlayTags = flow(function * () {
     // Most recent actions first so older actions can be ignored
-    const actions = [...this.rootStore.editStore.editInfo.tags.actionStack].reverse();
+    const actions = [
+      ...this.rootStore.editStore.editInfo.tags.actionStack,
+      ...this.rootStore.editStore.editInfo.clips.actionStack
+    ].reverse();
 
     if(actions.length === 0) { return; }
 
@@ -379,16 +404,28 @@ class EditStore {
 
     let modifiedFiles = {};
     const LoadTagFile = async linkKey => {
-      if(modifiedFiles[linkKey]) { return; }
+      if(modifiedFiles[linkKey]) {
+        return;
+      }
 
-      modifiedFiles[linkKey] = await this.client.LinkData({
-        libraryId,
-        objectId,
-        linkPath: UrlJoin("video_tags", "overlay_tags", linkKey),
-        format: "json"
-      });
+      if(linkKey === "clips") {
+        // Clip tags are saved to metadata
+        modifiedFiles[linkKey] = await this.client.ContentObjectMetadata({
+          libraryId,
+          objectId,
+          metadataSubtree: "/clips",
+          remove: "metadata_tags"
+        });
+      } else {
+        modifiedFiles[linkKey] = await this.client.LinkData({
+          libraryId,
+          objectId,
+          linkPath: UrlJoin("video_tags", "overlay_tags", linkKey),
+          format: "json"
+        });
+      }
 
-      if(!modifiedFiles[linkKey] || modifiedFiles[linkKey]?.errors) {
+      if(!modifiedFiles[linkKey] || modifiedFiles[linkKey]?.errors || !modifiedFiles[linkKey]?.overlay_tags) {
         modifiedFiles[linkKey] = {
           version: 1,
           new: true,
@@ -403,11 +440,11 @@ class EditStore {
 
     if(formattedActions.length === 0) { return;}
 
-    yield LoadTagFile("user");
     for(const action of formattedActions) {
       const tag = action.modifiedItem;
       const tagOrigin = action.modifiedItem.o;
-      let linkKey = tagOrigin ? tagOrigin.lk : "user";
+      let linkKey = tagOrigin ? tagOrigin.lk :
+        action.page === "clips" ? "clips" : "user";
       const frame = tag.frame.toString();
       const trackKey = this.rootStore.trackStore.Track(tag.trackId).key;
 
@@ -416,7 +453,9 @@ class EditStore {
       switch(action.action) {
         // Create new overlay tag
         case "create":
-          linkKey = "user";
+          linkKey = action.page === "clips" ? "clips" : "user";
+          yield LoadTagFile(linkKey);
+
           // Ensure frame and track are initialized
           if(!modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame]) {
             modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame] = {
@@ -467,6 +506,18 @@ class EditStore {
     let fileInfo = [];
     yield Promise.all(
       Object.keys(modifiedFiles).map(async linkKey => {
+        if(linkKey === "clips") {
+          await this.client.ReplaceMetadata({
+            libraryId,
+            objectId,
+            writeToken,
+            metadataSubtree: "/clips/overlay_tags",
+            metadata: Unproxy(modifiedFiles[linkKey]?.overlay_tags)
+          });
+
+          return;
+        }
+
         const filePath = linkKey === "user" ?
           "/video_tags/source_tags/user/user-tags-overlay.json" :
           UrlJoin("/video_tags", linkInfo[linkKey]["/"].split("/").slice(-1)[0]);
@@ -495,12 +546,14 @@ class EditStore {
       })
     );
 
-    yield this.client.UploadFiles({
-      libraryId,
-      objectId,
-      writeToken,
-      fileInfo
-    });
+    if(fileInfo.length > 0) {
+      yield this.client.UploadFiles({
+        libraryId,
+        objectId,
+        writeToken,
+        fileInfo
+      });
+    }
   });
 }
 

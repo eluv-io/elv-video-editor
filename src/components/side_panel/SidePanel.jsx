@@ -31,7 +31,7 @@ const TagSwitch = observer(() => {
         size="xs"
         checked={rootStore.page === "clips"}
         classNames={{track: S("search__toggle-bg")}}
-        onChange={event => navigate(event.currentTarget.checked ? "/my-tags" : "/tags")}
+        onChange={event => navigate(event.currentTarget.checked ? "/clips" : "/tags")}
       />
       <label>My Clips</label>
     </div>
@@ -310,9 +310,14 @@ export const ClipSidePanel = observer(({setElement}) => {
         <SidebarFilter sideContent={<TagSwitch />} store={tagStore} label="Search clips" />
         <TrackSelection mode="clips" />
         <TagsList mode="clips" />
-
         {
-          !tagStore.selectedTrackId && !tagStore.selectedTagId ? null :
+          tagStore.selectedOverlayTags.length === 0 ? null :
+            <div className={S("side-panel-modal")}>
+              <OverlayTagsList />
+            </div>
+        }
+        {
+          !tagStore.selectedTrackId && !tagStore.selectedTagId && !tagStore.selectedOverlayTagId ? null :
             <div className={S("side-panel-modal")}>
               {
                 tagStore.selectedOverlayTagId ?

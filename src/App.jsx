@@ -60,7 +60,7 @@ const DefaultContentRoutes = observer(() => {
       <Route path="/tags">
         <TagsAndClipsView key="tags" mode="tags" />
       </Route>
-      <Route path="/my-tags">
+      <Route path="/clips">
         <TagsAndClipsView key="clips" mode="clips" />
       </Route>
       <Route path="/assets/:assetKey?">

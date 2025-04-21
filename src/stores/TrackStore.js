@@ -137,25 +137,22 @@ class TrackStore {
     return this.colors[index];
   }
 
-  Track(trackKeyOrId) {
+  Track(trackKeyOrId, type) {
     const trackIndex = this.tracks.findIndex(track =>
-      track.trackId === trackKeyOrId || track.key === trackKeyOrId
+      (!type || track.type === type) &&
+      (track.trackId === trackKeyOrId || track.key === trackKeyOrId)
     );
 
     return trackIndex >= 0 ? this.tracks[trackIndex] : undefined;
   }
 
   IsTrackVisible(trackKeyOrId) {
-    const track = this.Track(trackKeyOrId);
+    const track = this.Track(trackKeyOrId, this.rootStore.page === "clips" ? "clip" : "metadata");
 
     if(this.rootStore.page === "clips") {
-      return this.clipTracksSelected ?
-        this.activeClipTracks[track?.key] :
-        track.trackType === "clip";
+      return !this.clipTracksSelected || this.activeClipTracks[track?.key];
     } else {
-      return this.tracksSelected ?
-        this.activeTracks[track?.key] :
-        track.trackType === "metadata";
+      return !this.tracksSelected || this.activeTracks[track?.key];
     }
   }
 
@@ -490,7 +487,7 @@ class TrackStore {
     };
   }
 
-  AddTracksFromTags = (metadataTags) => {
+  AddTracksFromTags = (metadataTags, type="metadata") => {
     if(!metadataTags) { return []; }
 
     let metadataTracks = [];
@@ -506,7 +503,7 @@ class TrackStore {
 
         let parsedTag = Cue({
           trackKey: key,
-          tagType: "metadata",
+          tagType: type,
           startTime: millis ? (tag.start_time / 1000) : tag.start_time,
           endTime: millis ? (tag.end_time / 1000) : tag.end_time,
           text: tag.text,
@@ -527,7 +524,7 @@ class TrackStore {
 
       metadataTracks.push({
         label: key === "shot_tags" ? "Speech to Text (Aggregated)" : metadataTags[key].label,
-        trackType: "metadata",
+        trackType: type,
         key,
         tags
       });
@@ -570,9 +567,9 @@ class TrackStore {
     }
   });
 
-  AddMetadataTracks(metadataTags) {
+  AddMetadataTracks(metadataTags, type="metadata") {
     try {
-      const metadataTracks = this.AddTracksFromTags(metadataTags);
+      const metadataTracks = this.AddTracksFromTags(metadataTags, type);
       metadataTracks.map(track => {
         if(!track.label || !track.tags) {
           // eslint-disable-next-line no-console
@@ -587,7 +584,7 @@ class TrackStore {
         this.AddTrack({
           label: track.label,
           key: track.key,
-          type: "metadata",
+          type,
           tags: track.tags
         });
       });
@@ -687,12 +684,13 @@ class TrackStore {
   }
 
 
-  InitializeTracks = flow(function * (metadataTags) {
+  InitializeTracks = flow(function * (metadataTags, clipTags) {
     if(this.initialized) { return; }
 
     this.AddPrimaryContentTrack();
     yield this.AddSubtitleTracks();
-    yield this.AddMetadataTracks(metadataTags);
+    yield this.AddMetadataTracks(metadataTags, "metadata");
+    yield this.AddMetadataTracks(clipTags, "clip");
 
     this.initialized = true;
 

@@ -3,7 +3,7 @@ import FrameAccurateVideo, {FrameRateDenominator, FrameRateNumerator, FrameRates
 import UrlJoin from "url-join";
 import HLS from "hls.js";
 import {DownloadFromUrl} from "@/utils/Utils.js";
-import {LoadVideo} from "@/stores/Helpers.js";
+import {FormatTags, LoadVideo} from "@/stores/Helpers.js";
 import ThumbnailStore from "@/stores/ThumbnailStore.js";
 
 // How far the scale can be zoomed, as a percentage
@@ -316,66 +316,37 @@ class VideoStore {
       this.rootStore.assetStore.SetAssets(videoObject.metadata.assets);
       this.rootStore.downloadStore.LoadDownloadJobInfo();
 
-      let metadataTags = {};
       if(!this.isVideo) {
         this.initialized = true;
         this.ready = true;
       } else {
-        // Tags
-        if(this.metadata.video_tags && this.metadata.video_tags.metadata_tags) {
-          if(this.metadata.video_tags.metadata_tags["/"]) {
-            // Single tag file
-
-            metadataTags = yield this.rootStore.client.LinkData({
+        // Load and merge tag files
+        const tagData = yield this.rootStore.client.utils.LimitedMap(
+          5,
+          Object.keys(this.metadata.video_tags.metadata_tags),
+          async linkKey => ({
+            linkKey,
+            tags: await this.rootStore.client.LinkData({
               versionHash: this.versionHash,
-              linkPath: "video_tags/metadata_tags",
+              linkPath: `video_tags/metadata_tags/${linkKey}`,
               format: "json"
-            });
-          } else {
-            // Load and merge tag files
-            // Record file, group and index of tags so that they can be individually modified
-            const tagData = yield this.rootStore.client.utils.LimitedMap(
-              5,
-              Object.keys(this.metadata.video_tags.metadata_tags),
-              async linkKey => ({
-                linkKey,
-                tags: await this.rootStore.client.LinkData({
-                  versionHash: this.versionHash,
-                  linkPath: `video_tags/metadata_tags/${linkKey}`,
-                  format: "json"
-                })
-              })
-            );
+            })
+          })
+        );
 
-            tagData.forEach(({tags, linkKey}) => {
-              if(!tags) { return; }
+        const metadataTags = FormatTags({tagData});
 
-              const tagVersion = tags.version || 0;
-
-              if(tags.metadata_tags) {
-                Object.keys(tags.metadata_tags).forEach(trackKey => {
-                  const trackTags = ((tags.metadata_tags[trackKey].tags) || [])
-                    .map((tag, tagIndex) => ({...tag, lk: linkKey, tk: trackKey, ti: tagIndex}));
-
-                  if(metadataTags[trackKey]) {
-                    metadataTags[trackKey].tags = metadataTags[trackKey].tags
-                      .concat(trackTags)
-                      .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
-                  } else {
-                    metadataTags[trackKey] = {
-                      ...tags.metadata_tags[trackKey],
-                      tags: trackTags
-                    };
-                  }
-
-                  metadataTags[trackKey].version = tagVersion;
-                });
-              }
-            });
-          }
+        let clipTags;
+        if(videoObject.metadata?.clips?.metadata_tags) {
+          clipTags = FormatTags({
+            tagData: [{
+              linkKey: "clips",
+              tags: videoObject.metadata?.clips
+            }]
+          });
         }
 
-        yield this.rootStore.trackStore.InitializeTracks(metadataTags);
+        yield this.rootStore.trackStore.InitializeTracks(metadataTags, clipTags);
 
         this.ready = true;
       }
@@ -412,7 +383,7 @@ class VideoStore {
         "public/description",
         "offerings",
         "video_tags",
-        "files",
+        "clips",
         "mime_types"
       ]
     });

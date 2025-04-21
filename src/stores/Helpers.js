@@ -30,6 +30,7 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
         "offerings/*/media_struct/streams/*/default_for_media_type",
         "offerings/*/playout/streams/*/representations",
         "channel",
+        "clips",
         "video_tags",
         "mime_types",
         "assets"
@@ -168,6 +169,38 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
 
     rootStore.SetError(error.toString());
   }
+};
+
+export const FormatTags = ({tagData}) => {
+  let metadataTags = {};
+  tagData.forEach(({tags, linkKey}) => {
+    if(!tags) { return; }
+
+    const tagVersion = tags.version || 0;
+
+    // Record file, group and index of tags so that they can be individually modified
+    if(tags.metadata_tags) {
+      Object.keys(tags.metadata_tags).forEach(trackKey => {
+        const trackTags = ((tags.metadata_tags[trackKey].tags) || [])
+          .map((tag, tagIndex) => ({...tag, lk: linkKey, tk: trackKey, ti: tagIndex}));
+
+        if(metadataTags[trackKey]) {
+          metadataTags[trackKey].tags = metadataTags[trackKey].tags
+            .concat(trackTags)
+            .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
+        } else {
+          metadataTags[trackKey] = {
+            ...tags.metadata_tags[trackKey],
+            tags: trackTags
+          };
+        }
+
+        metadataTags[trackKey].version = tagVersion;
+      });
+    }
+  });
+
+  return metadataTags;
 };
 
 export const Cue = ({store, tagType, label, startTime, endTime, text, tag, ...extra}) => {

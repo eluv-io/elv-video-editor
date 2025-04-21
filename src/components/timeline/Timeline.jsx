@@ -191,7 +191,7 @@ const TimelineTopBar = observer(({simple}) => {
                   onClick={() =>
                     tagStore.AddTag({
                       trackId: tagStore.selectedTrackId,
-                    text: "<New Tag>",
+                      text: "<New Tag>",
                       tagType: rootStore.page === "clips" ? "clip" : "metadata"
                     })
                   }

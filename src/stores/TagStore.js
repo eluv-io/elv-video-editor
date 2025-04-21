@@ -474,7 +474,7 @@ class TagStore {
           }
         }
       } else if(this.editedAssetTag) {
-        // Asset
+        // Asset tag
         if(this.editedAssetTag.isNew) {
           const tag = Unproxy(this.editedAssetTag);
           delete tag.isNew;

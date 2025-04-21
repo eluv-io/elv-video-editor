@@ -2,7 +2,7 @@ import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
 import React, {useEffect} from "react";
 import {observer} from "mobx-react-lite";
-import {rootStore, keyboardControlsStore, videoStore, editStore} from "@/stores";
+import {keyboardControlsStore, videoStore, editStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {
   AudioControls,
@@ -42,7 +42,7 @@ const VideoSection = observer(({showOverlay}) => {
           autoContrast
           h={30}
           px="xs"
-          disabled={!editStore.hasUnsavedChanges}
+          disabled={!editStore.HasUnsavedChanges("tags") && !editStore.HasUnsavedChanges("clips")}
           onClick={async () => await Confirm({
             title: "Save Changes",
             text: "Are you sure you want to save your changes?",

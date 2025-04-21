@@ -35,7 +35,7 @@ const CreateTrackForm = observer(({Close}) => {
     error = "Category label is required";
   } else if(
     trackStore.tracks.find(otherTrack =>
-      otherTrack.trackType === trackType && otherTrack.key === track.key || track.defaultKey
+      otherTrack.trackType === trackType && otherTrack.key === (track.key || track.defaultKey)
     )
   ) {
     valid = false;

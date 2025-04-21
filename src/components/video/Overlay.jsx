@@ -305,7 +305,7 @@ const Tags = () => {
 
   let activeTags = [];
   trackStore.tracks
-    .filter(track => ["clip", "metadata"].includes(track.trackType))
+    .filter(track => track.trackType === (rootStore.page === "clips" ? "clip" : "metadata"))
     .forEach(track => {
       if(!trackStore.IsTrackVisible(track.key)) { return; }
 
