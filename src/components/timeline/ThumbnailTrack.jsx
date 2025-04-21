@@ -209,7 +209,7 @@ const ThumbnailTrack = observer(({
         !hoverThumbnail ? null :
           RenderTooltip ?
             RenderTooltip(hoverThumbnail) :
-            <img src={hoverThumbnail} className={S("thumbnail-tooltip__thumbnail")}/>
+            <LoaderImage src={hoverThumbnail} className={S("thumbnail-tooltip__thumbnail")}/>
       }
       classNames={
         RenderTooltip ? null :

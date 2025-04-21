@@ -4,7 +4,7 @@ import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {tagStore, trackStore, videoStore} from "@/stores/index.js";
 import {FocusTrap, Tooltip} from "@mantine/core";
-import {Confirm, FormSelect, FormTextArea, IconButton, SMPTEInput} from "@/components/common/Common.jsx";
+import {Confirm, FormSelect, FormTextArea, IconButton, LoaderImage, SMPTEInput} from "@/components/common/Common.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
@@ -202,7 +202,7 @@ const TagForm = observer(() => {
             <div style={{aspectRatio: videoStore.aspectRatio}} className={S("tag-details__thumbnail-container")}>
               {
                 duration < 10 ?
-                  <img
+                  <LoaderImage
                     key={`preview-${tag.startTime}-${tag.endTime}`}
                     src={videoStore.thumbnailStore.ThumbnailImage(tag.startTime)}
                     className={S("tag-details__thumbnail")}
@@ -333,7 +333,7 @@ export const TagDetails = observer(() => {
               <div className={S("tag-details__thumbnail-container")}>
                 {
                   duration < 10 ?
-                    <img
+                    <LoaderImage
                       src={videoStore.thumbnailStore.ThumbnailImage(tag.startTime)}
                       style={{aspectRatio: videoStore.aspectRatio}}
                       className={S("tag-details__thumbnail")}
@@ -405,7 +405,7 @@ const Tag = observer(({track, tag}) => {
       <div className={S("tag__left")}>
         {
           !videoStore.thumbnailStore.thumbnailStatus.available ? null :
-            <img
+            <LoaderImage
               src={videoStore.thumbnailStore.ThumbnailImage(tag.startTime)}
               style={{aspectRatio: videoStore.aspectRatio}}
               className={S("tag__image")}

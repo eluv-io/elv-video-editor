@@ -56,6 +56,7 @@ export const LoaderImage = observer(({
   ...props
 }) => {
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
   const [showLoader, setShowLoader] = useState(false);
   const [useAlternateSrc, setUseAlternateSrc] = useState(false);
 
@@ -68,6 +69,22 @@ export const LoaderImage = observer(({
 
   if(!src && !showWithoutSource) {
     return null;
+  }
+
+  if(error) {
+    return (
+      <object
+        {...props}
+        style={{
+          ...(props.style || {}),
+          ...(loaderWidth ? {width: loaderWidth} : {}),
+          ...(loaderHeight ? {height: loaderHeight} : {}),
+          ...(loaderAspectRatio ? {aspectRatio: loaderAspectRatio} : {})
+        }}
+        key={props.key ? `${props.key}--placeholder` : undefined}
+        className={JoinClassNames(S("lazy-image__background"), showLoader ? S("lazy-image__background--error") : "", props.className || "")}
+      />
+    );
   }
 
   if(width) {
@@ -89,12 +106,17 @@ export const LoaderImage = observer(({
           <img
             {...props}
             key={`img-${src}-${props.key || ""}`}
-            className={S("lazy-image__loader-image") + " " + props.className}
+            className={JoinClassNames(S("lazy-image__loader-image"), props.className)}
             loading={lazy ? "lazy" : "eager"}
             src={(useAlternateSrc && alternateSrc) || src}
             onLoad={() => setTimeout(() => setLoaded(true), delay)}
             onError={() => {
-              setUseAlternateSrc(true);
+              if(alternateSrc && !useAlternateSrc) {
+                setUseAlternateSrc(true);
+              } else {
+                setError(true);
+                setLoaded(true);
+              }
             }}
           />
       }
@@ -109,7 +131,7 @@ export const LoaderImage = observer(({
               ...(loaderAspectRatio ? {aspectRatio: loaderAspectRatio} : {})
             }}
             key={props.key ? `${props.key}--placeholder` : undefined}
-            className={[S("lazy-image__background", showLoader ? "lazy-image__background--visible" : ""), props.className || ""].join(" ")}
+            className={JoinClassNames(S("lazy-image__background"), showLoader ? S("lazy-image__background--visible") : "", props.className || "")}
           />
       }
     </>

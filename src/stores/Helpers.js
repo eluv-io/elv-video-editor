@@ -19,7 +19,7 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
       select: [
         "public/name",
         "public/description",
-        "offerings/*/tag_point_rat",
+        "offerings/*/entry_point_rat",
         "offerings/*/exit_point_rat",
         "offerings/*/media_struct/duration_rat",
         "offerings/*/media_struct/streams/*/rate",
@@ -62,7 +62,7 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
       }
 
       Object.keys(metadata?.offerings || {}).map(offeringKey => {
-        const tagPointRat = metadata.offerings[offeringKey].tag_point_rat;
+        const tagPointRat = metadata.offerings[offeringKey].entry_point_rat;
         const exitPointRat = metadata.offerings[offeringKey].exit_point_rat;
         let tagPoint = null, exitPoint = null;
 

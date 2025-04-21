@@ -272,8 +272,8 @@ class VideoStore {
 
           this.SetFrameRate({rateRat: rate});
 
-          if(offering.tag_point_rat) {
-            this.primaryContentStartTime = FrameAccurateVideo.ParseRat(offering.tag_point_rat);
+          if(offering.entry_point_rat) {
+            this.primaryContentStartTime = FrameAccurateVideo.ParseRat(offering.entry_point_rat);
           }
 
           if(offering.exit_point_rat) {

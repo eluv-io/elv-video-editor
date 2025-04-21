@@ -753,7 +753,7 @@ class TrackStore {
   }
 
   ClipInfo() {
-    const clipTrack = this.tracks.find(track => track.trackType === "clip");
+    const clipTrack = this.tracks.find(track => track.key === "primary-content");
     return Object.values(this.tags[clipTrack.trackId])[0];
   }
 }

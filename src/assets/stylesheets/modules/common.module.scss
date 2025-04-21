@@ -62,6 +62,11 @@
       /* stylelint-disable-next-line no-important */
       opacity: 0.5!important;
     }
+
+    &--error {
+      background: black;
+      opacity: 0.5;
+    }
   }
 
   &__loader-image {

@@ -219,12 +219,15 @@ class EditStore {
   Save = flow(function * () {
     yield this.SaveTags();
     yield this.SaveOverlayTags();
+    yield this.SavePrimaryClip();
 
     const objectId = this.rootStore.videoStore.videoObject.objectId;
     yield this.Finalize({
       objectId,
       commitMessage: "EVIE - Update tags"
     });
+
+
 
     this.ResetPage("tags");
     this.rootStore.videoStore.Reload();
@@ -278,6 +281,12 @@ class EditStore {
 
     for(const action of formattedActions) {
       const tag = action.modifiedItem;
+
+      if(tag.trackKey === "primary-content") {
+        // Primary content is handled elsewhere
+        return;
+      }
+
       const tagOrigin = action.modifiedItem.o;
       let linkKey = tagOrigin ? tagOrigin.lk :
         action.type === "tag" ? "user" : "clips";
@@ -555,6 +564,45 @@ class EditStore {
       });
     }
   });
+
+  SavePrimaryClip = flow(function * () {
+    // Start/end time clip
+    const {startTime, endTime} = this.rootStore.trackStore.ClipInfo();
+
+    const startFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(startTime);
+    const endFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(endTime);
+
+    const startTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(startFrame);
+    const endTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(endFrame);
+
+    const offering = this.rootStore.videoStore.metadata.offerings[this.rootStore.videoStore.offeringKey];
+
+    if(offering.entry_point_rat === startTimeRat && offering.exit_point_rat === endTimeRat) {
+      // Clip points not changed
+      return;
+    }
+
+    const objectId = this.rootStore.videoStore.videoObject.objectId;
+    const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
+    const writeToken = yield this.rootStore.editStore.InitializeWrite({objectId});
+
+    yield this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken: writeToken,
+      metadataSubtree: `offerings/${this.rootStore.videoStore.offeringKey}/entry_point_rat`,
+      metadata: startTimeRat
+    });
+
+    yield this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken: writeToken,
+      metadataSubtree: `offerings/${this.rootStore.videoStore.offeringKey}/exit_point_rat`,
+      metadata: endTimeRat
+    });
+  });
+
 }
 
 export default EditStore;
