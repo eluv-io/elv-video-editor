@@ -480,6 +480,7 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
         !sectionRef ? null :
           <Video
             blank={!clipView && compositionStore.clipIdList.length === 0}
+            loading={!clipView && compositionStore.loading}
             muted={clipView ? compositionStore.clipMuted : compositionStore.compositionMuted}
             volume={clipView ? compositionStore.clipVolume : compositionStore.compositionVolume}
             playoutUrl={clipView ? undefined : compositionStore.compositionPlayoutUrl}

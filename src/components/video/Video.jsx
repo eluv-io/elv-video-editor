@@ -30,6 +30,7 @@ const Video = observer(({
   fullscreenContainer,
   playoutUrl,
   blank,
+  loading,
   muted=true,
   autoplay=false,
   contentId,
@@ -182,7 +183,7 @@ const Video = observer(({
         }
       </div>
       {
-        ready || rootStore.errorMessage || blank ? null :
+        !loading && (ready || rootStore.errorMessage || blank) ? null :
           <Loader className={S("loader")}/>
       }
     </div>

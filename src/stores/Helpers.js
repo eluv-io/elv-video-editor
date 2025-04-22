@@ -2,8 +2,15 @@ import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 import {rootStore} from "@/stores/index.js";
 import {Unproxy} from "@/utils/Utils.js";
 import IntervalTree from "node-interval-tree";
+import Fraction from "fraction.js";
 
-export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="default", channel=false}) => {
+export const LoadVideo = async ({
+  libraryId,
+  objectId,
+  writeToken,
+  preferredOfferingKey="default",
+  channel=false
+}) => {
   try {
     if(!libraryId) {
       libraryId = await rootStore.LibraryId({objectId});
@@ -12,7 +19,9 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
     const versionHash = await rootStore.client.LatestVersionHash({objectId});
 
     const metadata = (await rootStore.client.ContentObjectMetadata({
-      versionHash,
+      libraryId,
+      objectId,
+      writeToken,
       resolveLinks: true,
       resolveIgnoreErrors: true,
       linkDepthLimit: 1,
@@ -41,6 +50,7 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
       libraryId,
       objectId,
       versionHash,
+      writeToken,
       name: metadata.public && metadata.public.name || metadata.name || versionHash,
       description: metadata.public && metadata.public.description || metadata.description,
       metadata,
@@ -58,6 +68,11 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
       }
 
       if(channel) {
+        videoObject.duration = metadata.channel?.offerings?.[preferredOfferingKey]?.items
+          ?.map(({slice_start_rat, slice_end_rat}) => Fraction(FrameAccurateVideo.ParseRat(slice_end_rat)).sub(FrameAccurateVideo.ParseRat(slice_start_rat)))
+          ?.reduce((total, itemDuration) => itemDuration.add(total), 0)
+          ?.valueOf();
+
         return videoObject;
       }
 
@@ -99,7 +114,7 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
 
           return a < b ? -1 : 1;
         });
-      
+
       let offeringKey;
       for(let offering of offeringKeys) {
         try {

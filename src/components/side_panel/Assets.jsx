@@ -233,7 +233,7 @@ const AssetTag = observer(({tag}) => {
             offset={20}
             label={<div className={S("tag__tooltip")}>{tag.text}</div>}
           >
-            <div className={S("tag__content")}>
+            <div className={S("tag__content", "ellipsis")}>
               { tag.text }
             </div>
           </Tooltip>

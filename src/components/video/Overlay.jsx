@@ -347,15 +347,7 @@ const TagsAt = ({canvas, asset, clientX, clientY}) => {
       AssetTags({asset}) :
       Tags()
   )
-    .filter(tag => {
-      const {x1, x2, y1, y2, x3, y3, x4, y4} = tag.box;
-      const minX = Math.min(x1, x2, x3 || x1, x4 || x2);
-      const maxX = Math.max(x1, x2, x3 || x1, x4 || x2);
-      const minY = Math.min(y1, y2, y3 || y1, y4 || y2);
-      const maxY = Math.max(y1, y2, y3 || y1, y4 || y2);
-
-      return (minX <= clientX && maxX >= clientX && minY <= clientY && maxY >= clientY);
-    });
+    .filter(tag => PointInPolygon([clientX, clientY], BoxToPoints(tag.box)));
 };
 
 const Draw = ({canvas, tags, hoverTags, elementSize}) => {

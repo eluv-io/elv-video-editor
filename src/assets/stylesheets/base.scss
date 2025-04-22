@@ -139,5 +139,7 @@ button {
 }
 
 .noselect {
-  user-select: none;
+  /* stylelint-disable-line */
+  -webkit-user-select: none!important;
+  user-select: none!important;
 }

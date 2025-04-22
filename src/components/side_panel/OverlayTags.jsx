@@ -265,6 +265,8 @@ export const OverlayTagsList = observer(() => {
   useEffect(() => {
     if(Math.abs(parseInt(videoStore.frame) - parseInt(tags[0]?.frame)) > 10) {
       tagStore.ClearEditing(false);
+      tagStore.ClearSelectedOverlayTag();
+      tagStore.ClearSelectedOverlayTags();
       tagStore.ClearTags();
     }
   }, [videoStore.frame]);

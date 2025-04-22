@@ -207,7 +207,7 @@ class VideoStore {
     yield this.SetVideo({...this.videoObject, preferredOfferingKey: offeringKey});
   });
 
-  SetVideo = flow(function * ({objectId, preferredOfferingKey="default"}) {
+  SetVideo = flow(function * ({objectId, writeToken, preferredOfferingKey="default"}) {
     this.loading = true;
     this.ready = false;
     this.rootStore.SetError(undefined);
@@ -219,7 +219,7 @@ class VideoStore {
     try {
       this.selectedObject = undefined;
 
-      const videoObject = yield LoadVideo({objectId, preferredOfferingKey, channel: this.channel});
+      const videoObject = yield LoadVideo({objectId, writeToken, preferredOfferingKey, channel: this.channel});
 
       this.videoObject = videoObject;
 
@@ -323,7 +323,7 @@ class VideoStore {
         // Load and merge tag files
         const tagData = yield this.rootStore.client.utils.LimitedMap(
           5,
-          Object.keys(this.metadata.video_tags.metadata_tags),
+          Object.keys(this.metadata.video_tags?.metadata_tags || {}),
           async linkKey => ({
             linkKey,
             tags: await this.rootStore.client.LinkData({
@@ -367,7 +367,7 @@ class VideoStore {
     const offering = this.offeringKey;
 
     this.Reset();
-    yield this.SetVideo({objectId, preferredOfferingKey: offering});
+    yield this.SetVideo({objectId, writeToken: this.videoObject?.writeToken, preferredOfferingKey: offering});
   });
 
   ReloadMetadata = flow(function * () {

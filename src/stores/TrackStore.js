@@ -139,7 +139,7 @@ class TrackStore {
 
   Track(trackKeyOrId, type) {
     const trackIndex = this.tracks.findIndex(track =>
-      (!type || track.type === type) &&
+      (!type || track.trackType === type) &&
       (track.trackId === trackKeyOrId || track.key === trackKeyOrId)
     );
 

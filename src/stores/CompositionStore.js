@@ -4,6 +4,7 @@ import {Unproxy} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 import {ExtractHashFromLink} from "@/stores/Helpers.js";
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
+import Fraction from "fraction.js";
 
 class CompositionStore {
   myCompositions = {};
@@ -121,15 +122,15 @@ class CompositionStore {
       return this.videoStore.frameRate * 30;
     }
 
-    return this.clipList.reduce((v, c) => v + (c.clipOutFrame + 1 - c.clipInFrame), 0);
+    return this.clipList.reduce((v, c) => v + (c.clipOutFrame - c.clipInFrame), 0);
   }
 
   get compositionDuration() {
-    if(this.clipIdList.length === 0) {
-      return 30;
-    }
+    return Fraction(this.compositionDurationFrames).div(this.videoStore.frameRate).valueOf();
+  }
 
-    return this.videoStore.FrameToTime(this.videoStore.totalFrames);
+  get seek() {
+    return 100 * this.videoStore.frame / this.compositionDurationFrames;
   }
 
   get clipList() {
@@ -407,13 +408,6 @@ class CompositionStore {
     this.filter = filter;
   }
 
-  SetVideo = flow(function * ({objectId, preferredOfferingKey}) {
-    this.loading = true;
-    yield this.videoStore.SetVideo({objectId, preferredOfferingKey});
-
-    this.loading = false;
-  });
-
   ClipStore({objectId, offering, clipId}) {
     const key = this.clips[clipId]?.storeKey || `${objectId}-${offering}`;
 
@@ -519,6 +513,7 @@ class CompositionStore {
       playoutUrl.searchParams.set("uid", Math.random());
 
       this.compositionPlayoutUrl = playoutUrl.toString();
+      this.videoStore.duration = this.compositionDuration;
 
       return playoutUrl;
     } catch(error) {
@@ -647,67 +642,72 @@ class CompositionStore {
   UpdateComposition = flow(function * ({updatePlayoutUrl=true}={}) {
     if(!this.compositionObject?.objectId) { return; }
 
-    this.seekProgress = this.videoStore.seek;
+    try {
+      this.loading = true;
+      this.seekProgress = this.videoStore.seek;
 
-    const {name, libraryId, objectId, sourceObjectId, sourceOfferingKey, compositionKey} = this.compositionObject;
-    const writeToken = yield this.WriteToken({objectId, compositionKey, create: true});
-    const sourceHash = yield this.client.LatestVersionHash({objectId: sourceObjectId});
+      const {name, libraryId, objectId, sourceObjectId, sourceOfferingKey, compositionKey} = this.compositionObject;
+      const writeToken = yield this.WriteToken({objectId, compositionKey, create: true});
+      const sourceHash = yield this.client.LatestVersionHash({objectId: sourceObjectId});
 
-    let sourceLink;
-    if(objectId === sourceObjectId) {
-      sourceLink = {
-        "/": UrlJoin("./", "rep", "playout", sourceOfferingKey)
-      };
-    } else {
-      sourceLink = {
-        "/": UrlJoin("/qfab", sourceHash, "rep", "playout", sourceOfferingKey)
-      };
-    }
+      let sourceLink;
+      if(objectId === sourceObjectId) {
+        sourceLink = {
+          "/": UrlJoin("./", "rep", "playout", sourceOfferingKey)
+        };
+      } else {
+        sourceLink = {
+          "/": UrlJoin("/qfab", sourceHash, "rep", "playout", sourceOfferingKey)
+        };
+      }
 
-    const items = this.clipList.map(clip => {
-      const store = this.clipStores[clip.storeKey];
+      const items = this.clipList.map(clip => {
+        const store = this.clipStores[clip.storeKey];
 
-      // Actual duration may be lower than what the video element projects
-      const sourceEndFrame = store.videoHandler.RatToFrame(store.metadata.offerings[clip.offering].media_struct.duration_rat);
+        // Actual duration may be lower than what the video element projects
+        const sourceEndFrame = store.videoHandler.RatToFrame(store.metadata.offerings[clip.offering].media_struct.duration_rat);
 
-      let clipOutFrame = Math.min(clip.clipOutFrame, sourceEndFrame - 1);
+        let clipOutFrame = Math.min(clip.clipOutFrame, sourceEndFrame - 1);
 
-      return {
-        display_name: clip.name || "Clip",
-        source: sourceLink,
-        slice_start_rat: store.videoHandler.FrameToRat(clip.clipInFrame || 0),
-        slice_end_rat: store.videoHandler.FrameToRat(clipOutFrame || store.totalFrames - 1),
-        duration_rat: store.videoHandler.FrameToRat((clipOutFrame || store.totalFrames - 1) - (clip.clipInFrame || 0)),
-        type: "mez_vod"
-      };
-    });
+        return {
+          display_name: clip.name || "Clip",
+          source: sourceLink,
+          slice_start_rat: store.videoHandler.FrameToRat(clip.clipInFrame || 0),
+          slice_end_rat: store.videoHandler.FrameToRat(clipOutFrame || store.totalFrames - 1),
+          duration_rat: store.videoHandler.FrameToRat((clipOutFrame || store.totalFrames - 1) - (clip.clipInFrame || 0)),
+          type: "mez_vod"
+        };
+      });
 
-    yield this.client.ReplaceMetadata({
-      libraryId,
-      objectId,
-      writeToken,
-      metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "items"),
-      metadata: Unproxy(items)
-    });
+      yield this.client.ReplaceMetadata({
+        libraryId,
+        objectId,
+        writeToken,
+        metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "items"),
+        metadata: Unproxy(items)
+      });
 
-    yield this.client.ReplaceMetadata({
-      libraryId,
-      objectId,
-      writeToken,
-      metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "display_name"),
-      metadata: name || "Composition"
-    });
+      yield this.client.ReplaceMetadata({
+        libraryId,
+        objectId,
+        writeToken,
+        metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "display_name"),
+        metadata: name || "Composition"
+      });
 
-    yield this.client.ReplaceMetadata({
-      libraryId,
-      objectId,
-      writeToken,
-      metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "updated_at"),
-      metadata: new Date().toISOString()
-    });
+      yield this.client.ReplaceMetadata({
+        libraryId,
+        objectId,
+        writeToken,
+        metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "updated_at"),
+        metadata: new Date().toISOString()
+      });
 
-    if(updatePlayoutUrl) {
-      this.GetCompositionPlayoutUrl();
+      if(updatePlayoutUrl) {
+        yield this.GetCompositionPlayoutUrl();
+      }
+    } finally {
+      this.loading = false;
     }
   });
 
@@ -807,7 +807,7 @@ class CompositionStore {
 
     this.videoStore.sourceVideoStore = this.sourceVideoStore;
 
-    yield this.videoStore.SetVideo({objectId, preferredOfferingKey: compositionKey, noTags: true});
+    yield this.videoStore.SetVideo({objectId, writeToken, preferredOfferingKey: compositionKey, noTags: true});
 
     const videoHandler = new FrameAccurateVideo({frameRateRat: this.selectedClipStore.frameRateRat});
 

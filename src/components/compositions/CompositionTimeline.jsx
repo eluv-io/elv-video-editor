@@ -99,7 +99,7 @@ const TimelineTopBar = observer(() => {
         <IconButton
           icon={SplitIcon}
           disabled={compositionStore.clipIdList.length === 0 || compositionStore.videoStore.frame === 0}
-          onClick={() => compositionStore.SplitClip(compositionStore.videoStore.seek)}
+          onClick={() => compositionStore.SplitClip(compositionStore.seek)}
           label="Split Clip at Playhead"
         />
         <div className={S("toolbar__separator")}/>
@@ -197,7 +197,7 @@ const TimelineSeekBar = observer(({hoverSeek}) => {
       <MarkedSlider
         min={compositionStore.videoStore.scaleMin}
         max={compositionStore.videoStore.scaleMax}
-        handles={[{ position: compositionStore.videoStore.seek, style: "arrow" }]}
+        handles={[{ position: compositionStore.seek, style: "arrow" }]}
         indicators={indicators}
         showMarks
         topMarks
@@ -384,7 +384,7 @@ const CompositionTimeline = observer(() => {
       <TimelineTopBar />
       {
         !objectId ? null :
-          <TimelinePlayheadIndicator value={compositionStore.videoStore.seek} timelineRef={timelineRef} />
+          <TimelinePlayheadIndicator value={compositionStore.seek} timelineRef={timelineRef} />
       }
       {
         !objectId || !hoverSeek ? null :

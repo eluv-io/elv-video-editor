@@ -83,14 +83,14 @@ const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage,
       onMouseLeave={() => setClientX(-1)}
       className={JoinClassNames(S("preview-thumbnail"), props.className)}
     >
-      <LoaderImage
+      <img
         alt="Thumbnail"
         style={{aspectRatio: store.aspectRatio}}
         key={`thumbnail-previous-${hoverInfo.previousThumbnailIndex}`}
         src={thumbnails[hoverInfo.previousThumbnailIndex]}
         className={S("preview-thumbnail__image", "preview-thumbnail__image--previous")}
       />
-      <LoaderImage
+      <img
         alt="Thumbnail"
         style={{aspectRatio: store.aspectRatio}}
         key={`thumbnail-${hoverInfo.thumbnailIndex}`}
