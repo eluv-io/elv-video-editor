@@ -99,28 +99,34 @@ export const LoadVideo = async ({libraryId, objectId, preferredOfferingKey="defa
 
           return a < b ? -1 : 1;
         });
-
+      
       let offeringKey;
       for(let offering of offeringKeys) {
-        offeringPlayoutOptions[offering] = await rootStore.client.PlayoutOptions({
-          versionHash,
-          handler: channel ? "channel" : "playout",
-          protocols: ["hls"],
-          drms: browserSupportedDrms,
-          hlsjsProfile: false,
-          offering
-        });
+        try {
+          offeringPlayoutOptions[offering] = await rootStore.client.PlayoutOptions({
+            versionHash,
+            handler: channel ? "channel" : "playout",
+            protocols: ["hls"],
+            drms: browserSupportedDrms,
+            hlsjsProfile: false,
+            offering
+          });
 
-        const playoutMethods = offeringPlayoutOptions?.[offering]?.hls?.playoutMethods || {};
+          const playoutMethods = offeringPlayoutOptions?.[offering]?.hls?.playoutMethods || {};
 
-        if(!(playoutMethods["aes-128"] || playoutMethods["clear"])) {
-          videoObject.availableOfferings[offering].disabled = true;
-        } else {
-          if(!offeringKey || offering === preferredOfferingKey) {
-            offeringKey = offering;
+          if(!(playoutMethods["aes-128"] || playoutMethods["clear"])) {
+            videoObject.availableOfferings[offering].disabled = true;
+          } else {
+            if(!offeringKey || offering === preferredOfferingKey) {
+              offeringKey = offering;
+            }
           }
+        } catch(error) {
+          // eslint-disable-next-line no-console
+          console.warn(`Unable to load offering details for ${offering}`);
         }
       }
+
 
       const hasHlsOfferings = Object.values(videoObject.availableOfferings).some(offering => !offering.disabled);
 
