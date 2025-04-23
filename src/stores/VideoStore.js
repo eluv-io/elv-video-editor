@@ -1083,7 +1083,7 @@ class VideoStore {
       queryParams.clip_start = this.FrameToTime(this.clipInFrame);
     }
 
-    if(this.videoHandler.TotalFrames() > this.clipOutFrame + 1) {
+    if(this.totalFrames > this.clipOutFrame + 1) {
       queryParams.clip_end = this.FrameToTime(this.clipOutFrame + 1);
     }
 
