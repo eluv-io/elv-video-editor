@@ -52,6 +52,7 @@ export const DownloadFormFields = observer(({
   autoFocus=false,
   options={},
   setOptions,
+  allowAllOfferings,
   fields={
     filename: true,
     offering: true,
@@ -129,6 +130,7 @@ export const DownloadFormFields = observer(({
               Object.keys(store.availableOfferings).map(offeringKey => ({
                 label: offeringKey === "default" ? "Default" : store.availableOfferings[offeringKey].display_name || offeringKey,
                 value: offeringKey,
+                disabled: !allowAllOfferings && !store.downloadOfferingKeys.includes(offeringKey),
               }))
             }
           />
@@ -177,7 +179,7 @@ const DownloadForm = observer(({store, buttonText="Download", Submit, Close}) =>
     defaultFilename: "",
     representation: "",
     audioRepresentation: "",
-    offering: store.offeringKey,
+    offering: store.downloadOfferingKeys.includes(store.offeringKey) ? store.offeringKey : store.downloadOfferingKeys[0],
     clipInFrame: store.clipInFrame,
     clipOutFrame: store.clipOutFrame
   });

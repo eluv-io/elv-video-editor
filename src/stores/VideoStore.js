@@ -250,6 +250,23 @@ class VideoStore {
       this.thumbnailTrackUrl = videoObject.thumbnailTrackUrl;
       this.hasAssets = videoObject.metadata.assets;
 
+      let downloadOfferingKeys = Object.keys(videoObject.availableOfferings)
+        .filter(offeringKey =>
+          videoObject.availableOfferings[offeringKey]?.playoutMethods?.hls?.playoutMethods?.clear ||
+          videoObject.availableOfferings[offeringKey]?.playoutMethods?.dash?.playoutMethods?.clear
+        );
+
+      this.downloadOfferingKeys = [
+        ...new Set(
+          [
+            downloadOfferingKeys.includes(this.offeringKey) ? this.offeringKey : "",
+            downloadOfferingKeys.includes("default") ? "default" : "",
+            downloadOfferingKeys.includes("default_dash") ? "default_dash" : "",
+            ...downloadOfferingKeys
+          ].filter(key => key)
+        )
+      ];
+
       try {
         if(this.channel) {
           videoObject.rate = videoObject.metadata?.channel?.source_info?.frameRate;

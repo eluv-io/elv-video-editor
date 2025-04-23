@@ -98,7 +98,6 @@ export const LoadVideo = async ({
 
       const browserSupportedDrms = (await rootStore.client.AvailableDRMs() || []).filter(drm => ["clear", "aes-128"].includes(drm));
 
-      const offeringPlayoutOptions = {};
       const offeringKeys = Object.keys(videoObject.availableOfferings)
         .sort((a, b) => {
           // Prefer 'default', then anything including 'default', then alphabetically
@@ -118,18 +117,17 @@ export const LoadVideo = async ({
       let offeringKey;
       for(let offering of offeringKeys) {
         try {
-          offeringPlayoutOptions[offering] = await rootStore.client.PlayoutOptions({
+          videoObject.availableOfferings[offering].playoutMethods = await rootStore.client.PlayoutOptions({
             versionHash,
             handler: channel ? "channel" : "playout",
-            protocols: ["hls"],
             drms: browserSupportedDrms,
             hlsjsProfile: false,
             offering
           });
 
-          const playoutMethods = offeringPlayoutOptions?.[offering]?.hls?.playoutMethods || {};
+          const hlsPlayoutMethods = videoObject.availableOfferings[offering].playoutMethods.hls?.playoutMethods || {};
 
-          if(!(playoutMethods["aes-128"] || playoutMethods["clear"])) {
+          if(!(hlsPlayoutMethods["aes-128"] || hlsPlayoutMethods["clear"])) {
             videoObject.availableOfferings[offering].disabled = true;
           } else {
             if(!offeringKey || offering === preferredOfferingKey) {
@@ -149,7 +147,6 @@ export const LoadVideo = async ({
 
       videoObject.offeringKey = offeringKey;
 
-
       // Determine duration and framerate
       videoObject.streamKey = Object.keys(metadata.offerings[videoObject.offeringKey].media_struct.streams)
         .find(streamKey =>
@@ -161,7 +158,7 @@ export const LoadVideo = async ({
       );
 
       // Specify playout for full, untrimmed content
-      const playoutMethods = offeringPlayoutOptions[offeringKey]["hls"].playoutMethods;
+      const playoutMethods = videoObject.availableOfferings[offeringKey].playoutMethods["hls"].playoutMethods;
 
       videoObject.drm = playoutMethods.clear ? "clear" : "aes-128";
 

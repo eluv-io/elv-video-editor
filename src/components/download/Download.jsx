@@ -385,11 +385,18 @@ const DownloadModalButton = observer(() => {
     }
   }, [showModal]);
 
+  const disabled = videoStore.downloadOfferingKeys.length === 0;
+
   return (
     <>
       <IconButton
+        disabled={disabled}
         icon={DownloadIcon}
-        label="Download Current Clip"
+        label={
+        disabled ?
+          "Download not available - No clear offerings for this content" :
+          "Download Current Clip"
+        }
         onClick={() => setShowModal(true)}
       />
       <DownloadModal

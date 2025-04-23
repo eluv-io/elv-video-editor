@@ -155,6 +155,17 @@ const ShareCreateForm = observer(({
     note: ""
   });
 
+  useEffect(() => {
+    if(
+      !["download", "both"].includes(shareOptions.permissions) ||
+      store.downloadOfferingKeys.includes(downloadOptions.offering)
+    ) {
+      return;
+    }
+
+    setDownloadOptions({...downloadOptions, offering: store.downloadOfferingKeys[0]});
+  }, [shareOptions.permissions]);
+
   const days = Math.ceil((shareOptions.expiresAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
 
   const invalidEmail = shareOptions.email.split(",").find(email => !ValidEmail(email.trim()));
@@ -173,6 +184,8 @@ const ShareCreateForm = observer(({
   } else if(!shareOptions.title) {
     error = "Please specify a title for this content";
   }
+
+  const downloadDisabled = store.downloadOfferingKeys.length === 0;
 
   return (
     <form onSubmit={event => event.preventDefault()} className={S("share-form")}>
@@ -210,8 +223,8 @@ const ShareCreateForm = observer(({
             onChange={value => setShareOptions({...shareOptions, permissions: value})}
             options={[
               { label: "Stream", value: "stream" },
-              { label: "Download", value: "download" },
-              { label: "Stream & Download", value: "both" },
+              { label: "Download", value: "download", disabled: downloadDisabled },
+              { label: "Stream & Download", value: "both", disabled: downloadDisabled },
             ]}
           />
           {
@@ -260,6 +273,7 @@ const ShareCreateForm = observer(({
                 store={store}
                 options={downloadOptions}
                 setOptions={setDownloadOptions}
+                allowAllOfferings
                 fields={{
                   offering: !isComposition,
                   audioRepresentation: true
@@ -814,7 +828,7 @@ const ShareModal = observer(({store, ...props}) => {
       defaultFilename: "",
       representation: "",
       audioRepresentation: "",
-      offering: store.offeringKey || "default",
+      offering: store.offeringKey,
       clipInFrame: store.clipInFrame,
       clipOutFrame: store.clipOutFrame
     });
