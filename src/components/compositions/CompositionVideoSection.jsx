@@ -27,6 +27,7 @@ import AddClipIcon from "@/assets/icons/v2/add.svg";
 import DragClipIcon from "@/assets/icons/v2/drag.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
+import XCircleIcon from "@/assets/icons/X.svg";
 import TrashIcon from "@/assets/icons/trash.svg";
 import PublishIcon from "@/assets/icons/v2/publish.svg";
 
@@ -335,7 +336,7 @@ const Title = observer(({clipView}) => {
               faded
               small
               label="Close"
-              icon={XIcon}
+              icon={XCircleIcon}
               onClick={() => compositionStore.ClearSelectedClip()}
             />
         }

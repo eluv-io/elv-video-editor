@@ -8,6 +8,7 @@
     "selector-class-pattern": null,
     "no-descending-specificity": null,
     "custom-property-pattern": null,
+    "property-no-vendor-prefix": null,
     "selector-pseudo-class-no-unknown": [
       true,
       {

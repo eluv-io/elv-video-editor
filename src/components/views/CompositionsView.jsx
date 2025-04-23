@@ -17,10 +17,14 @@ const CompositionsView = observer(() => {
     rootStore.SetSubpage(objectId);
     keyboardControlsStore.SetActiveStore(compositionStore.videoStore);
 
-    if(objectId && objectId !== compositionStore.compositionObject?.objectId) {
-      compositionStore.LoadMyClips({objectId});
-      compositionStore.SetCompositionObject({objectId, compositionKey})
-        .then(() => rootStore.SetSelectedObjectId(objectId, compositionStore.videoStore.sourceVideoStore.name));
+    if(objectId) {
+      compositionStore.__SetCompositionFormOptions(undefined);
+
+      if(objectId !== compositionStore.compositionObject?.objectId) {
+        compositionStore.LoadMyClips({objectId});
+        compositionStore.SetCompositionObject({objectId, compositionKey})
+          .then(() => rootStore.SetSelectedObjectId(objectId, compositionStore.videoStore.sourceVideoStore.name));
+      }
     }
   }, [objectId, compositionKey]);
 

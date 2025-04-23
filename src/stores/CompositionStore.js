@@ -19,7 +19,8 @@ class CompositionStore {
   compositionObject;
   compositionPlayoutUrl;
   sourceClipId;
-  writeTokenInfo = {};
+  compositionFormOptions = {};
+  compositionGenerationStatus;
 
   clips = {};
   clipIdList = [];
@@ -126,7 +127,13 @@ class CompositionStore {
   }
 
   get compositionDuration() {
-    return Fraction(this.compositionDurationFrames).div(this.videoStore.frameRate).valueOf();
+    const duration = Fraction(this.compositionDurationFrames).div(this.videoStore.frameRate).valueOf();
+
+    if(this.videoStore) {
+      this.videoStore.duration = duration;
+    }
+
+    return duration;
   }
 
   get seek() {
@@ -536,9 +543,9 @@ class CompositionStore {
     name,
     key,
     prompt,
-    regenerate=false,
-    StatusCallback
+    regenerate=false
   }) {
+    this.compositionGenerationStatus = {};
     const sourceLibraryId = yield this.client.ContentObjectLibraryId({objectId: sourceObjectId});
     const sourceMetadata = yield this.client.ContentObjectMetadata({
       libraryId: sourceLibraryId,
@@ -581,7 +588,7 @@ class CompositionStore {
         objectId: sourceObjectId,
         prompt,
         regenerate,
-        StatusCallback
+        StatusCallback: status => this.compositionGenerationStatus = status
       })).clips;
 
       const videoHandler = new FrameAccurateVideo({frameRateRat: frameRate});
@@ -637,6 +644,8 @@ class CompositionStore {
     });
 
     this.SaveMyCompositions();
+
+    this.compositionGenerationStatus.created = true;
   });
 
   UpdateComposition = flow(function * ({updatePlayoutUrl=true}={}) {
@@ -1319,6 +1328,14 @@ class CompositionStore {
         }
       }
     });
+  }
+
+  __SetCompositionFormOptions(options) {
+    this.compositionFormOptions = options;
+
+    if(!options) {
+      this.compositionGenerationStatus = undefined;
+    }
   }
 
   __UpdateVideoSettings(type, video) {

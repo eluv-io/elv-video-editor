@@ -6,7 +6,7 @@ import {CreateModuleClassMatcher, Slugify} from "@/utils/Utils.js";
 import {AsyncButton, FormTextArea, FormTextInput, IconButton, Loader, Modal} from "@/components/common/Common.jsx";
 import {LibraryBrowser, ObjectBrowser} from "@/components/nav/Browser.jsx";
 import {Redirect} from "wouter";
-import {compositionStore} from "@/stores/index.js";
+import {rootStore, compositionStore} from "@/stores/index.js";
 import {Button, Checkbox, Group} from "@mantine/core";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
@@ -25,7 +25,7 @@ const SourceSelectionModal = observer(({Select, Cancel}) => {
           <ObjectBrowser
             libraryId={libraryId}
             title="Select source content for your composition"
-            //videoOnly
+            videoOnly
             Back={() => setLibraryId(undefined)}
             Select={({objectId, name}) => Select({objectId, name})}
             className={S("composition-selection__browser")}
@@ -47,13 +47,13 @@ const SourceSelectionModal = observer(({Select, Cancel}) => {
 });
 
 let keyCheckTimeout;
-const CompositionForm = observer(({type, Cancel}) => {
+const CompositionSelection = observer(() => {
   const [showSourceModal, setShowSourceModal] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [created, setCreated] = useState(false);
   const [keyExists, setKeyExists] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [options, setOptions] = useState({
+    creating: false,
+    created: false,
     type: undefined,
     sourceId: rootStore.selectedObjectId,
     sourceName: rootStore.selectedObjectName,
@@ -64,9 +64,17 @@ const CompositionForm = observer(({type, Cancel}) => {
     length: undefined
   });
 
-  const [createStatus, setCreateStatus] = useState(undefined);
-
   const key = options.key || Slugify(options.name);
+
+  useEffect(() => {
+    if(!compositionStore.compositionFormOptions) { return; }
+
+    setOptions({...options, ...compositionStore.compositionFormOptions});
+  }, []);
+
+  useEffect(() => {
+    compositionStore.__SetCompositionFormOptions(options);
+  }, [options]);
 
   // TODO: Select source offering
   useEffect(() => {
@@ -80,19 +88,22 @@ const CompositionForm = observer(({type, Cancel}) => {
     }, 500);
   }, [options.sourceId, key]);
 
-  if(created) {
+  // Generation complete - redirect to composition view
+  if(options.creating && compositionStore.compositionGenerationStatus?.created) {
+    compositionStore.__SetCompositionFormOptions(undefined);
     return <Redirect to={UrlJoin("/compositions", options.sourceId, key)} />;
   }
 
-  if(creating) {
-    const progress = createStatus?.progress?.split("/");
+  // Creating composition - show status
+  if(options.creating) {
+    const progress = compositionStore.compositionGenerationStatus?.progress?.split("/");
 
     return (
-      <div className={S("composition-selection")}>
+      <div key="status" className={S("composition-selection")}>
         <div className={S("composition-selection__creating")}>
           <div className={S("composition-selection__title")}>
             {
-              createStatus ?
+              compositionStore.compositionGenerationStatus ?
                 "Generating AI Highlights..." :
                 "Initializing Composition..."
             }
@@ -111,9 +122,10 @@ const CompositionForm = observer(({type, Cancel}) => {
     );
   }
 
+  // Error
   if(errorMessage) {
     return (
-      <div className={S("composition-selection")}>
+      <div key="error" className={S("composition-selection")}>
         <div className={S("composition-selection__error")}>
           <div className={S("composition-selection__error-message")}>
             { errorMessage }
@@ -130,6 +142,36 @@ const CompositionForm = observer(({type, Cancel}) => {
     );
   }
 
+  // Composition type selection
+  if(!options.type) {
+    return (
+      <div key="selection" className={S("composition-selection")}>
+        <button onClick={() => setOptions({...options, type: "manual"})} className={S("selection-block", "selection-block--manual")}>
+          <img src={ManualCompositionSelectionImage} className={S("selection-block__image")}/>
+          <div className={S("selection-block__text")}>
+            <div className={S("selection-block__title")}>
+              Choose a Source & Create
+            </div>
+            <div className={S("selection-block__subtitle")}>
+              Pick a source and build your composition your way.
+            </div>
+          </div>
+        </button>
+        <button onClick={() => setOptions({...options, type: "ai"})} className={S("selection-block", "selection-block--ai")}>
+          <img src={AICompositionSelectionImage} className={S("selection-block__image")}/>
+          <div className={S("selection-block__text")}>
+            <div className={S("selection-block__title")}>
+              Create Compositions with AI
+            </div>
+            <div className={S("selection-block__subtitle")}>
+              Let AI give you a head start on highlight compositions.
+            </div>
+          </div>
+        </button>
+      </div>
+    );
+  }
+
   let error;
   if(!options.sourceId) {
     error = "Please select source content";
@@ -139,17 +181,18 @@ const CompositionForm = observer(({type, Cancel}) => {
     error = "A composition with this key already exists for this content";
   }
 
+  // Creation form
   return (
-    <div className={S("composition-selection")}>
+    <div key="form" className={S("composition-selection")}>
       <form onSubmit={event => event.preventDefault()} className={S("composition-form")}>
         <div className={S("composition-form__title")}>
           <IconButton
             type="button"
             icon={BackIcon}
-            onClick={Cancel}
+            onClick={() => setOptions({...options, type: undefined})}
           />
           {
-            type === "manual" ?
+            options.type === "manual" ?
               "Create Composition" :
               "Create Highlight Compositions with AI"
           }
@@ -177,7 +220,7 @@ const CompositionForm = observer(({type, Cancel}) => {
           onChange={event => setOptions({...options, key: event.target.value})}
         />
         {
-          type !== "ai" ? null :
+          options.type !== "ai" ? null :
             <FormTextArea
               label="Prompt (optional)"
               value={options.prompt}
@@ -185,7 +228,7 @@ const CompositionForm = observer(({type, Cancel}) => {
             />
         }
         {
-          type !== "ai" ? null :
+          options.type !== "ai" ? null :
             <Group my="xs" justify="end">
               <Checkbox
                 label="Regenerate Results (if present)"
@@ -200,27 +243,23 @@ const CompositionForm = observer(({type, Cancel}) => {
             disabled={!!error}
             color="gray.1"
             autoContrast
-            mt={5}
             w={150}
             onClick={async () => {
-              setCreating(true);
+              setOptions({...options, creating: true});
 
               try {
                 await compositionStore.CreateComposition({
-                  type,
+                  type: options.type,
                   sourceObjectId: options.sourceId,
                   name: options.name,
                   key,
                   prompt: options.prompt,
-                  regenerate: options.regenerate,
-                  StatusCallback: status => setCreateStatus(status),
+                  regenerate: options.regenerate
                 });
-
-                setCreated(true);
               } catch(error) {
                 // eslint-disable-next-line no-console
                 console.error(error);
-                setCreating(false);
+                setOptions({...options, creating: false});
 
                 if(error?.display_error) {
                   setErrorMessage(error.display_error);
@@ -229,7 +268,7 @@ const CompositionForm = observer(({type, Cancel}) => {
             }}
           >
             {
-              type === "manual" ?
+              options.type === "manual" ?
                 "Create" : "Generate"
             }
           </AsyncButton>
@@ -246,41 +285,6 @@ const CompositionForm = observer(({type, Cancel}) => {
             Cancel={() => setShowSourceModal(false)}
           />
       }
-    </div>
-  );
-});
-
-const CompositionSelection = observer(() => {
-  const [type, setType] = useState(undefined);
-
-  if(type) {
-    return <CompositionForm type={type} Cancel={() => setType(undefined)} />;
-  }
-
-  return (
-    <div className={S("composition-selection")}>
-      <button onClick={() => setType("manual")} className={S("selection-block", "selection-block--manual")}>
-        <img src={ManualCompositionSelectionImage} className={S("selection-block__image")}/>
-        <div className={S("selection-block__text")}>
-          <div className={S("selection-block__title")}>
-            Choose a Source & Create
-          </div>
-          <div className={S("selection-block__subtitle")}>
-            Pick a source and build your composition your way.
-          </div>
-        </div>
-      </button>
-      <button onClick={() => setType("ai")} className={S("selection-block", "selection-block--ai")}>
-        <img src={AICompositionSelectionImage} className={S("selection-block__image")}/>
-        <div className={S("selection-block__text")}>
-          <div className={S("selection-block__title")}>
-            Create Compositions with AI
-          </div>
-          <div className={S("selection-block__subtitle")}>
-            Let AI give you a head start on highlight compositions.
-          </div>
-        </div>
-      </button>
     </div>
   );
 });

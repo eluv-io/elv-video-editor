@@ -34,11 +34,10 @@ export const FrameRates = {
 };
 
 class FrameAccurateVideo {
-  constructor({video, frameRate, frameRateRat, dropFrame=false, duration, callback}) {
+  constructor({video, frameRate, frameRateRat, dropFrame=false, callback}) {
     this.video = video;
     this.SetFrameRate({rate: frameRate, rateRat: frameRateRat});
     this.callback = callback;
-    this.duration = duration;
 
     // Only set drop frame if appropriate based on frame rate
     const frameRateKey = FrameAccurateVideo.FractionToRateKey(`${this.frameRateNumerator}/${this.frameRateDenominator}`);
@@ -149,15 +148,11 @@ class FrameAccurateVideo {
     return this.SMPTE(frame);
   }
 
-  ProgressToTime(progress) {
-    const duration = this.duration || 0;
-
+  ProgressToTime(progress, duration=0) {
     return Fraction(progress).mul(duration).valueOf();
   }
 
-  ProgressToSMPTE(progress) {
-    const duration = this.duration || 0;
-
+  ProgressToSMPTE(progress, duration=0) {
     return this.TimeToSMPTE(Fraction(progress).mul(duration));
   }
 
@@ -252,14 +247,8 @@ class FrameAccurateVideo {
     return `${this.Pad(hours)}:${this.Pad(minutes)}:${this.Pad(seconds)}${lastColon}${this.Pad(frames)}`;
   }
 
-  Progress() {
-    if(isNaN(this.duration)) { return Fraction(0); }
-
-    return Fraction(this.video?.currentTime || 0).div(this.duration || 1);
-  }
-
-  TotalFrames() {
-    return Math.floor(Fraction(this.duration || 0).mul(this.frameRate).valueOf());
+  TotalFrames(duration=0) {
+    return Math.floor(Fraction(duration).mul(this.frameRate).valueOf());
   }
 
   FrameToString({frame, includeFractionalSeconds}) {
@@ -323,8 +312,8 @@ class FrameAccurateVideo {
     this.Seek(frame.sub(frames));
   }
 
-  SeekPercentage(percent) {
-    this.Seek(Fraction(this.TotalFrames()).mul(percent));
+  SeekPercentage(percent, duration) {
+    this.Seek(Fraction(this.TotalFrames(duration)).mul(percent));
   }
 
   Seek(frame) {
@@ -342,8 +331,7 @@ class FrameAccurateVideo {
     if(this.callback) {
       this.callback({
         frame: this.Frame().valueOf(),
-        smpte: this.SMPTE(),
-        progress: this.Progress().valueOf()
+        smpte: this.SMPTE()
       });
     }
   }

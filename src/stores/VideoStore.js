@@ -296,11 +296,11 @@ class VideoStore {
 
       if(this.duration) {
         this.durationSMPTE = this.videoHandler?.TimeToSMPTE(this.duration);
-        this.totalFrames = this.videoHandler?.TotalFrames();
+        this.totalFrames = this.videoHandler?.TotalFrames(this.duration);
 
         this.SetClipMark({
           inFrame: 0,
-          outFrame: this.videoHandler.TotalFrames()
+          outFrame: this.videoHandler.TotalFrames(this.duration)
         });
       }
 
@@ -533,7 +533,7 @@ class VideoStore {
         } else if(!this.clipOutFrame || this.clipOutFrame < 1) {
           this.SetClipMark({
             inFrame: 0,
-            outFrame: this.videoHandler.TotalFrames()
+            outFrame: this.videoHandler.TotalFrames(this.duration)
           });
         }
 
@@ -590,7 +590,7 @@ class VideoStore {
     const inFrameChanged = inFrame !== this.clipInFrame;
     const outFrameChanged = outFrame !== this.clipOutFrame;
 
-    const totalFrames = this.videoHandler.TotalFrames();
+    const totalFrames = this.videoHandler.TotalFrames(this.duration);
 
     if(typeof inFrame !== "undefined") { this.clipInFrame = Math.max(0, inFrame); }
     if(outFrame) { this.clipOutFrame = Math.min(outFrame, totalFrames - 1); }
@@ -666,13 +666,13 @@ class VideoStore {
   ProgressToTime(seek) {
     if(!this.videoHandler) { return 0; }
 
-    return this.videoHandler.ProgressToTime(seek / 100);
+    return this.videoHandler.ProgressToTime(seek / 100, this.duration);
   }
 
   ProgressToSMPTE(seek) {
     if(!this.videoHandler) { return; }
 
-    return this.videoHandler.ProgressToSMPTE(seek / 100);
+    return this.videoHandler.ProgressToSMPTE(seek / 100, this.duration);
   }
 
   ProgressToFrame(seek) {
@@ -736,7 +736,7 @@ class VideoStore {
     this.duration = this.duration || this.video.duration;
     this.durationSMPTE = this.videoHandler?.TimeToSMPTE(this.duration);
     this.videoHandler.duration = this.video.duration;
-    this.totalFrames = this.totalFrames || this.videoHandler?.TotalFrames();
+    this.totalFrames = this.totalFrames || this.videoHandler?.TotalFrames(this.duration);
     if(this.clipOutFrame >= this.totalFrames - 2) {
       // Minor shift in duration from channels may cause unset clip out point to show
       this.clipOutFrame = this.totalFrames - 1;
@@ -916,7 +916,7 @@ class VideoStore {
 
   SeekPercentage(percent, clearSegment=true) {
     if(clearSegment) { this.EndSegment(); }
-    this.videoHandler.SeekPercentage(percent);
+    this.videoHandler.SeekPercentage(percent, this.duration);
   }
 
   SeekFrames({frames=0, seconds=0}) {
@@ -930,7 +930,7 @@ class VideoStore {
 
     // Adjust scale, if necessary
     const targetFrame = this.frame + frames;
-    const targetScale = (targetFrame / this.videoHandler.TotalFrames()) * 100;
+    const targetScale = (targetFrame / this.videoHandler.TotalFrames(this.duration)) * 100;
     const bump = 100 * 0.015;
 
     if(targetScale <= this.scaleMin) {
