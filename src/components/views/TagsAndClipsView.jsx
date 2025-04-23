@@ -41,7 +41,7 @@ const TagsAndClipsView = observer(({mode}) => {
 
   return (
     <PanelGroup direction="vertical" className="panel-group">
-      <Panel id="top" order={1} defaultSize={trackCount > 2 ? 45 : 60} minSize={30}>
+      <Panel id="top" order={1} defaultSize={Math.max(40, 60 - trackCount * 3)} minSize={30}>
         <PanelGroup direction="horizontal" className="panel-group">
           <Panel id="side-panel" order={1} style={{"--panel-width": `${sidePanelDimensions?.width}px`}} defaultSize={30} minSize={20}>
             {

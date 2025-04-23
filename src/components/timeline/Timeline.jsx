@@ -37,8 +37,6 @@ import AddTagIcon from "@/assets/icons/v2/add-tag.svg";
 import AddOverlayIcon from "@/assets/icons/v2/add-overlay.svg";
 import ClipInIcon from "@/assets/icons/v2/clip-start.svg";
 import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
-import UploadIcon from "@/assets/icons/v2/upload.svg";
-import SaveIcon from "@/assets/icons/v2/save.svg";
 import QuestionMarkIcon from "@/assets/icons/v2/question-mark.svg";
 import ZoomOutFullIcon from "@/assets/icons/v2/arrows-horizontal.svg";
 import ClipIcon from "@/assets/icons/v2/clip.svg";
@@ -283,13 +281,6 @@ const TimelineTopBar = observer(({simple}) => {
 const TimelineBottomBar = observer(({simple}) => {
   return (
     <div className={S("toolbar", "timeline-section__bottom-bar")}>
-      {
-        simple ? null :
-          <>
-            <IconButton icon={UploadIcon} label="Upload" onClick={() => {}}/>
-            <IconButton icon={SaveIcon} label="Save Changes" onClick={() => {}}/>
-          </>
-      }
       <KeyboardControls />
       <div className={S("toolbar__separator")}/>
       {

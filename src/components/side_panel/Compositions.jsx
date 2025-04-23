@@ -54,7 +54,7 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
         </div>
       </Tooltip>
       {
-        clip.clipId === compositionStore.sourceClipId ? null :
+        clip.clipId === compositionStore.sourceFullClipId ? null :
           <ClipTimeInfo
             store={store}
             clipInFrame={clip.clipInFrame}
@@ -94,7 +94,7 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
 });
 
 
-const ClipGroup = observer(({icon, title, subtitle, key, clipIds=[], loading=false, showTagLinks}) => {
+const ClipGroup = observer(({icon, title, subtitle, key, clipIds=[], noFilter, loading=false, showTagLinks}) => {
   const [hide, setHide] = useState(StorageHandler.get({type: "session", key: `hide-clips-${key}`}));
 
   useEffect(() => {
@@ -104,6 +104,18 @@ const ClipGroup = observer(({icon, title, subtitle, key, clipIds=[], loading=fal
       StorageHandler.remove({type: "session", key: `hide-clips-${key}`});
     }
   }, [hide]);
+
+  let clips = (clipIds || []).map(clipId => compositionStore.clips[clipId]);
+
+  if(!noFilter && compositionStore.filter) {
+    clips = clips.filter(clip =>
+      clip.name?.toLowerCase()?.includes(compositionStore.filter.toLowerCase())
+    );
+  }
+
+  if(clips.length === 0 && !loading) {
+    return null;
+  }
 
   return (
     <div className={S("clip-group", hide ? "clip-group--closed" : "")}>
@@ -125,19 +137,11 @@ const ClipGroup = observer(({icon, title, subtitle, key, clipIds=[], loading=fal
         <Icon icon={hide ? ChevronDownIcon : ChevronUpIcon} className={S("clip-group__header-indicator")} />
       </button>
       {
-        hide || !clipIds || clipIds.length === 0 ? null :
+        hide || !clips || clips.length === 0 ? null :
           loading ?
             <Loader className={S("clip-group__loader")} /> :
             <div className={S("clip-group__clips")}>
-              {
-                clipIds.map(clipId =>
-                  <SidePanelClip
-                    clip={compositionStore.clips[clipId]}
-                    key={`clip-${clipId}`}
-                    showTagLink={showTagLinks}
-                  />
-                )
-              }
+              { clips.map(clip => <SidePanelClip clip={clip} key={`clip-${clip.clipId}`} showTagLink={showTagLinks} />) }
             </div>
       }
     </div>
@@ -176,6 +180,7 @@ const AIClips = observer(() => {
   return  (
     !loading && clipIds.length === 0 ? null :
       <ClipGroup
+        noFilter
         icon={AISparkleIcon}
         showTagLinks
         title="Suggestions"
@@ -202,23 +207,6 @@ export const CompositionClips = observer(() => {
       onDragLeave={() => setShowDragIndicator(false)}
       className={S("composition-clips")}
     >
-      <ClipGroup
-        title="My Clips"
-        key="my-clips"
-        clipIds={[
-          compositionStore.sourceClipId,
-          ...compositionStore.myClips
-            .filter(clip =>
-              !compositionStore.filter ||
-              clip.name?.toLowerCase()?.includes(compositionStore.filter.toLowerCase())
-            )
-            .map(clip => clip.clipId)
-        ]}
-      />
-      {
-        !compositionStore.compositionObject?.objectId ? null :
-          <AIClips />
-      }
       <div
         onDrop={() => {
           setShowDragIndicator(false);
@@ -227,11 +215,33 @@ export const CompositionClips = observer(() => {
         }}
         className={S("composition-clips__drag-indicator", showDragIndicator ? "composition-clips__drag-indicator--active" : "")}
       >
-        <Icon icon={ClipIcon} />
+        <Icon icon={ClipIcon}/>
         <div>
           Save to My Clips
         </div>
       </div>
+      <ClipGroup
+        title="My Clips"
+        key="my-clips"
+        clipIds={[
+          compositionStore.sourceFullClipId,
+          ...compositionStore.myClipIds
+        ]}
+      />
+      {
+        Object.keys(compositionStore.sourceClipIds).map(category =>
+          <ClipGroup
+            title={compositionStore.sourceClipIds[category].label || category}
+            key={`clip-${category}`}
+            clipIds={compositionStore.sourceClipIds[category].clipIds}
+          />
+        )
+      }
+      {
+        !compositionStore.compositionObject?.objectId ? null :
+          <AIClips/>
+      }
+
     </div>
   );
 });
@@ -241,13 +251,17 @@ export const CompositionBrowser = observer(() => {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if(!rootStore.selectedObjectId || deleting) { return; }
+    if(!rootStore.selectedObjectId || deleting) {
+      return;
+    }
 
     browserStore.LookupContent(rootStore.selectedObjectId)
       .then(setInfo);
   }, [rootStore.selectedObjectId, deleting]);
 
-  if(!rootStore.selectedObjectId) { return null; }
+  if(!rootStore.selectedObjectId) {
+    return null;
+  }
 
   if(!info) {
     return <Loader />;

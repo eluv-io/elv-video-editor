@@ -531,13 +531,9 @@
   width: 100%;
 
   &--closed {
-    .clip-group__header {
-      border-bottom: 1px solid var(--table-border-color);
-    }
-
-    & + .clip-group {
+    &:not(:last-child) {
       .clip-group__header {
-        border-bottom: 0;
+        border-bottom: 1px solid var(--table-border-color);
       }
     }
   }

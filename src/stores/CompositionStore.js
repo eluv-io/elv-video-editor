@@ -18,7 +18,7 @@ class CompositionStore {
 
   compositionObject;
   compositionPlayoutUrl;
-  sourceClipId;
+  sourceFullClipId;
   compositionFormOptions = {};
   compositionGenerationStatus;
 
@@ -27,6 +27,7 @@ class CompositionStore {
   selectedClipId;
   selectedClipSource;
   originalSelectedClipId;
+  sourceClipIds = {};
   aiClipIds = [];
   searchClipIds = [];
 
@@ -76,7 +77,8 @@ class CompositionStore {
     this.aiClipIds = [];
     this.selectedClipId = undefined;
     this.originalSelectedClipId = undefined;
-    this.sourceClipId = undefined;
+    this.sourceFullClipId = undefined;
+    this.sourceClipIds = {};
     this.filter = "";
     this.compositionObject = undefined;
     this.compositionPlayoutUrl = undefined;
@@ -188,12 +190,12 @@ class CompositionStore {
     return this.clips[this.selectedClipId];
   }
 
-  get sourceClip() {
-    return this.clips[this.sourceClipId];
+  get sourceFullClip() {
+    return this.clips[this.sourceFullClipId];
   }
 
   get sourceVideoStore() {
-    return this.clipStores[this.sourceClip?.storeKey];
+    return this.clipStores[this.sourceFullClip?.storeKey];
   }
 
   SetCompositionName(name) {
@@ -315,7 +317,7 @@ class CompositionStore {
     });
 
     if(this.selectedClipId === clipId) {
-      this.SetSelectedClip({clipId: this.sourceClipId, source: "source-content"});
+      this.SetSelectedClip({clipId: this.sourceFullClipId, source: "source-content"});
     }
   }
 
@@ -444,7 +446,7 @@ class CompositionStore {
     this.selectedClipId = undefined;
   }
 
-  InitializeClip = flow(function * ({objectId, offering="default", clipInFrame, clipOutFrame, source}) {
+  InitializeClip = flow(function * ({name, objectId, offering="default", clipInFrame, clipOutFrame, source}) {
     const key = `${objectId}-${offering}`;
     if(!this.clipStores[key]) {
       this.clipLoading = true;
@@ -470,7 +472,7 @@ class CompositionStore {
     const clipId = this.rootStore.NextId();
     this.clips[clipId] = {
       clipId,
-      name: `${store.videoObject?.name || store.name} Clip`,
+      name: name || `${store.videoObject?.name || store.name} (Full Content)`,
       libraryId: store.videoObject.libraryId,
       objectId: store.videoObject.objectId,
       versionHash: store.videoObject.versionHash,
@@ -811,14 +813,37 @@ class CompositionStore {
       metadataSubtree: UrlJoin("/channel", "offerings", compositionKey)
     });
 
-    this.sourceClipId = yield this.InitializeClip({objectId, source: true});
-    this.SetSelectedClip({clipId: this.sourceClipId, source: "source-content"});
-
-    this.videoStore.sourceVideoStore = this.sourceVideoStore;
-
-    yield this.videoStore.SetVideo({objectId, writeToken, preferredOfferingKey: compositionKey, noTags: true});
+    // Load source clips
+    this.sourceFullClipId = yield this.InitializeClip({objectId, source: true});
+    this.SetSelectedClip({clipId: this.sourceFullClipId, source: "source-content"});
 
     const videoHandler = new FrameAccurateVideo({frameRateRat: this.selectedClipStore.frameRateRat});
+
+    // Point channel video store to source video store for source info
+    this.videoStore.sourceVideoStore = this.sourceVideoStore;
+
+    const sourceFullClips = this.sourceVideoStore.videoObject.metadata?.clips?.metadata_tags || {};
+    for(const category of Object.keys(sourceFullClips)) {
+      if(sourceFullClips[category].tags.length > 0) {
+        let clipIds = [];
+        for(const clip of sourceFullClips[category].tags) {
+          clipIds.push(yield this.InitializeClip({
+            name: clip.text,
+            objectId,
+            clipInFrame: videoHandler.TimeToFrame(clip.start_time / 1000),
+            clipOutFrame: videoHandler.TimeToFrame(clip.end_time / 1000),
+            source: true
+          }));
+        }
+
+        this.sourceClipIds[category] = {
+          label: sourceFullClips[category].label,
+          clipIds
+        };
+      }
+    }
+
+    yield this.videoStore.SetVideo({objectId, writeToken, preferredOfferingKey: compositionKey, noTags: true});
 
     this.videoStore.SetFrameRate({rateRat: this.selectedClipStore.frameRateRat});
 
@@ -1165,7 +1190,7 @@ class CompositionStore {
     const clip = this.clips[clipId];
 
     if(this.selectedClipId === clipId) {
-      this.SetSelectedClip({clipId: this.sourceClipId, source: "source-content"});
+      this.SetSelectedClip({clipId: this.sourceFullClipId, source: "source-content"});
     }
 
     if(clip) {
