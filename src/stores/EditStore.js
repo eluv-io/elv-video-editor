@@ -1,4 +1,4 @@
-import {flow, makeAutoObservable } from "mobx";
+import {flow, makeAutoObservable, runInAction} from "mobx";
 import UrlJoin from "url-join";
 import {Unproxy} from "@/utils/Utils.js";
 
@@ -6,6 +6,10 @@ class EditStore {
   saving = false;
   writeInfo = {};
   editInfo = {};
+  saveProgress = {
+    tags: 0,
+    clips: 0
+  };
 
   constructor(rootStore) {
     makeAutoObservable(this);
@@ -175,20 +179,23 @@ class EditStore {
         return;
       }
 
-      if(formattedActions.find(otherAction => otherAction.modifiedItem.tagId === action.modifiedItem.tagId)) {
-        // Only the most recent action matters per tag, disregard older actions on this tag
+      const idField = action.type === "track" ? "trackId" : "tagId";
+      if(formattedActions.find(otherAction => otherAction.modifiedItem[idField] === action.modifiedItem[idField])) {
+        // Only the most recent action matters per item, disregard older actions on this tag
         return;
       }
 
       formattedActions.push({
         ...action,
         // If modified tag has no origin, it is a modification of a newly created tag
-        action: action.action === "modify" && !action.modifiedItem.o ? "create" : action.action
+        action: action.type !== "track" && action.action === "modify" && !action.modifiedItem.o ? "create" : action.action
       });
     });
 
     // Remove unnecessary delete of new tags and convert modification of ML tag to delete + create user tag
     return formattedActions.map(action => {
+      if(action.type === "track") { return action; }
+
       if(action.action === "delete" && !action.modifiedItem.o) {
         // Deletion of newly created tag
         return;
@@ -217,8 +224,18 @@ class EditStore {
   }
 
   Save = flow(function * () {
+    this.saving = true;
+
+    this.saveProgress = { tags: 0, overlay: 0 };
+
     yield this.SaveTags();
+
+    this.saveProgress.tags = 1;
+
     yield this.SaveOverlayTags();
+
+    this.saveProgress.overlay = 1;
+
     yield this.SavePrimaryClip();
 
     const objectId = this.rootStore.videoStore.videoObject.objectId;
@@ -227,7 +244,7 @@ class EditStore {
       commitMessage: "EVIE - Update tags"
     });
 
-
+    this.saving = false;
 
     this.ResetPage("tags");
     this.rootStore.videoStore.Reload();
@@ -246,6 +263,7 @@ class EditStore {
     const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
 
     let modifiedFiles = {};
+    let fileHashes = {};
     const LoadTagFile = async linkKey => {
       if(modifiedFiles[linkKey]) { return; }
 
@@ -273,13 +291,71 @@ class EditStore {
           metadata_tags: {}
         };
       }
+
+      // Hash the content so we can determine if the file was actually changed
+      fileHashes[linkKey] = await this.CreateHash(JSON.stringify(modifiedFiles[linkKey]));
     };
 
-    const formattedActions = this.FormatActions(actions, ["tag", "clip"]);
+    const linkInfo = (yield this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      metadataSubtree: "/video_tags/metadata_tags"
+    })) || {};
 
-    if(formattedActions.length === 0) { return;}
+    const formattedActions = this.FormatActions(actions, ["tag", "clip", "track"]);
+
+    if(formattedActions.length === 0) { return; }
 
     for(const action of formattedActions) {
+      if(action.type === "track") {
+        const track = action.modifiedItem;
+
+        // All of the files that need modification
+        const linkKeys = action.page === "clips" ? ["clips"] : [...Object.keys(linkInfo), "user"];
+
+        // Track modified
+        switch(action.action) {
+          // No action needed for create - tracks are created automatically via adding tags
+
+          // When tracks are modified or deleted, we must go into *all* files and modify it
+          case "modify":
+            // Label or color changed
+            if(!track.requiresSave) {
+              // Only color changed, no need to modify files
+              continue;
+            }
+
+            yield Promise.all(
+              linkKeys.map(async linkKey => {
+                await LoadTagFile(linkKey);
+
+                if(modifiedFiles[linkKey]?.metadata_tags?.[track.key]) {
+                  modifiedFiles[linkKey].metadata_tags[track.key].label = track.label;
+                  modifiedFiles[linkKey].metadata_tags[track.key].description = track.description;
+                }
+              })
+            );
+
+            break;
+
+          case "delete":
+            // Track deleted
+            yield Promise.all(
+              linkKeys.map(async linkKey => {
+                await LoadTagFile(linkKey);
+
+                if(modifiedFiles[linkKey]?.metadata_tags?.[track.key]) {
+                  delete modifiedFiles[linkKey].metadata_tags[track.key];
+                }
+              })
+            );
+            break;
+        }
+
+        continue;
+      }
+
+      // Tag modified
       const tag = action.modifiedItem;
 
       if(tag.trackKey === "primary-content") {
@@ -337,15 +413,13 @@ class EditStore {
 
     const writeToken = yield this.rootStore.editStore.InitializeWrite({objectId});
 
-    const linkInfo = yield this.client.ContentObjectMetadata({
-      libraryId,
-      objectId,
-      metadataSubtree: "/video_tags/metadata_tags"
-    });
-
     let fileInfo = [];
     yield Promise.all(
       Object.keys(modifiedFiles).map(async linkKey => {
+        if(fileHashes[linkKey] === await this.CreateHash(JSON.stringify(modifiedFiles[linkKey]))) {
+          return;
+        }
+
         // Save clips to metadata
         if(linkKey === "clips") {
           delete modifiedFiles[linkKey].new;
@@ -394,7 +468,15 @@ class EditStore {
         libraryId,
         objectId,
         writeToken,
-        fileInfo
+        fileInfo,
+        callback: fileProgress => {
+          const uploaded = Object.keys(fileProgress).map(filename => fileProgress[filename].uploaded)
+            .reduce((acc, value) => acc + value, 0);
+          const total = Object.keys(fileProgress).map(filename => fileProgress[filename].total)
+            .reduce((acc, value) => acc + value, 0);
+
+          runInAction(() =>this.saveProgress.tags = uploaded / total);
+        }
       });
     }
   });
@@ -412,6 +494,7 @@ class EditStore {
     const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
 
     let modifiedFiles = {};
+    let fileHashes = {};
     const LoadTagFile = async linkKey => {
       if(modifiedFiles[linkKey]) {
         return;
@@ -443,13 +526,66 @@ class EditStore {
           }
         };
       }
+
+      // Hash the content so we can determine if the file was actually changed
+      fileHashes[linkKey] = await this.CreateHash(JSON.stringify(modifiedFiles[linkKey]));
     };
 
-    const formattedActions = this.FormatActions(actions, "overlay");
+    const formattedActions = this.FormatActions(actions, ["overlay", "track"]);
 
-    if(formattedActions.length === 0) { return;}
+    if(formattedActions.length === 0) { return; }
+
+    const linkInfo = (yield this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      metadataSubtree: "/video_tags/overlay_tags"
+    }));
 
     for(const action of formattedActions) {
+      if(action.type === "track") {
+        const track = action.modifiedItem;
+
+        // All of the files that need modification
+        const linkKeys = action.page === "clips" ? ["clips"] : [...Object.keys(linkInfo), "user"];
+
+        // Track modified
+        switch(action.action) {
+          // No action needed for create - tracks are created automatically via adding tags
+          // No action needed for modify - overlay tags don't carry any track info
+
+          // When tracks deleted, we must go into *all* files and remove them
+          case "delete":
+            // Track deleted
+            yield Promise.all(
+              linkKeys.map(async linkKey => {
+                await LoadTagFile(linkKey);
+
+                Object.keys(modifiedFiles[linkKey]?.overlay_tags?.frame_level_tags || {}).forEach(frame => {
+                  // Delete track
+                  delete modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][track.key];
+
+                  // Prune empty frame
+                  if(
+                    // Nothing left
+                    Object.keys(modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame]).length === 0 ||
+                    (
+                      // or only timestamp_sec left
+                      Object.keys(modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame]).length === 1 &&
+                      modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame].timestamp_sec
+                    )
+                  ) {
+                    // Delete frame
+                    delete modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame];
+                  }
+                });
+              })
+            );
+            break;
+        }
+
+        continue;
+      }
+
       const tag = action.modifiedItem;
       const tagOrigin = action.modifiedItem.o;
       let linkKey = tagOrigin ? tagOrigin.lk :
@@ -500,21 +636,38 @@ class EditStore {
           modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey].tags =
             modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey].tags
               .filter((_, i) => i !== tagOrigin.ti);
+
+          // Prune empty track
+          if(modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey].tags.length === 0) {
+            delete modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey];
+          }
+
+          // Prune empty frame
+          if(
+            // Nothing left
+            Object.keys(modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame]).length === 0 ||
+            (
+              // or only timestamp_sec left
+              Object.keys(modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame]).length === 1 &&
+              modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame].timestamp_sec
+            )
+          ) {
+            // Delete frame
+            delete modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame];
+          }
           break;
       }
     }
 
     const writeToken = yield this.rootStore.editStore.InitializeWrite({objectId});
 
-    const linkInfo = yield this.client.ContentObjectMetadata({
-      libraryId,
-      objectId,
-      metadataSubtree: "/video_tags/overlay_tags"
-    });
-
     let fileInfo = [];
     yield Promise.all(
       Object.keys(modifiedFiles).map(async linkKey => {
+        if(fileHashes[linkKey] === await this.CreateHash(JSON.stringify(modifiedFiles[linkKey]))) {
+          return;
+        }
+
         if(linkKey === "clips") {
           await this.client.ReplaceMetadata({
             libraryId,
@@ -560,7 +713,15 @@ class EditStore {
         libraryId,
         objectId,
         writeToken,
-        fileInfo
+        fileInfo,
+        callback: fileProgress => {
+          const uploaded = Object.keys(fileProgress).map(filename => fileProgress[filename].uploaded)
+            .reduce((acc, value) => acc + value, 0);
+          const total = Object.keys(fileProgress).map(filename => fileProgress[filename].total)
+            .reduce((acc, value) => acc + value, 0);
+
+          runInAction(() => this.saveProgress.overlay = uploaded / total);
+        }
       });
     }
   });
@@ -570,10 +731,15 @@ class EditStore {
     const {startTime, endTime} = this.rootStore.trackStore.ClipInfo();
 
     const startFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(startTime);
-    const endFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(endTime);
+    const endFrame = Math.min(
+      this.rootStore.videoStore.videoHandler.TimeToFrame(endTime),
+      this.rootStore.videoStore.totalFrames - 1
+    );
 
-    const startTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(startFrame);
-    const endTimeRat = this.rootStore.videoStore.videoHandler.FrameToRat(endFrame);
+    const startTimeRat = startFrame === 0 ? null :
+      this.rootStore.videoStore.videoHandler.FrameToRat(startFrame);
+    const endTimeRat = endFrame >= this.rootStore.videoStore.totalFrames - 1 ? null :
+      this.rootStore.videoStore.videoHandler.FrameToRat(endFrame);
 
     const offering = this.rootStore.videoStore.metadata.offerings[this.rootStore.videoStore.offeringKey];
 
@@ -603,6 +769,18 @@ class EditStore {
     });
   });
 
+  async CreateHash(content) {
+    return Array.from(
+      new Uint8Array(
+        await window.crypto.subtle.digest(
+          "SHA-256",
+          new TextEncoder().encode(content)
+        )
+      )
+    )
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
 }
 
 export default EditStore;

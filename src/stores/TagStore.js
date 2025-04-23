@@ -362,6 +362,11 @@ class TagStore {
         const modifiedTrack = Unproxy({...this.editedTrack, label: this.editedTrack.label || originalTrack.label});
 
         if(JSON.stringify(originalTrack) !== JSON.stringify(modifiedTrack)) {
+          if(modifiedTrack.label !== originalTrack.label || modifiedTrack.description !== originalTrack.description) {
+            // Color changes don't require modifying source files, only label or description modifications
+            modifiedTrack.requiresSave = true;
+          }
+
           this.rootStore.editStore.PerformAction({
             label: "Modify category",
             type: "track",

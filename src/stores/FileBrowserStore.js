@@ -15,6 +15,13 @@ class FileBrowserStore {
     makeAutoObservable(this);
   }
 
+  Reset() {
+    this.files = {};
+    this.objectNames = {};
+    this.activeUploadJobs = {};
+    this.uploadStatus = {};
+  }
+
   WriteToken({objectId}) {
     return this.writeInfo[objectId]?.write_token;
   }
@@ -102,7 +109,7 @@ class FileBrowserStore {
       filePaths: [UrlJoin(path, filename)]
     });
 
-    yield this.LoadFiles({objectId});
+    yield this.LoadFiles({objectId, force: true});
   });
 
   RenameFile = flow(function * ({objectId, path, filename, newFilename}) {
@@ -119,7 +126,7 @@ class FileBrowserStore {
       }]
     });
 
-    yield this.LoadFiles({objectId});
+    yield this.LoadFiles({objectId, force: true});
   });
 
   DeleteFile = flow(function * ({objectId, path, filename}) {
@@ -135,7 +142,7 @@ class FileBrowserStore {
       ]
     });
 
-    yield this.LoadFiles({objectId});
+    yield this.LoadFiles({objectId, force: true});
   });
 
   UploadFiles = flow(function * ({objectId, files}) {
@@ -158,7 +165,7 @@ class FileBrowserStore {
         })
       });
 
-      yield this.LoadFiles({objectId});
+      yield this.LoadFiles({objectId, force: true});
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error(error);

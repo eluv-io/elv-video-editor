@@ -18,10 +18,10 @@ import SVG from "react-inlinesvg";
 import {observer} from "mobx-react-lite";
 import {Link} from "wouter";
 import {keyboardControlsStore, videoStore} from "@/stores/index.js";
+import {modals} from "@mantine/modals";
 
 import CopyIcon from "@/assets/icons/v2/copy.svg";
 import CheckIcon from "@/assets/icons/check-circle.svg";
-import {modals} from "@mantine/modals";
 
 const S = CreateModuleClassMatcher(CommonStyles);
 
