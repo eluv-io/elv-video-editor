@@ -168,8 +168,11 @@ class CompositionStore {
     return this.myClipIds
       .map(clipId => this.clips[clipId])
       .filter(clip =>
-        !this.filter ||
-        clip.name?.toLowerCase()?.includes(this.filter)
+        clip.objectId === this.compositionObject?.objectId &&
+        (
+          !this.filter ||
+          clip.name?.toLowerCase()?.includes(this.filter)
+        )
       );
   }
 
@@ -1169,6 +1172,7 @@ class CompositionStore {
 
     if(clips) {
       this.myClipIds = JSON.parse(this.client.utils.FromB64(clips))
+        .filter(clip => clip.objectId === objectId)
         // Update clip IDs
         .map(clip => {
           clip = {...clip, clipId: this.rootStore.NextId() };
