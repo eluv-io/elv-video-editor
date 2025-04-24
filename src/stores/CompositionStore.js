@@ -719,6 +719,13 @@ class CompositionStore {
       if(updatePlayoutUrl) {
         yield this.GetCompositionPlayoutUrl();
       }
+
+      this.rootStore.browserStore.AddMyLibraryItem({
+        objectId: this.compositionObject.objectId,
+        compositionKey: this.compositionObject.compositionKey,
+        name: this.compositionObject.name,
+        duration: this.compositionDuration
+      });
     } finally {
       this.loading = false;
     }
@@ -783,7 +790,7 @@ class CompositionStore {
     this.GetCompositionPlayoutUrl();
   });
 
-  SetCompositionObject = flow(function * ({objectId, compositionKey}) {
+  SetCompositionObject = flow(function * ({objectId, compositionKey, addToMyLibrary=false}) {
     this.Reset();
 
     const libraryId = yield this.client.ContentObjectLibraryId({objectId});
@@ -918,6 +925,15 @@ class CompositionStore {
     this.GetCompositionPlayoutUrl();
 
     this.LoadHighlights();
+
+    if(addToMyLibrary) {
+      this.rootStore.browserStore.AddMyLibraryItem({
+        objectId,
+        compositionKey,
+        name: this.compositionObject.name,
+        duration: this.compositionDuration
+      });
+    }
   });
 
   LoadHighlights = flow(function * () {
@@ -1037,6 +1053,11 @@ class CompositionStore {
       }
 
       this.SaveMyCompositions();
+
+      // Ensure it is removed from My Library
+      if(removeComposition) {
+        this.rootStore.browserStore.RemoveMyLibraryItem({objectId, compositionKey});
+      }
     }
   }
 

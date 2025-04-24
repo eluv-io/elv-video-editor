@@ -209,7 +209,7 @@ class VideoStore {
     yield this.SetVideo({...this.videoObject, preferredOfferingKey: offeringKey});
   });
 
-  SetVideo = flow(function * ({objectId, writeToken, preferredOfferingKey="default"}) {
+  SetVideo = flow(function * ({objectId, writeToken, preferredOfferingKey="default", addToMyLibrary=false}) {
     this.loading = true;
     this.ready = false;
     this.rootStore.SetError(undefined);
@@ -326,6 +326,15 @@ class VideoStore {
       }
 
       this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl);
+
+      if(addToMyLibrary) {
+        this.rootStore.browserStore.AddMyLibraryItem({
+          objectId,
+          name: videoObject.name,
+          isVideo: videoObject.isVideo
+        });
+      }
+
 
       if(!this.tags) {
         this.initialized = true;

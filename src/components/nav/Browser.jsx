@@ -8,6 +8,7 @@ import {Confirm, IconButton, Linkish, Loader} from "@/components/common/Common";
 import SVG from "react-inlinesvg";
 import {Redirect} from "wouter";
 import UrlJoin from "url-join";
+import {Tabs, Tooltip} from "@mantine/core";
 
 import LibraryIcon from "@/assets/icons/v2/library.svg";
 import ObjectIcon from "@/assets/icons/file.svg";
@@ -105,15 +106,15 @@ const SearchBar = observer(({filter, setFilter, delay=500, Select}) => {
   return (
     <input
       value={input}
-      placeholder="Search"
+      placeholder="Title, Content ID, Version Hash"
       onChange={event => setInput(event.target.value)}
       onKeyDown={async event => {
-        if(event.key !== "Enter") { return; }
+        if(!Select || event.key !== "Enter") { return; }
 
         if(["ilib", "iq__", "hq__", "0x"].find(prefix => event.target.value.trim().startsWith(prefix))) {
           const result = await browserStore.LookupContent(event.target.value);
 
-          Select?.(result);
+          Select(result);
         }
       }}
       className={S("search-bar")}
@@ -125,7 +126,7 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
   const [loading, setLoading] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
   const [content, setContent] = useState(undefined);
-  const [paging, setPaging] = useState({page: 1, perPage: 10});
+  const [paging, setPaging] = useState({page: 1, perPage: window.innerHeight < 900 ? 8 : 10});
   const [deleting, setDeleting] = useState(undefined);
 
   const LoadPage = page => {
@@ -169,52 +170,57 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
             Name
           </div>
           {
-            contentType !== "object" ? null :
+            !["object", "my-library"].includes(contentType) ? null :
               <>
-                <div
-                  className={S("browser-table__cell", "browser-table__cell--header", "browser-table__cell--centered")}>
+                <div className={S("browser-table__cell", "browser-table__cell--header", "browser-table__cell--centered")}>
                   Duration
                 </div>
-                <div
-                  className={S("browser-table__cell", "browser-table__cell--header", "browser-table__cell--centered")}>
-                  Last Modified
+                <div className={S("browser-table__cell", "browser-table__cell--header", "browser-table__cell--centered")}>
+                  { contentType === "object" ? "Last Modified" : "Last Accessed" }
                 </div>
               </>
           }
         </div>
         {
-          (content || []).map(({id, name, image, duration, isVideo, hasChannels, hasAssets, channels, lastModified, forbidden}) =>
+          (content || []).map(({id, name, image, duration, isVideo, hasChannels, hasAssets, channels, lastModified, forbidden, ...item}) =>
             <Linkish
               onClick={() => {
                 if(contentType === "library") {
                   Select({libraryId: id, name});
                 } else if(contentType === "object") {
                   Select({objectId: id, name, isVideo, hasAssets, hasChannels, channels});
-                } else {
+                } else if(contentType === "composition") {
                   Select({compositionKey: id});
+                } else if(contentType === "my-library") {
+                  Select({id});
                 }
               }}
               key={`browser-row-${id}`}
               disabled={deleting || forbidden || (videoOnly && !isVideo)}
               className={S("browser-table__row", "browser-table__row--content")}
             >
-              <div title={name} className={S("browser-table__cell")}>
+              <div className={S("browser-table__cell")}>
                 {
                   image ?
                     <img src={image} alt={name} className={S("browser-table__cell-image")}/> :
                     <SVG src={duration ? VideoIcon : defaultIcon} className={S("browser-table__cell-icon")}/>
                 }
                 <div className={S("browser-table__row-title")}>
-                  <div className={S("browser-table__row-title-main")}>
-                    {name}
-                  </div>
+                  <Tooltip label={name} openDelay={500}>
+                    <div className={S("browser-table__row-title-main")}>
+                      {name}{item.compositionKey ? " (Composition)" : ""}
+                    </div>
+                  </Tooltip>
                   <div className={S("browser-table__row-title-id")}>
-                    {id}
+                    {
+                      contentType !== "my-library" ? id :
+                        `${item.objectId}${item.compositionKey ? ` - ${item.compositionKey}` : ""}`
+                    }
                   </div>
                 </div>
               </div>
               {
-                contentType !== "object" ? null :
+                !["object", "my-library"].includes(contentType) ? null :
                   <>
                     <div className={S("browser-table__cell", "browser-table__cell--centered")}>
                       {duration || "-"}
@@ -294,7 +300,7 @@ const ChannelBrowser = observer(({channelInfo, Select, Back, className=""}) => {
       </h1>
       <BrowserTable
         filter={filter}
-        defaultIcon={ObjectIcon}
+        defaultIcon={VideoIcon}
         contentType="composition"
         Select={Select}
         Load={async ({page, perPage, filter}) => {
@@ -378,9 +384,12 @@ export const LibraryBrowser = observer(({title, Path, Select, className=""}) => 
   return (
     <div className={JoinClassNames(S("browser", "browser--library"), className)}>
       <SearchBar filter={filter} setFilter={setFilter} Select={Select}/>
-      <h1 className={S("browser__header")}>
-        { title || "Content Libraries" }
-      </h1>
+      {
+        !title ? null :
+          <h1 className={S("browser__header")}>
+            { title || "Content Libraries" }
+          </h1>
+      }
       <BrowserTable
         filter={filter}
         defaultIcon={LibraryIcon}
@@ -461,4 +470,66 @@ const Browser = observer(() => {
   return <LibraryBrowser Select={Select} />;
 });
 
-export default Browser;
+const MyLibraryBrowser = observer(() => {
+  const [filter, setFilter] = useState("");
+  const [redirect, setRedirect] = useState(undefined);
+
+  if(redirect) {
+    return <Redirect to={redirect} />;
+  }
+
+  const Select = ({id, objectId, isVideo}) => {
+    const item =
+      objectId ? {objectId, isVideo} :
+      browserStore.myLibraryItems.find(item => item.id === id);
+
+    if(!item) { return; }
+
+    if(item.compositionKey) {
+      setRedirect(UrlJoin("/compositions", item.objectId, item.compositionKey));
+    } else if(!item.isVideo) {
+      setRedirect(UrlJoin("/", item.objectId, "assets"));
+    } else {
+      setRedirect(UrlJoin("/", item.objectId));
+    }
+  };
+
+  return (
+    <div className={S("browser", "browser--my-library")}>
+      <SearchBar filter={filter} setFilter={setFilter} Select={Select} />
+      <BrowserTable
+        filter={filter}
+        defaultIcon={ObjectIcon}
+        contentType="my-library"
+        Select={Select}
+        Load={async args => await browserStore.ListMyLibrary(args)}
+      />
+    </div>
+  );
+});
+
+const BrowserPage = observer(() => {
+  const [tab, setTab] = useState("content");
+
+  return (
+    <div className={S("browser-page")}>
+      <Tabs value={tab} onChange={setTab} color="var(--text-secondary)">
+        <Tabs.List fz={24} fw={800}>
+          <Tabs.Tab px="xl" value="content" className={tab !== "content" ? S("tab--inactive") : ""}>
+            Content Libraries
+          </Tabs.Tab>
+          <Tabs.Tab px="xl" value="my-library" className={tab !== "my-library" ? S("tab--inactive") : ""}>
+            My Library
+          </Tabs.Tab>
+        </Tabs.List>
+        {
+          tab === "content" ?
+            <Browser /> :
+            <MyLibraryBrowser />
+        }
+      </Tabs>
+    </div>
+  );
+});
+
+export default BrowserPage;

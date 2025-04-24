@@ -25,13 +25,13 @@ const S = CreateModuleClassMatcher(CompositionStyles);
 
 const SourceSelectionModal = observer(({Select, Cancel}) => {
   const [libraryId, setLibraryId] = useState(undefined);
+
   return (
     <Modal withCloseButton={false} opened centered size={1000} onClose={Cancel}>
       {
         libraryId ?
           <ObjectBrowser
             libraryId={libraryId}
-            title="Select source content for your composition"
             videoOnly
             Back={() => setLibraryId(undefined)}
             Select={({objectId, name}) => Select({objectId, name})}
@@ -111,7 +111,7 @@ const CompositionSelection = observer(() => {
         <div className={S("composition-selection__creating")}>
           <div className={S("composition-selection__title")}>
             {
-              compositionStore.compositionGenerationStatus ?
+              options.type === "ai" ?
                 "Generating AI Highlights..." :
                 "Initializing Composition..."
             }
@@ -188,7 +188,7 @@ const CompositionSelection = observer(() => {
   } else if(keyExists) {
     error = "A composition with this key already exists for this content";
   }
-  
+
   // Creation form
   return (
     <div key="form" className={S("composition-selection")}>

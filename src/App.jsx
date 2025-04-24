@@ -35,7 +35,7 @@ const DefaultContentRoutes = observer(() => {
 
   useEffect(() => {
     if(objectId && !videoStore.loading && videoStore.videoObject?.objectId !== objectId) {
-      videoStore.SetVideo({objectId})
+      videoStore.SetVideo({objectId, addToMyLibrary: true})
         .then(() => rootStore.SetSelectedObjectId(objectId, videoStore.name));
     }
   }, [objectId]);
