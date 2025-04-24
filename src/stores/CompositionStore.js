@@ -545,6 +545,7 @@ class CompositionStore {
     name,
     key,
     prompt,
+    maxDuration,
     regenerate=false
   }) {
     this.compositionGenerationStatus = {};
@@ -589,6 +590,7 @@ class CompositionStore {
       const highlights = (yield this.GenerateAIHighlights({
         objectId: sourceObjectId,
         prompt,
+        maxDuration,
         regenerate,
         StatusCallback: status => this.compositionGenerationStatus = status
       })).clips;
@@ -1241,13 +1243,17 @@ class CompositionStore {
     return fetch(url, {method});
   });
 
-  GenerateAIHighlights = flow(function * ({objectId, prompt, regenerate=false, wait=true, StatusCallback}) {
+  GenerateAIHighlights = flow(function * ({objectId, prompt, maxDuration, regenerate=false, wait=true, StatusCallback}) {
+    let options = {};
+    if(prompt) { options.customization = prompt; }
+    if(maxDuration) { options.max_length = maxDuration * 1000; }
+
     if(regenerate) {
       yield this.QueryAIAPI({
         method: "POST",
         path: UrlJoin("ml", "highlight_composition", "q", objectId),
         objectId,
-        queryParams: {customization: prompt, regenerate: true}
+        queryParams: {...options, regenerate: true}
       });
 
       yield new Promise(resolve => setTimeout(resolve, 1000));
@@ -1264,7 +1270,7 @@ class CompositionStore {
         method: "GET",
         path: UrlJoin("ml", "highlight_composition", "q", objectId),
         objectId,
-        queryParams: {customization: prompt}
+        queryParams: options
       });
 
       if(response.status === 204 && !regenerate) {

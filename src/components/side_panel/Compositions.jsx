@@ -3,7 +3,7 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, DragHandler, StorageHandler} from "@/utils/Utils.js";
-import {browserStore, compositionStore, rootStore} from "@/stores/index.js";
+import {browserStore, compositionStore, rootStore, trackStore} from "@/stores/index.js";
 import {ClipTimeInfo, Confirm, Icon, IconButton, Linkish, Loader} from "@/components/common/Common.jsx";
 import {Tooltip} from "@mantine/core";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
@@ -94,14 +94,14 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
 });
 
 
-const ClipGroup = observer(({icon, title, subtitle, key, clipIds=[], noFilter, loading=false, showTagLinks}) => {
-  const [hide, setHide] = useState(StorageHandler.get({type: "session", key: `hide-clips-${key}`}));
+const ClipGroup = observer(({icon, color, title, subtitle, groupKey, clipIds=[], noFilter, loading=false, showTagLinks}) => {
+  const [hide, setHide] = useState(StorageHandler.get({type: "session", key: `hide-clips-${groupKey}`}));
 
   useEffect(() => {
     if(hide) {
-      StorageHandler.set({type: "session", key: `hide-clips-${key}`, value: "true"});
+      StorageHandler.set({type: "session", key: `hide-clips-${groupKey}`, value: "true"});
     } else {
-      StorageHandler.remove({type: "session", key: `hide-clips-${key}`});
+      StorageHandler.remove({type: "session", key: `hide-clips-${groupKey}`});
     }
   }, [hide]);
 
@@ -123,6 +123,13 @@ const ClipGroup = observer(({icon, title, subtitle, key, clipIds=[], noFilter, l
         {
           !icon ? null :
             <Icon icon={icon} className={S("clip-group__header-icon")} />
+        }
+        {
+          !color ? null :
+            <div
+              style={{backgroundColor: `rgb(${color.r} ${color.g} ${color.b}`}}
+              className={S("clip-group__header-color")}
+            />
         }
         <div className={S("clip-group__text")}>
           <div className={S("clip-group__title")}>
@@ -181,6 +188,7 @@ const AIClips = observer(() => {
     !loading && clipIds.length === 0 ? null :
       <ClipGroup
         noFilter
+        groupKey="ai"
         icon={AISparkleIcon}
         showTagLinks
         title="Suggestions"
@@ -222,26 +230,27 @@ export const CompositionClips = observer(() => {
       </div>
       <ClipGroup
         title="My Clips"
-        key="my-clips"
+        groupKey="my-clips"
         clipIds={[
           compositionStore.sourceFullClipId,
           ...compositionStore.myClipIds
         ]}
       />
       {
+        !compositionStore.compositionObject?.objectId ? null :
+          <AIClips/>
+      }
+      {
         Object.keys(compositionStore.sourceClipIds).map(category =>
           <ClipGroup
             title={compositionStore.sourceClipIds[category].label || category}
+            color={trackStore.TrackColor(category)}
             key={`clip-${category}`}
+            groupKey={`clip-${category}`}
             clipIds={compositionStore.sourceClipIds[category].clipIds}
           />
         )
       }
-      {
-        !compositionStore.compositionObject?.objectId ? null :
-          <AIClips/>
-      }
-
     </div>
   );
 });

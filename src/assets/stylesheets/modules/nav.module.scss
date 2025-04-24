@@ -16,6 +16,31 @@
     min-height: 55px;
     min-width: 55px;
     padding: 12px;
+    position: relative;
     width: 55px;
+  }
+
+  &__change-indicator {
+    background-color: var(--color-highlight);
+    border-radius: 100%;
+    height: 5px;
+    opacity: 0.75;
+    position: absolute;
+    right: 7px;
+    top: 7px;
+    width: 5px;
+  }
+
+  &__label {
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    font-weight: 500;
+    gap: 5px;
+  }
+
+
+  &__label-note {
+    font-size: 11px;
   }
 }

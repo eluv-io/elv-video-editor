@@ -493,7 +493,7 @@ class TrackStore {
     let metadataTracks = [];
     Object.keys(metadataTags).forEach(key => {
       let tags = {};
-      const millis = metadataTags[key].version > 0;
+      const millis = type === "clip" || metadataTags[key].version > 0;
       metadataTags[key].tags.forEach(tag => {
         if(key === "shot_tags") {
           tag = this.FormatAggregatedSpeechToTextTag(tag);

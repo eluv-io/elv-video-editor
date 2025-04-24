@@ -3,7 +3,14 @@ import CompositionStyles from "@/assets/stylesheets/modules/compositions.module.
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, Slugify} from "@/utils/Utils.js";
-import {AsyncButton, FormTextArea, FormTextInput, IconButton, Loader, Modal} from "@/components/common/Common.jsx";
+import {
+  AsyncButton,
+  FormNumberInput,
+  FormTextInput,
+  IconButton,
+  Loader,
+  Modal
+} from "@/components/common/Common.jsx";
 import {LibraryBrowser, ObjectBrowser} from "@/components/nav/Browser.jsx";
 import {Redirect} from "wouter";
 import {rootStore, compositionStore} from "@/stores/index.js";
@@ -60,6 +67,7 @@ const CompositionSelection = observer(() => {
     name: "",
     key: "",
     prompt: "",
+    maxDuration: undefined,
     regenerate: false,
     length: undefined
   });
@@ -180,7 +188,7 @@ const CompositionSelection = observer(() => {
   } else if(keyExists) {
     error = "A composition with this key already exists for this content";
   }
-
+  
   // Creation form
   return (
     <div key="form" className={S("composition-selection")}>
@@ -221,21 +229,29 @@ const CompositionSelection = observer(() => {
         />
         {
           options.type !== "ai" ? null :
-            <FormTextArea
-              label="Prompt (optional)"
-              value={options.prompt}
-              onChange={event => setOptions({...options, prompt: event.target.value})}
-            />
-        }
-        {
-          options.type !== "ai" ? null :
-            <Group my="xs" justify="end">
-              <Checkbox
-                label="Regenerate Results (if present)"
-                checked={options.regenerate}
-                onChange={event => setOptions({...options, regenerate: event.currentTarget.checked})}
+            <>
+              <FormNumberInput
+                label="Maximum Duration (seconds)"
+                placeholder="Automatic"
+                value={options.maxDuration}
+                min={0}
+                max={100000}
+                step={1}
+                onChange={value => setOptions({...options, maxDuration: value})}
               />
-            </Group>
+              <FormTextInput
+                label="Prompt (optional)"
+                value={options.prompt}
+                onChange={event => setOptions({...options, prompt: event.target.value})}
+              />
+              <Group my="xs" justify="end">
+                <Checkbox
+                  label="Regenerate Results (if present)"
+                  checked={options.regenerate}
+                  onChange={event => setOptions({...options, regenerate: event.currentTarget.checked})}
+                />
+              </Group>
+            </>
         }
         <div className={S("composition-form__actions")}>
           <AsyncButton
@@ -254,6 +270,7 @@ const CompositionSelection = observer(() => {
                   name: options.name,
                   key,
                   prompt: options.prompt,
+                  maxDuration: options.maxDuration,
                   regenerate: options.regenerate
                 });
               } catch(error) {

@@ -270,7 +270,7 @@ export const IconButton = ({
         )
       }
     >
-      {content }
+      { content }
     </Linkish>
   );
 
@@ -417,9 +417,9 @@ export const FormTextInput = observer(props =>
 
 export const FormNumberInput = observer(props =>
   <NumberInput
-    {...props}
     min={0}
     max={100}
+    {...props}
     classNames={{
       root: S("form-input"),
       label: S("form-input__label"),
