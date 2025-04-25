@@ -108,11 +108,14 @@ const ThumbnailTrack = observer(({
   noHover,
   hoverOffset=30,
   RenderTooltip,
+  thumbnailFrom="middle",
   className=""
 }) => {
   const [ref, setRef] = useState(null);
   const [trackDimensions, setTrackDimensions] = useState({height: 1, width: 1});
   const [hoverThumbnail, setHoverThumbnail] = useState(undefined);
+
+  const thumbnailRatio = thumbnailFrom === "middle" ? 0.5 : 0;
 
   startFrame = typeof startFrame === "undefined" ? store.scaleMinFrame : startFrame;
   endFrame = typeof endFrame === "undefined" ? store.scaleMaxFrame : endFrame;
@@ -175,7 +178,7 @@ const ThumbnailTrack = observer(({
           let visibleFraction =
             index === visibleThumbnails - 1 ? fractionalThumbnail : 1;
 
-          const progress = startProgress + (thumbnailScale * index * visibleFraction + thumbnailScale * 0.5);
+          const progress = startProgress + (thumbnailScale * index * visibleFraction + thumbnailScale * thumbnailRatio);
           let startTime = store.duration * progress;
 
           return (

@@ -494,8 +494,17 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
                 video
               ));
 
-              if(!clipView && compositionStore.seekProgress) {
-                video.addEventListener("durationchange", () => video.currentTime = video.duration * compositionStore.seekProgress / 100);
+              if(!clipView && compositionStore.startFrame) {
+                const time = store.videoHandler.FrameToTime(Math.max(0, Math.min(store.totalFrames - 1, compositionStore.startFrame)));
+                let seeked = false;
+                video.addEventListener(
+                  "durationchange",
+                  () => {
+                    if(!seeked) {
+                      this.seeked = true;
+                      video.currentTime = time;
+                    }
+                  });
               }
             }}
             store={store}

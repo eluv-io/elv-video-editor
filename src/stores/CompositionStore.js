@@ -75,6 +75,8 @@ class CompositionStore {
     this.clips = {};
     this.clipIdList = [];
     this.aiClipIds = [];
+    this.myClipIds = [];
+    this.searchClipIds = [];
     this.selectedClipId = undefined;
     this.originalSelectedClipId = undefined;
     this.sourceFullClipId = undefined;
@@ -87,6 +89,9 @@ class CompositionStore {
 
     this._authTokens = {};
 
+    this.EndDrag();
+    this.ClearSelectedClip();
+    this.ClearDropIndicator();
     this.ResetActions();
   }
 
@@ -266,6 +271,11 @@ class CompositionStore {
         };
 
         this.clipIdList = this.clipIdList.toSpliced(index, 0, clipId);
+
+        if(this.seek > progress) {
+          // Clip inserted before playhead - push ahead
+          this.videoStore.Seek(this.videoStore.frame + (clip.clipOutFrame - clip.clipInFrame));
+        }
       }
     });
   }
@@ -314,8 +324,15 @@ class CompositionStore {
     this.PerformAction({
       label: "Remove Clip",
       Action: () => {
+        const clip = this.clipList.find(clip => clip.clipId === clipId);
+
         this.clipIdList = this.clipIdList.filter(id => id !== clipId);
         delete this.clips[clipId];
+
+        if(this.videoStore.frame > clip.startFrame) {
+          // Clip deleted before playhead - pull back
+          this.videoStore.Seek(this.videoStore.frame - (clip.clipOutFrame - clip.clipInFrame));
+        }
       }
     });
 
@@ -504,7 +521,10 @@ class CompositionStore {
   }
 
   GetCompositionPlayoutUrl = flow(function * (retry=0) {
-    if(!this.compositionObject || this.clipIdList.length === 0) { return; }
+    if(!this.compositionObject || this.clipIdList.length === 0) {
+      this.compositionPlayoutUrl = undefined;
+      return;
+    }
 
     try {
       const {objectId, compositionKey} = this.compositionObject;
@@ -660,7 +680,7 @@ class CompositionStore {
 
     try {
       this.loading = true;
-      this.seekProgress = this.videoStore.seek;
+      this.startFrame = this.videoStore.frame;
 
       const {name, libraryId, objectId, sourceObjectId, sourceOfferingKey, compositionKey} = this.compositionObject;
       const writeToken = yield this.WriteToken({objectId, compositionKey, create: true});

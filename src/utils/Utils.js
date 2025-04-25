@@ -71,6 +71,9 @@ export const StopScroll = ({element, shift=false, control=false, meta=false}={})
 };
 
 export const DownloadFromUrl = (url, filename, options={}) => {
+  url = new URL(url);
+  url.searchParams.set("header-x_set_content_disposition", `attachment; filename="${filename}"`);
+
   let element = document.createElement("a");
   element.href = url;
   element.download = filename;

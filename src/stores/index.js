@@ -282,7 +282,13 @@ class RootStore {
     return Id.next();
   }
 
-  OpenExternalLink(url) {
+  OpenExternalLink(url, filename) {
+    if(filename) {
+      url = new URL(url);
+      url.searchParams.set("header-x_set_content_disposition", `attachment; filename="${filename}"`);
+      url = url.toString();
+    }
+
     this.client.SendMessage({
       options: {
         operation: "OpenExternalLink",

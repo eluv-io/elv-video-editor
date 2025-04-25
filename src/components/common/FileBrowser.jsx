@@ -371,10 +371,8 @@ const DownloadFileButton = ({objectId, path, filename, url, encrypted}) => {
   return (
     <IconButton
       {...commonProps}
+      onClick={() => rootStore.OpenExternalLink(url, filename)}
       Icon={IconFileDownload}
-      component="a"
-      href={url}
-      target="_blank"
     />
   );
 };

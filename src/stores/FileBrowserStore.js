@@ -1,6 +1,5 @@
 import {flow, makeAutoObservable, runInAction} from "mobx";
 import UrlJoin from "url-join";
-import {DownloadFromUrl} from "@/utils/Utils.js";
 
 class FileBrowserStore {
   files = {};
@@ -188,7 +187,7 @@ class FileBrowserStore {
         callback
       });
 
-      await DownloadFromUrl(window.URL.createObjectURL(blob), filename);
+      this.rootStore.OpenExternalLink(window.URL.createObjectURL(blob), filename);
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error(error);

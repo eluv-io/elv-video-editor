@@ -2,7 +2,7 @@
 
 import {flow, makeAutoObservable} from "mobx";
 import UrlJoin from "url-join";
-import {DownloadFromUrl, Unproxy} from "@/utils/Utils.js";
+import {Unproxy} from "@/utils/Utils.js";
 
 
 class DownloadStore {
@@ -222,7 +222,7 @@ class DownloadStore {
     });
 
     try {
-      DownloadFromUrl(downloadUrl, jobInfo.filename);
+      this.rootStore.OpenExternalLink(downloadUrl, jobInfo.filename);
 
       this.downloadedJobs[jobId] = true;
     } catch(error) {

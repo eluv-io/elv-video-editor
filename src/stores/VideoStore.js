@@ -2,9 +2,9 @@ import {action, flow, makeAutoObservable} from "mobx";
 import FrameAccurateVideo, {FrameRateDenominator, FrameRateNumerator, FrameRates} from "@/utils/FrameAccurateVideo";
 import UrlJoin from "url-join";
 import HLS from "hls.js";
-import {DownloadFromUrl} from "@/utils/Utils.js";
 import {FormatTags, LoadVideo} from "@/stores/Helpers.js";
 import ThumbnailStore from "@/stores/ThumbnailStore.js";
+import {DownloadFromUrl} from "@/utils/Utils.js";
 
 // How far the scale can be zoomed, as a percentage
 const MIN_SCALE = 0.2;
@@ -1109,10 +1109,7 @@ class VideoStore {
       channelAuth: true
     });
 
-    DownloadFromUrl(
-      downloadUrl,
-      filename
-    );
+    this.rootStore.OpenExternalLink(downloadUrl, filename);
   }
 
 

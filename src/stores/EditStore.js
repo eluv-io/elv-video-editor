@@ -223,6 +223,7 @@ class EditStore {
       .sort((a, b) => a.modifiedItem.o?.ti < b.modifiedItem.o?.ti ? 1 : -1);
   }
 
+  // Save tags and clips
   Save = flow(function * () {
     this.saving = true;
 
@@ -247,6 +248,7 @@ class EditStore {
     this.saving = false;
 
     this.ResetPage("tags");
+    this.ResetPage("clips");
     this.rootStore.videoStore.Reload();
   });
 
