@@ -501,7 +501,7 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
                   "durationchange",
                   () => {
                     if(!seeked) {
-                      this.seeked = true;
+                      seeked = true;
                       video.currentTime = time;
                     }
                   });
