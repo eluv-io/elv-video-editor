@@ -756,7 +756,8 @@ const FileBrowser = observer(({store, objectId, multiple, title, extensions=[], 
                     publicUrl: rootStore.FabricUrl({
                       objectId: record.objectId,
                       path: UrlJoin("files", record.fullPath),
-                      noWriteToken: true
+                      noWriteToken: true,
+                      auth: "private"
                     })
                   }));
 

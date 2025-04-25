@@ -61,7 +61,7 @@ class FileBrowserStore {
             fullPath: UrlJoin(path, filename),
             ext,
             url: this.rootStore.FabricUrl({libraryId, objectId, writeToken, path: UrlJoin("files", path, filename), auth: "private"}),
-            publicUrl: this.rootStore.FabricUrl({libraryId, objectId, path: UrlJoin("files", path, filename), auth: "public"}),
+            publicUrl: this.rootStore.FabricUrl({libraryId, objectId, path: UrlJoin("files", path, filename), auth: "private"}),
             size: file["."].size,
             encrypted: file["."].encryption?.scheme === "cgck"
           };
