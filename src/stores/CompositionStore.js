@@ -11,6 +11,7 @@ class CompositionStore {
   myClipIds = [];
 
   videoStore;
+  initialized = false;
   loading = false;
   clipStores = {};
 
@@ -114,27 +115,27 @@ class CompositionStore {
   }
 
   get initialized() {
-    return this.videoStore.initialized;
+    return this.videoStore?.initialized;
   }
 
   get ready() {
-    return this.videoStore.ready;
+    return this.videoStore?.ready;
   }
 
   get videoObject() {
-    return this.videoStore.ready && this.videoStore.videoObject;
+    return this.videoStore?.ready && this.videoStore.videoObject;
   }
 
   get compositionDurationFrames() {
     if(this.clipIdList.length === 0) {
-      return this.videoStore.frameRate * 30;
+      return (this.videoStore?.frameRate || 30) * 30;
     }
 
     return this.clipList.reduce((v, c) => v + (c.clipOutFrame - c.clipInFrame), 0);
   }
 
   get compositionDuration() {
-    const duration = Fraction(this.compositionDurationFrames).div(this.videoStore.frameRate).valueOf();
+    const duration = Fraction(this.compositionDurationFrames).div(this.videoStore?.frameRate || 30).valueOf();
 
     if(this.videoStore) {
       this.videoStore.duration = duration;
@@ -144,7 +145,7 @@ class CompositionStore {
   }
 
   get seek() {
-    return 100 * this.videoStore.frame / this.compositionDurationFrames;
+    return 100 * this.videoStore?.frame / this.compositionDurationFrames;
   }
 
   get clipList() {
@@ -839,6 +840,7 @@ class CompositionStore {
   });
 
   SetCompositionObject = flow(function * ({objectId, compositionKey, addToMyLibrary=false}) {
+    this.initialized = false;
     this.Reset();
 
     const libraryId = yield this.client.ContentObjectLibraryId({objectId});
@@ -969,6 +971,8 @@ class CompositionStore {
     }
 
     this.saved = this.myCompositions[objectId][compositionKey].saved;
+
+    this.initialized = true;
 
     this.GetCompositionPlayoutUrl();
 

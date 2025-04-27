@@ -39,7 +39,7 @@ const ClipControls = observer(() => {
   const clip = compositionStore.selectedClip;
 
   const ResetView = () => {
-    if(!store.initialized) { return; }
+    if(!store?.initialized) { return; }
 
     let clipInProgress = 100 * (clip.clipInFrame || 0) / store.totalFrames;
     let clipOutProgress = 100 * (clip.clipOutFrame || (store.totalFrames - 1)) / store.totalFrames;
@@ -55,9 +55,9 @@ const ClipControls = observer(() => {
 
   useEffect(() => {
     ResetView();
-  }, [compositionStore.originalSelectedClipId]);
+  }, [compositionStore?.originalSelectedClipId]);
 
-  if(!store.initialized) {
+  if(!store?.initialized) {
     return null;
   }
 
@@ -152,7 +152,7 @@ const ClipSeekBar = observer(() => {
   const store = compositionStore.selectedClipStore;
   const clip = compositionStore.selectedClip;
 
-  if(!store.initialized || !store.ready) {
+  if(!store?.initialized || !store?.ready) {
     return null;
   }
 
@@ -432,7 +432,7 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
       Math.min(100, clipOutProgress + 0.5),
     );
     store.Seek(clip.clipInFrame);
-  }, [store.initialized, !!store.videoHandler, compositionStore.selectedClipId, store.originalSelectedClipId]);
+  }, [store?.initialized, !!store?.videoHandler, compositionStore?.selectedClipId, store?.originalSelectedClipId]);
 
   return (
     <div

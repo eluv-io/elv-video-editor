@@ -119,7 +119,7 @@ const App = observer(() => {
       <div className="content">
         <SetView />
         {
-          !rootStore.initialized ?
+          !rootStore?.initialized ?
             <Loader /> :
             <Switch>
               <Route path="/compositions">

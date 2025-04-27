@@ -482,7 +482,7 @@ export const TagsList = observer(({mode="tags"}) => {
   return (
     <>
       {
-        !videoStore.initialized || totalTags === 0 ? null :
+        !videoStore?.initialized || totalTags === 0 ? null :
           <div className={S("count")}>
             Showing 1 - {limit} of {totalTags}
           </div>

@@ -6,7 +6,7 @@ import CompositionTimeline from "@/components/compositions/CompositionTimeline.j
 import CompositionVideoSection from "@/components/compositions/CompositionVideoSection.jsx";
 import {DraggedClip} from "@/components/compositions/Clips.jsx";
 import {useParams} from "wouter";
-import {Linkish} from "@/components/common/Common.jsx";
+import {Linkish, Loader} from "@/components/common/Common.jsx";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 
 const CompositionsView = observer(() => {
@@ -62,6 +62,10 @@ const CompositionsView = observer(() => {
         </Panel>
       </PanelGroup>
     );
+  }
+
+  if(!compositionStore.initialized) {
+    return <Loader />;
   }
 
   return (
