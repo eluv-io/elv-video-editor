@@ -191,6 +191,13 @@ class CompositionStore {
   }
 
   get selectedClipStore() {
+    if(this.selectedClipId && !this.clipStores[this.selectedClip?.storeKey]) {
+      // eslint-disable-next-line no-console
+      console.warn("No store for selected clip");
+      // eslint-disable-next-line no-console
+      console.warn(this.selectedClipId, this.selectedClip);
+    }
+
     return this.clipStores[this.selectedClip?.storeKey];
   }
 
@@ -440,6 +447,13 @@ class CompositionStore {
   ClipStore({objectId, offering, clipId}) {
     const key = this.clips[clipId]?.storeKey || `${objectId}-${offering}`;
 
+    if(!this.clipStores[key]) {
+      // eslint-disable-next-line no-console
+      console.warn("No store for selected clip");
+      // eslint-disable-next-line no-console
+      console.warn(objectId, offering, clipId, key, this.clips[clipId]);
+    }
+
     return this.clipStores[key];
   }
 
@@ -485,6 +499,11 @@ class CompositionStore {
 
       yield clipStore.SetVideo({objectId, preferredOfferingKey: offering, noTags: true});
       this.clipStores[key] = clipStore;
+
+      if(offering !== clipStore.offeringKey){
+        // Selected offering is different from requested offering - ensure expected key is set
+        this.clipStores[`${objectId}-${this.clipStores[key].offeringKey}`] = clipStore;
+      }
     }
 
     const store = this.clipStores[key];
@@ -579,11 +598,17 @@ class CompositionStore {
       select: [
         "offerings/*/playout",
         "offerings/*/media_struct/streams/*/rate",
-        "/public"
-      ]
+        "/public/name",
+      ],
+      resolveLinks: true
     });
 
-    const offerings = Object.keys(sourceMetadata.offerings);
+    const offerings = Object.keys(sourceMetadata.offerings)
+      .filter(offeringKey =>
+        !!Object.keys(sourceMetadata.offerings[offeringKey]?.playout?.playout_formats || {})
+          .find(playoutFormat => ["hls-clear", "hls-aes128"].includes(playoutFormat))
+      );
+
     const offeringKey = offerings.includes("default") ? "default" : offerings[0];
     const playoutMetadata = sourceMetadata.offerings[offeringKey].playout;
     const offeringOptions = sourceMetadata.offerings?.[offeringKey]?.media_struct?.streams || {};
@@ -1146,7 +1171,7 @@ class CompositionStore {
       type: "app",
       appId: "video-editor",
       mode: "private",
-      key: `my-compositions${window.location.hostname === "localhost" ? "-dev" : ""}`
+      key: `my-compositions${this.rootStore.localhost ? "-dev" : ""}`
     });
 
     if(compositions) {
@@ -1175,7 +1200,7 @@ class CompositionStore {
       type: "app",
       appId: "video-editor",
       mode: "private",
-      key: `my-compositions${window.location.hostname === "localhost" ? "-dev" : ""}`,
+      key: `my-compositions${this.rootStore.localhost ? "-dev" : ""}`,
       value: this.client.utils.B64(
         JSON.stringify(this.myCompositions || {})
       )
@@ -1187,7 +1212,7 @@ class CompositionStore {
       type: "app",
       appId: "video-editor",
       mode: "private",
-      key: `my-clips-${objectId}${window.location.hostname === "localhost" ? "-dev" : ""}`
+      key: `my-clips-${objectId}${this.rootStore.localhost ? "-dev" : ""}`
     });
 
     if(clips) {
@@ -1251,7 +1276,7 @@ class CompositionStore {
       type: "app",
       appId: "video-editor",
       mode: "private",
-      key: `my-clips-${objectId}${window.location.hostname === "localhost" ? "-dev" : ""}`,
+      key: `my-clips-${objectId}${this.rootStore.localhost ? "-dev" : ""}`,
       value: this.client.utils.B64(
         JSON.stringify(this.myClips || {})
       )

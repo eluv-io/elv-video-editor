@@ -248,7 +248,7 @@ class BrowserStore {
       type: "app",
       appId: "video-editor",
       mode: "private",
-      key: `my-library${window.location.hostname === "localhost" ? "-dev" : ""}`
+      key: `my-library${this.rootStore.localhost ? "-dev" : ""}`
     });
 
     if(myLibraryItems) {
@@ -346,7 +346,7 @@ class BrowserStore {
       type: "app",
       appId: "video-editor",
       mode: "private",
-      key: `my-library${window.location.hostname === "localhost" ? "-dev" : ""}`,
+      key: `my-library${this.rootStore.localhost ? "-dev" : ""}`,
       value: this.rootStore.client.utils.B64(JSON.stringify(this.myLibraryItems))
     });
   });
