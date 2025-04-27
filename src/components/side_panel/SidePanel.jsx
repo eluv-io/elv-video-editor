@@ -94,13 +94,13 @@ const SearchIndexSelection = observer(() => {
 });
 
 let filterTimeout;
-const SidebarFilter = observer(({store, label, sideContent}) => {
+const SidebarFilter = observer(({store, label, sideContent, delay=100}) => {
   const [filter, setFilter] = useState(store.filter);
 
   useEffect(() => {
     clearTimeout(filterTimeout);
 
-    filterTimeout = setTimeout(() => store.SetFilter(filter), 100);
+    filterTimeout = setTimeout(() => store.SetFilter(filter), delay);
   }, [filter]);
 
   return (

@@ -144,7 +144,7 @@ const ClipGroup = observer(({icon, color, title, subtitle, groupKey, clipIds=[],
         <Icon icon={hide ? ChevronDownIcon : ChevronUpIcon} className={S("clip-group__header-indicator")} />
       </button>
       {
-        hide || !clips || clips.length === 0 ? null :
+        hide || (!loading && (!clips || clips.length === 0)) ? null :
           loading ?
             <Loader className={S("clip-group__loader")} /> :
             <div className={S("clip-group__clips")}>
@@ -165,14 +165,14 @@ const AIClips = observer(() => {
   useEffect(() => {
     clearTimeout(searchTimeout);
 
+    if(!compositionStore.filter) {
+      setLoading(false);
+      setClipSource("highlights");
+      return;
+    }
+
     searchTimeout = setTimeout(() => {
       clearTimeout(searchTimeout);
-
-      if(!compositionStore.filter) {
-        setLoading(false);
-        setClipSource("highlights");
-        return;
-      }
 
       setLoading(true);
 
