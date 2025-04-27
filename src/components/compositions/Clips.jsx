@@ -128,6 +128,7 @@ export const TimelineClip = observer(({clip, containerDimensions}) => {
           startFrame={clip.clipInFrame}
           endFrame={clip.clipOutFrame}
           hoverOffset={50}
+          thumbnailFrom="start"
           RenderTooltip={thumbnailUrl =>
             <div className={S("thumbnail-hover")}>
               <img

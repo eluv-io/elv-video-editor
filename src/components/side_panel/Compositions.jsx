@@ -3,7 +3,7 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, DragHandler, StorageHandler} from "@/utils/Utils.js";
-import {browserStore, compositionStore, rootStore} from "@/stores/index.js";
+import {browserStore, compositionStore, rootStore, trackStore} from "@/stores/index.js";
 import {ClipTimeInfo, Confirm, Icon, IconButton, Linkish, Loader} from "@/components/common/Common.jsx";
 import {Tooltip} from "@mantine/core";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
@@ -54,7 +54,7 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
         </div>
       </Tooltip>
       {
-        clip.clipId === compositionStore.sourceClipId ? null :
+        clip.clipId === compositionStore.sourceFullClipId ? null :
           <ClipTimeInfo
             store={store}
             clipInFrame={clip.clipInFrame}
@@ -94,16 +94,28 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
 });
 
 
-const ClipGroup = observer(({icon, title, subtitle, key, clipIds=[], loading=false, showTagLinks}) => {
-  const [hide, setHide] = useState(StorageHandler.get({type: "session", key: `hide-clips-${key}`}));
+const ClipGroup = observer(({icon, color, title, subtitle, groupKey, clipIds=[], noFilter, loading=false, showTagLinks}) => {
+  const [hide, setHide] = useState(StorageHandler.get({type: "session", key: `hide-clips-${groupKey}`}));
 
   useEffect(() => {
     if(hide) {
-      StorageHandler.set({type: "session", key: `hide-clips-${key}`, value: "true"});
+      StorageHandler.set({type: "session", key: `hide-clips-${groupKey}`, value: "true"});
     } else {
-      StorageHandler.remove({type: "session", key: `hide-clips-${key}`});
+      StorageHandler.remove({type: "session", key: `hide-clips-${groupKey}`});
     }
   }, [hide]);
+
+  let clips = (clipIds || []).map(clipId => compositionStore.clips[clipId]);
+
+  if(!noFilter && compositionStore.filter) {
+    clips = clips.filter(clip =>
+      clip.name?.toLowerCase()?.includes(compositionStore.filter.toLowerCase())
+    );
+  }
+
+  if(clips.length === 0 && !loading) {
+    return null;
+  }
 
   return (
     <div className={S("clip-group", hide ? "clip-group--closed" : "")}>
@@ -111,6 +123,13 @@ const ClipGroup = observer(({icon, title, subtitle, key, clipIds=[], loading=fal
         {
           !icon ? null :
             <Icon icon={icon} className={S("clip-group__header-icon")} />
+        }
+        {
+          !color ? null :
+            <div
+              style={{backgroundColor: `rgb(${color.r} ${color.g} ${color.b}`}}
+              className={S("clip-group__header-color")}
+            />
         }
         <div className={S("clip-group__text")}>
           <div className={S("clip-group__title")}>
@@ -125,19 +144,11 @@ const ClipGroup = observer(({icon, title, subtitle, key, clipIds=[], loading=fal
         <Icon icon={hide ? ChevronDownIcon : ChevronUpIcon} className={S("clip-group__header-indicator")} />
       </button>
       {
-        hide || !clipIds || clipIds.length === 0 ? null :
+        hide || !clips || clips.length === 0 ? null :
           loading ?
             <Loader className={S("clip-group__loader")} /> :
             <div className={S("clip-group__clips")}>
-              {
-                clipIds.map(clipId =>
-                  <SidePanelClip
-                    clip={compositionStore.clips[clipId]}
-                    key={`clip-${clipId}`}
-                    showTagLink={showTagLinks}
-                  />
-                )
-              }
+              { clips.map(clip => <SidePanelClip clip={clip} key={`clip-${clip.clipId}`} showTagLink={showTagLinks} />) }
             </div>
       }
     </div>
@@ -176,6 +187,8 @@ const AIClips = observer(() => {
   return  (
     !loading && clipIds.length === 0 ? null :
       <ClipGroup
+        noFilter
+        groupKey="ai"
         icon={AISparkleIcon}
         showTagLinks
         title="Suggestions"
@@ -202,23 +215,6 @@ export const CompositionClips = observer(() => {
       onDragLeave={() => setShowDragIndicator(false)}
       className={S("composition-clips")}
     >
-      <ClipGroup
-        title="My Clips"
-        key="my-clips"
-        clipIds={[
-          compositionStore.sourceClipId,
-          ...compositionStore.myClips
-            .filter(clip =>
-              !compositionStore.filter ||
-              clip.name?.toLowerCase()?.includes(compositionStore.filter.toLowerCase())
-            )
-            .map(clip => clip.clipId)
-        ]}
-      />
-      {
-        !compositionStore.compositionObject?.objectId ? null :
-          <AIClips />
-      }
       <div
         onDrop={() => {
           setShowDragIndicator(false);
@@ -227,11 +223,34 @@ export const CompositionClips = observer(() => {
         }}
         className={S("composition-clips__drag-indicator", showDragIndicator ? "composition-clips__drag-indicator--active" : "")}
       >
-        <Icon icon={ClipIcon} />
+        <Icon icon={ClipIcon}/>
         <div>
           Save to My Clips
         </div>
       </div>
+      <ClipGroup
+        title="My Clips"
+        groupKey="my-clips"
+        clipIds={[
+          compositionStore.sourceFullClipId,
+          ...compositionStore.myClipIds
+        ]}
+      />
+      {
+        !compositionStore.compositionObject?.objectId ? null :
+          <AIClips/>
+      }
+      {
+        Object.keys(compositionStore.sourceClipIds).map(category =>
+          <ClipGroup
+            title={compositionStore.sourceClipIds[category].label || category}
+            color={trackStore.TrackColor(category)}
+            key={`clip-${category}`}
+            groupKey={`clip-${category}`}
+            clipIds={compositionStore.sourceClipIds[category].clipIds}
+          />
+        )
+      }
     </div>
   );
 });
@@ -241,13 +260,17 @@ export const CompositionBrowser = observer(() => {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if(!rootStore.selectedObjectId || deleting) { return; }
+    if(!rootStore.selectedObjectId || deleting) {
+      return;
+    }
 
     browserStore.LookupContent(rootStore.selectedObjectId)
       .then(setInfo);
   }, [rootStore.selectedObjectId, deleting]);
 
-  if(!rootStore.selectedObjectId) { return null; }
+  if(!rootStore.selectedObjectId) {
+    return null;
+  }
 
   if(!info) {
     return <Loader />;

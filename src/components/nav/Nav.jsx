@@ -2,7 +2,7 @@ import NavStyles from "@/assets/stylesheets/modules/nav.module.scss";
 
 import React from "react";
 import {observer} from "mobx-react-lite";
-import {compositionStore, rootStore, videoStore} from "@/stores";
+import {compositionStore, editStore, rootStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {IconButton} from "@/components/common/Common";
 import UrlJoin from "url-join";
@@ -51,7 +51,8 @@ const Nav = observer(() => {
       disabled: !objectId || (videoStore.ready && !videoStore.isVideo),
       to: !objectId ? "/" : UrlJoin("/", objectId, "tags"),
       icon: TagIcon,
-      active: ["tags", "clips"].includes(rootStore.page)
+      active: ["tags", "clips"].includes(rootStore.page),
+      hasChanges: editStore.HasUnsavedChanges("tags") || editStore.HasUnsavedChanges("clips")
     },
     {
       label: "Assets",
@@ -59,23 +60,37 @@ const Nav = observer(() => {
       disabled: !objectId,
       to: !objectId ? "/" : UrlJoin("/", objectId, "assets"),
       icon: AssetIcon,
-      active: rootStore.page === "assets"
+      active: rootStore.page === "assets",
+      hasChanges: editStore.HasUnsavedChanges("assets")
     }
   ];
 
   return (
     <nav className={S("nav")}>
       {
-        pages.map(({label, key, icon, to, active, disabled}) =>
+        pages.map(({label, key, icon, to, active, disabled, hasChanges}) =>
           <IconButton
             key={`button-${key}`}
-            label={label}
+            label={
+              <div className={S("nav__label")}>
+                <span className={S("nav__label-content")}>{label}</span>
+                {
+                  !hasChanges ? null :
+                    <span className={S("nav__label-note")}>(You have unsaved changes)</span>
+                }
+              </div>
+            }
             icon={icon}
             to={to}
             disabled={disabled}
             active={active}
             className={S("nav__button")}
-          />
+          >
+            {
+              !hasChanges ? null :
+                <div className={S("nav__change-indicator")} />
+            }
+          </IconButton>
         )
       }
     </nav>

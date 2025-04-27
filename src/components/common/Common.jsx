@@ -18,10 +18,10 @@ import SVG from "react-inlinesvg";
 import {observer} from "mobx-react-lite";
 import {Link} from "wouter";
 import {keyboardControlsStore, videoStore} from "@/stores/index.js";
+import {modals} from "@mantine/modals";
 
 import CopyIcon from "@/assets/icons/v2/copy.svg";
 import CheckIcon from "@/assets/icons/check-circle.svg";
-import {modals} from "@mantine/modals";
 
 const S = CreateModuleClassMatcher(CommonStyles);
 
@@ -270,7 +270,7 @@ export const IconButton = ({
         )
       }
     >
-      {content }
+      { content }
     </Linkish>
   );
 
@@ -417,9 +417,9 @@ export const FormTextInput = observer(props =>
 
 export const FormNumberInput = observer(props =>
   <NumberInput
-    {...props}
     min={0}
     max={100}
+    {...props}
     classNames={{
       root: S("form-input"),
       label: S("form-input__label"),

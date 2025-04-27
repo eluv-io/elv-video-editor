@@ -71,8 +71,7 @@ import {
   IconPhoto,
   IconTrashX as IconDelete,
   IconX,
-  IconUpload,
-  IconLink
+  IconUpload
 } from "@tabler/icons-react";
 
 // Table showing the status of file uploads in the upload form
@@ -372,10 +371,8 @@ const DownloadFileButton = ({objectId, path, filename, url, encrypted}) => {
   return (
     <IconButton
       {...commonProps}
+      onClick={() => rootStore.OpenExternalLink(url, filename)}
       Icon={IconFileDownload}
-      component="a"
-      href={url}
-      target="_blank"
     />
   );
 };
@@ -383,10 +380,8 @@ const DownloadFileButton = ({objectId, path, filename, url, encrypted}) => {
 const CopyFileLinkButton = ({filename, url}) => {
   return (
     <CopyButton
-      color="purple.6"
       label={LocalizeString(rootStore.l10n.components.file_browser.copy_link, {filename})}
-      Icon={IconLink}
-      text={url}
+      value={url}
     />
   );
 };
@@ -761,7 +756,8 @@ const FileBrowser = observer(({store, objectId, multiple, title, extensions=[], 
                     publicUrl: rootStore.FabricUrl({
                       objectId: record.objectId,
                       path: UrlJoin("files", record.fullPath),
-                      noWriteToken: true
+                      noWriteToken: true,
+                      auth: "private"
                     })
                   }));
 

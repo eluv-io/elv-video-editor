@@ -156,8 +156,8 @@
   border-radius: 5px;
   display: grid;
   font-size: 14px;
-  gap: 10px;
-  grid-template-columns: 1fr 100px 100px 75px;
+  gap: 15px;
+  grid-template-columns: 1fr 100px 135px 75px;
   height: min-content;
   min-height: 35px;
   padding: 10px;
@@ -195,12 +195,15 @@
 
   &__cell {
     align-items: center;
+    color: var(--text-tertiary);
     display: flex;
+    font-size: 13px;
     gap: 10px;
     width: 100%;
 
     &--title {
-      gap: 20px;
+      color: var(--text-secondary);
+      font-weight: 500;
     }
   }
 

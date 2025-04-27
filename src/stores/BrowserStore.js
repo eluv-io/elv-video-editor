@@ -4,10 +4,16 @@ class BrowserStore {
   libraries = undefined;
   selectedObject;
 
+  myLibraryItems;
+
   constructor(rootStore) {
     makeAutoObservable(this);
 
     this.rootStore = rootStore;
+  }
+
+  get client() {
+    return this.rootStore.client;
   }
 
   UpdateVersionHash(versionHash) {
@@ -77,6 +83,23 @@ class BrowserStore {
     });
   });
 
+  FormatDuration(duration) {
+    if(!duration) { return; }
+
+    duration = duration.toString();
+    if(duration.includes("/")) {
+      duration = parseInt(duration.split("/")[0]) / parseInt(duration.split("/")[1]);
+    }
+
+    let hours = Math.floor(Math.max(0, duration) / 60 / 60) % 24;
+    let minutes = Math.floor(Math.max(0, duration) / 60 % 60);
+    let seconds = Math.ceil(Math.max(duration, 0) % 60);
+
+    return [hours, minutes, seconds]
+      .map(t => (!t || isNaN(t) ? "" : t.toString()).padStart(2, "0"))
+      .join(":");
+  }
+
   ObjectDetails = flow(function * ({objectId, versionHash, publicMetadata}) {
     if(!versionHash) {
       versionHash = yield this.rootStore.client.LatestVersionHash({objectId});
@@ -140,15 +163,7 @@ class BrowserStore {
 
       if(duration) {
         isVideo = true;
-        duration = parseInt(duration.split("/")[0]) / parseInt(duration.split("/")[1]);
-
-        let hours = Math.floor(Math.max(0, duration) / 60 / 60) % 24;
-        let minutes = Math.floor(Math.max(0, duration) / 60 % 60);
-        let seconds = Math.ceil(Math.max(duration, 0) % 60);
-
-        duration = [hours, minutes, seconds]
-          .map(t => (!t || isNaN(t) ? "" : t.toString()).padStart(2, "0"))
-          .join(":");
+        duration = this.FormatDuration(duration);
       }
     } catch(error) {
       if(error.status === 403) {
@@ -223,6 +238,117 @@ class BrowserStore {
         total: paging.items
       }
     };
+  });
+
+  // My library
+  LoadMyLibrary = flow(function * () {
+    if(this.myLibraryItems) { return; }
+
+    const myLibraryItems = yield this.client.walletClient.ProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: `my-library${this.rootStore.localhost ? "-dev" : ""}`
+    });
+
+    if(myLibraryItems) {
+      this.myLibraryItems = JSON.parse(this.client.utils.FromB64(myLibraryItems));
+    } else {
+      this.myLibraryItems = [];
+    }
+  });
+
+  ListMyLibrary = flow(function * ({page, perPage, filter=""}) {
+    yield this.LoadMyLibrary();
+
+    filter = filter.toLowerCase();
+    let content = this.myLibraryItems
+      .sort((a, b) => a.accessedAt < b.accessedAt ? 1 : -1)
+      .filter(item =>
+        !filter ||
+        item.name?.toLowerCase()?.includes(filter) ||
+        item.compositionKey?.toLowerCase()?.includes(filter) ||
+        item.objectId?.toLowerCase()?.includes(filter)
+      );
+
+    const contentLength = content.length;
+    content = content.slice((page - 1) * perPage, page * perPage);
+
+    content = yield Promise.all(
+      content.map(async item => {
+        if(item.compositionKey) {
+          return {
+            ...item,
+            duration: this.FormatDuration(item.duration),
+            lastModified: new Date(item.accessedAt)
+              .toLocaleDateString(navigator.language, {month: "short", day: "numeric", year: "numeric"})
+          };
+        }
+
+        return {
+          ...(await this.ObjectDetails({objectId: item.objectId})),
+          lastModified: new Date(item.accessedAt)
+            .toLocaleDateString(navigator.language, {month: "short", day: "numeric", year: "numeric"})
+        };
+      })
+    );
+
+    return {
+      content,
+      paging: {
+        page,
+        perPage,
+        pages: Math.ceil(contentLength / perPage),
+        total: contentLength
+      }
+    };
+  });
+
+  AddMyLibraryItem = flow(function * ({objectId, name, compositionKey, duration, isVideo, status}) {
+    yield this.LoadMyLibrary();
+
+    let item = { objectId, name, status, duration, isVideo, accessedAt: Date.now() };
+    if(compositionKey) {
+      item.id = `${objectId}-${compositionKey}`;
+      item.compositionKey = compositionKey;
+    } else {
+      item.id = objectId;
+    }
+
+    this.myLibraryItems = [
+      item,
+      ...this.myLibraryItems,
+    ]
+      // Ensure sorted by access time
+      .sort((a, b) => a.accessedAt < b.accessedAt ? 1 : -1)
+      // Filter unique
+      .filter((item, index, array) =>
+        array.findIndex(otherItem => item.id === otherItem.id) === index
+      )
+      // Max 100 records
+      .slice(0, 100);
+
+    yield this.SaveMyLibrary();
+  });
+
+  RemoveMyLibraryItem = flow(function * ({objectId, compositionKey}) {
+    yield this.LoadMyLibrary();
+
+    const id = compositionKey ? `${objectId}-${compositionKey}` : objectId;
+    this.myLibraryItems = this.myLibraryItems
+      .filter(item => item.id !== id);
+
+    yield this.SaveMyLibrary();
+  });
+
+  SaveMyLibrary = flow(function * () {
+    yield this.client.walletClient.SetProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: `my-library${this.rootStore.localhost ? "-dev" : ""}`,
+      value: this.rootStore.client.utils.B64(JSON.stringify(this.myLibraryItems))
+    });
   });
 
   LookupContent = flow(function * (contentId) {

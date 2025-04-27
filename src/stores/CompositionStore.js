@@ -18,7 +18,7 @@ class CompositionStore {
 
   compositionObject;
   compositionPlayoutUrl;
-  sourceClipId;
+  sourceFullClipId;
   compositionFormOptions = {};
   compositionGenerationStatus;
 
@@ -27,6 +27,7 @@ class CompositionStore {
   selectedClipId;
   selectedClipSource;
   originalSelectedClipId;
+  sourceClipIds = {};
   aiClipIds = [];
   searchClipIds = [];
 
@@ -74,9 +75,12 @@ class CompositionStore {
     this.clips = {};
     this.clipIdList = [];
     this.aiClipIds = [];
+    this.myClipIds = [];
+    this.searchClipIds = [];
     this.selectedClipId = undefined;
     this.originalSelectedClipId = undefined;
-    this.sourceClipId = undefined;
+    this.sourceFullClipId = undefined;
+    this.sourceClipIds = {};
     this.filter = "";
     this.compositionObject = undefined;
     this.compositionPlayoutUrl = undefined;
@@ -85,6 +89,9 @@ class CompositionStore {
 
     this._authTokens = {};
 
+    this.EndDrag();
+    this.ClearSelectedClip();
+    this.ClearDropIndicator();
     this.ResetActions();
   }
 
@@ -166,8 +173,11 @@ class CompositionStore {
     return this.myClipIds
       .map(clipId => this.clips[clipId])
       .filter(clip =>
-        !this.filter ||
-        clip.name?.toLowerCase()?.includes(this.filter)
+        clip.objectId === this.compositionObject?.objectId &&
+        (
+          !this.filter ||
+          clip.name?.toLowerCase()?.includes(this.filter)
+        )
       );
   }
 
@@ -181,6 +191,13 @@ class CompositionStore {
   }
 
   get selectedClipStore() {
+    if(this.selectedClipId && !this.clipStores[this.selectedClip?.storeKey]) {
+      // eslint-disable-next-line no-console
+      console.warn("No store for selected clip");
+      // eslint-disable-next-line no-console
+      console.warn(this.selectedClipId, this.selectedClip);
+    }
+
     return this.clipStores[this.selectedClip?.storeKey];
   }
 
@@ -188,12 +205,12 @@ class CompositionStore {
     return this.clips[this.selectedClipId];
   }
 
-  get sourceClip() {
-    return this.clips[this.sourceClipId];
+  get sourceFullClip() {
+    return this.clips[this.sourceFullClipId];
   }
 
   get sourceVideoStore() {
-    return this.clipStores[this.sourceClip?.storeKey];
+    return this.clipStores[this.sourceFullClip?.storeKey];
   }
 
   SetCompositionName(name) {
@@ -261,6 +278,11 @@ class CompositionStore {
         };
 
         this.clipIdList = this.clipIdList.toSpliced(index, 0, clipId);
+
+        if(this.seek > progress) {
+          // Clip inserted before playhead - push ahead
+          this.videoStore.Seek(this.videoStore.frame + (clip.clipOutFrame - clip.clipInFrame));
+        }
       }
     });
   }
@@ -309,13 +331,20 @@ class CompositionStore {
     this.PerformAction({
       label: "Remove Clip",
       Action: () => {
+        const clip = this.clipList.find(clip => clip.clipId === clipId);
+
         this.clipIdList = this.clipIdList.filter(id => id !== clipId);
         delete this.clips[clipId];
+
+        if(this.videoStore.frame > clip.startFrame) {
+          // Clip deleted before playhead - pull back
+          this.videoStore.Seek(this.videoStore.frame - (clip.clipOutFrame - clip.clipInFrame));
+        }
       }
     });
 
     if(this.selectedClipId === clipId) {
-      this.SetSelectedClip({clipId: this.sourceClipId, source: "source-content"});
+      this.SetSelectedClip({clipId: this.sourceFullClipId, source: "source-content"});
     }
   }
 
@@ -418,6 +447,13 @@ class CompositionStore {
   ClipStore({objectId, offering, clipId}) {
     const key = this.clips[clipId]?.storeKey || `${objectId}-${offering}`;
 
+    if(!this.clipStores[key]) {
+      // eslint-disable-next-line no-console
+      console.warn("No store for selected clip");
+      // eslint-disable-next-line no-console
+      console.warn(objectId, offering, clipId, key, this.clips[clipId]);
+    }
+
     return this.clipStores[key];
   }
 
@@ -444,7 +480,7 @@ class CompositionStore {
     this.selectedClipId = undefined;
   }
 
-  InitializeClip = flow(function * ({objectId, offering="default", clipInFrame, clipOutFrame, source}) {
+  InitializeClip = flow(function * ({name, objectId, offering="default", clipInFrame, clipOutFrame, source}) {
     const key = `${objectId}-${offering}`;
     if(!this.clipStores[key]) {
       this.clipLoading = true;
@@ -463,6 +499,11 @@ class CompositionStore {
 
       yield clipStore.SetVideo({objectId, preferredOfferingKey: offering, noTags: true});
       this.clipStores[key] = clipStore;
+
+      if(offering !== clipStore.offeringKey){
+        // Selected offering is different from requested offering - ensure expected key is set
+        this.clipStores[`${objectId}-${this.clipStores[key].offeringKey}`] = clipStore;
+      }
     }
 
     const store = this.clipStores[key];
@@ -470,7 +511,7 @@ class CompositionStore {
     const clipId = this.rootStore.NextId();
     this.clips[clipId] = {
       clipId,
-      name: `${store.videoObject?.name || store.name} Clip`,
+      name: name || `${store.videoObject?.name || store.name} (Full Content)`,
       libraryId: store.videoObject.libraryId,
       objectId: store.videoObject.objectId,
       versionHash: store.videoObject.versionHash,
@@ -499,7 +540,10 @@ class CompositionStore {
   }
 
   GetCompositionPlayoutUrl = flow(function * (retry=0) {
-    if(!this.compositionObject || this.clipIdList.length === 0) { return; }
+    if(!this.compositionObject || this.clipIdList.length === 0) {
+      this.compositionPlayoutUrl = undefined;
+      return;
+    }
 
     try {
       const {objectId, compositionKey} = this.compositionObject;
@@ -543,6 +587,7 @@ class CompositionStore {
     name,
     key,
     prompt,
+    maxDuration,
     regenerate=false
   }) {
     this.compositionGenerationStatus = {};
@@ -553,11 +598,17 @@ class CompositionStore {
       select: [
         "offerings/*/playout",
         "offerings/*/media_struct/streams/*/rate",
-        "/public"
-      ]
+        "/public/name",
+      ],
+      resolveLinks: true
     });
 
-    const offerings = Object.keys(sourceMetadata.offerings);
+    const offerings = Object.keys(sourceMetadata.offerings)
+      .filter(offeringKey =>
+        !!Object.keys(sourceMetadata.offerings[offeringKey]?.playout?.playout_formats || {})
+          .find(playoutFormat => ["hls-clear", "hls-aes128"].includes(playoutFormat))
+      );
+
     const offeringKey = offerings.includes("default") ? "default" : offerings[0];
     const playoutMetadata = sourceMetadata.offerings[offeringKey].playout;
     const offeringOptions = sourceMetadata.offerings?.[offeringKey]?.media_struct?.streams || {};
@@ -587,6 +638,7 @@ class CompositionStore {
       const highlights = (yield this.GenerateAIHighlights({
         objectId: sourceObjectId,
         prompt,
+        maxDuration,
         regenerate,
         StatusCallback: status => this.compositionGenerationStatus = status
       })).clips;
@@ -653,7 +705,7 @@ class CompositionStore {
 
     try {
       this.loading = true;
-      this.seekProgress = this.videoStore.seek;
+      this.startFrame = this.videoStore.frame;
 
       const {name, libraryId, objectId, sourceObjectId, sourceOfferingKey, compositionKey} = this.compositionObject;
       const writeToken = yield this.WriteToken({objectId, compositionKey, create: true});
@@ -715,6 +767,13 @@ class CompositionStore {
       if(updatePlayoutUrl) {
         yield this.GetCompositionPlayoutUrl();
       }
+
+      this.rootStore.browserStore.AddMyLibraryItem({
+        objectId: this.compositionObject.objectId,
+        compositionKey: this.compositionObject.compositionKey,
+        name: this.compositionObject.name,
+        duration: this.compositionDuration
+      });
     } finally {
       this.loading = false;
     }
@@ -779,7 +838,7 @@ class CompositionStore {
     this.GetCompositionPlayoutUrl();
   });
 
-  SetCompositionObject = flow(function * ({objectId, compositionKey}) {
+  SetCompositionObject = flow(function * ({objectId, compositionKey, addToMyLibrary=false}) {
     this.Reset();
 
     const libraryId = yield this.client.ContentObjectLibraryId({objectId});
@@ -811,14 +870,37 @@ class CompositionStore {
       metadataSubtree: UrlJoin("/channel", "offerings", compositionKey)
     });
 
-    this.sourceClipId = yield this.InitializeClip({objectId, source: true});
-    this.SetSelectedClip({clipId: this.sourceClipId, source: "source-content"});
-
-    this.videoStore.sourceVideoStore = this.sourceVideoStore;
-
-    yield this.videoStore.SetVideo({objectId, writeToken, preferredOfferingKey: compositionKey, noTags: true});
+    // Load source clips
+    this.sourceFullClipId = yield this.InitializeClip({objectId, source: true});
+    this.SetSelectedClip({clipId: this.sourceFullClipId, source: "source-content"});
 
     const videoHandler = new FrameAccurateVideo({frameRateRat: this.selectedClipStore.frameRateRat});
+
+    // Point channel video store to source video store for source info
+    this.videoStore.sourceVideoStore = this.sourceVideoStore;
+
+    const sourceFullClips = this.sourceVideoStore.videoObject.metadata?.clips?.metadata_tags || {};
+    for(const category of Object.keys(sourceFullClips)) {
+      if(sourceFullClips[category].tags.length > 0) {
+        let clipIds = [];
+        for(const clip of sourceFullClips[category].tags) {
+          clipIds.push(yield this.InitializeClip({
+            name: clip.text,
+            objectId,
+            clipInFrame: videoHandler.TimeToFrame(clip.start_time / 1000),
+            clipOutFrame: videoHandler.TimeToFrame(clip.end_time / 1000),
+            source: true
+          }));
+        }
+
+        this.sourceClipIds[category] = {
+          label: sourceFullClips[category].label,
+          clipIds
+        };
+      }
+    }
+
+    yield this.videoStore.SetVideo({objectId, writeToken, preferredOfferingKey: compositionKey, noTags: true});
 
     this.videoStore.SetFrameRate({rateRat: this.selectedClipStore.frameRateRat});
 
@@ -891,6 +973,15 @@ class CompositionStore {
     this.GetCompositionPlayoutUrl();
 
     this.LoadHighlights();
+
+    if(addToMyLibrary) {
+      this.rootStore.browserStore.AddMyLibraryItem({
+        objectId,
+        compositionKey,
+        name: this.compositionObject.name,
+        duration: this.compositionDuration
+      });
+    }
   });
 
   LoadHighlights = flow(function * () {
@@ -1010,6 +1101,11 @@ class CompositionStore {
       }
 
       this.SaveMyCompositions();
+
+      // Ensure it is removed from My Library
+      if(removeComposition) {
+        this.rootStore.browserStore.RemoveMyLibraryItem({objectId, compositionKey});
+      }
     }
   }
 
@@ -1075,7 +1171,7 @@ class CompositionStore {
       type: "app",
       appId: "video-editor",
       mode: "private",
-      key: `my-compositions${window.location.hostname === "localhost" ? "-dev" : ""}`
+      key: `my-compositions${this.rootStore.localhost ? "-dev" : ""}`
     });
 
     if(compositions) {
@@ -1104,7 +1200,7 @@ class CompositionStore {
       type: "app",
       appId: "video-editor",
       mode: "private",
-      key: `my-compositions${window.location.hostname === "localhost" ? "-dev" : ""}`,
+      key: `my-compositions${this.rootStore.localhost ? "-dev" : ""}`,
       value: this.client.utils.B64(
         JSON.stringify(this.myCompositions || {})
       )
@@ -1116,11 +1212,12 @@ class CompositionStore {
       type: "app",
       appId: "video-editor",
       mode: "private",
-      key: `my-clips-${objectId}${window.location.hostname === "localhost" ? "-dev" : ""}`
+      key: `my-clips-${objectId}${this.rootStore.localhost ? "-dev" : ""}`
     });
 
     if(clips) {
       this.myClipIds = JSON.parse(this.client.utils.FromB64(clips))
+        .filter(clip => clip.objectId === objectId)
         // Update clip IDs
         .map(clip => {
           clip = {...clip, clipId: this.rootStore.NextId() };
@@ -1165,7 +1262,7 @@ class CompositionStore {
     const clip = this.clips[clipId];
 
     if(this.selectedClipId === clipId) {
-      this.SetSelectedClip({clipId: this.sourceClipId, source: "source-content"});
+      this.SetSelectedClip({clipId: this.sourceFullClipId, source: "source-content"});
     }
 
     if(clip) {
@@ -1179,7 +1276,7 @@ class CompositionStore {
       type: "app",
       appId: "video-editor",
       mode: "private",
-      key: `my-clips-${objectId}${window.location.hostname === "localhost" ? "-dev" : ""}`,
+      key: `my-clips-${objectId}${this.rootStore.localhost ? "-dev" : ""}`,
       value: this.client.utils.B64(
         JSON.stringify(this.myClips || {})
       )
@@ -1216,13 +1313,17 @@ class CompositionStore {
     return fetch(url, {method});
   });
 
-  GenerateAIHighlights = flow(function * ({objectId, prompt, regenerate=false, wait=true, StatusCallback}) {
+  GenerateAIHighlights = flow(function * ({objectId, prompt, maxDuration, regenerate=false, wait=true, StatusCallback}) {
+    let options = {};
+    if(prompt) { options.customization = prompt; }
+    if(maxDuration) { options.max_length = maxDuration * 1000; }
+
     if(regenerate) {
       yield this.QueryAIAPI({
         method: "POST",
         path: UrlJoin("ml", "highlight_composition", "q", objectId),
         objectId,
-        queryParams: {customization: prompt, regenerate: true}
+        queryParams: {...options, regenerate: true}
       });
 
       yield new Promise(resolve => setTimeout(resolve, 1000));
@@ -1239,7 +1340,7 @@ class CompositionStore {
         method: "GET",
         path: UrlJoin("ml", "highlight_composition", "q", objectId),
         objectId,
-        queryParams: {customization: prompt}
+        queryParams: options
       });
 
       if(response.status === 204 && !regenerate) {

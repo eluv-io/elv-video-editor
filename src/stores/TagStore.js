@@ -362,6 +362,11 @@ class TagStore {
         const modifiedTrack = Unproxy({...this.editedTrack, label: this.editedTrack.label || originalTrack.label});
 
         if(JSON.stringify(originalTrack) !== JSON.stringify(modifiedTrack)) {
+          if(modifiedTrack.label !== originalTrack.label || modifiedTrack.description !== originalTrack.description) {
+            // Color changes don't require modifying source files, only label or description modifications
+            modifiedTrack.requiresSave = true;
+          }
+
           this.rootStore.editStore.PerformAction({
             label: "Modify category",
             type: "track",
@@ -561,7 +566,7 @@ class TagStore {
     this.ClearSelectedTrack();
   }
 
-  AddTag({trackId, tagType="metadata", startTime, endTime, text}) {
+  AddTag({trackId, tagType="metadata", text}) {
     let track = this.rootStore.trackStore.Track(trackId);
 
     if(!["metadata", "clip"].includes(track?.trackType)) {
@@ -571,12 +576,23 @@ class TagStore {
 
     if(!track) { return; }
 
-    startTime = startTime || this.rootStore.videoStore.currentTime;
+    let startTime, endTime;
+    if(
+      this.rootStore.videoStore.clipInFrame > 0 ||
+      this.rootStore.videoStore.clipOutFrame < this.rootStore.videoStore.totalFrames - 1
+    ) {
+      startTime = this.rootStore.videoStore.FrameToTime(this.rootStore.videoStore.clipInFrame);
+      endTime = this.rootStore.videoStore.FrameToTime(this.rootStore.videoStore.clipOutFrame);
+    } else {
+      startTime = this.rootStore.videoStore.currentTime;
+      endTime = Math.min(startTime + 5, this.rootStore.videoStore.duration);
+    }
+
     const tag = Cue({
       trackId,
       trackKey: track.key,
       startTime,
-      endTime: endTime || startTime + 5,
+      endTime,
       tagType,
       text,
       isNew: true

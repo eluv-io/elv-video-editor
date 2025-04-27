@@ -2,9 +2,9 @@ import {action, flow, makeAutoObservable} from "mobx";
 import FrameAccurateVideo, {FrameRateDenominator, FrameRateNumerator, FrameRates} from "@/utils/FrameAccurateVideo";
 import UrlJoin from "url-join";
 import HLS from "hls.js";
-import {DownloadFromUrl} from "@/utils/Utils.js";
 import {FormatTags, LoadVideo} from "@/stores/Helpers.js";
 import ThumbnailStore from "@/stores/ThumbnailStore.js";
+import {DownloadFromUrl} from "@/utils/Utils.js";
 
 // How far the scale can be zoomed, as a percentage
 const MIN_SCALE = 0.2;
@@ -23,6 +23,7 @@ class VideoStore {
   name;
 
   availableOfferings = {};
+  downloadOfferingKeys = [];
   offeringKey = "default";
 
   loading = false;
@@ -155,6 +156,7 @@ class VideoStore {
     this.name = "";
     this.offeringKey = "default";
     this.availableOfferings = {};
+    this.downloadOfferingKeys = [];
 
     this.playoutUrl = undefined;
     this.baseFileUrl = undefined;
@@ -207,7 +209,7 @@ class VideoStore {
     yield this.SetVideo({...this.videoObject, preferredOfferingKey: offeringKey});
   });
 
-  SetVideo = flow(function * ({objectId, writeToken, preferredOfferingKey="default"}) {
+  SetVideo = flow(function * ({objectId, writeToken, preferredOfferingKey="default", addToMyLibrary=false}) {
     this.loading = true;
     this.ready = false;
     this.rootStore.SetError(undefined);
@@ -250,22 +252,24 @@ class VideoStore {
       this.thumbnailTrackUrl = videoObject.thumbnailTrackUrl;
       this.hasAssets = videoObject.metadata.assets;
 
-      let downloadOfferingKeys = Object.keys(videoObject.availableOfferings)
-        .filter(offeringKey =>
-          videoObject.availableOfferings[offeringKey]?.playoutMethods?.hls?.playoutMethods?.clear ||
-          videoObject.availableOfferings[offeringKey]?.playoutMethods?.dash?.playoutMethods?.clear
-        );
+      if(this.isVideo) {
+        let downloadOfferingKeys = Object.keys(videoObject.availableOfferings)
+          .filter(offeringKey =>
+            videoObject.availableOfferings[offeringKey]?.playoutMethods?.hls?.playoutMethods?.clear ||
+            videoObject.availableOfferings[offeringKey]?.playoutMethods?.dash?.playoutMethods?.clear
+          );
 
-      this.downloadOfferingKeys = [
-        ...new Set(
-          [
-            downloadOfferingKeys.includes(this.offeringKey) ? this.offeringKey : "",
-            downloadOfferingKeys.includes("default") ? "default" : "",
-            downloadOfferingKeys.includes("default_dash") ? "default_dash" : "",
-            ...downloadOfferingKeys
-          ].filter(key => key)
-        )
-      ];
+        this.downloadOfferingKeys = [
+          ...new Set(
+            [
+              downloadOfferingKeys.includes(this.offeringKey) ? this.offeringKey : "",
+              downloadOfferingKeys.includes("default") ? "default" : "",
+              downloadOfferingKeys.includes("default_dash") ? "default_dash" : "",
+              ...downloadOfferingKeys
+            ].filter(key => key)
+          )
+        ];
+      }
 
       try {
         if(this.channel) {
@@ -322,6 +326,15 @@ class VideoStore {
       }
 
       this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl);
+
+      if(addToMyLibrary) {
+        this.rootStore.browserStore.AddMyLibraryItem({
+          objectId,
+          name: videoObject.name,
+          isVideo: videoObject.isVideo
+        });
+      }
+
 
       if(!this.tags) {
         this.initialized = true;
@@ -1083,7 +1096,7 @@ class VideoStore {
       queryParams.clip_start = this.FrameToTime(this.clipInFrame);
     }
 
-    if(this.videoHandler.TotalFrames() > this.clipOutFrame + 1) {
+    if(this.totalFrames > this.clipOutFrame + 1) {
       queryParams.clip_end = this.FrameToTime(this.clipOutFrame + 1);
     }
 
@@ -1096,10 +1109,7 @@ class VideoStore {
       channelAuth: true
     });
 
-    DownloadFromUrl(
-      downloadUrl,
-      filename
-    );
+    this.rootStore.OpenExternalLink(downloadUrl, filename);
   }
 
 

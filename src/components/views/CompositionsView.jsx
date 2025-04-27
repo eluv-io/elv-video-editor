@@ -22,7 +22,7 @@ const CompositionsView = observer(() => {
 
       if(objectId !== compositionStore.compositionObject?.objectId) {
         compositionStore.LoadMyClips({objectId});
-        compositionStore.SetCompositionObject({objectId, compositionKey})
+        compositionStore.SetCompositionObject({objectId, compositionKey, addToMyLibrary: true})
           .then(() => rootStore.SetSelectedObjectId(objectId, compositionStore.videoStore.sourceVideoStore.name));
       }
     }
@@ -76,7 +76,7 @@ const CompositionsView = observer(() => {
             <Panel id="videos" order={2}>
               <PanelGroup direction="horizontal" className="panel-group">
                 {
-                  !compositionStore.selectedClip ? null :
+                  !compositionStore.selectedClip || !compositionStore.selectedClipStore ? null :
                     <>
                       <Panel id="clip" order={1}>
                         <CompositionVideoSection

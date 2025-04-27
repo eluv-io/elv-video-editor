@@ -3,7 +3,14 @@ import CompositionStyles from "@/assets/stylesheets/modules/compositions.module.
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, Slugify} from "@/utils/Utils.js";
-import {AsyncButton, FormTextArea, FormTextInput, IconButton, Loader, Modal} from "@/components/common/Common.jsx";
+import {
+  AsyncButton,
+  FormNumberInput,
+  FormTextInput,
+  IconButton,
+  Loader,
+  Modal
+} from "@/components/common/Common.jsx";
 import {LibraryBrowser, ObjectBrowser} from "@/components/nav/Browser.jsx";
 import {Redirect} from "wouter";
 import {rootStore, compositionStore} from "@/stores/index.js";
@@ -18,13 +25,13 @@ const S = CreateModuleClassMatcher(CompositionStyles);
 
 const SourceSelectionModal = observer(({Select, Cancel}) => {
   const [libraryId, setLibraryId] = useState(undefined);
+
   return (
     <Modal withCloseButton={false} opened centered size={1000} onClose={Cancel}>
       {
         libraryId ?
           <ObjectBrowser
             libraryId={libraryId}
-            title="Select source content for your composition"
             videoOnly
             Back={() => setLibraryId(undefined)}
             Select={({objectId, name}) => Select({objectId, name})}
@@ -60,6 +67,7 @@ const CompositionSelection = observer(() => {
     name: "",
     key: "",
     prompt: "",
+    maxDuration: undefined,
     regenerate: false,
     length: undefined
   });
@@ -103,7 +111,7 @@ const CompositionSelection = observer(() => {
         <div className={S("composition-selection__creating")}>
           <div className={S("composition-selection__title")}>
             {
-              compositionStore.compositionGenerationStatus ?
+              options.type === "ai" ?
                 "Generating AI Highlights..." :
                 "Initializing Composition..."
             }
@@ -221,21 +229,29 @@ const CompositionSelection = observer(() => {
         />
         {
           options.type !== "ai" ? null :
-            <FormTextArea
-              label="Prompt (optional)"
-              value={options.prompt}
-              onChange={event => setOptions({...options, prompt: event.target.value})}
-            />
-        }
-        {
-          options.type !== "ai" ? null :
-            <Group my="xs" justify="end">
-              <Checkbox
-                label="Regenerate Results (if present)"
-                checked={options.regenerate}
-                onChange={event => setOptions({...options, regenerate: event.currentTarget.checked})}
+            <>
+              <FormNumberInput
+                label="Maximum Duration (seconds)"
+                placeholder="Automatic"
+                value={options.maxDuration}
+                min={0}
+                max={100000}
+                step={1}
+                onChange={value => setOptions({...options, maxDuration: value})}
               />
-            </Group>
+              <FormTextInput
+                label="Prompt (optional)"
+                value={options.prompt}
+                onChange={event => setOptions({...options, prompt: event.target.value})}
+              />
+              <Group my="xs" justify="end">
+                <Checkbox
+                  label="Regenerate Results (if present)"
+                  checked={options.regenerate}
+                  onChange={event => setOptions({...options, regenerate: event.currentTarget.checked})}
+                />
+              </Group>
+            </>
         }
         <div className={S("composition-form__actions")}>
           <AsyncButton
@@ -254,6 +270,7 @@ const CompositionSelection = observer(() => {
                   name: options.name,
                   key,
                   prompt: options.prompt,
+                  maxDuration: options.maxDuration,
                   regenerate: options.regenerate
                 });
               } catch(error) {

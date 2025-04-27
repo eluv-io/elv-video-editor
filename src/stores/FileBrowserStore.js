@@ -1,6 +1,5 @@
 import {flow, makeAutoObservable, runInAction} from "mobx";
 import UrlJoin from "url-join";
-import {DownloadFromUrl} from "@/utils/Utils.js";
 
 class FileBrowserStore {
   files = {};
@@ -13,6 +12,13 @@ class FileBrowserStore {
   constructor(rootStore) {
     this.rootStore = rootStore;
     makeAutoObservable(this);
+  }
+
+  Reset() {
+    this.files = {};
+    this.objectNames = {};
+    this.activeUploadJobs = {};
+    this.uploadStatus = {};
   }
 
   WriteToken({objectId}) {
@@ -55,7 +61,7 @@ class FileBrowserStore {
             fullPath: UrlJoin(path, filename),
             ext,
             url: this.rootStore.FabricUrl({libraryId, objectId, writeToken, path: UrlJoin("files", path, filename), auth: "private"}),
-            publicUrl: this.rootStore.FabricUrl({libraryId, objectId, path: UrlJoin("files", path, filename), auth: "public"}),
+            publicUrl: this.rootStore.FabricUrl({libraryId, objectId, path: UrlJoin("files", path, filename), auth: "private"}),
             size: file["."].size,
             encrypted: file["."].encryption?.scheme === "cgck"
           };
@@ -102,7 +108,7 @@ class FileBrowserStore {
       filePaths: [UrlJoin(path, filename)]
     });
 
-    yield this.LoadFiles({objectId});
+    yield this.LoadFiles({objectId, force: true});
   });
 
   RenameFile = flow(function * ({objectId, path, filename, newFilename}) {
@@ -119,7 +125,7 @@ class FileBrowserStore {
       }]
     });
 
-    yield this.LoadFiles({objectId});
+    yield this.LoadFiles({objectId, force: true});
   });
 
   DeleteFile = flow(function * ({objectId, path, filename}) {
@@ -135,7 +141,7 @@ class FileBrowserStore {
       ]
     });
 
-    yield this.LoadFiles({objectId});
+    yield this.LoadFiles({objectId, force: true});
   });
 
   UploadFiles = flow(function * ({objectId, files}) {
@@ -158,7 +164,7 @@ class FileBrowserStore {
         })
       });
 
-      yield this.LoadFiles({objectId});
+      yield this.LoadFiles({objectId, force: true});
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error(error);
@@ -181,7 +187,7 @@ class FileBrowserStore {
         callback
       });
 
-      await DownloadFromUrl(window.URL.createObjectURL(blob), filename);
+      this.rootStore.OpenExternalLink(window.URL.createObjectURL(blob), filename);
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error(error);

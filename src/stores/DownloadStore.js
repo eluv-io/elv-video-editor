@@ -2,7 +2,7 @@
 
 import {flow, makeAutoObservable} from "mobx";
 import UrlJoin from "url-join";
-import {DownloadFromUrl, Unproxy} from "@/utils/Utils.js";
+import {Unproxy} from "@/utils/Utils.js";
 
 
 class DownloadStore {
@@ -127,7 +127,7 @@ class DownloadStore {
         params.start_ms = `${((1 / this.rootStore.videoStore.frameRate) * clipInFrame).toFixed(4)}s`;
       }
 
-      if(clipOutFrame && clipOutFrame < this.rootStore.videoStore.videoHandler.TotalFrames() - 1) {
+      if(clipOutFrame && clipOutFrame < this.rootStore.videoStore.totalFrames - 1) {
         params.end_ms = `${((1 / this.rootStore.videoStore.frameRate) * clipOutFrame).toFixed(4)}s`;
       }
 
@@ -222,7 +222,7 @@ class DownloadStore {
     });
 
     try {
-      DownloadFromUrl(downloadUrl, jobInfo.filename);
+      this.rootStore.OpenExternalLink(downloadUrl, jobInfo.filename);
 
       this.downloadedJobs[jobId] = true;
     } catch(error) {

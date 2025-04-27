@@ -30,6 +30,7 @@ configure({
 });
 
 class RootStore {
+  localhost = window.location.hostname === "localhost";
   client;
   initialized = false;
   page = "source";
@@ -121,7 +122,7 @@ class RootStore {
     // Contained in IFrame
     const client = new FrameClient({
       target: window.parent,
-      timeout: 30
+      timeout: 120
     });
 
     this.client = client;
@@ -282,7 +283,13 @@ class RootStore {
     return Id.next();
   }
 
-  OpenExternalLink(url) {
+  OpenExternalLink(url, filename) {
+    if(filename) {
+      url = new URL(url);
+      url.searchParams.set("header-x_set_content_disposition", `attachment; filename="${filename}"`);
+      url = url.toString();
+    }
+
     this.client.SendMessage({
       options: {
         operation: "OpenExternalLink",
