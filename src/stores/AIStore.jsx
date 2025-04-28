@@ -232,7 +232,7 @@ class AIStore {
 
       const siteUpdateWriteToken = (yield this.client.EditContentObject({
         libraryId: siteLibraryId,
-        objectId: indexId
+        objectId: siteId
       })).writeToken;
 
       yield this.QueryAIAPI({
