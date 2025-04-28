@@ -414,7 +414,7 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
   }, [active]);
 
   useEffect(() => {
-    if(!clipView || !store || !store.initialized || !store.videoHandler || !store.totalFrames) { return; }
+    if(!clipView || !store || !store?.initialized || !store?.videoHandler || !store?.totalFrames) { return; }
 
     const clip = compositionStore.selectedClip;
 

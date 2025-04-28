@@ -117,7 +117,12 @@
   }
 
   &__index-option {
+    align-items: center;
+    cursor: pointer;
+    display: flex;
     font-size: 14px;
+    gap: 10px;
+    justify-content: space-between;
     min-height: 45px;
     padding: 10px;
     text-align: left;

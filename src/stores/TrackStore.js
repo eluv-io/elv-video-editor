@@ -657,7 +657,7 @@ class TrackStore {
   }
 
   async AddPrimaryContentTrack() {
-    while(!this.rootStore.videoStore.initialized) {
+    while(!this.rootStore.videoStore?.initialized) {
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 

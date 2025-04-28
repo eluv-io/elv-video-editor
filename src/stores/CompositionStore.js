@@ -88,8 +88,6 @@ class CompositionStore {
     this.draggingClip = undefined;
     this.saved = false;
 
-    this._authTokens = {};
-
     this.EndDrag();
     this.ClearSelectedClip();
     this.ClearDropIndicator();
@@ -112,10 +110,6 @@ class CompositionStore {
 
   get hasUnsavedChanges() {
     return this._position > 0 || (!this.saved && this.clipIdList.length > 0);
-  }
-
-  get initialized() {
-    return this.videoStore?.initialized;
   }
 
   get ready() {
@@ -601,7 +595,8 @@ class CompositionStore {
         "offerings/*/media_struct/streams/*/rate",
         "/public/name",
       ],
-      resolveLinks: true
+      resolveLinks: true,
+      resolveIgnoreErrors: true
     });
 
     const offerings = Object.keys(sourceMetadata.offerings)
@@ -636,7 +631,7 @@ class CompositionStore {
 
     let items = [];
     if(type === "ai") {
-      const highlights = (yield this.GenerateAIHighlights({
+      const highlights = (yield this.rootStore.aiStore.GenerateAIHighlights({
         objectId: sourceObjectId,
         prompt,
         maxDuration,
@@ -990,7 +985,7 @@ class CompositionStore {
 
   LoadHighlights = flow(function * () {
     try {
-      const highlights = (yield this.GenerateAIHighlights({
+      const highlights = (yield this.rootStore.aiStore.GenerateAIHighlights({
         objectId: this.compositionObject.objectId,
         prompt: this.compositionObject.initialPrompt,
         wait: true
@@ -1287,90 +1282,12 @@ class CompositionStore {
     });
   }
 
-  // Search and AI
-  QueryAIAPI = flow(function * ({server="ai", method="GET", path, objectId, channelAuth=false, queryParams={}}) {
-    const url = new URL(`https://${server}.contentfabric.io/`);
-    url.pathname = path;
-
-    Object.keys(queryParams).forEach(key =>
-      queryParams[key] && url.searchParams.set(key, queryParams[key])
-    );
-
-    if(!this._authTokens[objectId]) {
-      this._authTokens[objectId] = {};
-    }
-
-    if(channelAuth && !this._authTokens[objectId].channel) {
-      this._authTokens[objectId].channel = new URL(yield this.client.FabricUrl({
-        versionHash: yield this.client.LatestVersionHash({objectId: objectId}),
-        channelAuth: true
-      })).searchParams.get("authorization");
-    } else if(!channelAuth && !this._authTokens[objectId].signed) {
-      this._authTokens[objectId].signed = yield this.rootStore.client.CreateSignedToken({
-        objectId,
-        duration: 24 * 60 * 60 * 1000
-      });
-    }
-
-    url.searchParams.set("authorization", this._authTokens[objectId][channelAuth ? "channel" : "signed"]);
-
-    return fetch(url, {method});
-  });
-
-  GenerateAIHighlights = flow(function * ({objectId, prompt, maxDuration, regenerate=false, wait=true, StatusCallback}) {
-    let options = {};
-    if(prompt) { options.customization = prompt; }
-    if(maxDuration) { options.max_length = maxDuration * 1000; }
-
-    if(regenerate) {
-      yield this.QueryAIAPI({
-        method: "POST",
-        path: UrlJoin("ml", "highlight_composition", "q", objectId),
-        objectId,
-        queryParams: {...options, regenerate: true}
-      });
-
-      yield new Promise(resolve => setTimeout(resolve, 1000));
-    }
-
-    let status;
-    do {
-      if(status) {
-        StatusCallback?.(status);
-        yield new Promise(resolve => setTimeout(resolve, 5000));
-      }
-
-      const response = yield this.QueryAIAPI({
-        method: "GET",
-        path: UrlJoin("ml", "highlight_composition", "q", objectId),
-        objectId,
-        queryParams: options
-      });
-
-      if(response.status === 204 && !regenerate) {
-        return this.GenerateAIHighlights({...arguments[0], regenerate: true});
-      }
-
-      status = yield response.json();
-
-      if(!wait) {
-        return status;
-      }
-
-      if(status?.status === "ERROR") {
-        throw status;
-      }
-    } while(status?.status !== "COMPLETE");
-
-    return status;
-  });
-
   SearchClips = flow(function * (query) {
-    const index = this.rootStore.searchIndex;
+    const index = this.rootStore.aiStore.searchIndex;
 
     if(!index) { return; }
 
-    const clips = (yield (yield this.QueryAIAPI({
+    const clips = (yield this.rootStore.aiStore.QueryAIAPI({
       server: "ai",
       objectId: index.id,
       path: UrlJoin("search", "q", index.versionHash, "rep", "search"),
@@ -1388,7 +1305,7 @@ class CompositionStore {
         filters: `id:${this.compositionObject.objectId}`,
         select: "/public/asset_metadata/title,/public/name,public/asset_metadata/display_title"
       }
-    })).json())?.contents || [];
+    }))?.contents || [];
 
     let searchClipIds = [];
     for(const clip of clips) {

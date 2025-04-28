@@ -357,7 +357,7 @@ const TimelineBottomBar = observer(({simple}) => {
 });
 
 const TimelineSeekBar = observer(({hoverSeek}) => {
-  if(!videoStore.initialized) { return null; }
+  if(!videoStore?.initialized) { return null; }
 
   let indicators = [];
   if(videoStore.clipInFrame) {
@@ -401,7 +401,7 @@ const TimelineSeekBar = observer(({hoverSeek}) => {
 });
 
 const TimelineScaleBar = observer(({hoverSeek}) => {
-  if(!videoStore.initialized) { return null; }
+  if(!videoStore?.initialized) { return null; }
 
   let indicators = [];
   if(videoStore.clipInFrame) {
@@ -492,7 +492,7 @@ const TimelinePlayheadIndicator = observer(({value, timelineRef, className=""}) 
 });
 
 const TimelineThumbnailTrack = observer(() => {
-  if(!videoStore.initialized || !trackStore.showThumbnails) {
+  if(!videoStore?.initialized || !trackStore?.showThumbnails) {
     return null;
   }
 
