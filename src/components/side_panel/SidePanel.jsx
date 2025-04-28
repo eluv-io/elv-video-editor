@@ -52,8 +52,6 @@ const SearchIndexSelection = observer(() => {
     }
   });
 
-
-
   return (
     <Menu
       opened={showMenu}
@@ -165,7 +163,18 @@ const SidebarFilter = observer(({store, label, sideContent, delay=100}) => {
         rightSection={
           <div className={S("search__buttons")}>
             {sideContent}
-            <IconButton noHover icon={XIcon} onClick={() => setFilter("")} className={S("search__button")} />
+            {
+              !filter ? null :
+                <IconButton
+                  noHover
+                  icon={XIcon}
+                  onClick={() => {
+                    setFilter("");
+                    store.SetFilter("");
+                  }}
+                  className={S("search__button")}
+                />
+            }
           </div>
           }
         rightSectionWidth="max-content"
@@ -399,7 +408,7 @@ export const CompositionSidePanel = observer(() => {
   return (
     <div className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
-        <SidebarFilter sideContent={<SearchIndexSelection />} store={compositionStore} label="Search Clips"/>
+        <SidebarFilter delay={1500} sideContent={<SearchIndexSelection />} store={compositionStore} label="Search Clips"/>
         <CompositionClips />
       </div>
     </div>

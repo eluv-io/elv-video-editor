@@ -31,6 +31,7 @@ class CompositionStore {
   sourceClipIds = {};
   aiClipIds = [];
   searchClipIds = [];
+  searchClipInfo = {};
 
   draggingClip;
   showDragShadow = false;
@@ -78,6 +79,7 @@ class CompositionStore {
     this.aiClipIds = [];
     this.myClipIds = [];
     this.searchClipIds = [];
+    this.searchClipInfo = {};
     this.selectedClipId = undefined;
     this.originalSelectedClipId = undefined;
     this.sourceFullClipId = undefined;
@@ -1285,7 +1287,14 @@ class CompositionStore {
   SearchClips = flow(function * (query) {
     const index = this.rootStore.aiStore.searchIndex;
 
-    if(!index) { return; }
+    if(
+      !index ||
+      (
+        this.searchClipInfo.objectId === this.compositionObject.objectId &&
+        this.searchClipInfo.indexId === index.id &&
+        this.searchClipInfo.query === query
+      )
+    ) { return; }
 
     const clips = (yield this.rootStore.aiStore.QueryAIAPI({
       server: "ai",
@@ -1295,15 +1304,13 @@ class CompositionStore {
       queryParams: {
         terms: query,
         search_fields: Object.keys(index.fields || {}).join(","),
-        display_fields: "f_speech_to_text",
         clips: true,
         clips_include_source_tags: true,
         debug: true,
-        max_total: 100,
+        max_total: 20,
         start: 0,
-        limit: 100,
-        filters: `id:${this.compositionObject.objectId}`,
-        select: "/public/asset_metadata/title,/public/name,public/asset_metadata/display_title"
+        limit: 20,
+        filters: `id:${this.compositionObject.objectId}`
       }
     }))?.contents || [];
 
@@ -1336,6 +1343,11 @@ class CompositionStore {
     }
 
     this.searchClipIds = searchClipIds;
+    this.searchClipInfo = {
+      objectId: this.compositionObject.objectId,
+      query,
+      indexId: this.rootStore.aiStore.selectedSearchIndexId
+    };
   });
 
   OpenFabricBrowserLink() {

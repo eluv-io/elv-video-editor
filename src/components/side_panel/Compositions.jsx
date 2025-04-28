@@ -3,7 +3,7 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, DragHandler, StorageHandler} from "@/utils/Utils.js";
-import {browserStore, compositionStore, rootStore, trackStore} from "@/stores/index.js";
+import {aiStore, browserStore, compositionStore, rootStore, trackStore} from "@/stores/index.js";
 import {ClipTimeInfo, Confirm, Icon, IconButton, Linkish, Loader} from "@/components/common/Common.jsx";
 import {Tooltip} from "@mantine/core";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
@@ -94,7 +94,17 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
 });
 
 
-const ClipGroup = observer(({icon, color, title, subtitle, groupKey, clipIds=[], noFilter, loading=false, showTagLinks}) => {
+const ClipGroup = observer(({
+  icon,
+  color,
+  title,
+  subtitle,
+  groupKey,
+  clipIds=[],
+  noFilter,
+  loading=false,
+  showTagLinks
+}) => {
   const [hide, setHide] = useState(StorageHandler.get({type: "session", key: `hide-clips-${groupKey}`}));
 
   useEffect(() => {
@@ -155,7 +165,6 @@ const ClipGroup = observer(({icon, color, title, subtitle, groupKey, clipIds=[],
   );
 });
 
-let searchTimeout;
 const AIClips = observer(() => {
   const [loading, setLoading] = useState(false);
   const [clipSource, setClipSource] = useState("highlights");
@@ -163,26 +172,20 @@ const AIClips = observer(() => {
     compositionStore.searchClipIds : compositionStore.aiClipIds;
 
   useEffect(() => {
-    clearTimeout(searchTimeout);
-
     if(!compositionStore.filter) {
       setLoading(false);
       setClipSource("highlights");
       return;
     }
 
-    searchTimeout = setTimeout(() => {
-      clearTimeout(searchTimeout);
+    setLoading(true);
 
-      setLoading(true);
-
-      compositionStore.SearchClips(compositionStore.filter)
-        .finally(() => {
-          setClipSource("search");
-          setLoading(false);
-        });
-    }, 1000);
-  }, [compositionStore.filter, rootStore.selectedSearchIndexId]);
+    compositionStore.SearchClips(compositionStore.filter)
+      .finally(() => {
+        setClipSource("search");
+        setLoading(false);
+      });
+  }, [compositionStore.filter, aiStore.selectedSearchIndexId]);
 
   return  (
     !loading && clipIds.length === 0 ? null :
@@ -191,7 +194,7 @@ const AIClips = observer(() => {
         groupKey="ai"
         icon={AISparkleIcon}
         showTagLinks
-        title="Suggestions"
+        title={compositionStore.filter ? "Results" : "Suggestions"}
         subtitle={!compositionStore.filter ? "Prompt" : ""}
         clipIds={clipIds}
         loading={loading}

@@ -222,32 +222,39 @@ class AIStore {
       yield this.client.SetNodes({fabricURIs: (yield this.client.Nodes()).searchURIs});
 
       const libraryId = yield this.client.ContentObjectLibraryId({objectId: indexId});
-      const updateWriteToken = (yield this.client.EditContentObject({libraryId, objectId: indexId})).writeToken;
-
-      const siteId = yield this.client.ContentObjectMetadata({
+      const siteId = (yield this.client.ContentObjectMetadata({
         libraryId,
         objectId: indexId,
         metadataSubtree: "/indexer/config/fabric/root/content"
-      });
+      })) || indexId;
+
+      const siteLibraryId = yield this.client.ContentObjectLibraryId({objectId: siteId});
+
+      const siteUpdateWriteToken = (yield this.client.EditContentObject({
+        libraryId: siteLibraryId,
+        objectId: indexId
+      })).writeToken;
 
       yield this.QueryAIAPI({
         server: "ai",
-        path: UrlJoin("/search", "q", updateWriteToken, "update_site"),
+        path: UrlJoin("/search", "q", siteUpdateWriteToken, "update_site"),
         method: "POST",
         format: "none",
-        objectId: siteId || indexId,
+        objectId: siteId,
         update: true,
       });
 
       this.searchIndexUpdateStatus[indexId] = 12;
 
       yield this.client.FinalizeContentObject({
-        libraryId,
-        objectId: indexId,
-        writeToken: updateWriteToken,
+        libraryId: siteLibraryId,
+        objectId: siteId,
+        writeToken: siteUpdateWriteToken,
         commitMessage: "EVIE - Update search index"
       });
 
+      this.searchIndexUpdateStatus[indexId] = 20;
+      yield new Promise(resolve => setTimeout(resolve, 2000));
       this.searchIndexUpdateStatus[indexId] = 25;
 
       const crawlWriteToken = (yield this.client.EditContentObject({libraryId, objectId: indexId})).writeToken;
@@ -283,6 +290,8 @@ class AIStore {
         commitMessage: "EVIE - Recrawl search index"
       });
 
+      this.searchIndexUpdateStatus[indexId] = 45;
+      yield new Promise(resolve => setTimeout(resolve, 2000));
       this.searchIndexUpdateStatus[indexId] = 50;
 
       yield this.client.ResetRegion();
