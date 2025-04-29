@@ -324,13 +324,13 @@ class AIStore {
           } while(updateStatus?.status !== "finished");
         })
       );
-
-      delete this.searchIndexUpdateStatus[indexId];
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error("Failed to update search index", indexId);
       // eslint-disable-next-line no-console
       console.error(error);
+    } finally {
+      delete this.searchIndexUpdateStatus[indexId];
     }
   });
 }

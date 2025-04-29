@@ -109,28 +109,22 @@ const SearchIndexSelection = observer(() => {
                   }
                 </div>
                 {
-                  typeof aiStore.searchIndexUpdateStatus[index.id] !== "undefined" ?
-                    <RingProgress
-                      size={25}
-                      thickness={3}
-                      transitionDuration={500}
-                      sections={[{value: aiStore.searchIndexUpdateStatus[index.id], color: "var(--color-highlight-secondary", tooltip: "Updating search index"}]}
-                    /> :
-                    !index.canEdit ? null :
-                      <IconButton
-                        label="Update Search Index"
-                        icon={UpdateIndexIcon}
-                        onClick={async event => {
-                          event.preventDefault();
-                          event.stopPropagation();
+                  !index.canEdit ? null :
+                    <IconButton
+                      label="Update Search Index"
+                      icon={UpdateIndexIcon}
+                      loadingProgress={aiStore.searchIndexUpdateStatus[index.id]}
+                      onClick={async event => {
+                        event.preventDefault();
+                        event.stopPropagation();
 
-                          await Confirm({
-                            title: "Remove Tag",
-                            text: "Are you sure you want to update this search index?",
-                            onConfirm: async () => await aiStore.UpdateSearchIndex(index.id)
-                          });
-                        }}
-                      />
+                        await Confirm({
+                          title: "Remove Tag",
+                          text: "Are you sure you want to update this search index?",
+                          onConfirm: async () => await aiStore.UpdateSearchIndex(index.id)
+                        });
+                      }}
+                    />
                 }
               </div>
             )

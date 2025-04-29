@@ -178,7 +178,7 @@ const ThumbnailTrack = observer(({
           let visibleFraction =
             index === visibleThumbnails - 1 ? fractionalThumbnail : 1;
 
-          const progress = startProgress + (thumbnailScale * index * visibleFraction + thumbnailScale * thumbnailRatio);
+          const progress = startProgress + (thumbnailScale * index  + thumbnailScale * thumbnailRatio * visibleFraction);
           let startTime = store.duration * progress;
 
           return (

@@ -12,6 +12,16 @@ const SimpleView = observer(() => {
     compositionStore.LoadMyClips({objectId: videoStore.videoObject.objectId});
   }, []);
 
+  useEffect(() => {
+    if(!videoStore.ready) { return; }
+
+    const clipPoints = videoStore.ParseClipParams();
+
+    if(!clipPoints) { return; }
+
+    videoStore.FocusView(clipPoints);
+  }, [videoStore.ready]);
+
   return (
     <PanelGroup direction="vertical" className="panel-group">
       <Panel id="top" order={1} defaultSize={65}>

@@ -6,7 +6,7 @@ import {
   Button,
   ColorInput,
   Modal as MantineModal, MultiSelect,
-  NumberInput,
+  NumberInput, RingProgress,
   Select,
   Switch,
   Textarea,
@@ -203,6 +203,7 @@ export const IconButton = ({
   tooltipProps={},
   unstyled=false,
   loading=false,
+  loadingProgress,
   children,
   openDelay=500,
   highlight,
@@ -214,6 +215,8 @@ export const IconButton = ({
 }) => {
   const [submitting, setSubmitting] = useState(false);
 
+  loading = loading || (loadingProgress > 0 && loadingProgress < 100);
+
   tooltipProps = {openDelay, ...tooltipProps};
 
   if(props.disabled) {
@@ -222,7 +225,19 @@ export const IconButton = ({
 
   let content;
   if(loading || submitting) {
-    content = <Loader className={S("icon-button__loader")} />;
+    if(loadingProgress) {
+      content = (
+        <RingProgress
+          size={25}
+          thickness={3}
+          transitionDuration={500}
+          rootColor="var(--text-tertiary)"
+          sections={[{value: loadingProgress, color: "var(--color-highlight"}]}
+        />
+      );
+    } else {
+      content = <Loader className={S("icon-button__loader")}/>;
+    }
   } else {
     content = (
       <>
@@ -243,7 +258,7 @@ export const IconButton = ({
       disabled={disabled}
       aria-label={props["aria-label"] || label || ""}
       onClick={
-        !props.onClick ? undefined :
+        !props.onClick || loading || submitting ? undefined :
           async event => {
             const loadingTimeout = setTimeout(() => setSubmitting(true), 100);
             try {

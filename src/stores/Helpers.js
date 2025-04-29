@@ -42,7 +42,8 @@ export const LoadVideo = async ({
         "clips",
         "video_tags",
         "mime_types",
-        "assets"
+        "assets",
+        "live_recording_info"
       ]
     })) || { public: {}};
 
@@ -55,7 +56,9 @@ export const LoadVideo = async ({
       description: metadata.public && metadata.public.description || metadata.description,
       metadata,
       isVideo: !!metadata.offerings || !!metadata.channel,
-      isChannel: !!metadata.channel
+      isChannel: !!metadata.channel,
+      isLiveToVod: !!metadata.live_recording_info,
+      liveStreamInfo: metadata.live_recording_info
     };
 
     if(videoObject.isVideo) {

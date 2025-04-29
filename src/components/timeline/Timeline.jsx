@@ -43,6 +43,7 @@ import ClipIcon from "@/assets/icons/v2/clip.svg";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import IsolateClipIcon from "@/assets/icons/v2/isolate.svg";
 import ReloadIcon from "@/assets/icons/v2/reload.svg";
+import LiveToVodIcon from "@/assets/icons/v2/live-to-vod.svg";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -157,6 +158,28 @@ const ClipModalButton = observer(() => {
   );
 });
 
+const LiveToVodButton = observer(() => {
+  if(!videoStore.videoObject?.objectId) { return null; }
+
+  const progress = editStore.liveToVodProgress[videoStore.videoObject?.objectId];
+
+  return (
+    <IconButton
+      icon={LiveToVodIcon}
+      label="Upate VoD from Live Stream"
+      onClick={async () => await Confirm({
+        title: "Regenerate Live to VoD",
+        text: "Are you sure you want to update this VoD from the live stream? This may take several minutes and will cause the content to reload when finished.",
+        onConfirm: async () => {
+          await editStore.RegenerateLiveToVOD({vodObjectId: videoStore.videoObject?.objectId});
+        }
+      })}
+      loadingProgress={progress}
+      className={S("search__button")}
+    />
+  );
+});
+
 const TimelineTopBar = observer(({simple}) => {
   return (
     <div className={S("toolbar", "timeline-section__top-bar")}>
@@ -258,6 +281,13 @@ const TimelineTopBar = observer(({simple}) => {
         {
           !simple ? null :
             <ClipModalButton/>
+        }
+        {
+          !videoStore.isLiveToVod ? null :
+            <>
+              <div className={S("toolbar__separator")}/>
+              <LiveToVodButton/>
+            </>
         }
         <div className={S("toolbar__separator")}/>
         <IconButton

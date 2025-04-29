@@ -1,11 +1,13 @@
 import {flow, makeAutoObservable, runInAction} from "mobx";
 import UrlJoin from "url-join";
 import {Unproxy} from "@/utils/Utils.js";
+import ABRProfileLiveToVod from "@/utils/ABRProfileLiveToVod.js";
 
 class EditStore {
   saving = false;
   writeInfo = {};
   editInfo = {};
+  liveToVodProgress = {};
   saveProgress = {
     tags: 0,
     clips: 0
@@ -783,6 +785,212 @@ class EditStore {
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
   }
+
+  RegenerateLiveToVOD = flow(function * ({liveObjectId, vodObjectId, vodObjectLibraryId, title}) {
+    const progressKey = liveObjectId || vodObjectId;
+    try {
+      this.liveToVodProgress[progressKey] = 0;
+
+      let liveObjectLibraryId;
+      if(!vodObjectId) {
+        // Find existing vod or create new one
+        liveObjectLibraryId = yield this.client.ContentObjectLibraryId({objectId: liveObjectId});
+
+        const vods = yield this.client.ContentObjectMetadata({
+          libraryId: liveObjectLibraryId,
+          objectId: liveObjectId,
+          metadataSubtree: "live_recording_copies"
+        });
+
+        if(!vods || Object.keys(vods || {}).length === 0) {
+          // Create vod object
+          const contentTypes = yield this.client.ContentTypes();
+          const contentType =
+            contentTypes.find(type =>
+              type.name?.toLowerCase()?.includes("title") &&
+              !type.name?.toLowerCase()?.includes("master")
+            ) ||
+            contentTypes.find(type => type.name?.toLowerCase()?.includes("mez"));
+
+          vodObjectId = (yield this.client.CreateAndFinalizeContentObject({
+            libraryId: vodObjectLibraryId || liveObjectLibraryId,
+            options: {
+              type: contentType?.id,
+              visibility: "editable"
+            },
+            commitMessage: `Create VoD from Live Object ${liveObjectId}`,
+            callback: async ({objectId, writeToken}) => {
+              await this.client.ReplaceMetadata({
+                libraryId: liveObjectLibraryId,
+                objectId,
+                writeToken,
+                metadata: {
+                  name: title || "",
+                  public: {
+                    name: title,
+                    asset_metadata: {
+                      title,
+                      display_title: title
+                    }
+                  },
+                  live_recording_info: {
+                    stream_version_hash: await this.client.LatestVersionHash({
+                      objectId: liveObjectId
+                    })
+                  }
+                }
+              });
+            }
+          })).id;
+
+          vodObjectLibraryId = liveObjectLibraryId;
+        }
+
+        vodObjectId = Object.keys(vods)[0];
+      } else if(!liveObjectId && vodObjectId) {
+        // Find live stream ID from vod
+        vodObjectLibraryId = yield this.client.ContentObjectLibraryId({objectId: vodObjectId});
+
+        const liveHash = yield this.client.ContentObjectMetadata({
+          libraryId: vodObjectLibraryId,
+          objectId: vodObjectId,
+          metadataSubtree: "live_recording_info/stream_version_hash"
+        });
+
+        if(liveHash) {
+          liveObjectId = this.client.utils.DecodeVersionHash(liveHash).objectId;
+        }
+      }
+
+      if(!vodObjectId || !liveObjectId) {
+        throw `VoD or Live Stream ID not determinable: ${vodObjectId}, ${liveObjectId}`;
+      }
+
+      vodObjectLibraryId = vodObjectLibraryId || (yield this.client.ContentObjectLibraryId({objectId: vodObjectId}));
+
+      const liveHash = yield this.client.LatestVersionHash({objectId: liveObjectId});
+
+      this.liveToVodProgress[progressKey] = 5;
+      const vodWriteToken = (yield this.client.EditContentObject({
+        libraryId: vodObjectLibraryId,
+        objectId: vodObjectId
+      })).writeToken;
+
+      this.liveToVodProgress[progressKey] = 10;
+      yield this.client.CallBitcodeMethod({
+        libraryId: vodObjectLibraryId,
+        objectId: vodObjectId,
+        writeToken: vodWriteToken,
+        method: "/media/live_to_vod/init",
+        body: {
+          "live_qhash": liveHash,
+          "variant_key": "default",
+          "include_tags": true  // Copy video tags from live stream
+        },
+        constant: false,
+        format: "text"
+      });
+
+      const abrMezInitBody = {
+        abr_profile: ABRProfileLiveToVod,
+        offering_key: "default",
+        prod_master_hash: vodWriteToken,
+        variant_key: "default",
+        keep_other_streams: true, // Preserve thumbnails
+        additional_offering_specs: {
+          // Default dash offering for chromecast
+          default_dash: [
+            {
+              op: "replace",
+              path: "/playout/playout_formats",
+              value: {
+                "dash-clear": {
+                  "drm": null,
+                  "protocol": {
+                    "min_buffer_length": 2,
+                    "type": "ProtoDash"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      };
+
+      this.liveToVodProgress[progressKey] = 20;
+      yield this.client.CallBitcodeMethod({
+        libraryId: vodObjectLibraryId,
+        objectId: vodObjectId,
+        writeToken: vodWriteToken,
+        method: "/media/abr_mezzanine/init",
+        body: abrMezInitBody,
+        constant: false,
+        format: "text"
+      });
+
+      this.liveToVodProgress[progressKey] = 30;
+      yield this.client.CallBitcodeMethod({
+        libraryId: vodObjectLibraryId,
+        objectId: vodObjectId,
+        writeToken: vodWriteToken,
+        method: "/media/live_to_vod/copy",
+        body: {
+          "variant_key": "default",
+          "offering_key": "default",
+        },
+        constant: false,
+        format: "text"
+      });
+
+      this.liveToVodProgress[progressKey] = 40;
+      yield this.client.CallBitcodeMethod({
+        libraryId: vodObjectLibraryId,
+        objectId: vodObjectId,
+        writeToken: vodWriteToken,
+        method: "/media/abr_mezzanine/offerings/default/finalize",
+        body: abrMezInitBody,
+        constant: false,
+        format: "text"
+      });
+
+      this.liveToVodProgress[progressKey] = 45;
+      yield this.client.FinalizeContentObject({
+        libraryId: vodObjectLibraryId,
+        objectId: vodObjectId,
+        writeToken: vodWriteToken,
+        commitMessage: "EVIE: Generate live Stream to VoD"
+      });
+
+      this.liveToVodProgress[progressKey] = 50;
+      yield this.rootStore.videoStore.thumbnailStore.GenerateVideoThumbnails();
+
+      let thumbnailStatus = {};
+      do {
+        yield new Promise(resolve => setTimeout(resolve, 5000));
+        thumbnailStatus = yield this.rootStore.videoStore.thumbnailStore.ThumbnailGenerationStatus();
+
+        this.liveToVodProgress[progressKey] = 50 + (45 * (thumbnailStatus?.progress || 0) / 100);
+      } while(!["failed", "finished"].includes(thumbnailStatus?.state));
+
+      if(thumbnailStatus?.state === "finished") {
+        yield this.rootStore.videoStore.thumbnailStore.ThumbnailGenerationStatus({finalize: true});
+      }
+
+
+      if(this.rootStore.videoStore.videoObject?.objectId === vodObjectId) {
+        this.rootStore.videoStore.Reload();
+      }
+
+      return vodObjectId;
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to update vod from live", liveObjectId, vodObjectId);
+      // eslint-disable-next-line no-console
+      console.error(error);
+    } finally {
+      delete this.liveToVodProgress[progressKey];
+    }
+  });
 }
 
 export default EditStore;
