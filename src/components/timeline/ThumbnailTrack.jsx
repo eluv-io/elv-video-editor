@@ -147,13 +147,7 @@ const ThumbnailTrack = observer(({
     return startProgress + ((event.clientX - dimensions.left) / dimensions.width) * scale;
   };
 
-  if(
-    allowCreation &&
-    (
-      !store.thumbnailStore.thumbnailStatus.available ||
-      localStorage.getItem(`regenerate-thumbnails-${store.videoObject.objectId}`)
-    )
-  ) {
+  if(allowCreation && !store.thumbnailStore.thumbnailStatus.available) {
     return <ThumbnailCreationTrack store={store} />;
   }
 

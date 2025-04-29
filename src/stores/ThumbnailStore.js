@@ -8,6 +8,7 @@ class ThumbnailStore {
   thumbnailStatus = { loaded: false };
   thumbnailImages = {};
   intervalTree;
+  generating = false;
 
 
   constructor(parentStore) {
@@ -52,6 +53,8 @@ class ThumbnailStore {
   }
 
   LoadThumbnails = flow(function * (thumbnailTrackUrl) {
+    this.generating = localStorage.getItem(`regenerate-thumbnails-${this.parentStore.videoObject?.objectId}`);
+
     if(!thumbnailTrackUrl) {
       this.thumbnailStatus = {
         loaded: true,
@@ -111,6 +114,10 @@ class ThumbnailStore {
     this.thumbnails = tags;
     this.intervalTree = CreateTrackIntervalTree(tags, "Thumbnails");
     this.thumbnailStatus = { loaded: true, available: true };
+
+    if(this.generating) {
+      this.ThumbnailGenerationStatus();
+    }
   });
 
 
@@ -152,6 +159,11 @@ class ThumbnailStore {
         key: `thumbnail-job-${objectId}`,
         value: JSON.stringify({writeToken, lroId: data, nodeUrl})
       });
+
+      yield this.ThumbnailGenerationStatus();
+
+      this.generating = true;
+      localStorage.setItem(`regenerate-thumbnails-${this.parentStore.videoObject?.objectId}`, "true");
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error(error);
@@ -201,6 +213,9 @@ class ThumbnailStore {
           mode: "private",
           key: `thumbnail-job-${objectId}`
         });
+
+        this.generating = false;
+        localStorage.removeItem(`regenerate-thumbnails-${this.parentStore.videoObject?.objectId}`);
       }
 
       this.thumbnailStatus.status = {
@@ -213,6 +228,12 @@ class ThumbnailStore {
     } catch(error) {
       // eslint-disable-next-line no-console
       console.log(error);
+
+      if(error?.toString()?.includes("item does not exist")) {
+        // Thumbnail job ended
+        this.generating = false;
+        localStorage.removeItem(`regenerate-thumbnails-${this.parentStore.videoObject?.objectId}`);
+      }
     }
   });
 }

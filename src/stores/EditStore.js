@@ -918,7 +918,7 @@ class EditStore {
         }
       };
 
-      this.liveToVodProgress[progressKey] = 20;
+      this.liveToVodProgress[progressKey] = 30;
       yield this.client.CallBitcodeMethod({
         libraryId: vodObjectLibraryId,
         objectId: vodObjectId,
@@ -929,7 +929,7 @@ class EditStore {
         format: "text"
       });
 
-      this.liveToVodProgress[progressKey] = 30;
+      this.liveToVodProgress[progressKey] = 40;
       yield this.client.CallBitcodeMethod({
         libraryId: vodObjectLibraryId,
         objectId: vodObjectId,
@@ -943,7 +943,7 @@ class EditStore {
         format: "text"
       });
 
-      this.liveToVodProgress[progressKey] = 40;
+      this.liveToVodProgress[progressKey] = 60;
       yield this.client.CallBitcodeMethod({
         libraryId: vodObjectLibraryId,
         objectId: vodObjectId,
@@ -954,7 +954,7 @@ class EditStore {
         format: "text"
       });
 
-      this.liveToVodProgress[progressKey] = 45;
+      this.liveToVodProgress[progressKey] = 75;
       yield this.client.FinalizeContentObject({
         libraryId: vodObjectLibraryId,
         objectId: vodObjectId,
@@ -962,9 +962,14 @@ class EditStore {
         commitMessage: "EVIE: Generate live Stream to VoD"
       });
 
-      this.liveToVodProgress[progressKey] = 50;
-      yield this.rootStore.videoStore.thumbnailStore.GenerateVideoThumbnails();
+      this.liveToVodProgress[progressKey] = 90;
 
+
+      if(this.rootStore.videoStore.initialized) {
+        yield this.rootStore.videoStore.thumbnailStore.GenerateVideoThumbnails();
+      }
+
+      /*
       let thumbnailStatus = {};
       do {
         yield new Promise(resolve => setTimeout(resolve, 5000));
@@ -976,6 +981,8 @@ class EditStore {
       if(thumbnailStatus?.state === "finished") {
         yield this.rootStore.videoStore.thumbnailStore.ThumbnailGenerationStatus({finalize: true});
       }
+
+       */
 
 
       if(this.rootStore.videoStore.videoObject?.objectId === vodObjectId) {
