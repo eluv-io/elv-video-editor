@@ -2,7 +2,7 @@ import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
-import {compositionStore, keyboardControlsStore} from "@/stores";
+import {compositionStore, keyboardControlsStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, DragHandler} from "@/utils/Utils.js";
 import {
   AudioControls,
@@ -281,8 +281,12 @@ const Title = observer(({clipView}) => {
             </Button>
         }
       </h1>
-  );
+    );
   }
+
+
+  const thumbnailsGenerating = videoStore?.videoObject ?
+    videoStore.thumbnailStore.generating : compositionStore.videoStore?.thumbnailStore?.generating;
 
   return (
     <h1 className={S("video-section__title")}>
@@ -349,9 +353,9 @@ const Title = observer(({clipView}) => {
                 autoContrast
                 h={30}
                 px="xs"
-                disabled={!compositionStore.hasUnsavedChanges || compositionStore.sourceVideoStore?.thumbnailStore?.generating}
+                disabled={!compositionStore.hasUnsavedChanges || thumbnailsGenerating}
                 tooltip={
-                  !compositionStore.sourceVideoStore?.thumbnailStore?.generating ? undefined :
+                  !thumbnailsGenerating ? undefined :
                     "Please finalize the thumbnails for the source video in the tags view before publishing"
                 }
                 onClick={async () => await Confirm({
