@@ -166,7 +166,7 @@ const LiveToVodButton = observer(() => {
   return (
     <IconButton
       icon={LiveToVodIcon}
-      label="Upate VoD from Live Stream"
+      label="Update VoD from Live Stream"
       onClick={async () => await Confirm({
         title: "Regenerate Live to VoD",
         text: "Are you sure you want to update this VoD from the live stream? This may take several minutes and will cause the content to reload when finished.",
