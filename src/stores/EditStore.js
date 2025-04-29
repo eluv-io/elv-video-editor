@@ -1,7 +1,7 @@
 import {flow, makeAutoObservable, runInAction} from "mobx";
 import UrlJoin from "url-join";
 import {Unproxy} from "@/utils/Utils.js";
-import ABRProfileLiveToVod from "@/utils/ABRProfileLiveToVod.js";
+import ABRProfileLiveToVod from "@eluvio/elv-client-js/src/abr_profiles/abr_profile_live_to_vod.js";
 
 class EditStore {
   saving = false;
@@ -791,7 +791,7 @@ class EditStore {
     try {
       this.liveToVodProgress[progressKey] = 0;
 
-      let liveObjectLibraryId;
+      let liveObjectLibraryId, isNew;
       if(!vodObjectId) {
         // Find existing vod or create new one
         liveObjectLibraryId = yield this.client.ContentObjectLibraryId({objectId: liveObjectId});
@@ -804,6 +804,7 @@ class EditStore {
 
         if(!vods || Object.keys(vods || {}).length === 0) {
           // Create vod object
+          isNew = true;
           const contentTypes = yield this.client.ContentTypes();
           const contentType =
             contentTypes.find(type =>
@@ -896,7 +897,7 @@ class EditStore {
         offering_key: "default",
         prod_master_hash: vodWriteToken,
         variant_key: "default",
-        keep_other_streams: true, // Preserve thumbnails
+        keep_other_streams: !isNew, // Preserve thumbnails
         additional_offering_specs: {
           // Default dash offering for chromecast
           default_dash: [
