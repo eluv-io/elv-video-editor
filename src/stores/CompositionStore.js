@@ -835,10 +835,14 @@ class CompositionStore {
     this.DiscardDraft({objectId, compositionKey, removeComposition: false});
 
     yield new Promise(resolve => setTimeout(resolve, 1000));
-    this.GetCompositionPlayoutUrl(0, true);
+    yield this.SetCompositionObject({objectId, compositionKey});
   });
 
   SetCompositionObject = flow(function * ({objectId, compositionKey, addToMyLibrary=false}) {
+    if(!this.myCompositions[objectId]) {
+      yield this.LoadMyCompositions();
+    }
+
     this.initialized = false;
     this.Reset();
 
@@ -969,7 +973,7 @@ class CompositionStore {
       };
     }
 
-    this.saved = this.myCompositions[objectId][compositionKey].saved;
+    this.saved = !writeToken && this.myCompositions[objectId][compositionKey].saved;
 
     this.initialized = true;
 

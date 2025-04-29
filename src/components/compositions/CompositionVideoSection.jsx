@@ -349,7 +349,11 @@ const Title = observer(({clipView}) => {
                 autoContrast
                 h={30}
                 px="xs"
-                disabled={!compositionStore.hasUnsavedChanges}
+                disabled={!compositionStore.hasUnsavedChanges || compositionStore.sourceVideoStore?.thumbnailStore?.generating}
+                tooltip={
+                  !compositionStore.sourceVideoStore?.thumbnailStore?.generating ? undefined :
+                    "Please finalize the thumbnails for the source video in the tags view before publishing"
+                }
                 onClick={async () => await Confirm({
                   title: "Publish Composition",
                   text: "Are you sure you want to publish this composition?",
