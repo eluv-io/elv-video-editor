@@ -42,6 +42,7 @@ const Video = observer(({
   const [hlsPlayer, setHLSPlayer] = useState(undefined);
   const [video, setVideo] = useState(undefined);
   const [videoId] = useState(rootStore.NextId());
+  const [reloadIndex, setReloadIndex] = useState(0);
 
   playoutUrl = playoutUrl || store.playoutUrl;
 
@@ -55,6 +56,10 @@ const Video = observer(({
   useEffect(() => {
     if(!video || !playoutUrl || !store.isVideo || blank) {
       return;
+    }
+
+    if(hlsPlayer) {
+      hlsPlayer.destroy();
     }
 
     video.__containerElement = fullscreenContainer || document.querySelector(`#video-container-${videoId}`);
@@ -88,12 +93,24 @@ const Video = observer(({
       };
     }
 
-
     const player = new HLSPlayer(config);
 
     player.on(HLSPlayer.Events.MANIFEST_PARSED, function() {
       // stop video preloading when the manifest has been parsed
       player.stopLoad();
+    });
+
+    // Reload on fatal error
+    player.on(HLSPlayer.Events.ERROR, function (event, data) {
+      if(data.fatal) {
+        switch(data.type) {
+          case HLSPlayer.ErrorTypes.MEDIA_ERROR:
+            player.recoverMediaError();
+            break;
+          default:
+            setTimeout(() => setReloadIndex(reloadIndex + 1), 5000);
+        }
+      }
     });
 
     setHLSPlayer(player);
@@ -109,7 +126,7 @@ const Video = observer(({
     window.player = hlsPlayer;
 
     Callback?.(video);
-  }, [video, playoutUrl]);
+  }, [video, playoutUrl, reloadIndex]);
 
   useEffect(() => {
     return () => {
