@@ -219,7 +219,11 @@ class AIStore {
       this.searchIndexUpdateStatus[indexId] = 5;
 
       // Perform against a search node
-      yield this.client.SetNodes({fabricURIs: (yield this.client.Nodes()).searchURIs});
+      const searchURIs = (yield (
+        yield fetch("https://main.net955305.contentfabric.io/config")
+      ).json()).network.services.search_v2;
+
+      yield this.client.SetNodes({fabricURIs: searchURIs});
 
       const libraryId = yield this.client.ContentObjectLibraryId({objectId: indexId});
       const siteId = (yield this.client.ContentObjectMetadata({
