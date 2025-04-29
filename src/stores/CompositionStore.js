@@ -536,7 +536,7 @@ class CompositionStore {
     return this.videoStore.TimeToSMPTE(this.compositionDuration * progress / 100);
   }
 
-  GetCompositionPlayoutUrl = flow(function * (retry=0) {
+  GetCompositionPlayoutUrl = flow(function * (retry=0, noWriteToken) {
     if(!this.compositionObject || this.clipIdList.length === 0) {
       this.compositionPlayoutUrl = undefined;
       return;
@@ -544,7 +544,8 @@ class CompositionStore {
 
     try {
       const {objectId, compositionKey} = this.compositionObject;
-      const writeToken = yield this.WriteToken({objectId, compositionKey, create: false});
+      const writeToken = noWriteToken ? undefined :
+        yield this.WriteToken({objectId, compositionKey, create: false});
 
       const playoutOptions = (yield this.client.PlayoutOptions({
         objectId,
@@ -833,7 +834,8 @@ class CompositionStore {
 
     this.DiscardDraft({objectId, compositionKey, removeComposition: false});
 
-    this.GetCompositionPlayoutUrl();
+    yield new Promise(resolve => setTimeout(resolve, 1000));
+    this.GetCompositionPlayoutUrl(0, true);
   });
 
   SetCompositionObject = flow(function * ({objectId, compositionKey, addToMyLibrary=false}) {
