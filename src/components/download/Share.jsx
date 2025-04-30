@@ -745,20 +745,26 @@ const ShareDetails = observer(({store, selectedShare, Back, Close}) => {
                     </span>
                   </div>
               }
-
-              <div className={S("share-details__detail")}>
-                <label>Start Time:</label>
-                <span className="monospace">{store.FrameToSMPTE(selectedShare.clipDetails.clipInFrame || 0)}</span>
-              </div>
-              <div className={S("share-details__detail")}>
-                <label>End Time:</label>
-                <span
-                  className="monospace">{store.FrameToSMPTE(selectedShare.clipDetails.clipOutFrame || store.totalFrames - 1)}</span>
-              </div>
-              <div className={S("share-details__detail")}>
-                <label>Duration:</label>
-                <span>{selectedShare.clipDetails.durationString}</span>
-              </div>
+              {
+                store.channel ? null :
+                  <>
+                    <div className={S("share-details__detail")}>
+                      <div className={S("share-details__detail")}>
+                        <label>Start Time:</label>
+                        <span
+                          className="monospace">{store.FrameToSMPTE(selectedShare.clipDetails.clipInFrame || 0)}</span>
+                      </div>
+                      <div className={S("share-details__detail")}>
+                        <label>End Time:</label>
+                        <span
+                          className="monospace">{store.FrameToSMPTE(selectedShare.clipDetails.clipOutFrame || store.totalFrames - 1)}
+                        </span>
+                      </div>
+                      <label>Duration:</label>
+                      <span>{selectedShare.clipDetails.durationString}</span>
+                    </div>
+                  </>
+              }
               {
                 selectedShare.compositionKey === "main" ?
                   <div className={S("share-details__detail")}>
@@ -767,7 +773,7 @@ const ShareDetails = observer(({store, selectedShare, Back, Close}) => {
                   </div> :
                   <div className={S("share-details__detail")}>
                     <label>Composition:</label>
-                    <span>{ selectedShare.compositionKey }</span>
+                    <span>{selectedShare.compositionKey }</span>
                   </div>
               }
               {
@@ -828,8 +834,8 @@ const ShareModal = observer(({store, ...props}) => {
       representation: "",
       audioRepresentation: "",
       offering: store.offeringKey,
-      clipInFrame: store.clipInFrame,
-      clipOutFrame: store.clipOutFrame
+      clipInFrame: store.channel ? undefined : store.clipInFrame,
+      clipOutFrame: store.channel ? undefined : store.clipOutFrame
     });
   }, [store.clipInFrame, store.clipOutFrame]);
 

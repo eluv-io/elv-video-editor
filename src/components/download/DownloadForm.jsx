@@ -1,7 +1,7 @@
 import DownloadStyles from "@/assets/stylesheets/modules/download.module.scss";
 
 import {observer} from "mobx-react-lite";
-import {downloadStore} from "@/stores/index.js";
+import {compositionStore, downloadStore} from "@/stores/index.js";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import {AsyncButton, ClipTimeInfo, CopyButton, FormSelect, FormTextInput} from "@/components/common/Common.jsx";
 import {Button} from "@mantine/core";
@@ -11,8 +11,9 @@ import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 const S = CreateModuleClassMatcher(DownloadStyles);
 
 export const DownloadPreview = observer(({store, options}) => {
+  const totalFrames = store.channel ? compositionStore.compositionDurationFrames : store.totalFrames;
   const clipInFrame = options.noClip ? 0 : options.clipInFrame || 0;
-  const clipOutFrame = options.noClip ? store.totalFrames - 1 : options.clipOutFrame || store.totalFrames - 1;
+  const clipOutFrame = options.noClip ? totalFrames - 1 : options.clipOutFrame || totalFrames - 1;
 
   return (
     <div className={S("preview")}>

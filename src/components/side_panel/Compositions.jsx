@@ -302,7 +302,7 @@ export const CompositionBrowser = observer(() => {
               >
                 <span>
                   <Icon icon={MediaIcon} />
-                  { label }
+                  { compositionStore.myCompositions[rootStore.selectedObjectId]?.[key]?.name || label }
                 </span>
                 <span>
                   <IconButton
