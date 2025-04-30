@@ -345,6 +345,60 @@ class CompositionStore {
     }
   }
 
+  SortCompositionClips() {
+    this.PerformAction({
+      label: "Reorder Clips",
+      Action: () => {
+        const clipIdList = this.clipList
+          .sort((a, b) => a.clipInFrame < b.clipInFrame ? -1 : 1)
+          .map(clip => clip.clipId);
+
+        let combinedClipIdList = [];
+        let deletedClips = [];
+        for(let i = 0; i < clipIdList.length; i++) {
+          const clip = this.clips[clipIdList[i]];
+          const nextClip = this.clips[clipIdList[i + 1]];
+
+          if(
+            !nextClip ||
+            clip.storeKey !== nextClip.storeKey ||
+            clip.clipOutFrame <= nextClip.clipInFrame
+          ) {
+            combinedClipIdList.push(clip.clipId);
+          } else {
+            // Overlapping clips, combine
+            const clipId = this.rootStore.NextId();
+            this.clips[clipId] = {
+              ...clip,
+              ...nextClip,
+              clipId,
+              name: `${clip.name || ""} | ${nextClip.name || ""}`
+            };
+
+            combinedClipIdList.push(clipId);
+
+            if(this.selectedClipId === clip.clipId || this.selectedClipId === nextClip.clipId) {
+              this.SetSelectedClip({clipId});
+            }
+
+            deletedClips.push(clip.clipId);
+            deletedClips.push(nextClip.clipId);
+            delete this.clips[clip.clipId];
+            delete this.clips[nextClip.clipId];
+
+            i += 1;
+          }
+        }
+
+        this.clipIdList = combinedClipIdList;
+
+        deletedClips.forEach(clipId =>
+          delete this.clips[clipId]
+        );
+      }
+    });
+  }
+
   SplitClip(progress) {
     const frame = Math.floor(this.compositionDurationFrames * (progress / 100));
     const clipIndex = this.ClipIndexAt(frame);
@@ -1047,7 +1101,10 @@ class CompositionStore {
       label,
       Action,
       Undo: () => {
-        this.clips = originalData.clips;
+        this.clips = {
+          ...this.clips,
+          ...originalData.clips
+        };
         this.clipIdList = originalData.clipIdList;
       },
       addedAt: Date.now(),

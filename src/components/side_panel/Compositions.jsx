@@ -17,6 +17,7 @@ import TagIcon from "@/assets/icons/v2/tag.svg";
 import DeleteIcon from "@/assets/icons/trash.svg";
 import ChevronUpIcon from "@/assets/icons/chevron-up.svg";
 import ChevronDownIcon from "@/assets/icons/chevron-down.svg";
+import {ClipTooltipContent} from "@/components/compositions/Clips.jsx";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -48,7 +49,11 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
         style={{aspectRatio: store.aspectRatio}}
         className={S("clip__image")}
       />
-      <Tooltip disabled={!!compositionStore.draggingClip} label={clip.name} multiline maw={300}>
+      <Tooltip
+        disabled={!!compositionStore.draggingClip}
+        label={<ClipTooltipContent clip={clip} />}
+        maw={300}
+      >
         <div draggable={false} className={S("clip__name", "ellipsis")}>
           {clip.name}
         </div>

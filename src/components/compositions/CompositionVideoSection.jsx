@@ -30,6 +30,7 @@ import XIcon from "@/assets/icons/v2/x.svg";
 import XCircleIcon from "@/assets/icons/X.svg";
 import TrashIcon from "@/assets/icons/trash.svg";
 import PublishIcon from "@/assets/icons/v2/publish.svg";
+import {ClipTooltipContent} from "@/components/compositions/Clips.jsx";
 
 const S = CreateModuleClassMatcher(VideoStyles);
 
@@ -294,7 +295,15 @@ const Title = observer(({clipView}) => {
         !editing ? null :
           <TitleEditModal name={name} clipView={clipView} Close={() => setEditing(false)} />
       }
-      <Tooltip label={<div style={{textOverflow: "ellipsis", overflowX: "hidden"}}>{name}</div>} multiline maw={500}>
+      <Tooltip
+        label={
+          clipView ?
+            <ClipTooltipContent clip={compositionStore.selectedClip} /> :
+            <div style={{textOverflow: "ellipsis", overflowX: "hidden"}}>{name}</div>
+        }
+        multiline
+        maw={500}
+      >
         <div className={S("ellipsis")}>
           {name}
         </div>

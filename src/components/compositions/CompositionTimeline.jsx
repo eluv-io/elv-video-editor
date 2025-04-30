@@ -20,6 +20,7 @@ import CompositionTrack from "@/components/compositions/CompositionTrack.jsx";
 import {useLocation, useParams} from "wouter";
 import CompositionSelection from "@/components/compositions/CompositionSelection.jsx";
 import Share from "@/components/download/Share.jsx";
+import Download from "@/components/download/Download.jsx";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
@@ -29,7 +30,7 @@ import SplitIcon from "@/assets/icons/v2/split.svg";
 import LinkIcon from "@/assets/icons/v2/external-link.svg";
 import DiscardDraftIcon from "@/assets/icons/v2/discard-draft.svg";
 import ReloadIcon from "@/assets/icons/v2/reload.svg";
-import Download from "@/components/download/Download.jsx";
+import ReorderIcon from "@/assets/icons/v2/sort-clips.svg";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -48,6 +49,23 @@ const TimelineTopBar = observer(() => {
           label={`Redo ${compositionStore.nextRedoAction?.label || ""}`}
           disabled={!compositionStore.nextRedoAction}
           onClick={() => compositionStore.Redo()}
+        />
+        <div className={S("toolbar__separator")}/>
+        <IconButton
+          icon={ReorderIcon}
+          disabled={compositionStore.clipIdList.length === 0}
+          onClick={async () => await Confirm({
+            title: "Reorder Clips",
+            text: "Are you sure you want to reorder your composition clips?",
+            onConfirm: async () => await compositionStore.SortCompositionClips()
+          })}
+          label="Reorder Clips by Time"
+        />
+        <IconButton
+          icon={SplitIcon}
+          disabled={compositionStore.clipIdList.length === 0 || compositionStore.videoStore.frame === 0}
+          onClick={() => compositionStore.SplitClip(compositionStore.seek)}
+          label="Split Clip at Playhead"
         />
         <div className={S("toolbar__separator")}/>
         <div className={S("jump-to")}>
@@ -95,13 +113,6 @@ const TimelineTopBar = observer(() => {
           highlight
           label="Set Clip Out to Current Frame"
           onClick={() => compositionStore.videoStore.SetClipMark({outFrame: compositionStore.videoStore.frame})}
-        />
-        <div className={S("toolbar__separator")}/>
-        <IconButton
-          icon={SplitIcon}
-          disabled={compositionStore.clipIdList.length === 0 || compositionStore.videoStore.frame === 0}
-          onClick={() => compositionStore.SplitClip(compositionStore.seek)}
-          label="Split Clip at Playhead"
         />
         <div className={S("toolbar__separator")}/>
         <IconButton
