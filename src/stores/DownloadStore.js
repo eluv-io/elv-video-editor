@@ -189,8 +189,6 @@ class DownloadStore {
         expiresAt: Date.now() + 29 * 24 * 60 * 60 * 1000
       };
 
-      console.log(this.downloadJobInfo);
-
       this.SaveDownloadJobInfo();
       this.downloadJobInfo[response.job_id].automaticDownloadInterval = setInterval(async () => {
         const status = await this.DownloadJobStatus({jobId: response.job_id}) || {};
@@ -209,7 +207,9 @@ class DownloadStore {
         status
       };
     } catch(error) {
+      // eslint-disable-next-line no-console
       console.error("Error performing download:");
+      // eslint-disable-next-line no-console
       console.error(error);
       if(encrypt) {
         return this.StartDownloadJob({...arguments[0], encrypt: false});
@@ -358,6 +358,7 @@ class DownloadStore {
       attributes.downloadJobId = [
         (yield this.StartDownloadJob({
           ...downloadOptions,
+          composition: store.channel,
           isShareDownload: true
         })).jobId
       ];

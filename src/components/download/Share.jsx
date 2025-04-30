@@ -185,7 +185,7 @@ const ShareCreateForm = observer(({
     error = "Please specify a title for this content";
   }
 
-  const downloadDisabled = store.downloadOfferingKeys.length === 0;
+  const downloadDisabled = !store.channel && store.downloadOfferingKeys.length === 0;
 
   return (
     <form onSubmit={event => event.preventDefault()} className={S("share-form")}>
@@ -218,7 +218,6 @@ const ShareCreateForm = observer(({
           }
           <FormSelect
             label="Permissions"
-            disabled={isComposition}
             value={shareOptions.permissions}
             onChange={value => setShareOptions({...shareOptions, permissions: value})}
             options={[

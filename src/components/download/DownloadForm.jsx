@@ -181,8 +181,8 @@ const DownloadForm = observer(({store, buttonText="Download", Submit, Close}) =>
     audioRepresentation: "",
     offering: store.channel ? store.offeringKey :
       store.downloadOfferingKeys.includes(store.offeringKey) ? store.offeringKey : store.downloadOfferingKeys[0],
-    clipInFrame: store.clipInFrame,
-    clipOutFrame: store.clipOutFrame
+    clipInFrame: store.channel ? undefined : store.clipInFrame,
+    clipOutFrame: store.channel ? undefined : store.clipOutFrame
   });
 
   return (
