@@ -216,6 +216,11 @@ class ThumbnailStore {
 
         this.generating = false;
         localStorage.removeItem(`regenerate-thumbnails-${this.parentStore.videoObject?.objectId}`);
+
+        // If composition is loaded, make sure to reload the thumbnails there
+        if(this.parentStore?.rootStore?.compositionStore?.sourceVideoStore?.thumbnailStore) {
+          this.parentStore?.rootStore?.compositionStore?.sourceVideoStore?.thumbnailStore.ReloadThumbnails();
+        }
       }
 
       this.thumbnailStatus.status = {

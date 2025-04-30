@@ -403,6 +403,18 @@ class VideoStore {
     yield this.SetVideo({objectId, writeToken: this.videoObject?.writeToken, preferredOfferingKey: offering});
   });
 
+  ReloadThumbnails = flow(function * () {
+    const videoObject = yield LoadVideo({
+      objectId: this.videoObject?.objectId,
+      writeToken: this.videoObject?.writeToken,
+      preferredOfferingKey: this.videoObject?.offeringKey,
+      channel: this.channel
+    });
+
+    this.thumbnailTrackUrl = videoObject.thumbnailTrackUrl;
+    this.thumbnailStore.LoadThumbnails(videoObject.thumbnailTrackUrl);
+  });
+
   ReloadMetadata = flow(function * () {
     const versionHash = this.rootStore.menuStore.selectedObject.versionHash;
 
