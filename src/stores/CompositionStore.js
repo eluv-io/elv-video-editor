@@ -1310,7 +1310,7 @@ class CompositionStore {
     const clips = (yield this.rootStore.aiStore.QueryAIAPI({
       server: "ai",
       objectId: index.id,
-      path: UrlJoin("search", "q", index.versionHash, "rep", "search"),
+      path: UrlJoin("search", "q", index.id, "rep", "search"),
       channelAuth: true,
       queryParams: {
         terms: query,
