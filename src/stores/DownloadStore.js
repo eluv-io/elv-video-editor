@@ -20,14 +20,21 @@ class DownloadStore {
     this.rootStore = rootStore;
   }
 
+  get videoObjectId() {
+    return this.rootStore.videoStore?.videoObject?.objectId ||
+      this.rootStore.compositionStore?.videoStore?.videoObject?.objectId;
+  }
+
   DownloadJobDefaultFilename({store, format="mp4", offering="default", clipInFrame, clipOutFrame, representationInfo, audioRepresentationInfo}) {
     clipInFrame = clipInFrame || 0;
     clipOutFrame = clipOutFrame || store.totalFrames - 1;
 
-    let filename = this.rootStore.videoStore.name;
+    let filename = store.channel ?
+      this.rootStore.compositionStore.compositionObject?.name :
+      this.rootStore.videoStore.name;
 
     if(offering && offering !== "default") {
-      filename = `${filename} (${offering})`;
+      filename = `${filename || ""} (${offering})`;
     }
 
     if(clipInFrame || (clipOutFrame && clipOutFrame < store.totalFrames - 1)) {
@@ -52,7 +59,7 @@ class DownloadStore {
       type: "app",
       appId: "video-editor",
       mode: "private",
-      key: `download-jobs-${this.rootStore.videoStore.videoObject.objectId}`,
+      key: `download-jobs-${this.videoObjectId}`,
       value: this.rootStore.client.utils.B64(
         JSON.stringify(this.downloadJobInfo || {})
       )
@@ -66,7 +73,7 @@ class DownloadStore {
           type: "app",
           appId: "video-editor",
           mode: "private",
-          key: `download-jobs-${this.rootStore.videoStore.videoObject.objectId}`,
+          key: `download-jobs-${this.videoObjectId}`,
         })) || ""
       ) || "{}"
     );
@@ -88,6 +95,7 @@ class DownloadStore {
   });
 
   StartDownloadJob = flow(function * ({
+    composition,
     filename,
     format="mp4",
     offering="default",
@@ -99,8 +107,20 @@ class DownloadStore {
     encrypt=true
   }) {
     try {
+      let totalFrames, frameRate, versionHash;
+      if(composition) {
+        totalFrames = this.rootStore.compositionStore.compositionDurationFrames;
+        frameRate = this.rootStore.compositionStore.videoStore.frameRate;
+        versionHash = this.rootStore.compositionStore.videoStore.videoObject.versionHash;
+        offering = this.rootStore.compositionStore.compositionObject.compositionKey;
+      } else {
+        totalFrames = this.rootStore.videoStore.totalFrames;
+        frameRate = this.rootStore.videoStore.frameRate;
+        versionHash = this.rootStore.videoStore.videoObject.versionHash;
+      }
+
       clipInFrame = clipInFrame || 0;
-      clipOutFrame = clipOutFrame || this.rootStore.videoStore.totalFrames - 1;
+      clipOutFrame = clipOutFrame || totalFrames - 1;
 
       filename = filename || this.DownloadJobDefaultFilename({format, offering, clipInFrame, clipOutFrame});
       const expectedExtension = format === "mp4" ? ".mp4" : ".mov";
@@ -114,6 +134,10 @@ class DownloadStore {
         filename
       };
 
+      if(composition) {
+        params.offering_type = "composition";
+      }
+
       if(representation) {
         params.representation = representation;
       }
@@ -124,15 +148,15 @@ class DownloadStore {
 
       if(clipInFrame) {
         // Use more literal time for api as opposed to SMPTE
-        params.start_ms = `${((1 / this.rootStore.videoStore.frameRate) * clipInFrame).toFixed(4)}s`;
+        params.start_ms = `${((1 / frameRate) * clipInFrame).toFixed(4)}s`;
       }
 
-      if(clipOutFrame && clipOutFrame < this.rootStore.videoStore.totalFrames - 1) {
-        params.end_ms = `${((1 / this.rootStore.videoStore.frameRate) * clipOutFrame).toFixed(4)}s`;
+      if(clipOutFrame && clipOutFrame < totalFrames - 1) {
+        params.end_ms = `${((1 / frameRate) * clipOutFrame).toFixed(4)}s`;
       }
 
       const response = yield this.rootStore.client.MakeFileServiceRequest({
-        versionHash: this.rootStore.videoStore.videoObject.versionHash,
+        versionHash,
         path: "/call/media/files",
         method: "POST",
         body: params,
@@ -141,7 +165,7 @@ class DownloadStore {
 
       const status = yield this.DownloadJobStatus({
         jobId: response.job_id,
-        versionHash: this.rootStore.videoStore.videoObject.versionHash
+        versionHash
       });
 
       // If created for a share, do not save to personal downloads or initiate automatic download
@@ -152,7 +176,8 @@ class DownloadStore {
       }
 
       this.downloadJobInfo[response.job_id] = {
-        versionHash: this.rootStore.videoStore.videoObject.versionHash,
+        versionHash,
+        composition,
         filename,
         format,
         offering,
@@ -163,6 +188,8 @@ class DownloadStore {
         startedAt: Date.now(),
         expiresAt: Date.now() + 29 * 24 * 60 * 60 * 1000
       };
+
+      console.log(this.downloadJobInfo);
 
       this.SaveDownloadJobInfo();
       this.downloadJobInfo[response.job_id].automaticDownloadInterval = setInterval(async () => {
@@ -182,6 +209,8 @@ class DownloadStore {
         status
       };
     } catch(error) {
+      console.error("Error performing download:");
+      console.error(error);
       if(encrypt) {
         return this.StartDownloadJob({...arguments[0], encrypt: false});
       }

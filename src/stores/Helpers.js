@@ -76,6 +76,8 @@ export const LoadVideo = async ({
           ?.reduce((total, itemDuration) => itemDuration.add(total), 0)
           ?.valueOf();
 
+        videoObject.offeringKey = preferredOfferingKey;
+
         return videoObject;
       }
 

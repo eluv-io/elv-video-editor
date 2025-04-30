@@ -963,6 +963,10 @@ class CompositionStore {
     this.videoStore.name = this.compositionObject.name;
 
     // Add to my compositions
+    if(!this.myCompositions[objectId]) {
+      this.myCompositions[objectId] = {};
+    }
+
     if(!this.myCompositions[objectId][compositionKey]) {
       this.myCompositions[objectId][compositionKey] = {
         objectId,
@@ -980,6 +984,7 @@ class CompositionStore {
     this.GetCompositionPlayoutUrl();
 
     this.LoadHighlights();
+    this.rootStore.downloadStore.LoadDownloadJobInfo();
 
     if(addToMyLibrary) {
       this.rootStore.browserStore.AddMyLibraryItem({

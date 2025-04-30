@@ -120,7 +120,7 @@ export const DownloadFormFields = observer(({
           />
       }
       {
-        !fields.offering ? null :
+        store.channel || !fields.offering ? null :
           <FormSelect
             label="Offering"
             name="offering"
@@ -179,7 +179,8 @@ const DownloadForm = observer(({store, buttonText="Download", Submit, Close}) =>
     defaultFilename: "",
     representation: "",
     audioRepresentation: "",
-    offering: store.downloadOfferingKeys.includes(store.offeringKey) ? store.offeringKey : store.downloadOfferingKeys[0],
+    offering: store.channel ? store.offeringKey :
+      store.downloadOfferingKeys.includes(store.offeringKey) ? store.offeringKey : store.downloadOfferingKeys[0],
     clipInFrame: store.clipInFrame,
     clipOutFrame: store.clipOutFrame
   });
@@ -187,7 +188,7 @@ const DownloadForm = observer(({store, buttonText="Download", Submit, Close}) =>
   return (
     <div className={S("download-container")}>
       <div className={S("download")}>
-        <DownloadPreview store={store} options={downloadOptions}/>
+        <DownloadPreview store={store} options={downloadOptions} />
         <div className={S("download__form")}>
           <DownloadFormFields store={store} autoFocus options={downloadOptions} setOptions={setDownloadOptions} />
         </div>

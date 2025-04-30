@@ -29,6 +29,7 @@ import SplitIcon from "@/assets/icons/v2/split.svg";
 import LinkIcon from "@/assets/icons/v2/external-link.svg";
 import DiscardDraftIcon from "@/assets/icons/v2/discard-draft.svg";
 import ReloadIcon from "@/assets/icons/v2/reload.svg";
+import Download from "@/components/download/Download.jsx";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -119,6 +120,15 @@ const TimelineTopBar = observer(() => {
           disabled={!compositionStore.saved}
           onClick={() => compositionStore.OpenFabricBrowserLink()}
         />
+        <Download
+          disabled={!compositionStore.saved}
+          store={compositionStore.videoStore}
+          label={
+            !compositionStore.saved ?
+              "Please publish your changes before downloading this composition" :
+              "Download Composition"
+          }
+        />
         <Share
           disabled={!compositionStore.saved}
           store={compositionStore.videoStore}
@@ -173,7 +183,7 @@ const TimelineSeekBar = observer(({hoverSeek}) => {
   let indicators = [];
   if(compositionStore.videoStore.clipInFrame) {
     indicators.push({
-      position: 100 * compositionStore.videoStore.clipInFrame / (compositionStore.videoStore.totalFrames || 1),
+      position: 100 * compositionStore.videoStore.clipInFrame / (compositionStore.compositionDurationFrames || 1),
       style: "start",
       connectStart: true
     });
@@ -181,7 +191,7 @@ const TimelineSeekBar = observer(({hoverSeek}) => {
 
   if(compositionStore.videoStore.clipOutFrame < compositionStore.videoStore.totalFrames - 1) {
     indicators.push({
-      position: 100 * compositionStore.videoStore.clipOutFrame / (compositionStore.videoStore.totalFrames || 1),
+      position: 100 * compositionStore.videoStore.clipOutFrame / (compositionStore.compositionDurationFrames || 1),
       style: "end",
       connectEnd: true
     });
