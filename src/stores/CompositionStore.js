@@ -1375,9 +1375,9 @@ class CompositionStore {
         clips: true,
         clips_include_source_tags: true,
         debug: true,
-        max_total: 20,
+        max_total: 100,
         start: 0,
-        limit: 20,
+        limit: 100,
         filters: `id:${this.compositionObject.objectId}`
       }
     }))?.contents || [];
