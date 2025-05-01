@@ -572,7 +572,7 @@ export const TagsList = observer(({mode="tags"}) => {
     setTags(tags);
 
     if(!scrollTagId) {
-      setLoading(false);
+      setTimeout(() =>   setLoading(false), 500);
     }
 
     if(info.center === 0 && ref.current) {
@@ -585,7 +585,7 @@ export const TagsList = observer(({mode="tags"}) => {
 
     scrollRef.scrollIntoView();
     setScrolled(true);
-    setLoading(false);
+    setTimeout(() => setLoading(false), 500);
 
     setScrollTagId(undefined);
   }, [scrollRef, scrolled]);
@@ -626,7 +626,10 @@ export const TagsList = observer(({mode="tags"}) => {
       </div>
       {
         !loading ? null :
-          <Loader className={S("tags__loader")} />
+          <Loader
+            style={{height: ref?.current?.getBoundingClientRect().height}}
+            className={S("tags__loader")}
+          />
       }
     </>
   );

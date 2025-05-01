@@ -8,7 +8,6 @@ import {
   Confirm,
   FormTextArea,
   IconButton,
-  Linkish,
   Modal,
   SMPTEInput,
   SwitchInput
@@ -623,6 +622,77 @@ const TimelineThumbnailTrack = observer(() => {
   );
 });
 
+const TrackLabel = observer(({track}) => {
+  const toggleable = ["metadata", "clip"].includes(track.trackType);
+  return (
+    <div
+      role={toggleable ? "button" : "label"}
+      onClick={
+        !toggleable ? undefined :
+          () => {
+            const activeTracks = rootStore.page === "clips" ?
+              trackStore.activeClipTracks :
+              trackStore.activeTracks;
+
+            const trackSelected = Object.keys(activeTracks).length === 1 && activeTracks[track.key];
+            if(rootStore.page === "clips") {
+              trackStore.ResetActiveClipTracks();
+
+              if(!trackSelected) {
+                trackStore.ToggleClipTrackSelected(track.key, true);
+              }
+            } else {
+              trackStore.ResetActiveTracks();
+
+              if(!trackSelected) {
+                trackStore.ToggleTrackSelected(track.key, true);
+              }
+            }
+          }
+      }
+      className={S("timeline-row__label", toggleable ? "timeline-row__label--button" : "")}
+    >
+      {track.label}
+      {
+        !toggleable ? null :
+          <IconButton
+            icon={
+              tagStore.selectedTrackId === track.trackId ?
+                XIcon : EditIcon
+            }
+            label={
+              tagStore.selectedTrackId === track.trackId ?
+                "Hide Category Details" :
+                "View Category Details"
+            }
+            onClick={event => {
+              event.stopPropagation();
+              tagStore.selectedTrackId === track.trackId ?
+                tagStore.ClearSelectedTrack() :
+                tagStore.SetSelectedTrack(track.trackId);
+            }}
+            className={
+              S(
+                "timeline-row__icon",
+                "timeline-row__label-edit",
+                tagStore.selectedTrackId === track.trackId ? "timeline-row__label-edit--active" : ""
+              )
+            }
+          />
+      }
+      {
+        track.trackType !== "primary-content" ? null :
+          <IconButton
+            withinPortal
+            icon={QuestionMarkIcon}
+            label="Modifying the primary content tag allows you to specify the start and end times for this offering"
+            className={S("timeline-row__icon")}
+          />
+      }
+    </div>
+  );
+});
+
 const TagTimelineContent = observer(() => {
   let tracks = [];
   if(trackStore.showTags) {
@@ -662,7 +732,7 @@ const TagTimelineContent = observer(() => {
     return (
       <div className={S("content-block", "timeline-section")}>
         <div className={S("error-message")}>
-          { rootStore.errorMessage }
+          {rootStore.errorMessage}
         </div>
       </div>
     );
@@ -670,7 +740,7 @@ const TagTimelineContent = observer(() => {
 
   return (
     <>
-      <TimelineThumbnailTrack />
+      <TimelineThumbnailTrack/>
       {
         tracks.map((track, i) =>
           <div
@@ -683,64 +753,9 @@ const TagTimelineContent = observer(() => {
             }
             className={S("timeline-row", track.trackId === tagStore.selectedTrackId ? "timeline-row--selected" : "")}
           >
-            <div
-              role={track.trackType === "metadata" ? "button" : "label"}
-              onClick={
-                track.trackType !== "metadata" ? undefined :
-                  () => {
-                    const activeTracks = rootStore.page === "clips" ?
-                      trackStore.activeClipTracks :
-                      trackStore.activeTracks;
-
-                    const trackSelected = Object.keys(activeTracks).length === 1 && activeTracks[track.key];
-                    if(rootStore.page === "clips") {
-                      trackStore.ResetActiveClipTracks();
-
-                      if(!trackSelected) {
-                        trackStore.ToggleClipTrackSelected(track.key, true);
-                      }
-                    } else {
-                      trackStore.ResetActiveTracks();
-
-                      if(!trackSelected) {
-                        trackStore.ToggleTrackSelected(track.key, true);
-                      }
-                    }
-                  }
-              }
-              className={S("timeline-row__label", track.trackType === "metadata" ? "timeline-row__label--button" : "")}
-            >
-              {track.label}
-              {
-                track.trackType !== "metadata" ? null :
-                  <IconButton
-                    icon={
-                      tagStore.selectedTrackId === track.trackId ?
-                        XIcon : EditIcon
-                    }
-                    label={
-                      tagStore.selectedTrackId === track.trackId ?
-                        "Hide Category Details" :
-                        "View Category Details"
-                    }
-                    onClick={event => {
-                      event.stopPropagation();
-                      tagStore.selectedTrackId === track.trackId ?
-                        tagStore.ClearSelectedTrack() :
-                        tagStore.SetSelectedTrack(track.trackId);
-                    }}
-                    className={
-                      S(
-                        "timeline-row__icon",
-                        "timeline-row__label-edit",
-                        tagStore.selectedTrackId === track.trackId ? "timeline-row__label-edit--active" : ""
-                      )
-                    }
-                  />
-              }
-            </div>
+            <TrackLabel track={track} />
             <div className={S("timeline-row__content")}>
-              <Track track={track} />
+              <Track track={track}/>
             </div>
           </div>
         )
@@ -757,7 +772,7 @@ const ClipTimelineContent = observer(() => {
 
   return (
     <>
-      <TimelineThumbnailTrack />
+      <TimelineThumbnailTrack/>
       {
         tracks
           .filter(t => t)
@@ -773,26 +788,7 @@ const ClipTimelineContent = observer(() => {
               }
               className={S("timeline-row", track.trackId === tagStore.selectedTrackId ? "timeline-row--selected" : "")}
             >
-              <Linkish
-                onClick={
-                  track.trackType === "primary-content" ? undefined :
-                    () => tagStore.selectedTrackId === track.trackId ?
-                      tagStore.ClearSelectedTrack() :
-                      tagStore.SetSelectedTrack(track.trackId)
-                }
-                className={S("timeline-row__label")}
-              >
-                {track.label}
-                {
-                  track.trackType !== "primary-content" ? null :
-                    <IconButton
-                      withinPortal
-                      icon={QuestionMarkIcon}
-                      label="Modifying the primary content tag allows you to specify the start and end times for this offering"
-                      className={S("timeline-row__icon")}
-                    />
-                }
-              </Linkish>
+              <TrackLabel track={track} />
               <div className={S("timeline-row__content")}>
                 <Track track={track} noActive={track.trackType === "primary-content"} />
               </div>

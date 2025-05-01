@@ -253,10 +253,9 @@
   &__loader {
     animation: unset;
     background-color: var(--background-primary);
-    inset: 0;
-    padding-bottom: 115px;
+    bottom: 0;
     position: absolute;
-    top: 115px;
+    width: 100%;
     z-index: 1;
   }
 }

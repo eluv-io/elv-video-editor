@@ -33,9 +33,9 @@ export const BareLoader = ({className=""}) => (
   </div>
 );
 
-export const Loader = ({className = "", loaderClassName=""}) => {
+export const Loader = ({className = "", loaderClassName="", ...props}) => {
   return (
-    <div className={JoinClassNames(S("loader"), className)}>
+    <div className={JoinClassNames(S("loader"), className)} {...props}>
       <BareLoader className={loaderClassName}/>
     </div>
   );
