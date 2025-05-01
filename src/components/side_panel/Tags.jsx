@@ -537,11 +537,6 @@ export const TagsList = observer(({mode="tags"}) => {
     // Reset limit when tag content changes
     setPages({previous: 1, next: 1});
     setScrollTagId(tagStore.scrollTagId);
-
-    if(ref.current) {
-      ref.current.scrollTop = 0;
-    }
-
     setUpdate(update + 1);
   }, [
     videoStore.scaleMin,
@@ -576,6 +571,10 @@ export const TagsList = observer(({mode="tags"}) => {
 
     if(!scrollTagId) {
       setLoading(false);
+    }
+
+    if(info.center === 0 && ref.current) {
+      ref.current.scrollTop = 0;
     }
   }, [update]);
 
