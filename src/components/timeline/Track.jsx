@@ -199,11 +199,12 @@ const InitializeTrackReactions = ({track, worker}) => {
       () => ({
         hoverTags: tagStore.hoverTags,
         selectedTagIds: tagStore.selectedTagIds,
-        selectedTag: tagStore.selectedTagId
+        selectedTag: tagStore.selectedTagId,
+        scrollTagId: tagStore.scrollTagId
       }),
       () => {
         const selectedTagIds = Unproxy(tagStore.selectedTagIds);
-        const selectedTagId = Unproxy(tagStore.selectedTagId ? tagStore.selectedTagId : undefined);
+        const selectedTagId = Unproxy(tagStore.selectedTagId ? tagStore.selectedTagId : tagStore.scrollTagId);
         const hoverTagIds = Unproxy(tagStore.hoverTags);
 
         worker.postMessage({

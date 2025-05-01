@@ -1,12 +1,18 @@
 import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss";
 
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {tagStore, trackStore, videoStore} from "@/stores/index.js";
 import {FocusTrap, Tooltip} from "@mantine/core";
-import {Confirm, FormSelect, FormTextArea, IconButton, LoaderImage, SMPTEInput} from "@/components/common/Common.jsx";
-import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {
+  Confirm,
+  FormSelect,
+  FormTextArea,
+  IconButton, Loader,
+  LoaderImage,
+  SMPTEInput
+} from "@/components/common/Common.jsx";
+import {CreateModuleClassMatcher, useIsVisible} from "@/utils/Utils.js";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 
 import EditIcon from "@/assets/icons/Edit.svg";
@@ -19,6 +25,7 @@ import MarkOutIcon from "@/assets/icons/marker-out.svg";
 import XIcon from "@/assets/icons/X.svg";
 import TrashIcon from "@/assets/icons/trash.svg";
 import CheckmarkIcon from "@/assets/icons/check-circle.svg";
+import {useDebouncedState} from "@mantine/hooks";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -79,7 +86,7 @@ const TagActions = observer(({tag, track}) => {
           onClick={() =>
             tagStore.editing ?
               tagStore.ClearEditing() :
-              tagStore.ClearSelectedTag()
+              tagStore.ClearSelectedTag(true)
           }
         />
       </div>
@@ -203,6 +210,7 @@ const TagForm = observer(() => {
               {
                 duration < 10 ?
                   <LoaderImage
+                    loaderAspectRatio={videoStore.aspectRatio}
                     key={`preview-${tag.startTime}-${tag.endTime}`}
                     src={videoStore.thumbnailStore.ThumbnailImage(tag.startTime)}
                     className={S("tag-details__thumbnail")}
@@ -378,14 +386,36 @@ export const TagDetails = observer(() => {
   );
 });
 
-const Tag = observer(({track, tag}) => {
+const Tag = observer(({track, tag, setTagRef}) => {
+  const [ref, setRef] = useState(null);
+  const visible = useIsVisible(ref);
+
   if(!track || !tag) {
-    return null; }
+    return null;
+  }
+
+  if(!visible) {
+    // If tag is not currently visible, do not fully render it
+    return (
+      <div
+        ref={ref => {
+          setRef(ref);
+          setTagRef?.(ref);
+        }}
+        className={S("tag", "tag--placeholder")}
+      />
+    );
+  }
 
   const color = track.color;
+  const active = videoStore.currentTime >= tag.startTime && videoStore.currentTime <= tag.endTime;
 
   return (
     <button
+      ref={ref => {
+        setRef(ref);
+        setTagRef?.(ref);
+      }}
       onClick={() => tagStore.SetTags(track.trackId, tag.tagId, tag.startTime)}
       onMouseEnter={() => tagStore.SetHoverTags([tag.tagId], track.trackId, videoStore.TimeToSMPTE(tag.startTime))}
       onMouseLeave={() => tagStore.SetHoverTags([], track.trackId, videoStore.TimeToSMPTE(tag.startTime))}
@@ -393,8 +423,9 @@ const Tag = observer(({track, tag}) => {
         S(
           "tag",
           videoStore.thumbnailStore.thumbnailStatus.available ? "tag--thumbnail" : "",
-          tagStore.selectedTagIds.includes(tag.tagId) ? "tag--selected" : "",
-          tagStore.hoverTags.includes(tag.tagId) ? "tag--hover" : ""
+          tagStore.scrollTagId === tag.tagId || tagStore.selectedTagIds.includes(tag.tagId) ? "tag--selected" : "",
+          tagStore.hoverTags.includes(tag.tagId) ? "tag--hover" : "",
+          active ? "tag--active" : ""
         )
       }
     >
@@ -466,10 +497,17 @@ const Tag = observer(({track, tag}) => {
   );
 });
 
+// A special bidirectional infinite scroll to deal with the ability to center on a selected tag
 export const TagsList = observer(({mode="tags"}) => {
+  const ref = useRef(null);
+  const [loading, setLoading] = useState(true);
+  const [scrollRef, setScrollRef] = useState(undefined);
+  const perPage = 10;
+  const [pages, setPages] = useDebouncedState({previous: 1, next: 1}, 250);
+  const [update, setUpdate] = useDebouncedState(0, 250);
+  const [scrollTagId, setScrollTagId] = useState(undefined);
   const [tags, setTags] = useState([]);
-  const [limit, setLimit] = useState(0);
-  const [totalTags, setTotalTags] = useState(0);
+  const [pageInfo, setPageInfo] = useState({min: 0, max: 0, center: 0, total: 0});
 
   let tracks = {};
 
@@ -479,52 +517,115 @@ export const TagsList = observer(({mode="tags"}) => {
     trackStore.clipTracks.forEach(track => tracks[track.key] = track);
   }
 
+  const CheckUpdate = () => {
+    if(!ref?.current || loading) { return; }
+
+    if(pageInfo.min > 0 && ref.current.scrollTop < ref.current.scrollHeight * 0.23) {
+      // Top infinite scroll
+      setPages({...pages, previous: pages.previous + 1});
+      //setLimit(limit + batchSize);
+      setUpdate(update + 1);
+    } else if(pageInfo.max < pageInfo.total && ref.current.scrollTop + ref.current.offsetHeight > ref.current.scrollHeight * 0.86) {
+      // Bottom infinite scroll
+      setPages({...pages, next: pages.next + 1});
+      setUpdate(update + 1);
+    }
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    // Reset limit when tag content changes
+    setPages({previous: 1, next: 1});
+    setScrollTagId(tagStore.scrollTagId);
+
+    if(ref.current) {
+      ref.current.scrollTop = 0;
+    }
+
+    setUpdate(update + 1);
+  }, [
+    videoStore.scaleMin,
+    videoStore.scaleMax,
+    trackStore.tracks.length,
+    tagStore.filter,
+    tagStore.selectedTagIds,
+    tagStore.isolatedTag,
+    Object.keys(trackStore.activeTracks).length,
+    Object.keys(trackStore.visibleClipTracks).length,
+    trackStore.showPrimaryContent,
+    tagStore.editPosition,
+    tagStore.scrollTagId,
+    tagStore.scrollSeekTime
+  ]);
+
+  useEffect(() => {
+    const { tags, centerTagId, ...info } = tagStore.Tags({
+      mode,
+      startFrame: videoStore.scaleMinFrame,
+      endFrame: videoStore.scaleMaxFrame,
+      pages,
+      perPage,
+      selectedOnly: true,
+      scrollTagId: tagStore.scrollTagId,
+      scrollSeekTime: tagStore.scrollSeekTime
+    });
+
+    setPageInfo(info);
+    setScrollTagId(centerTagId);
+    setTags(tags);
+
+    if(!scrollTagId) {
+      setLoading(false);
+    }
+  }, [update]);
+
+  useEffect(() => {
+    if(!scrollRef) { return; }
+
+    scrollRef.scrollIntoView();
+    setLoading(false);
+
+    setScrollTagId(undefined);
+  }, [scrollRef]);
+
+  useEffect(() => {
+    if(!ref.current) { return; }
+
+    const resizeObserver = new ResizeObserver(CheckUpdate);
+
+    resizeObserver.observe(ref.current);
+
+    return () => resizeObserver.disconnect();
+  }, [ref]);
+
   return (
     <>
       {
-        !videoStore?.initialized || totalTags === 0 ? null :
+        !videoStore?.initialized || pageInfo.total === 0 ? null :
           <div className={S("count")}>
-            Showing 1 - {limit} of {totalTags}
+            Showing {pageInfo.min} - {pageInfo.max} of {pageInfo.total}
           </div>
       }
-      <InfiniteScroll
-        watchList={[
-          videoStore.scaleMin,
-          videoStore.scaleMax,
-          trackStore.tracks.length,
-          tagStore.filter,
-          tagStore.selectedTagIds,
-          tagStore.isolatedTag,
-          Object.keys(trackStore.activeTracks).length,
-          Object.keys(trackStore.visibleClipTracks).length,
-          trackStore.showPrimaryContent,
-          tagStore.editPosition
-        ]}
+      <div
+        ref={ref}
+        onScroll={CheckUpdate}
         className={S("tags")}
-        Update={limit => {
-          const { tags, total } = tagStore.Tags({
-            mode,
-            startFrame: videoStore.scaleMinFrame,
-            endFrame: videoStore.scaleMaxFrame,
-            limit,
-            selectedOnly: true
-          });
-
-          setTags(tags);
-          setTotalTags(total);
-          setLimit(Math.min(total, limit));
-        }}
       >
         {
           tags.map(tag =>
             <Tag
               key={`tag-${tag.tagId}`}
+              setTagRef={tag.tagId === scrollTagId ? setScrollRef : undefined}
               track={tracks[tag.trackKey]}
               tag={tag}
             />
           )
         }
-      </InfiniteScroll>
+      </div>
+      {
+        !loading ? null :
+          <Loader className={S("tags__loader")} />
+      }
     </>
   );
 });

@@ -145,6 +145,33 @@
     position: relative;
     text-align: left;
     transition: background-color 0.25s ease;
+
+    &--button {
+      cursor: pointer;
+      padding-right: 30px;
+
+      &:hover {
+        background-color: var(--background-toolbar--active);
+      }
+    }
+
+    &:hover {
+      .timeline-row__label-edit {
+        opacity: 1;
+        transition-delay: 0.5s;
+      }
+    }
+  }
+
+  &__label-edit {
+    color: var(--text-tertiary);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+
+    &--active {
+      color: var(--text-secondary);
+      opacity: 1;
+    }
   }
 
   &__icon {

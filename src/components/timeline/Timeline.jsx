@@ -45,6 +45,8 @@ import IsolateClipIcon from "@/assets/icons/v2/isolate.svg";
 import ReloadIcon from "@/assets/icons/v2/reload.svg";
 import LiveToVodIcon from "@/assets/icons/v2/live-to-vod.svg";
 import CheckmarkIcon from "@/assets/icons/check-circle.svg";
+import EditIcon from "@/assets/icons/Edit.svg";
+import XIcon from "@/assets/icons/X.svg";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -424,7 +426,10 @@ const TimelineSeekBar = observer(({hoverSeek}) => {
         nMarks={videoStore.sliderMarks}
         majorMarksEvery={videoStore.majorMarksEvery}
         RenderText={progress => videoStore.ProgressToSMPTE(progress)}
-        onChange={progress => videoStore.Seek(videoStore.ProgressToFrame(progress))}
+        onChange={progress => {
+          videoStore.Seek(videoStore.ProgressToFrame(progress));
+          tagStore.SetScrollSeekTime(videoStore.ProgressToTime(progress));
+        }}
         className={S("seek-bar")}
       />
      </div>
@@ -678,17 +683,62 @@ const TagTimelineContent = observer(() => {
             }
             className={S("timeline-row", track.trackId === tagStore.selectedTrackId ? "timeline-row--selected" : "")}
           >
-            <Linkish
+            <div
+              role={track.trackType === "metadata" ? "button" : "label"}
               onClick={
                 track.trackType !== "metadata" ? undefined :
-                  () => tagStore.selectedTrackId === track.trackId ?
-                    tagStore.ClearSelectedTrack() :
-                    tagStore.SetSelectedTrack(track.trackId)
+                  () => {
+                    const activeTracks = rootStore.page === "clips" ?
+                      trackStore.activeClipTracks :
+                      trackStore.activeTracks;
+
+                    const trackSelected = Object.keys(activeTracks).length === 1 && activeTracks[track.key];
+                    if(rootStore.page === "clips") {
+                      trackStore.ResetActiveClipTracks();
+
+                      if(!trackSelected) {
+                        trackStore.ToggleClipTrackSelected(track.key, true);
+                      }
+                    } else {
+                      trackStore.ResetActiveTracks();
+
+                      if(!trackSelected) {
+                        trackStore.ToggleTrackSelected(track.key, true);
+                      }
+                    }
+                  }
               }
-              className={S("timeline-row__label")}
+              className={S("timeline-row__label", track.trackType === "metadata" ? "timeline-row__label--button" : "")}
             >
               {track.label}
-            </Linkish>
+              {
+                track.trackType !== "metadata" ? null :
+                  <IconButton
+                    icon={
+                      tagStore.selectedTrackId === track.trackId ?
+                        XIcon : EditIcon
+                    }
+                    label={
+                      tagStore.selectedTrackId === track.trackId ?
+                        "Hide Category Details" :
+                        "View Category Details"
+                    }
+                    onClick={event => {
+                      event.stopPropagation();
+                      tagStore.selectedTrackId === track.trackId ?
+                        tagStore.ClearSelectedTrack() :
+                        tagStore.SetSelectedTrack(track.trackId);
+                    }}
+                    className={
+                      S(
+                        "timeline-row__icon",
+                        "timeline-row__label-edit",
+                        tagStore.selectedTrackId === track.trackId ? "timeline-row__label-edit--active" : ""
+                      )
+                    }
+                  />
+              }
+            </div>
             <div className={S("timeline-row__content")}>
               <Track track={track} />
             </div>

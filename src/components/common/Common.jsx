@@ -649,3 +649,4 @@ export const Confirm = async ({title, text, labels={}, onConfirm, onCancel}) => 
 
   await onConfirm();
 };
+
