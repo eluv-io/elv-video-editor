@@ -506,6 +506,7 @@ export const TagsList = observer(({mode="tags"}) => {
   const [pages, setPages] = useDebouncedState({previous: 1, next: 1}, 250);
   const [update, setUpdate] = useDebouncedState(0, 250);
   const [scrollTagId, setScrollTagId] = useState(undefined);
+  const [scrolled, setScrolled] = useState(false);
   const [tags, setTags] = useState([]);
   const [pageInfo, setPageInfo] = useState({min: 0, max: 0, center: 0, total: 0});
 
@@ -536,6 +537,7 @@ export const TagsList = observer(({mode="tags"}) => {
     setLoading(true);
     // Reset limit when tag content changes
     setPages({previous: 1, next: 1});
+    setScrolled(false);
     setScrollTagId(tagStore.scrollTagId);
     setUpdate(update + 1);
   }, [
@@ -579,13 +581,14 @@ export const TagsList = observer(({mode="tags"}) => {
   }, [update]);
 
   useEffect(() => {
-    if(!scrollRef) { return; }
+    if(!scrollRef || scrolled) { return; }
 
     scrollRef.scrollIntoView();
+    setScrolled(true);
     setLoading(false);
 
     setScrollTagId(undefined);
-  }, [scrollRef]);
+  }, [scrollRef, scrolled]);
 
   useEffect(() => {
     if(!ref.current) { return; }
