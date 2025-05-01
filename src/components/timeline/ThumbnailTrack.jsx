@@ -114,6 +114,7 @@ const ThumbnailTrack = observer(({
   const [ref, setRef] = useState(null);
   const [trackDimensions, setTrackDimensions] = useState({height: 1, width: 1});
   const [hoverThumbnail, setHoverThumbnail] = useState(undefined);
+  const [hovering, setHovering] = useState(false);
 
   const thumbnailRatio = thumbnailFrom === "middle" ? 0.5 : 0;
 
@@ -147,13 +148,7 @@ const ThumbnailTrack = observer(({
     return startProgress + ((event.clientX - dimensions.left) / dimensions.width) * scale;
   };
 
-  if(
-    allowCreation &&
-    (
-      !store.thumbnailStore.thumbnailStatus.available ||
-      localStorage.getItem(`regenerate-thumbnails-${store.videoObject.objectId}`)
-    )
-  ) {
+  if(allowCreation && !store.thumbnailStore.thumbnailStatus.available) {
     return <ThumbnailCreationTrack store={store} />;
   }
 
@@ -161,10 +156,16 @@ const ThumbnailTrack = observer(({
     <div
       ref={setRef}
       key={`thumbnail-${store?.thumbnailStore?.thumbnailStatus?.available}`}
-      onMouseMove={event => setHoverThumbnail(
-        store.thumbnailStore.ThumbnailImage(CalculateProgress(event) * store.duration)
-      )}
-      onMouseLeave={() => setHoverThumbnail(undefined)}
+      onMouseMove={event => {
+        setHoverThumbnail(
+          store.thumbnailStore.ThumbnailImage(CalculateProgress(event) * store.duration)
+        );
+        setHovering(true);
+      }}
+      onMouseLeave={() => {
+        setHoverThumbnail(undefined);
+        setHovering(false);
+      }}
       onClick={
         !onClick ? undefined :
           event => onClick(CalculateProgress(event))
@@ -178,7 +179,7 @@ const ThumbnailTrack = observer(({
           let visibleFraction =
             index === visibleThumbnails - 1 ? fractionalThumbnail : 1;
 
-          const progress = startProgress + (thumbnailScale * index * visibleFraction + thumbnailScale * thumbnailRatio);
+          const progress = startProgress + (thumbnailScale * index  + thumbnailScale * thumbnailRatio * visibleFraction);
           let startTime = store.duration * progress;
 
           return (
@@ -207,11 +208,11 @@ const ThumbnailTrack = observer(({
     <Tooltip.Floating
       position="top"
       offset={hoverOffset}
-      disabled={!hoverThumbnail}
+      disabled={!hovering}
       label={
-        !hoverThumbnail ? null :
-          RenderTooltip ?
-            RenderTooltip(hoverThumbnail) :
+        RenderTooltip ?
+          RenderTooltip(hoverThumbnail) :
+          !hoverThumbnail ? null :
             <LoaderImage src={hoverThumbnail} className={S("thumbnail-tooltip__thumbnail")}/>
       }
       classNames={

@@ -2,9 +2,17 @@ import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 
 import React, {useState, useEffect} from "react";
 import {observer} from "mobx-react-lite";
-import {rootStore, browserStore, compositionStore} from "@/stores";
+import {rootStore, browserStore, compositionStore, editStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
-import {Confirm, IconButton, Linkish, Loader} from "@/components/common/Common";
+import {
+  AsyncButton,
+  Confirm,
+  FormSelect,
+  FormTextInput,
+  IconButton,
+  Linkish,
+  Loader
+} from "@/components/common/Common";
 import SVG from "react-inlinesvg";
 import {Redirect} from "wouter";
 import UrlJoin from "url-join";
@@ -188,7 +196,7 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
                 if(contentType === "library") {
                   Select({libraryId: id, name});
                 } else if(contentType === "object") {
-                  Select({objectId: id, name, isVideo, hasAssets, hasChannels, channels});
+                  Select({objectId: id, name, isVideo, hasAssets, hasChannels, channels, isLiveStream: item.isLiveStream, vods: item.vods});
                 } else if(contentType === "composition") {
                   Select({compositionKey: id});
                 } else if(contentType === "my-library") {
@@ -208,7 +216,15 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
                 <div className={S("browser-table__row-title")}>
                   <Tooltip label={name} openDelay={500}>
                     <div className={S("browser-table__row-title-main")}>
-                      {name}{item.compositionKey ? " (Composition)" : ""}
+                      <span>
+                        {name}{item.compositionKey ? " (Composition)" : ""}
+                      </span>
+                      {
+                        !item.isLiveStream ? "" :
+                          <span className={S("browser-table__live-tag", item.isLive ? "browser-table__live-tag--active" : "")}>
+                            { item.isLive ? "LIVE" : "Live Stream" }
+                          </span>
+                      }
                     </div>
                   </Tooltip>
                   <div className={S("browser-table__row-title-id")}>
@@ -432,12 +448,26 @@ const Browser = observer(() => {
     );
   }
 
-  const Select = ({libraryId, objectId, name, isVideo, hasChannels, channels}) => {
+  const Select = ({libraryId, objectId, name, isVideo, isLiveStream, vods, hasChannels, channels}) => {
     if(libraryId) {
       setSelectedLibraryId(libraryId);
     }
 
     if(!objectId) { return; }
+
+    if(isLiveStream) {
+      if(!vods || Object.keys(vods).length === 0) {
+        // No vods, must create new
+        browserStore.SetLiveToVodFormFields({
+          liveStreamLibraryId: libraryId,
+          liveStreamId: objectId
+        });
+        return;
+      }
+
+      setRedirect(UrlJoin("/", Object.keys(vods)[0]));
+      return;
+    }
 
     if(!isVideo) {
       setRedirect(UrlJoin("/", objectId, "assets"));
@@ -508,8 +538,125 @@ const MyLibraryBrowser = observer(() => {
   );
 });
 
+const LiveToVodForm = observer(() => {
+  const [libraries, setLibraries] = useState([]);
+  const [streamDetails, setStreamDetails] = useState(undefined);
+  const [submitting, setSubmitting] = useState(false);
+  const [redirect, setRedirect] = useState(undefined);
+
+  useEffect(() => {
+    if(!browserStore.liveToVodFormFields?.liveStreamId) { return; }
+
+    Promise.all([
+      browserStore.ObjectDetails({
+        objectId: browserStore.liveToVodFormFields?.liveStreamId
+      }),
+      browserStore.ListLibraries({page: 1, perPage: 1000})
+    ])
+      .then(([info, libraries]) => {
+        libraries = libraries.content || [];
+        browserStore.SetLiveToVodFormFields({
+          title: `${info.name} - VoD`,
+          libraryId: libraries.find(library =>
+            library?.name?.toLowerCase()?.includes("mezzanines")
+          )?.id || browserStore.liveToVodFormFields.liveStreamLibraryId
+        });
+
+        setLibraries(libraries);
+        setStreamDetails(info);
+      });
+  }, [browserStore.liveToVodFormFields?.liveStreamId]);
+
+  if(redirect) {
+    return <Redirect to={redirect} />;
+  }
+
+  if(!streamDetails) {
+    return <Loader />;
+  }
+
+  return (
+    <div className={S("ltv-form-container")}>
+      <div className={S("ltv-form")}>
+        <h1 className={S("ltv-form__header")}>
+          <IconButton
+            disabled={submitting}
+            icon={BackIcon}
+            label="Back"
+            onClick={() => {
+              browserStore.ClearLiveToVodFormFields();
+            }}
+          />
+          <span>
+            Create VoD from Live Stream
+          </span>
+        </h1>
+        <div className={S("ltv-form__fields")}>
+          <FormSelect
+            disabled={submitting}
+            label="Library"
+            value={browserStore.liveToVodFormFields.libraryId}
+            onChange={value => browserStore.SetLiveToVodFormFields({libraryId: value})}
+            options={libraries.map((library) => ({
+              value: library.id,
+              label: library.name
+            }))}
+          />
+          <FormTextInput
+            disabled={submitting}
+            label="Title"
+            value={browserStore.liveToVodFormFields.title}
+            onChange={event => browserStore.SetLiveToVodFormFields({title: event.target.value})}
+          />
+        </div>
+        <div className={S("ltv-form__actions")}>
+          {
+            submitting ?
+              <progress
+                value={editStore.liveToVodProgress[browserStore.liveToVodFormFields.liveStreamId]}
+                max={100}
+                className={S("ltv-form__progress")}
+              /> :
+              <AsyncButton
+                w={150}
+                h={40}
+                onClick={async () => {
+                  setSubmitting(true);
+
+                  try {
+                    const vodObjectId = await editStore.RegenerateLiveToVOD({
+                      liveObjectId: browserStore.liveToVodFormFields.liveStreamId,
+                      title: browserStore.liveToVodFormFields.title,
+                      vodObjectLibraryId: browserStore.liveToVodFormFields.libraryId
+                    });
+
+                    if(vodObjectId) {
+                      setRedirect(UrlJoin("/", vodObjectId));
+                    } else {
+                      setSubmitting(false);
+                    }
+                  } catch(error) {
+                    // eslint-disable-next-line no-console
+                    console.error(error);
+                    setSubmitting(false);
+                  }
+                }}
+              >
+                Create VoD
+              </AsyncButton>
+          }
+        </div>
+      </div>
+    </div>
+  );
+});
+
 const BrowserPage = observer(() => {
   const [tab, setTab] = useState("content");
+
+  if(browserStore.liveToVodFormFields.liveStreamId) {
+    return <LiveToVodForm />;
+  }
 
   return (
     <div className={S("browser-page")}>

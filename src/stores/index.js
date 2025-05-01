@@ -10,6 +10,7 @@ import VideoStore from "./VideoStore";
 import FileBrowserStore from "./FileBrowserStore.js";
 import CompositionStore from "@/stores/CompositionStore.js";
 import DownloadStore from "@/stores/DownloadStore.js";
+import AIStore from "@/stores/AIStore.jsx";
 import Id from "@/utils/Id.js";
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
 
@@ -40,9 +41,6 @@ class RootStore {
   l10n = LocalizationEN;
 
   tenantContractId;
-  searchIndexes = [];
-  selectedSearchIndexId;
-
   signedToken;
   authToken;
 
@@ -55,6 +53,7 @@ class RootStore {
   constructor() {
     makeAutoObservable(this);
 
+    this.aiStore = new AIStore(this);
     this.editStore = new EditStore(this);
     this.tagStore = new TagStore(this);
     this.keyboardControlStore = new KeyboardControlStore(this);
@@ -70,10 +69,6 @@ class RootStore {
     this.InitializeClient();
 
     window.rootStore = this;
-  }
-
-  get searchIndex() {
-    return this.searchIndexes.find(index => index.id === this.selectedSearchIndexId);
   }
 
   Reset() {
@@ -154,72 +149,11 @@ class RootStore {
     this.signedToken = yield client.CreateFabricToken({duration: 24 * 60 * 60 * 1000});
 
     this.tenantContractId = yield client.userProfileClient.TenantContractId();
-    this.searchIndexes = ((yield client.ContentObjectMetadata({
-      libraryId: this.tenantContractId.replace(/^iten/, "ilib"),
-      objectId: this.tenantContractId.replace(/^iten/, "iq__"),
-      metadataSubtree: "/public/search/indexes"
-    })) || [])
-      .filter((x, i, a) => a.findIndex(other => x.id === other.id) === i);
 
-    this.searchIndexes
-      .forEach((_, index) =>
-        this.GetSearchFields(index)
-      );
-
+    yield this.aiStore.LoadSearchIndexes();
     this.compositionStore.Initialize();
   });
 
-  SetSelectedSearchIndex(id) {
-    this.selectedSearchIndexId = id;
-  }
-
-  GetSearchFields = flow(function * (index) {
-    const indexId = this.searchIndexes[index]?.id;
-
-    if(!indexId) { return; }
-
-    try {
-      const versionHash = yield this.client.LatestVersionHash({objectId: indexId});
-
-      this.searchIndexes[index].versionHash = versionHash;
-
-      const indexerFields = yield this.client.ContentObjectMetadata({
-        versionHash,
-        metadataSubtree: "indexer/config/indexer/arguments/fields"
-      });
-
-      if(!indexerFields) { return; }
-
-      const fuzzySearchFields = {};
-      const excludedFields = ["music", "action", "segment", "title_type", "asset_type"];
-      Object.keys(indexerFields || {})
-        .filter(field => {
-          const isTextType = indexerFields[field].type === "text";
-          const isNotExcluded = !excludedFields.some(exclusion => field.includes(exclusion));
-          return isTextType && isNotExcluded;
-        })
-        .forEach(field => {
-          fuzzySearchFields[`f_${field}`] = {
-            label: field,
-            value: true
-          };
-        });
-
-      // Fields for all tenants that are not configured in the meta
-      ["movie_characters"].forEach(field => {
-        fuzzySearchFields[`f_${field}`] = {
-          label: field,
-          value: true
-        };
-      });
-
-      this.searchIndexes[index].fields = fuzzySearchFields;
-      this.SetSelectedSearchIndex(this.searchIndexes[0]?.id);
-    } catch(error) {
-      // eslint-disable-next-line no-console
-      console.error("Unable to load search fields", error);
-    }
-  });
 
   FabricUrl({libraryId, objectId, writeToken, versionHash, path="", auth, resolve=true, width}) {
     let url = new URL(
@@ -342,3 +276,4 @@ export const compositionStore = rootStore.compositionStore;
 export const assetStore = rootStore.assetStore;
 export const fileBrowserStore = rootStore.fileBrowserStore;
 export const downloadStore = rootStore.downloadStore;
+export const aiStore = rootStore.aiStore;

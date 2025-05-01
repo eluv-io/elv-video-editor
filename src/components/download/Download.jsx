@@ -10,7 +10,7 @@ import {
   Modal
 } from "@/components/common/Common.jsx";
 import {Tabs} from "@mantine/core";
-import {rootStore, videoStore, downloadStore} from "@/stores/index.js";
+import {rootStore, downloadStore} from "@/stores/index.js";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import DownloadForm from "@/components/download/DownloadForm.jsx";
 
@@ -111,7 +111,7 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
   }
 });
 
-const JobStatusTable = observer(({jobs, setConfirming, Reload}) => (
+const JobStatusTable = observer(({store, jobs, setConfirming, Reload}) => (
   <div className={S("history")}>
     <div className={S("history-row", "history-row--header")}>
       <div>Name</div>
@@ -125,10 +125,10 @@ const JobStatusTable = observer(({jobs, setConfirming, Reload}) => (
         const downloaded = downloadStore.downloadedJobs[job.jobId];
 
         const startFrame = job.clipInFrame || 0;
-        const endFrame = job.clipOutFrame || videoStore.totalFrames - 1;
+        const endFrame = job.clipOutFrame || store.totalFrames - 1;
 
-        const representations = videoStore.ResolutionOptions(job.offering);
-        const audioRepresentations = videoStore.AudioOptions(job.offering);
+        const representations = store.ResolutionOptions(job.offering);
+        const audioRepresentations = store.AudioOptions(job.offering);
 
         const resolutionLabel = representations?.find(rep => rep.key === job.representation)?.string;
         const audioTrackLabel = audioRepresentations?.find(rep => rep.key === job.audioRepresentation)?.label;
@@ -146,10 +146,10 @@ const JobStatusTable = observer(({jobs, setConfirming, Reload}) => (
           >
             <div className={S("history-row__cell", "history-row__cell--title")}>
               {
-                !videoStore.thumbnailStore.thumbnailStatus.available ? null :
-                  <div style={{aspectRatio: videoStore.aspectRatio}} className={S("history-row__thumbnail-container")}>
+                !store.thumbnailStore.thumbnailStatus.available ? null :
+                  <div style={{aspectRatio: store.aspectRatio}} className={S("history-row__thumbnail-container")}>
                     <PreviewThumbnail
-                      store={videoStore}
+                      store={store}
                       startFrame={startFrame}
                       endFrame={endFrame}
                       className={S("history-row__thumbnail")}
@@ -182,15 +182,15 @@ const JobStatusTable = observer(({jobs, setConfirming, Reload}) => (
                 <div className={S("job-details")}>
                   <div className={S("job-details__detail")}>
                     <label>Start Time:</label>
-                    <span className="monospace">{videoStore.FrameToSMPTE(startFrame)}</span>
+                    <span className="monospace">{store.FrameToSMPTE(startFrame)}</span>
                   </div>
                   <div className={S("job-details__detail")}>
                     <label>End Time:</label>
-                    <span className="monospace">{videoStore.FrameToSMPTE(endFrame)}</span>
+                    <span className="monospace">{store.FrameToSMPTE(endFrame)}</span>
                   </div>
                   <div className={S("job-details__detail")}>
                     <label>Duration:</label>
-                    <span>{videoStore.videoHandler.FrameToString({frame: endFrame - startFrame})}</span>
+                    <span>{store.videoHandler.FrameToString({frame: endFrame - startFrame})}</span>
                   </div>
                   <div className={S("job-details__detail")}>
                     <label>Offering:</label>
@@ -220,7 +220,7 @@ const JobStatusTable = observer(({jobs, setConfirming, Reload}) => (
   </div>
 ));
 
-const DownloadHistory = ({highlightedJobId, setConfirming}) => {
+const DownloadHistory = ({store, highlightedJobId, setConfirming}) => {
   const [key, setKey] = useState(0);
   const [jobs, setJobs] = useState([]);
 
@@ -231,11 +231,20 @@ const DownloadHistory = ({highlightedJobId, setConfirming}) => {
           ...downloadStore.downloadJobInfo[jobId],
           highlighted: jobId === highlightedJobId,
           jobId,
-          duration: videoStore.videoHandler.FrameToString({
+          duration: store.videoHandler.FrameToString({
             frame: downloadStore.downloadJobInfo[jobId].clipOutFrame - downloadStore.downloadJobInfo[jobId].clipInFrame
           })
         }))
-        .filter(({versionHash}) => videoStore.videoObject.objectId === rootStore.client.utils.DecodeVersionHash(versionHash).objectId)
+        .filter(({versionHash}) => store.videoObject.objectId === rootStore.client.utils.DecodeVersionHash(versionHash).objectId)
+        .filter(job => {
+          if(!store.channel) {
+            // All non-composition downloads
+            return !job.composition;
+          } else {
+            // Only downloads of this composition
+            return job.composition && job.offering === store.offeringKey;
+          }
+        })
         .sort((a, b) => a.startedAt > b.startedAt ? -1 : 1)
     );
   }, [key, downloadStore.downloadJobInfo]);
@@ -271,6 +280,7 @@ const DownloadHistory = ({highlightedJobId, setConfirming}) => {
         No Downloaded Clips
       </div> :
       <JobStatusTable
+        store={store}
         key={`job-table-${key}`}
         jobs={jobs}
         setConfirming={setConfirming}
@@ -279,7 +289,7 @@ const DownloadHistory = ({highlightedJobId, setConfirming}) => {
   );
 };
 
-const DownloadModalContent = observer(({tab, setTab, setConfirming, Close}) => {
+const DownloadModalContent = observer(({store, tab, setTab, setConfirming, Close}) => {
   const [jobId, setJobId] = useState(undefined);
   const [error, setError] = useState("");
 
@@ -301,6 +311,7 @@ const DownloadModalContent = observer(({tab, setTab, setConfirming, Close}) => {
     try {
       setJobId(
         (await downloadStore.StartDownloadJob({
+          composition: store.channel,
           format,
           offering,
           clipInFrame,
@@ -328,20 +339,20 @@ const DownloadModalContent = observer(({tab, setTab, setConfirming, Close}) => {
       }
       {
         tab === "details" ?
-          <DownloadForm store={videoStore} Submit={Submit} Close={Close} /> :
-          <DownloadHistory highlightedJobId={jobId} setConfirming={setConfirming} />
+          <DownloadForm store={store} Submit={Submit} Close={Close} /> :
+          <DownloadHistory store={store} highlightedJobId={jobId} setConfirming={setConfirming} />
       }
     </div>
   );
 });
 
-const DownloadModal = observer(props => {
+const DownloadModal = observer(({store, ...modalProps}) => {
   const [confirming, setConfirming] = useState(false);
   const [tab, setTab] = useState("details");
 
   useEffect(() => {
     setTab("details");
-  }, [props.opened]);
+  }, [modalProps.opened]);
 
   return (
     <Modal
@@ -354,7 +365,7 @@ const DownloadModal = observer(props => {
         </div>
       }
       padding={30}
-      {...props}
+      {...modalProps}
     >
       <Tabs value={tab} mb="sm" color="gray.5" onChange={setTab}>
         <Tabs.List>
@@ -367,25 +378,26 @@ const DownloadModal = observer(props => {
         </Tabs.List>
       </Tabs>
       <DownloadModalContent
+        store={store}
         tab={tab}
         setTab={setTab}
         setConfirming={setConfirming}
-        Close={props.onClose}
+        Close={modalProps.onClose}
       />
     </Modal>
   );
 });
 
-const DownloadModalButton = observer(() => {
+const DownloadModalButton = observer(({store, label, disabled}) => {
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     if(showModal) {
-      videoStore.PlayPause(true);
+      store.PlayPause(true);
     }
   }, [showModal]);
 
-  const disabled = videoStore.downloadOfferingKeys.length === 0;
+  disabled = disabled || (!store.channel && store.downloadOfferingKeys.length === 0);
 
   return (
     <>
@@ -393,13 +405,15 @@ const DownloadModalButton = observer(() => {
         disabled={disabled}
         icon={DownloadIcon}
         label={
-        disabled ?
-          "Download not available - No clear offerings for this content" :
-          "Download Current Clip"
+          label ||
+          (disabled ?
+            "Download not available - No clear offerings for this content" :
+            "Download Current Clip")
         }
         onClick={() => setShowModal(true)}
       />
       <DownloadModal
+        store={store}
         opened={showModal}
         onClose={() => setShowModal(false)}
       />

@@ -43,6 +43,8 @@ import ClipIcon from "@/assets/icons/v2/clip.svg";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import IsolateClipIcon from "@/assets/icons/v2/isolate.svg";
 import ReloadIcon from "@/assets/icons/v2/reload.svg";
+import LiveToVodIcon from "@/assets/icons/v2/live-to-vod.svg";
+import CheckmarkIcon from "@/assets/icons/check-circle.svg";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -157,6 +159,28 @@ const ClipModalButton = observer(() => {
   );
 });
 
+const LiveToVodButton = observer(() => {
+  if(!videoStore.videoObject?.objectId) { return null; }
+
+  const progress = editStore.liveToVodProgress[videoStore.videoObject?.objectId];
+
+  return (
+    <IconButton
+      icon={LiveToVodIcon}
+      label="Update VoD from Live Stream"
+      onClick={async () => await Confirm({
+        title: "Regenerate Live to VoD",
+        text: "Are you sure you want to update this VoD from the live stream? This may take several minutes and will cause the content to reload when finished.",
+        onConfirm: async () => {
+          await editStore.RegenerateLiveToVOD({vodObjectId: videoStore.videoObject?.objectId});
+        }
+      })}
+      loadingProgress={progress}
+      className={S("search__button")}
+    />
+  );
+});
+
 const TimelineTopBar = observer(({simple}) => {
   return (
     <div className={S("toolbar", "timeline-section__top-bar")}>
@@ -259,6 +283,13 @@ const TimelineTopBar = observer(({simple}) => {
           !simple ? null :
             <ClipModalButton/>
         }
+        {
+          !videoStore.isLiveToVod ? null :
+            <>
+              <div className={S("toolbar__separator")}/>
+              <LiveToVodButton/>
+            </>
+        }
         <div className={S("toolbar__separator")}/>
         <IconButton
           icon={ReloadIcon}
@@ -270,7 +301,7 @@ const TimelineTopBar = observer(({simple}) => {
           })}
         />
         <div className={S("toolbar__separator")}/>
-        <Download/>
+        <Download store={videoStore} />
         <Share store={videoStore}/>
 
       </div>
@@ -357,7 +388,7 @@ const TimelineBottomBar = observer(({simple}) => {
 });
 
 const TimelineSeekBar = observer(({hoverSeek}) => {
-  if(!videoStore.initialized) { return null; }
+  if(!videoStore?.initialized) { return null; }
 
   let indicators = [];
   if(videoStore.clipInFrame) {
@@ -401,7 +432,7 @@ const TimelineSeekBar = observer(({hoverSeek}) => {
 });
 
 const TimelineScaleBar = observer(({hoverSeek}) => {
-  if(!videoStore.initialized) { return null; }
+  if(!videoStore?.initialized) { return null; }
 
   let indicators = [];
   if(videoStore.clipInFrame) {
@@ -491,37 +522,89 @@ const TimelinePlayheadIndicator = observer(({value, timelineRef, className=""}) 
   );
 });
 
+let thumbnailInterval;
 const TimelineThumbnailTrack = observer(() => {
-  if(!videoStore.initialized || !trackStore.showThumbnails) {
+  const available = videoStore?.thumbnailStore.thumbnailStatus.available;
+  const regenerating = videoStore?.thumbnailStore?.generating;
+  const state = videoStore?.thumbnailStore.thumbnailStatus.status?.state;
+
+  useEffect(() => {
+    clearInterval(thumbnailInterval);
+
+    if(available && regenerating && (!state || ["running", "started"].includes(state))) {
+      thumbnailInterval = setInterval(
+        () => videoStore.thumbnailStore.ThumbnailGenerationStatus(),
+        5000
+      );
+    }
+
+    return () => clearInterval(thumbnailInterval);
+  }, [state, regenerating, videoStore.initialized]);
+
+  if(!videoStore?.initialized || !trackStore?.showThumbnails) {
     return null;
+  }
+
+  let button;
+  if(available && regenerating && state === "finished") {
+    button = (
+      <IconButton
+        icon={CheckmarkIcon}
+        small
+        highlight
+        withinPortal
+        label="Finalize Thumbnails"
+        className={S("timeline-row__icon")}
+        onClick={async event => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          await Confirm({
+            title: "Finalize Thumbnails",
+            text: "Are you sure you want to finalize thumbnails for this content?",
+            onConfirm: async () => {
+              await videoStore.thumbnailStore.ThumbnailGenerationStatus({finalize: true});
+
+              videoStore.Reload();
+            }
+          });
+        }}
+      />
+    );
+  } else if(available) {
+    button = (
+      <IconButton
+        icon={ReloadIcon}
+        small
+        faded
+        withinPortal
+        loadingProgress={
+          !regenerating ? null :
+            videoStore.thumbnailStore.thumbnailStatus.status?.progress || 1
+        }
+        label="Regenerate Thumbnails"
+        className={S("timeline-row__icon")}
+        onClick={async event => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          await Confirm({
+            title: "Regenerate Thumbnails",
+            text: "Are you sure you want to regenerate thumbnails for this content?",
+            onConfirm: async () => {
+              await videoStore.thumbnailStore.GenerateVideoThumbnails();
+            }
+          });
+        }}
+      />
+    );
   }
 
   return (
     <div className={S("timeline-row", "timeline-row--thumbnails")}>
       <div className={S("timeline-row__label")}>
         Thumbnails
-        <IconButton
-          icon={ReloadIcon}
-          small
-          faded
-          withinPortal
-          label="Regenerate Thumbnails"
-          className={S("timeline-row__icon")}
-          onClick={async event => {
-            event.preventDefault();
-            event.stopPropagation();
-
-            await Confirm({
-              title: "Regenerate Thumbnails",
-              text: "Are you sure you want to regenerate thumbnails for this content?",
-              onConfirm: async () => {
-                localStorage.setItem(`regenerate-thumbnails-${videoStore.videoObject.objectId}`, "true");
-
-                await videoStore.thumbnailStore.GenerateVideoThumbnails();
-              }
-            });
-          }}
-        />
+        {button}
       </div>
       <div className={S("timeline-row__content")}>
         <ThumbnailTrack

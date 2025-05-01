@@ -31,6 +31,7 @@ class CompositionStore {
   sourceClipIds = {};
   aiClipIds = [];
   searchClipIds = [];
+  searchClipInfo = {};
 
   draggingClip;
   showDragShadow = false;
@@ -78,6 +79,7 @@ class CompositionStore {
     this.aiClipIds = [];
     this.myClipIds = [];
     this.searchClipIds = [];
+    this.searchClipInfo = {};
     this.selectedClipId = undefined;
     this.originalSelectedClipId = undefined;
     this.sourceFullClipId = undefined;
@@ -87,8 +89,6 @@ class CompositionStore {
     this.compositionPlayoutUrl = undefined;
     this.draggingClip = undefined;
     this.saved = false;
-
-    this._authTokens = {};
 
     this.EndDrag();
     this.ClearSelectedClip();
@@ -112,10 +112,6 @@ class CompositionStore {
 
   get hasUnsavedChanges() {
     return this._position > 0 || (!this.saved && this.clipIdList.length > 0);
-  }
-
-  get initialized() {
-    return this.videoStore?.initialized;
   }
 
   get ready() {
@@ -349,6 +345,60 @@ class CompositionStore {
     }
   }
 
+  SortCompositionClips() {
+    this.PerformAction({
+      label: "Reorder Clips",
+      Action: () => {
+        const clipIdList = this.clipList
+          .sort((a, b) => a.clipInFrame < b.clipInFrame ? -1 : 1)
+          .map(clip => clip.clipId);
+
+        let combinedClipIdList = [];
+        let deletedClips = [];
+        for(let i = 0; i < clipIdList.length; i++) {
+          const clip = this.clips[clipIdList[i]];
+          const nextClip = this.clips[clipIdList[i + 1]];
+
+          if(
+            !nextClip ||
+            clip.storeKey !== nextClip.storeKey ||
+            clip.clipOutFrame <= nextClip.clipInFrame
+          ) {
+            combinedClipIdList.push(clip.clipId);
+          } else {
+            // Overlapping clips, combine
+            const clipId = this.rootStore.NextId();
+            this.clips[clipId] = {
+              ...clip,
+              ...nextClip,
+              clipId,
+              name: `${clip.name || ""} | ${nextClip.name || ""}`
+            };
+
+            combinedClipIdList.push(clipId);
+
+            if(this.selectedClipId === clip.clipId || this.selectedClipId === nextClip.clipId) {
+              this.SetSelectedClip({clipId});
+            }
+
+            deletedClips.push(clip.clipId);
+            deletedClips.push(nextClip.clipId);
+            delete this.clips[clip.clipId];
+            delete this.clips[nextClip.clipId];
+
+            i += 1;
+          }
+        }
+
+        this.clipIdList = combinedClipIdList;
+
+        deletedClips.forEach(clipId =>
+          delete this.clips[clipId]
+        );
+      }
+    });
+  }
+
   SplitClip(progress) {
     const frame = Math.floor(this.compositionDurationFrames * (progress / 100));
     const clipIndex = this.ClipIndexAt(frame);
@@ -540,7 +590,7 @@ class CompositionStore {
     return this.videoStore.TimeToSMPTE(this.compositionDuration * progress / 100);
   }
 
-  GetCompositionPlayoutUrl = flow(function * (retry=0) {
+  GetCompositionPlayoutUrl = flow(function * (retry=0, noWriteToken) {
     if(!this.compositionObject || this.clipIdList.length === 0) {
       this.compositionPlayoutUrl = undefined;
       return;
@@ -548,7 +598,8 @@ class CompositionStore {
 
     try {
       const {objectId, compositionKey} = this.compositionObject;
-      const writeToken = yield this.WriteToken({objectId, compositionKey, create: false});
+      const writeToken = noWriteToken ? undefined :
+        yield this.WriteToken({objectId, compositionKey, create: false});
 
       const playoutOptions = (yield this.client.PlayoutOptions({
         objectId,
@@ -601,7 +652,8 @@ class CompositionStore {
         "offerings/*/media_struct/streams/*/rate",
         "/public/name",
       ],
-      resolveLinks: true
+      resolveLinks: true,
+      resolveIgnoreErrors: true
     });
 
     const offerings = Object.keys(sourceMetadata.offerings)
@@ -636,7 +688,7 @@ class CompositionStore {
 
     let items = [];
     if(type === "ai") {
-      const highlights = (yield this.GenerateAIHighlights({
+      const highlights = (yield this.rootStore.aiStore.GenerateAIHighlights({
         objectId: sourceObjectId,
         prompt,
         maxDuration,
@@ -836,10 +888,15 @@ class CompositionStore {
 
     this.DiscardDraft({objectId, compositionKey, removeComposition: false});
 
-    this.GetCompositionPlayoutUrl();
+    yield new Promise(resolve => setTimeout(resolve, 1000));
+    yield this.SetCompositionObject({objectId, compositionKey});
   });
 
   SetCompositionObject = flow(function * ({objectId, compositionKey, addToMyLibrary=false}) {
+    if(!this.myCompositions[objectId]) {
+      yield this.LoadMyCompositions();
+    }
+
     this.initialized = false;
     this.Reset();
 
@@ -960,6 +1017,10 @@ class CompositionStore {
     this.videoStore.name = this.compositionObject.name;
 
     // Add to my compositions
+    if(!this.myCompositions[objectId]) {
+      this.myCompositions[objectId] = {};
+    }
+
     if(!this.myCompositions[objectId][compositionKey]) {
       this.myCompositions[objectId][compositionKey] = {
         objectId,
@@ -970,13 +1031,14 @@ class CompositionStore {
       };
     }
 
-    this.saved = this.myCompositions[objectId][compositionKey].saved;
+    this.saved = !writeToken && this.myCompositions[objectId][compositionKey].saved;
 
     this.initialized = true;
 
     this.GetCompositionPlayoutUrl();
 
     this.LoadHighlights();
+    this.rootStore.downloadStore.LoadDownloadJobInfo();
 
     if(addToMyLibrary) {
       this.rootStore.browserStore.AddMyLibraryItem({
@@ -990,7 +1052,7 @@ class CompositionStore {
 
   LoadHighlights = flow(function * () {
     try {
-      const highlights = (yield this.GenerateAIHighlights({
+      const highlights = (yield this.rootStore.aiStore.GenerateAIHighlights({
         objectId: this.compositionObject.objectId,
         prompt: this.compositionObject.initialPrompt,
         wait: true
@@ -1039,7 +1101,10 @@ class CompositionStore {
       label,
       Action,
       Undo: () => {
-        this.clips = originalData.clips;
+        this.clips = {
+          ...this.clips,
+          ...originalData.clips
+        };
         this.clipIdList = originalData.clipIdList;
       },
       addedAt: Date.now(),
@@ -1287,108 +1352,35 @@ class CompositionStore {
     });
   }
 
-  // Search and AI
-  QueryAIAPI = flow(function * ({server="ai", method="GET", path, objectId, channelAuth=false, queryParams={}}) {
-    const url = new URL(`https://${server}.contentfabric.io/`);
-    url.pathname = path;
-
-    Object.keys(queryParams).forEach(key =>
-      queryParams[key] && url.searchParams.set(key, queryParams[key])
-    );
-
-    if(!this._authTokens[objectId]) {
-      this._authTokens[objectId] = {};
-    }
-
-    if(channelAuth && !this._authTokens[objectId].channel) {
-      this._authTokens[objectId].channel = new URL(yield this.client.FabricUrl({
-        versionHash: yield this.client.LatestVersionHash({objectId: objectId}),
-        channelAuth: true
-      })).searchParams.get("authorization");
-    } else if(!channelAuth && !this._authTokens[objectId].signed) {
-      this._authTokens[objectId].signed = yield this.rootStore.client.CreateSignedToken({
-        objectId,
-        duration: 24 * 60 * 60 * 1000
-      });
-    }
-
-    url.searchParams.set("authorization", this._authTokens[objectId][channelAuth ? "channel" : "signed"]);
-
-    return fetch(url, {method});
-  });
-
-  GenerateAIHighlights = flow(function * ({objectId, prompt, maxDuration, regenerate=false, wait=true, StatusCallback}) {
-    let options = {};
-    if(prompt) { options.customization = prompt; }
-    if(maxDuration) { options.max_length = maxDuration * 1000; }
-
-    if(regenerate) {
-      yield this.QueryAIAPI({
-        method: "POST",
-        path: UrlJoin("ml", "highlight_composition", "q", objectId),
-        objectId,
-        queryParams: {...options, regenerate: true}
-      });
-
-      yield new Promise(resolve => setTimeout(resolve, 1000));
-    }
-
-    let status;
-    do {
-      if(status) {
-        StatusCallback?.(status);
-        yield new Promise(resolve => setTimeout(resolve, 5000));
-      }
-
-      const response = yield this.QueryAIAPI({
-        method: "GET",
-        path: UrlJoin("ml", "highlight_composition", "q", objectId),
-        objectId,
-        queryParams: options
-      });
-
-      if(response.status === 204 && !regenerate) {
-        return this.GenerateAIHighlights({...arguments[0], regenerate: true});
-      }
-
-      status = yield response.json();
-
-      if(!wait) {
-        return status;
-      }
-
-      if(status?.status === "ERROR") {
-        throw status;
-      }
-    } while(status?.status !== "COMPLETE");
-
-    return status;
-  });
-
   SearchClips = flow(function * (query) {
-    const index = this.rootStore.searchIndex;
+    const index = this.rootStore.aiStore.searchIndex;
 
-    if(!index) { return; }
+    if(
+      !index ||
+      (
+        this.searchClipInfo.objectId === this.compositionObject.objectId &&
+        this.searchClipInfo.indexId === index.id &&
+        this.searchClipInfo.query === query
+      )
+    ) { return; }
 
-    const clips = (yield (yield this.QueryAIAPI({
+    const clips = (yield this.rootStore.aiStore.QueryAIAPI({
       server: "ai",
       objectId: index.id,
-      path: UrlJoin("search", "q", index.versionHash, "rep", "search"),
+      path: UrlJoin("search", "q", index.id, "rep", "search"),
       channelAuth: true,
       queryParams: {
         terms: query,
         search_fields: Object.keys(index.fields || {}).join(","),
-        display_fields: "f_speech_to_text",
         clips: true,
         clips_include_source_tags: true,
         debug: true,
         max_total: 100,
         start: 0,
         limit: 100,
-        filters: `id:${this.compositionObject.objectId}`,
-        select: "/public/asset_metadata/title,/public/name,public/asset_metadata/display_title"
+        filters: `id:${this.compositionObject.objectId}`
       }
-    })).json())?.contents || [];
+    }))?.contents || [];
 
     let searchClipIds = [];
     for(const clip of clips) {
@@ -1419,6 +1411,11 @@ class CompositionStore {
     }
 
     this.searchClipIds = searchClipIds;
+    this.searchClipInfo = {
+      objectId: this.compositionObject.objectId,
+      query,
+      indexId: this.rootStore.aiStore.selectedSearchIndexId
+    };
   });
 
   OpenFabricBrowserLink() {

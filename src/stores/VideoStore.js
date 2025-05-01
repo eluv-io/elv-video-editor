@@ -29,6 +29,7 @@ class VideoStore {
   loading = false;
   initialized = false;
   isVideo = false;
+  isLiveToVod = false;
   ready = false;
   showVideoControls = true;
 
@@ -136,6 +137,7 @@ class VideoStore {
     this.loading = true;
     this.initialized = false;
     this.isVideo = false;
+    this.isLiveToVod = false;
 
     this.video = undefined;
     this.player = undefined;
@@ -246,6 +248,7 @@ class VideoStore {
 
       this.metadata = videoObject.metadata;
       this.isVideo = videoObject.isVideo;
+      this.isLiveToVod = videoObject.isLiveToVod;
       this.playoutUrl = videoObject.playoutUrl;
       this.availableOfferings = videoObject.availableOfferings;
       this.offeringKey = videoObject.offeringKey;
@@ -398,6 +401,18 @@ class VideoStore {
 
     this.Reset();
     yield this.SetVideo({objectId, writeToken: this.videoObject?.writeToken, preferredOfferingKey: offering});
+  });
+
+  ReloadThumbnails = flow(function * () {
+    const videoObject = yield LoadVideo({
+      objectId: this.videoObject?.objectId,
+      writeToken: this.videoObject?.writeToken,
+      preferredOfferingKey: this.videoObject?.offeringKey,
+      channel: this.channel
+    });
+
+    this.thumbnailTrackUrl = videoObject.thumbnailTrackUrl;
+    this.thumbnailStore.LoadThumbnails(videoObject.thumbnailTrackUrl);
   });
 
   ReloadMetadata = flow(function * () {
@@ -645,14 +660,18 @@ class VideoStore {
     let clipPoints = {};
     if(params.has("sf")) {
       clipPoints.inFrame = parseInt(params.get("sf"));
+      clipPoints.inTime = this.FrameToTime(clipPoints.inFrame);
     } else if(params.has("st")) {
       clipPoints.inTime = parseFloat(params.get("st"));
+      clipPoints.inFrame = this.TimeToFrame(clipPoints.inTime);
     }
 
     if(params.has("ef")) {
       clipPoints.outFrame = parseInt(params.get("ef"));
+      clipPoints.outTime = this.FrameToTime(clipPoints.outFrame);
     } else if(params.has("et")) {
       clipPoints.outTime = parseFloat(params.get("et"));
+      clipPoints.outFrame = this.TimeToFrame(clipPoints.outTime);
     }
 
     if(params.has("isolate")) {

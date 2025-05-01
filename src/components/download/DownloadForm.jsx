@@ -1,7 +1,7 @@
 import DownloadStyles from "@/assets/stylesheets/modules/download.module.scss";
 
 import {observer} from "mobx-react-lite";
-import {downloadStore} from "@/stores/index.js";
+import {compositionStore, downloadStore} from "@/stores/index.js";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import {AsyncButton, ClipTimeInfo, CopyButton, FormSelect, FormTextInput} from "@/components/common/Common.jsx";
 import {Button} from "@mantine/core";
@@ -11,8 +11,9 @@ import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 const S = CreateModuleClassMatcher(DownloadStyles);
 
 export const DownloadPreview = observer(({store, options}) => {
+  const totalFrames = store.channel ? compositionStore.compositionDurationFrames : store.totalFrames;
   const clipInFrame = options.noClip ? 0 : options.clipInFrame || 0;
-  const clipOutFrame = options.noClip ? store.totalFrames - 1 : options.clipOutFrame || store.totalFrames - 1;
+  const clipOutFrame = options.noClip ? totalFrames - 1 : options.clipOutFrame || totalFrames - 1;
 
   return (
     <div className={S("preview")}>
@@ -120,7 +121,7 @@ export const DownloadFormFields = observer(({
           />
       }
       {
-        !fields.offering ? null :
+        store.channel || !fields.offering ? null :
           <FormSelect
             label="Offering"
             name="offering"
@@ -179,15 +180,16 @@ const DownloadForm = observer(({store, buttonText="Download", Submit, Close}) =>
     defaultFilename: "",
     representation: "",
     audioRepresentation: "",
-    offering: store.downloadOfferingKeys.includes(store.offeringKey) ? store.offeringKey : store.downloadOfferingKeys[0],
-    clipInFrame: store.clipInFrame,
-    clipOutFrame: store.clipOutFrame
+    offering: store.channel ? store.offeringKey :
+      store.downloadOfferingKeys.includes(store.offeringKey) ? store.offeringKey : store.downloadOfferingKeys[0],
+    clipInFrame: store.channel ? undefined : store.clipInFrame,
+    clipOutFrame: store.channel ? undefined : store.clipOutFrame
   });
 
   return (
     <div className={S("download-container")}>
       <div className={S("download")}>
-        <DownloadPreview store={store} options={downloadOptions}/>
+        <DownloadPreview store={store} options={downloadOptions} />
         <div className={S("download__form")}>
           <DownloadFormFields store={store} autoFocus options={downloadOptions} setOptions={setDownloadOptions} />
         </div>

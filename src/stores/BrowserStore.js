@@ -3,17 +3,36 @@ import {flow, makeAutoObservable} from "mobx";
 class BrowserStore {
   libraries = undefined;
   selectedObject;
-
   myLibraryItems;
+
+  liveToVodFormFields = {};
 
   constructor(rootStore) {
     makeAutoObservable(this);
+
+    this.ClearLiveToVodFormFields();
 
     this.rootStore = rootStore;
   }
 
   get client() {
     return this.rootStore.client;
+  }
+
+  SetLiveToVodFormFields(fields={}) {
+    this.liveToVodFormFields = {
+      ...this.liveToVodFormFields,
+      ...fields
+    };
+  }
+
+  ClearLiveToVodFormFields() {
+    this.liveToVodFormFields = {
+      liveStreamLibraryId: "",
+      liveStreamId: "",
+      libraryId: "",
+      title: ""
+    };
   }
 
   UpdateVersionHash(versionHash) {
@@ -110,7 +129,7 @@ class BrowserStore {
     const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
 
     // Try and retrieve video duration
-    let metadata, duration, lastModified, forbidden, isVideo, hasChannels, channels, hasAssets;
+    let metadata, duration, lastModified, forbidden, isVideo, hasChannels, channels, hasAssets, isLiveStream, isLive, vods;
     try {
       metadata = yield this.rootStore.client.ContentObjectMetadata({
         versionHash: versionHash,
@@ -120,7 +139,9 @@ class BrowserStore {
           "commit/timestamp",
           "channel/offerings/*/display_name",
           "assets",
-          "offerings/*/media_struct/duration_rat"
+          "offerings/*/media_struct/duration_rat",
+          "live_recording/status",
+          "live_recording_copies"
         ]
       });
 
@@ -165,6 +186,10 @@ class BrowserStore {
         isVideo = true;
         duration = this.FormatDuration(duration);
       }
+
+      isLiveStream = !!metadata?.live_recording;
+      isLive = isLiveStream && metadata.live_recording?.status?.state === "active";
+      vods = metadata.live_recording_copies;
     } catch(error) {
       if(error.status === 403) {
         forbidden = true;
@@ -185,6 +210,9 @@ class BrowserStore {
       hasChannels,
       hasAssets,
       channels,
+      isLiveStream,
+      isLive,
+      vods,
       name: metadata?.public?.name || objectId,
       image: !metadata?.public?.display_image ? undefined :
         yield this.rootStore.client.LinkUrl({

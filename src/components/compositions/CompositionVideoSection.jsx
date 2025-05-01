@@ -2,7 +2,7 @@ import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
-import {compositionStore, keyboardControlsStore} from "@/stores";
+import {compositionStore, keyboardControlsStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, DragHandler} from "@/utils/Utils.js";
 import {
   AudioControls,
@@ -30,6 +30,7 @@ import XIcon from "@/assets/icons/v2/x.svg";
 import XCircleIcon from "@/assets/icons/X.svg";
 import TrashIcon from "@/assets/icons/trash.svg";
 import PublishIcon from "@/assets/icons/v2/publish.svg";
+import {ClipTooltipContent} from "@/components/compositions/Clips.jsx";
 
 const S = CreateModuleClassMatcher(VideoStyles);
 
@@ -281,8 +282,12 @@ const Title = observer(({clipView}) => {
             </Button>
         }
       </h1>
-  );
+    );
   }
+
+
+  const thumbnailsGenerating = videoStore?.videoObject ?
+    videoStore.thumbnailStore.generating : compositionStore.videoStore?.thumbnailStore?.generating;
 
   return (
     <h1 className={S("video-section__title")}>
@@ -290,7 +295,15 @@ const Title = observer(({clipView}) => {
         !editing ? null :
           <TitleEditModal name={name} clipView={clipView} Close={() => setEditing(false)} />
       }
-      <Tooltip label={<div style={{textOverflow: "ellipsis", overflowX: "hidden"}}>{name}</div>} multiline maw={500}>
+      <Tooltip
+        label={
+          clipView ?
+            <ClipTooltipContent clip={compositionStore.selectedClip} /> :
+            <div style={{textOverflow: "ellipsis", overflowX: "hidden"}}>{name}</div>
+        }
+        multiline
+        maw={500}
+      >
         <div className={S("ellipsis")}>
           {name}
         </div>
@@ -349,7 +362,11 @@ const Title = observer(({clipView}) => {
                 autoContrast
                 h={30}
                 px="xs"
-                disabled={!compositionStore.hasUnsavedChanges}
+                disabled={!compositionStore.hasUnsavedChanges || thumbnailsGenerating}
+                tooltip={
+                  !thumbnailsGenerating ? undefined :
+                    "Please finalize the thumbnails for the source video in the tags view before publishing"
+                }
                 onClick={async () => await Confirm({
                   title: "Publish Composition",
                   text: "Are you sure you want to publish this composition?",
@@ -414,7 +431,7 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
   }, [active]);
 
   useEffect(() => {
-    if(!clipView || !store || !store.initialized || !store.videoHandler || !store.totalFrames) { return; }
+    if(!clipView || !store || !store?.initialized || !store?.videoHandler || !store?.totalFrames) { return; }
 
     const clip = compositionStore.selectedClip;
 

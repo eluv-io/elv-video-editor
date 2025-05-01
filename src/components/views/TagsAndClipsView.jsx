@@ -3,7 +3,7 @@ import React, {useEffect, useState} from "react";
 import {ClipSidePanel, TagSidePanel} from "@/components/side_panel/SidePanel.jsx";
 import VideoSection from "@/components/video/VideoSection.jsx";
 import {ClipTimeline, TagTimeline} from "@/components/timeline/Timeline.jsx";
-import {editStore, keyboardControlsStore, rootStore, trackStore, videoStore} from "@/stores/index.js";
+import {editStore, keyboardControlsStore, rootStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {Modal} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
@@ -47,6 +47,13 @@ const TagsAndClipsView = observer(({mode}) => {
       if(!clipPoints) { return; }
 
       videoStore.FocusView(clipPoints);
+
+      if(clipPoints.isolate) {
+        tagStore.IsolateTag({
+          startTime: clipPoints.inTime || 0,
+          endTime: clipPoints.outTime || videoStore.duration
+        });
+      }
     }
   }, [videoStore.ready]);
 

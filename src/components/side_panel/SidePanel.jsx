@@ -3,20 +3,21 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-import {Icon, IconButton, Input} from "@/components/common/Common.jsx";
-import {rootStore, assetStore, compositionStore, tagStore, trackStore} from "@/stores/index.js";
+import {Confirm, Icon, IconButton, Input} from "@/components/common/Common.jsx";
+import {rootStore, assetStore, compositionStore, tagStore, trackStore, aiStore} from "@/stores/index.js";
 import {TagDetails, TagsList} from "@/components/side_panel/Tags.jsx";
 import Assets from "@/components/side_panel/Assets.jsx";
 import {TrackDetails} from "@/components/side_panel/Tracks.jsx";
 
 import {OverlayTagDetails, OverlayTagsList} from "@/components/side_panel/OverlayTags.jsx";
 import {CompositionBrowser, CompositionClips} from "@/components/side_panel/Compositions.jsx";
-import {Combobox, Menu, PillsInput, Switch, useCombobox} from "@mantine/core";
+import {Combobox, Menu, PillsInput, RingProgress, Switch, useCombobox} from "@mantine/core";
 import {useLocation} from "wouter";
 
 import SelectArrowsIcon from "@/assets/icons/v2/select-arrows.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
 import SettingsIcon from "@/assets/icons/v2/settings.svg";
+import UpdateIndexIcon from "@/assets/icons/v2/reload.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -40,7 +41,16 @@ const TagSwitch = observer(() => {
 
 const SearchIndexSelection = observer(() => {
   const [showMenu, setShowMenu] = useState(false);
-  if(rootStore.searchIndexes.length === 0) { return null; }
+
+  if(aiStore.searchIndexes.length === 0) { return null; }
+
+  let updateProgress;
+  aiStore.searchIndexes.forEach(index => {
+    const progress = aiStore.searchIndexUpdateStatus[index.id];
+    if(typeof progress !== "undefined" && (!updateProgress || progress > updateProgress)) {
+      updateProgress = progress;
+    }
+  });
 
   return (
     <Menu
@@ -56,35 +66,67 @@ const SearchIndexSelection = observer(() => {
           onClick={() => setShowMenu(!showMenu)}
           className={S("search__button")}
         >
-          <Icon icon={SettingsIcon} />
+          {
+            typeof updateProgress === "undefined" ?
+              <Icon icon={SettingsIcon} /> :
+              <RingProgress
+                size={25}
+                thickness={3}
+                transitionDuration={500}
+                rootColor="var(--text-secondary)"
+                sections={[{value: updateProgress, color: "var(--color-highlight"}]}
+              />
+          }
         </button>
       </Menu.Target>
 
-      <Menu.Dropdown bg="var(--background-toolbar)">
+      <Menu.Dropdown w={300} bg="var(--background-toolbar)">
         <div className={S("search__index-menu")}>
           <div className={S("search__index-title")}>
             Search Index
           </div>
           {
-            rootStore.searchIndexes.map(index =>
-              <button
+            aiStore.searchIndexes.map(index =>
+              <div
+                role="button"
+                tabIndex={0}
                 key={`index-${index.id}`}
                 onClick={() => {
-                  rootStore.SetSelectedSearchIndex(index.id);
+                  aiStore.SetSelectedSearchIndex(index.id);
                   setShowMenu(false);
                 }}
-                className={S("search__index-option", rootStore.selectedSearchIndexId === index.id ? "search__index-option--active" : "")}
+                className={S("search__index-option", aiStore.selectedSearchIndexId === index.id ? "search__index-option--active" : "")}
               >
-                <div className={S("search__index-option-name")}>
-                  { index.name || index.id }
+                <div className={S("search__index-text")}>
+                  <div className={S("search__index-option-name")}>
+                    { index.name || index.id }
+                  </div>
+                  {
+                    !index.name ? null :
+                      <div className={S("search__index-option-id")}>
+                        { index.id }
+                      </div>
+                  }
                 </div>
                 {
-                  !index.name ? null :
-                    <div className={S("search__index-option-id")}>
-                      { index.id }
-                    </div>
+                  !index.canEdit ? null :
+                    <IconButton
+                      label="Update Search Index"
+                      icon={UpdateIndexIcon}
+                      loadingProgress={aiStore.searchIndexUpdateStatus[index.id]}
+                      onClick={async event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        await Confirm({
+                          title: "Remove Tag",
+                          text: "Are you sure you want to update this search index?",
+                          onConfirm: async () => await aiStore.UpdateSearchIndex(index.id)
+                        });
+                      }}
+                    />
                 }
-              </button>
+              </div>
             )
           }
         </div>
@@ -115,7 +157,18 @@ const SidebarFilter = observer(({store, label, sideContent, delay=100}) => {
         rightSection={
           <div className={S("search__buttons")}>
             {sideContent}
-            <IconButton noHover icon={XIcon} onClick={() => setFilter("")} className={S("search__button")} />
+            {
+              !filter ? null :
+                <IconButton
+                  noHover
+                  icon={XIcon}
+                  onClick={() => {
+                    setFilter("");
+                    store.SetFilter("");
+                  }}
+                  className={S("search__button")}
+                />
+            }
           </div>
           }
         rightSectionWidth="max-content"
@@ -349,7 +402,7 @@ export const CompositionSidePanel = observer(() => {
   return (
     <div className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
-        <SidebarFilter sideContent={<SearchIndexSelection />} store={compositionStore} label="Search Clips"/>
+        <SidebarFilter delay={1500} sideContent={<SearchIndexSelection />} store={compositionStore} label="Search Clips"/>
         <CompositionClips />
       </div>
     </div>

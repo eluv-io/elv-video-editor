@@ -7,7 +7,7 @@ import {CreateModuleClassMatcher, DragHandler} from "@/utils/Utils.js";
 import ThumbnailTrack from "@/components/timeline/ThumbnailTrack.jsx";
 
 import InvertedTriangleIcon from "@/assets/icons/v2/inverted-triangle.svg";
-import {Icon} from "@/components/common/Common.jsx";
+import {ClipTimeInfo, Icon} from "@/components/common/Common.jsx";
 
 const S = CreateModuleClassMatcher(CompositionStyles);
 
@@ -102,6 +102,21 @@ export const DraggedClip = observer(() => {
   );
 });
 
+export const ClipTooltipContent = observer(({clip}) => {
+  return (
+    <div className={S("clip__tooltip")}>
+      <div className={S("clip__tooltip-name")}>{clip.name}</div>
+      <div className={S("clip__tooltip-time")}>
+        <ClipTimeInfo
+          store={compositionStore.ClipStore({...clip})}
+          clipInFrame={clip.clipInFrame}
+          clipOutFrame={clip.clipOutFrame}
+        />
+      </div>
+    </div>
+  );
+});
+
 export const TimelineClip = observer(({clip, containerDimensions}) => {
   const {clipLeft, clipWidth} = CalculateClipPosition({clip, containerDimensions});
 
@@ -123,6 +138,13 @@ export const TimelineClip = observer(({clip, containerDimensions}) => {
       className={S("clip", compositionStore.selectedClip?.clipId === clip.clipId ? "clip--selected" : "")}
     >
       <div className={S("clip__thumbnail-container")}>
+        <div className={S("clip__details")}>
+          <div className={S("clip__details-name", "ellipsis")}>{clip.name}</div>
+          <div className={S("clip__details-duration")}>
+            {compositionStore.ClipStore({...clip})?.videoHandler?.FrameToString({frame: clip.clipOutFrame - clip.clipInFrame})}
+          </div>
+        </div>
+
         <ThumbnailTrack
           store={compositionStore.ClipStore({...clip})}
           startFrame={clip.clipInFrame}
@@ -131,12 +153,21 @@ export const TimelineClip = observer(({clip, containerDimensions}) => {
           thumbnailFrom="start"
           RenderTooltip={thumbnailUrl =>
             <div className={S("thumbnail-hover")}>
-              <img
-                src={thumbnailUrl}
-                style={{aspectRatio: compositionStore.ClipStore({...clip}).aspectRatio}}
-                className={S("thumbnail-hover__image")}
-              />
+              {
+                !thumbnailUrl ? null :
+                  <img
+                    src={thumbnailUrl}
+                    style={{aspectRatio: compositionStore.ClipStore({...clip}).aspectRatio}}
+                    className={S("thumbnail-hover__image")}
+                  />
+              }
               <div className={S("thumbnail-hover__text")}>{clip.name}</div>
+              <ClipTimeInfo
+                store={compositionStore.ClipStore({...clip})}
+                clipInFrame={clip.clipInFrame}
+                clipOutFrame={clip.clipOutFrame}
+                className={S("thumbnail-hover__time")}
+              />
             </div>
           }
           className={S("clip__thumbnails")}

@@ -60,6 +60,7 @@
     background: var(--text-disabled);
     height: 20px;
     margin-inline: 5px;
+    min-width: 1px;
     width: 1px;
   }
 
@@ -253,13 +254,14 @@
     max-height: 150px;
     max-width: 200px;
     overflow: hidden;
-    text-align: center;
     text-overflow: ellipsis;
-    white-space: wrap;
+    white-space: pre-wrap;
   }
 
   &__time {
-    font-family: var(--font-monospace);
+    font-size: 11px;
+    opacity: 0.6;
+    white-space: nowrap;
   }
 }
 
