@@ -254,7 +254,8 @@ class AIStore {
 
         yield this.client.FinalizeContentObject({
           libraryId: videoLibraryId,
-          objectId: videoObjectId
+          objectId: videoObjectId,
+          writeToken
         });
       }
 
