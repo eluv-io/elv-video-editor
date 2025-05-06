@@ -214,6 +214,27 @@ class AIStore {
     return {};
   });
 
+  AggregateUserTags = flow(function * ({objectId, writeToken}) {
+    try {
+      return yield this.QueryAIAPI({
+        server: "ai",
+        path: UrlJoin("/tagging", objectId, "aggregate"),
+        queryParams: {
+          write_token: writeToken
+        },
+        method: "POST",
+        format: "none",
+        objectId,
+        update: true,
+      });
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error("Tag aggregation failed:");
+      // eslint-disable-next-line no-console
+      console.error(error);
+    }
+  });
+
   UpdateSearchIndex = flow(function * (indexId) {
     try {
       this.searchIndexUpdateStatus[indexId] = 5;

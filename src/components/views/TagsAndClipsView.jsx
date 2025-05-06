@@ -11,8 +11,9 @@ import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 const S = CreateModuleClassMatcher();
 
 const SaveProgressModal = observer(() => {
-  const tagProgress = 47.5 * editStore.saveProgress.tags;
-  const overlayProgress = 47.5 * editStore.saveProgress.overlay;
+  const tagProgress = 30 * editStore.saveProgress.tags;
+  const overlayProgress = 30 * editStore.saveProgress.overlay;
+  const aggregationProgress = 30 * editStore.saveProgress.aggregation;
 
   // Last 5% is reserved for finalizing
   return (
@@ -25,7 +26,7 @@ const SaveProgressModal = observer(() => {
     >
       <div className={S("progress")}>
         <progress
-          value={tagProgress + overlayProgress}
+          value={tagProgress + overlayProgress + aggregationProgress}
           max={100}
         />
       </div>
