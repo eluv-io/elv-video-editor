@@ -53,6 +53,7 @@ class ThumbnailStore {
   }
 
   LoadThumbnails = flow(function * (thumbnailTrackUrl) {
+    this.thumbnailTrackUrl = thumbnailTrackUrl;
     this.generating = localStorage.getItem(`regenerate-thumbnails-${this.parentStore.videoObject?.objectId}`);
 
     if(!thumbnailTrackUrl) {
@@ -169,6 +170,20 @@ class ThumbnailStore {
       console.error(error);
       this.thumbnailStatus.status = { state: "failed" };
     }
+  });
+
+  RemoveThumbnailJob = flow(function * ({objectId}) {
+    yield this.parentStore.rootStore.client.walletClient.RemoveProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: `thumbnail-job-${objectId}`
+    });
+
+    this.generating = false;
+    localStorage.removeItem(`regenerate-thumbnails-${this.parentStore.videoObject?.objectId}`);
+
+    this.LoadThumbnails(this.thumbnailTrackUrl);
   });
 
   ThumbnailGenerationStatus = flow(function * ({finalize=false}={}) {

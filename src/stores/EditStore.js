@@ -244,6 +244,7 @@ class EditStore {
 
     yield this.SavePrimaryClip();
 
+    /*
     // Show some progress while aggregation is running
     const progressInterval = setInterval(() =>
       runInAction(() => this.saveProgress.aggregation = Math.min(1, this.saveProgress.aggregation + 0.05)),
@@ -256,6 +257,8 @@ class EditStore {
     });
 
     clearInterval(progressInterval);
+
+     */
     this.saveProgress.aggregation = 1;
 
     yield this.Finalize({
