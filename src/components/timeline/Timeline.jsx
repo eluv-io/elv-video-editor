@@ -169,13 +169,32 @@ const LiveToVodButton = observer(() => {
     <IconButton
       icon={LiveToVodIcon}
       label="Update VoD from Live Stream"
-      onClick={async () => await Confirm({
-        title: "Regenerate Live to VoD",
-        text: "Are you sure you want to update this VoD from the live stream? This may take several minutes and will cause the content to reload when finished.",
-        onConfirm: async () => {
-          await editStore.RegenerateLiveToVOD({vodObjectId: videoStore.videoObject?.objectId});
+      onClick={async () => {
+        if(editStore.HasUnsavedChanges("tags") || editStore.HasUnsavedChanges("clips")) {
+          let cancelled = false;
+          await Confirm({
+            title: "Regenerate Live to VoD",
+            text: "Warning: You have unsaved changes. If you proceed in regenerating this VoD your changes will be lost",
+            onConfirm: () => {
+              editStore.ResetPage("tags");
+              editStore.ResetPage("clips");
+            },
+            onCancel: () => cancelled = true
+          });
+
+          if(cancelled) {
+            return;
+          }
         }
-      })}
+
+        await Confirm({
+          title: "Regenerate Live to VoD",
+          text: "Are you sure you want to update this VoD from the live stream? This may take several minutes and will cause the content to reload when finished.",
+          onConfirm: async () => {
+            await editStore.RegenerateLiveToVOD({vodObjectId: videoStore.videoObject?.objectId});
+          }
+        });
+      }}
       loadingProgress={progress}
       className={S("search__button")}
     />
