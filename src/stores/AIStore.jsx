@@ -239,12 +239,33 @@ class AIStore {
     try {
       this.searchIndexUpdateStatus[indexId] = 5;
 
+      const videoObjectId =
+        this.rootStore.videoStore.videoObject?.objectId ||
+        this.rootStore.compositionStore.sourceVideoStore?.videoObject?.objectId;
+
+      if(videoObjectId) {
+        const videoLibraryId = yield this.client.ContentObjectLibraryId({objectId: videoObjectId});
+        const {writeToken} = yield this.client.EditContentObject({
+          libraryId: videoLibraryId,
+          objectId: videoObjectId
+        });
+
+        yield this.AggregateUserTags({objectId: videoObjectId, writeToken});
+
+        yield this.client.FinalizeContentObject({
+          libraryId: videoLibraryId,
+          objectId: videoObjectId
+        });
+      }
+
       // Perform against a search node
       const searchURIs = (yield (
         yield fetch("https://main.net955305.contentfabric.io/config")
       ).json()).network.services.search_v2;
 
       yield this.client.SetNodes({fabricURIs: searchURIs});
+
+      this.searchIndexUpdateStatus[indexId] = 12;
 
       const libraryId = yield this.client.ContentObjectLibraryId({objectId: indexId});
       const siteId = (yield this.client.ContentObjectMetadata({
