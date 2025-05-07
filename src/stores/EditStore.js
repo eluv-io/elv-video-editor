@@ -562,7 +562,7 @@ class EditStore {
       libraryId,
       objectId,
       metadataSubtree: "/video_tags/overlay_tags"
-    }));
+    })) || {};
 
     for(const action of formattedActions) {
       if(action.type === "track") {
