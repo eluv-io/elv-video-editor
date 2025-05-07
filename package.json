@@ -29,7 +29,7 @@
     "dayjs": "^1.11.13",
     "deep-object-diff": "^1.1.0",
     "fraction.js": "^4.0.12",
-    "hls.js": "^1.5.15",
+    "hls.js": "^1.6.2",
     "m3u8-parser": "^4.7.0",
     "mantine-datatable": "^7.15.1",
     "mime-types": "^2.1.35",
