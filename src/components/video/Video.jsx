@@ -87,8 +87,10 @@ const Video = observer(({
       };
     } else {
       config = {
+        maxBufferHole: store?.compositionObject ? 4.2 : 2.2,
         nudgeOffset: 0.2,
-        nudgeMaxRetry: 30,
+        nudgeMaxRetry: 12,
+        highBufferWatchdogPeriod: 1,
         autoLevelEnabled: false
       };
     }
