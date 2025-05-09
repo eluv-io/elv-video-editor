@@ -10,7 +10,8 @@ class EditStore {
   liveToVodProgress = {};
   saveProgress = {
     tags: 0,
-    clips: 0
+    clips: 0,
+    aggregation: 0
   };
 
   constructor(rootStore) {
@@ -229,7 +230,9 @@ class EditStore {
   Save = flow(function * () {
     this.saving = true;
 
-    this.saveProgress = { tags: 0, overlay: 0 };
+    const objectId = this.rootStore.videoStore.videoObject.objectId;
+
+    this.saveProgress = { tags: 0, overlay: 0, aggregation: 0 };
 
     yield this.SaveTags();
 
@@ -241,7 +244,23 @@ class EditStore {
 
     yield this.SavePrimaryClip();
 
-    const objectId = this.rootStore.videoStore.videoObject.objectId;
+    /*
+    // Show some progress while aggregation is running
+    const progressInterval = setInterval(() =>
+      runInAction(() => this.saveProgress.aggregation = Math.min(1, this.saveProgress.aggregation + 0.05)),
+      1000
+    );
+
+    yield this.rootStore.aiStore.AggregateUserTags({
+      objectId,
+      writeToken: yield this.rootStore.editStore.InitializeWrite({objectId})
+    });
+
+    clearInterval(progressInterval);
+
+     */
+    this.saveProgress.aggregation = 1;
+
     yield this.Finalize({
       objectId,
       commitMessage: "EVIE - Update tags"
@@ -479,7 +498,7 @@ class EditStore {
           const total = Object.keys(fileProgress).map(filename => fileProgress[filename].total)
             .reduce((acc, value) => acc + value, 0);
 
-          runInAction(() =>this.saveProgress.tags = uploaded / total);
+          runInAction(() => this.saveProgress.tags = uploaded / total);
         }
       });
     }
@@ -543,7 +562,7 @@ class EditStore {
       libraryId,
       objectId,
       metadataSubtree: "/video_tags/overlay_tags"
-    }));
+    })) || {};
 
     for(const action of formattedActions) {
       if(action.type === "track") {

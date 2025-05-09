@@ -47,16 +47,20 @@
 
 .lazy-image {
   &__background {
-    /* stylelint-disable-next-line no-important */
-    animation: gradient 15s ease infinite!important;
     backdrop-filter: blur(20px);
-    background: linear-gradient(-55deg, #fff, #617d91, #354b54, #000);
+    background: linear-gradient(120deg, var(--background-secondary), var(--background-active));
     /* stylelint-disable-next-line no-important */
-    background-size: 1000% 1000%!important;
     display: block;
     max-width: 100%;
     opacity: 0;
     overflow: hidden;
+
+    &--animated {
+      /* stylelint-disable-next-line no-important */
+      animation: gradient 15s ease infinite!important;
+      background: linear-gradient(-55deg, #617d91, #354b54, #000);
+      background-size: 1000% 1000%!important;
+    }
 
     &--visible {
       /* stylelint-disable-next-line no-important */
@@ -470,6 +474,10 @@
 
     &--current {
       z-index: 1;
+    }
+
+    &--broken {
+      background: linear-gradient(120deg, var(--background-secondary), var(--background-active));
     }
   }
 

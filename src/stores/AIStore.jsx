@@ -214,9 +214,50 @@ class AIStore {
     return {};
   });
 
+  AggregateUserTags = flow(function * ({objectId, writeToken}) {
+    try {
+      return yield this.QueryAIAPI({
+        server: "ai",
+        path: UrlJoin("/tagging", objectId, "aggregate"),
+        queryParams: {
+          write_token: writeToken
+        },
+        method: "POST",
+        format: "none",
+        objectId,
+        update: true,
+      });
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error("Tag aggregation failed:");
+      // eslint-disable-next-line no-console
+      console.error(error);
+    }
+  });
+
   UpdateSearchIndex = flow(function * (indexId) {
     try {
       this.searchIndexUpdateStatus[indexId] = 5;
+
+      const videoObjectId =
+        this.rootStore.videoStore.videoObject?.objectId ||
+        this.rootStore.compositionStore.sourceVideoStore?.videoObject?.objectId;
+
+      if(videoObjectId) {
+        const videoLibraryId = yield this.client.ContentObjectLibraryId({objectId: videoObjectId});
+        const {writeToken} = yield this.client.EditContentObject({
+          libraryId: videoLibraryId,
+          objectId: videoObjectId
+        });
+
+        yield this.AggregateUserTags({objectId: videoObjectId, writeToken});
+
+        yield this.client.FinalizeContentObject({
+          libraryId: videoLibraryId,
+          objectId: videoObjectId,
+          writeToken
+        });
+      }
 
       // Perform against a search node
       const searchURIs = (yield (
@@ -224,6 +265,8 @@ class AIStore {
       ).json()).network.services.search_v2;
 
       yield this.client.SetNodes({fabricURIs: searchURIs});
+
+      this.searchIndexUpdateStatus[indexId] = 12;
 
       const libraryId = yield this.client.ContentObjectLibraryId({objectId: indexId});
       const siteId = (yield this.client.ContentObjectMetadata({

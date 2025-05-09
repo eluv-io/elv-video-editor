@@ -1,6 +1,7 @@
 import SharedStyles from "@/assets/stylesheets/modules/shared.module.scss";
 import {Utils} from "@eluvio/elv-client-js";
 import {toJS} from "mobx";
+import {useEffect, useState} from "react";
 
 // toJS doesn't deeply remove proxies
 export const Unproxy = obj => {
@@ -267,4 +268,24 @@ export const DragHandler = fn => event => {
   event.dataTransfer.setDragImage(emptyImage, 0, 0);
 
   return fn(event);
+};
+
+// React hook to get if the component is currently visible
+export const useIsVisible = (ref) => {
+  const [isIntersecting, setIntersecting] = useState(false);
+
+  useEffect(() => {
+    if(!ref) { return; }
+
+    const observer = new IntersectionObserver(([entry]) =>
+      setIntersecting(entry.isIntersecting)
+    );
+
+    observer.observe(ref);
+    return () => {
+      observer.disconnect();
+    };
+  }, [ref]);
+
+  return isIntersecting;
 };

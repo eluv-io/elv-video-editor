@@ -8,7 +8,6 @@ import {
   Confirm,
   FormTextArea,
   IconButton,
-  Linkish,
   Modal,
   SMPTEInput,
   SwitchInput
@@ -45,6 +44,8 @@ import IsolateClipIcon from "@/assets/icons/v2/isolate.svg";
 import ReloadIcon from "@/assets/icons/v2/reload.svg";
 import LiveToVodIcon from "@/assets/icons/v2/live-to-vod.svg";
 import CheckmarkIcon from "@/assets/icons/check-circle.svg";
+import EditIcon from "@/assets/icons/Edit.svg";
+import XIcon from "@/assets/icons/X.svg";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -168,13 +169,32 @@ const LiveToVodButton = observer(() => {
     <IconButton
       icon={LiveToVodIcon}
       label="Update VoD from Live Stream"
-      onClick={async () => await Confirm({
-        title: "Regenerate Live to VoD",
-        text: "Are you sure you want to update this VoD from the live stream? This may take several minutes and will cause the content to reload when finished.",
-        onConfirm: async () => {
-          await editStore.RegenerateLiveToVOD({vodObjectId: videoStore.videoObject?.objectId});
+      onClick={async () => {
+        if(editStore.HasUnsavedChanges("tags") || editStore.HasUnsavedChanges("clips")) {
+          let cancelled = false;
+          await Confirm({
+            title: "Regenerate Live to VoD",
+            text: "Warning: You have unsaved changes. If you proceed in regenerating this VoD your changes will be lost",
+            onConfirm: () => {
+              editStore.ResetPage("tags");
+              editStore.ResetPage("clips");
+            },
+            onCancel: () => cancelled = true
+          });
+
+          if(cancelled) {
+            return;
+          }
         }
-      })}
+
+        await Confirm({
+          title: "Regenerate Live to VoD",
+          text: "Are you sure you want to update this VoD from the live stream? This may take several minutes and will cause the content to reload when finished.",
+          onConfirm: async () => {
+            await editStore.RegenerateLiveToVOD({vodObjectId: videoStore.videoObject?.objectId});
+          }
+        });
+      }}
       loadingProgress={progress}
       className={S("search__button")}
     />
@@ -424,7 +444,10 @@ const TimelineSeekBar = observer(({hoverSeek}) => {
         nMarks={videoStore.sliderMarks}
         majorMarksEvery={videoStore.majorMarksEvery}
         RenderText={progress => videoStore.ProgressToSMPTE(progress)}
-        onChange={progress => videoStore.Seek(videoStore.ProgressToFrame(progress))}
+        onChange={progress => {
+          videoStore.Seek(videoStore.ProgressToFrame(progress));
+          tagStore.SetScrollSeekTime(videoStore.ProgressToTime(progress));
+        }}
         className={S("seek-bar")}
       />
      </div>
@@ -618,6 +641,77 @@ const TimelineThumbnailTrack = observer(() => {
   );
 });
 
+const TrackLabel = observer(({track}) => {
+  const toggleable = ["metadata", "clip"].includes(track.trackType);
+  return (
+    <div
+      role={toggleable ? "button" : "label"}
+      onClick={
+        !toggleable ? undefined :
+          () => {
+            const activeTracks = rootStore.page === "clips" ?
+              trackStore.activeClipTracks :
+              trackStore.activeTracks;
+
+            const trackSelected = Object.keys(activeTracks).length === 1 && activeTracks[track.key];
+            if(rootStore.page === "clips") {
+              trackStore.ResetActiveClipTracks();
+
+              if(!trackSelected) {
+                trackStore.ToggleClipTrackSelected(track.key, true);
+              }
+            } else {
+              trackStore.ResetActiveTracks();
+
+              if(!trackSelected) {
+                trackStore.ToggleTrackSelected(track.key, true);
+              }
+            }
+          }
+      }
+      className={S("timeline-row__label", toggleable ? "timeline-row__label--button" : "")}
+    >
+      {track.label}
+      {
+        !toggleable ? null :
+          <IconButton
+            icon={
+              tagStore.selectedTrackId === track.trackId ?
+                XIcon : EditIcon
+            }
+            label={
+              tagStore.selectedTrackId === track.trackId ?
+                "Hide Category Details" :
+                "View Category Details"
+            }
+            onClick={event => {
+              event.stopPropagation();
+              tagStore.selectedTrackId === track.trackId ?
+                tagStore.ClearSelectedTrack() :
+                tagStore.SetSelectedTrack(track.trackId);
+            }}
+            className={
+              S(
+                "timeline-row__icon",
+                "timeline-row__label-edit",
+                tagStore.selectedTrackId === track.trackId ? "timeline-row__label-edit--active" : ""
+              )
+            }
+          />
+      }
+      {
+        track.trackType !== "primary-content" ? null :
+          <IconButton
+            withinPortal
+            icon={QuestionMarkIcon}
+            label="Modifying the primary content tag allows you to specify the start and end times for this offering"
+            className={S("timeline-row__icon")}
+          />
+      }
+    </div>
+  );
+});
+
 const TagTimelineContent = observer(() => {
   let tracks = [];
   if(trackStore.showTags) {
@@ -657,7 +751,7 @@ const TagTimelineContent = observer(() => {
     return (
       <div className={S("content-block", "timeline-section")}>
         <div className={S("error-message")}>
-          { rootStore.errorMessage }
+          {rootStore.errorMessage}
         </div>
       </div>
     );
@@ -665,7 +759,7 @@ const TagTimelineContent = observer(() => {
 
   return (
     <>
-      <TimelineThumbnailTrack />
+      <TimelineThumbnailTrack/>
       {
         tracks.map((track, i) =>
           <div
@@ -678,19 +772,9 @@ const TagTimelineContent = observer(() => {
             }
             className={S("timeline-row", track.trackId === tagStore.selectedTrackId ? "timeline-row--selected" : "")}
           >
-            <Linkish
-              onClick={
-                track.trackType !== "metadata" ? undefined :
-                  () => tagStore.selectedTrackId === track.trackId ?
-                    tagStore.ClearSelectedTrack() :
-                    tagStore.SetSelectedTrack(track.trackId)
-              }
-              className={S("timeline-row__label")}
-            >
-              {track.label}
-            </Linkish>
+            <TrackLabel track={track} />
             <div className={S("timeline-row__content")}>
-              <Track track={track} />
+              <Track track={track}/>
             </div>
           </div>
         )
@@ -707,7 +791,7 @@ const ClipTimelineContent = observer(() => {
 
   return (
     <>
-      <TimelineThumbnailTrack />
+      <TimelineThumbnailTrack/>
       {
         tracks
           .filter(t => t)
@@ -723,26 +807,7 @@ const ClipTimelineContent = observer(() => {
               }
               className={S("timeline-row", track.trackId === tagStore.selectedTrackId ? "timeline-row--selected" : "")}
             >
-              <Linkish
-                onClick={
-                  track.trackType === "primary-content" ? undefined :
-                    () => tagStore.selectedTrackId === track.trackId ?
-                      tagStore.ClearSelectedTrack() :
-                      tagStore.SetSelectedTrack(track.trackId)
-                }
-                className={S("timeline-row__label")}
-              >
-                {track.label}
-                {
-                  track.trackType !== "primary-content" ? null :
-                    <IconButton
-                      withinPortal
-                      icon={QuestionMarkIcon}
-                      label="Modifying the primary content tag allows you to specify the start and end times for this offering"
-                      className={S("timeline-row__icon")}
-                    />
-                }
-              </Linkish>
+              <TrackLabel track={track} />
               <div className={S("timeline-row__content")}>
                 <Track track={track} noActive={track.trackType === "primary-content"} />
               </div>

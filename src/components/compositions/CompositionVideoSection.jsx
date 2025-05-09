@@ -285,10 +285,6 @@ const Title = observer(({clipView}) => {
     );
   }
 
-
-  const thumbnailsGenerating = videoStore?.videoObject ?
-    videoStore.thumbnailStore.generating : compositionStore.videoStore?.thumbnailStore?.generating;
-
   return (
     <h1 className={S("video-section__title")}>
       {
@@ -362,16 +358,39 @@ const Title = observer(({clipView}) => {
                 autoContrast
                 h={30}
                 px="xs"
-                disabled={!compositionStore.hasUnsavedChanges || thumbnailsGenerating}
-                tooltip={
-                  !thumbnailsGenerating ? undefined :
-                    "Please finalize the thumbnails for the source video in the tags view before publishing"
-                }
-                onClick={async () => await Confirm({
-                  title: "Publish Composition",
-                  text: "Are you sure you want to publish this composition?",
-                  onConfirm: async () => await compositionStore.SaveComposition()
-                })}
+                disabled={!compositionStore.hasUnsavedChanges}
+                onClick={async () => {
+                  const thumbnailsGenerating = videoStore?.videoObject ?
+                    videoStore.thumbnailStore.generating : compositionStore.videoStore?.thumbnailStore?.generating;
+
+                  if(thumbnailsGenerating) {
+                    let cancelled = false;
+                    await Confirm({
+                      title: "Save Changes",
+                      text: "Warning: Thumbnails are currently generating for this content. If you don't finalize the thumbnails before saving your changes, the thumbnails will be lost and thumbnail generation will have to be restarted. Do you want to proceed?",
+                      onConfirm: async () => {
+                        await videoStore.thumbnailStore?.RemoveThumbnailJob({
+                          objectId: videoStore?.videoObject?.objectId
+                        });
+
+                        await compositionStore.videoStore?.thumbnailStore?.RemoveThumbnailJob({
+                          objectId: compositionStore?.videoStore?.videoObject?.objectId
+                        });
+                      },
+                      onCancel: () => cancelled = true
+                    });
+
+                    if(cancelled) {
+                      return;
+                    }
+                  }
+
+                  await Confirm({
+                    title: "Publish Composition",
+                    text: "Are you sure you want to publish this composition?",
+                    onConfirm: async () => await compositionStore.SaveComposition()
+                  });
+                }}
               >
                 <Icon icon={PublishIcon}/>
                 <span style={{marginLeft: 10}}>

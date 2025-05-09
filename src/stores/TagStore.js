@@ -5,6 +5,8 @@ import {Cue} from "@/stores/Helpers.js";
 class TagStore {
   selectedTrackId;
 
+  scrollTagId;
+  scrollSeekTime;
   selectedTime;
   selectedTagIds = [];
   selectedTagId;
@@ -122,7 +124,16 @@ class TagStore {
     this.filter = "";
   }
 
-  Tags({mode="tags", startFrame=0, endFrame, limit=100, selectedOnly=false}={}) {
+  Tags({
+    mode="tags",
+    startFrame=0,
+    endFrame,
+    pages={previous: 1, next: 1},
+    perPage=10,
+    scrollTagId,
+    scrollSeekTime,
+    selectedOnly=false
+  }={}) {
     const startTime = startFrame && this.rootStore.videoStore.FrameToTime(startFrame);
     const endTime = endFrame && this.rootStore.videoStore.FrameToTime(endFrame);
 
@@ -139,7 +150,6 @@ class TagStore {
 
     const filter = (this.filter || "").toLowerCase();
 
-    let total = 0;
     let tags = tracks
       .map(track => {
         let trackTags = Object.values(this.rootStore.trackStore.TrackTags(track.trackId) || {})
@@ -154,19 +164,39 @@ class TagStore {
             (!filter || (tag.text || JSON.stringify(tag.content || {})).toLowerCase().includes(filter)) &&
             // Selected tags
             (!selectedOnly || this.selectedTagIds.length === 0 || this.selectedTagIds.includes(tag.tagId))
-          )
-          .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
+          );
 
-
-        total += trackTags.length;
-
-        return trackTags.slice(0, limit);
+        return trackTags;
       })
       .flat()
-      .sort((a, b) => a.startTime < b.startTime ? -1 : 1)
-      .slice(0, limit);
+      .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
 
-    return { tags, total };
+    const total = tags.length;
+
+    let startIndex = 0;
+    let centerTagId;
+    if(scrollTagId) {
+      const tagIndex = tags.findIndex(tag => tag.tagId === scrollTagId);
+      if(tagIndex >= 0) {
+        startIndex = tagIndex;
+        centerTagId = tags[tagIndex].tagId;
+      }
+    } else if(scrollSeekTime) {
+      const tagIndex = tags.findIndex(tag => tag.startTime >= scrollSeekTime);
+      if(tagIndex >= 0) {
+        startIndex = tagIndex;
+        centerTagId = tags[tagIndex].tagId;
+      }
+    }
+
+    const minIndex = Math.max(0, startIndex - pages.previous * perPage);
+    const maxIndex = startIndex + pages.next * perPage;
+    tags = [
+      ...tags.slice(minIndex, startIndex),
+      ...tags.slice(startIndex, maxIndex)
+    ];
+
+    return { tags, min: minIndex, max: maxIndex, center: startIndex, centerTagId, total };
   }
 
   PlayCurrentTag() {
@@ -216,12 +246,20 @@ class TagStore {
     this.ClearEditing();
   }
 
-  ClearSelectedTag() {
-    this.selectedTagId = undefined;
+  ClearSelectedTag(scrollToTag=false) {
+    if(scrollToTag) {
+      this.scrollTagId = this.selectedTagId || this.selectedTagIds[0];
+      this.scrollSeekTime = undefined;
+    } else {
+      this.scrollTagId = undefined;
+      this.scrollSeekTime = undefined;
+    }
 
     if(this.selectedTagIds.length === 1) {
-      this.ClearTags();
+      this.ClearTags(scrollToTag);
     }
+
+    this.selectedTagId = undefined;
 
     this.ClearEditing();
   }
@@ -245,6 +283,9 @@ class TagStore {
       this.selectedTagIds = tags;
     }
 
+    this.scrollTagId = this.selectedTagId || this.selectedTagIds[0];
+    this.scrollSeekTime = undefined;
+
     this.ClearEditing();
   }
 
@@ -260,8 +301,14 @@ class TagStore {
     this.hoverTime = undefined;
   }
 
-  ClearTags() {
+  ClearTags(scrollToTag=false) {
     this.ClearEditing();
+
+    if(scrollToTag) {
+      this.scrollTagId = this.selectedTagId || this.selectedTagIds[0];
+    } else {
+      this.scrollTagId = undefined;
+    }
 
     this.selectedTagIds = [];
     this.selectedTagId = undefined;
@@ -269,6 +316,11 @@ class TagStore {
     this.selectedTagTrackId = undefined;
 
     this.ClearSelectedOverlayTags();
+  }
+
+  SetScrollSeekTime(time) {
+    this.scrollSeekTime = time;
+    this.scrollTagId = undefined;
   }
 
   SetSelectedOverlayTags(frame, tagIds=[]) {

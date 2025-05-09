@@ -10,6 +10,7 @@ const S = CreateModuleClassMatcher(CommonStyles);
 const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage, ...props}) => {
   const [ref, setRef] = useState(null);
   const [thumbnails, setThumbnails] = useState(null);
+  const [brokenImages, setBrokenImages] = useState({});
 
   const [clientX, setClientX] = useState(-1);
   const [hoverInfo, setHoverInfo] = useState({
@@ -74,6 +75,8 @@ const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage,
       />;
   }
 
+  const imageUrl = thumbnails[hoverInfo.thumbnailIndex];
+
   return (
     <div
       {...props}
@@ -83,20 +86,26 @@ const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage,
       onMouseLeave={() => setClientX(-1)}
       className={JoinClassNames(S("preview-thumbnail"), props.className)}
     >
-      <img
-        alt="Thumbnail"
-        style={{aspectRatio: store.aspectRatio}}
-        key={`thumbnail-previous-${hoverInfo.previousThumbnailIndex}`}
-        src={thumbnails[hoverInfo.previousThumbnailIndex]}
-        className={S("preview-thumbnail__image", "preview-thumbnail__image--previous")}
-      />
-      <img
-        alt="Thumbnail"
-        style={{aspectRatio: store.aspectRatio}}
-        key={`thumbnail-${hoverInfo.thumbnailIndex}`}
-        src={thumbnails[hoverInfo.thumbnailIndex]}
-        className={S("preview-thumbnail__image", "preview-thumbnail__image--current")}
-      />
+      {
+        !imageUrl || brokenImages[imageUrl] ?
+          <div
+            className={
+              S(
+                "preview-thumbnail__image",
+                "preview-thumbnail__image--current",
+                "preview-thumbnail__image--broken"
+              )
+            }
+          /> :
+          <img
+            alt="Thumbnail"
+            style={{aspectRatio: store.aspectRatio}}
+            key={`thumbnail-${hoverInfo.thumbnailIndex}`}
+            src={imageUrl}
+            onError={() => setBrokenImages({...brokenImages, [imageUrl]: true})}
+            className={S("preview-thumbnail__image", "preview-thumbnail__image--current")}
+          />
+      }
       {
         hoverInfo <= 0 ? null :
           <div

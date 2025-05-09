@@ -1,6 +1,6 @@
 .download-modal {
   min-height: 450px;
-  padding-top: 10px;
+  padding-top: 5px;
 }
 
  .header {
@@ -166,12 +166,14 @@
 
   &--highlighted {
     .history-row__cell--title {
-      color: var(--text-highlight-secondary);
+      color: var(--text-highlight);
     }
   }
 
   &--header {
     color: var(--text-primary);
+    padding-bottom: 0;
+    padding-top: 0;
   }
 
   &--entry {
@@ -186,8 +188,19 @@
     }
   }
 
+  .center {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .progress {
+    max-width: 100px;
+  }
+
   &__thumbnail-container {
-    border-radius: 10px;
+    border-radius:3px;
     max-width: 120px;
     overflow: hidden;
     width: 100%;
@@ -195,50 +208,56 @@
 
   &__cell {
     align-items: center;
-    color: var(--text-tertiary);
     display: flex;
     font-size: 13px;
-    gap: 10px;
+    gap: 20px;
     width: 100%;
 
     &--title {
-      color: var(--text-secondary);
-      font-weight: 500;
+      font-weight: 600;
     }
+  }
+
+  &__status {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    justify-content: center;
   }
 
   &__actions {
     align-items: center;
     display: flex;
     gap: 10px;
-    justify-content: flex-end;
-    padding-right: 10px;
+    justify-content: center;
     width: 100%;
+
+    &:empty {
+      height: 20px;
+
+      &::before {
+        color: var(--text-tertiary);
+        content: "-";
+      }
+    }
   }
 
   &__details {
-    height: 20px;
-    min-height: 15px;
-    min-width: 15px;
-    position: absolute;
-    right: 2px;
-    top: 2px;
-    width: 20px;
-
-    * {
-      color: var(--text-tertiary);
-    }
+    cursor: help;
   }
 }
 
 .job-details {
   display: grid;
-  gap:3px;
+  gap: 5px;
   min-width: 250px;
   padding: 5px;
 
   &__detail {
+    color: var(--text-secondary);
     display: flex;
+    font-size: 13px;
     gap: 20px;
     justify-content: space-between;
   }

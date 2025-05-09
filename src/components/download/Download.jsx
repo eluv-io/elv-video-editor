@@ -15,7 +15,7 @@ import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import DownloadForm from "@/components/download/DownloadForm.jsx";
 
 import DownloadIcon from "@/assets/icons/download.svg";
-import QuestionMarkIcon from "@/assets/icons/v2/question-mark.svg";
+import InfoIcon from "@/assets/icons/v2/info.svg";
 import XIcon from "@/assets/icons/X.svg";
 import RetryIcon from "@/assets/icons/rotate-ccw.svg";
 
@@ -104,9 +104,7 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
     );
   } else if(jobStatus.status === "processing") {
     return (
-      <div className={S("history-row__actions")}>
-        <progress value={jobStatus.progress} max={100} className={S("progress")} />
-      </div>
+      <div className={S("history-row__actions")} />
     );
   }
 });
@@ -115,9 +113,9 @@ const JobStatusTable = observer(({store, jobs, setConfirming, Reload}) => (
   <div className={S("history")}>
     <div className={S("history-row", "history-row--header")}>
       <div>Name</div>
-      <div>Duration</div>
-      <div>Status</div>
-      <div />
+      <div className={S("center")}>Duration</div>
+      <div className={S("center")}>Status</div>
+      <div className={S("center")}>Actions</div>
     </div>
     {
       jobs.map(job => {
@@ -145,6 +143,46 @@ const JobStatusTable = observer(({store, jobs, setConfirming, Reload}) => (
             }
           >
             <div className={S("history-row__cell", "history-row__cell--title")}>
+              <IconButton
+                icon={InfoIcon}
+                className={S("history-row__details")}
+                aria-label="Clip Details"
+                withinPortal
+                label={
+                  <div className={S("job-details")}>
+                    <div className={S("job-details__detail")}>
+                      <label>Start Time:</label>
+                      <span className="monospace">{store.FrameToSMPTE(startFrame)}</span>
+                    </div>
+                    <div className={S("job-details__detail")}>
+                      <label>End Time:</label>
+                      <span className="monospace">{store.FrameToSMPTE(endFrame)}</span>
+                    </div>
+                    <div className={S("job-details__detail")}>
+                      <label>Duration:</label>
+                      <span>{store.videoHandler.FrameToString({frame: endFrame - startFrame})}</span>
+                    </div>
+                    <div className={S("job-details__detail")}>
+                      <label>Offering:</label>
+                      <span>{job.offering === "default" ? "Default" : job.offering || "Default"}</span>
+                    </div>
+                    {
+                      !resolutionLabel ? null :
+                        <div className={S("job-details__detail")}>
+                          <label>Resolution:</label>
+                          <span>{resolutionLabel}</span>
+                        </div>
+                    }
+                    {
+                      !audioTrackLabel ? null :
+                        <div className={S("job-details__detail")}>
+                          <label>Audio:</label>
+                          <span>{audioTrackLabel}</span>
+                        </div>
+                    }
+                  </div>
+                }
+              />
               {
                 !store.thumbnailStore.thumbnailStatus.available ? null :
                   <div style={{aspectRatio: store.aspectRatio}} className={S("history-row__thumbnail-container")}>
@@ -158,61 +196,24 @@ const JobStatusTable = observer(({store, jobs, setConfirming, Reload}) => (
               }
               {job.filename}
             </div>
-            <div className={S("history-row__cell")}>
+            <div className={S("history-row__cell", "center")}>
               {job?.duration}
             </div>
-            <div className={S("history-row__cell")}>
+            <div className={S("history-row__cell", "center")}>
               {
                 !jobStatus ? "" :
                   jobStatus?.status === "completed" ?
                     downloaded ? "Download Initiated" : "Available" :
-                    jobStatus?.status === "failed" ? "Failed" : "Generating..."
+                    jobStatus?.status === "failed" ? "Failed" :
+                      <div className={S("history-row__status")}>
+                        Generating...
+                        <progress value={jobStatus.progress || 0} max={100} className={S("progress")}/>
+                      </div>
               }
             </div>
-            <div className={S("history-row__cell")}>
+            <div className={S("history-row__cell", "center")}>
               <JobActions job={job} setConfirming={setConfirming} Reload={Reload}/>
             </div>
-
-            <IconButton
-              icon={QuestionMarkIcon}
-              className={S("history-row__details")}
-              aria-label="Clip Details"
-              withinPortal
-              label={
-                <div className={S("job-details")}>
-                  <div className={S("job-details__detail")}>
-                    <label>Start Time:</label>
-                    <span className="monospace">{store.FrameToSMPTE(startFrame)}</span>
-                  </div>
-                  <div className={S("job-details__detail")}>
-                    <label>End Time:</label>
-                    <span className="monospace">{store.FrameToSMPTE(endFrame)}</span>
-                  </div>
-                  <div className={S("job-details__detail")}>
-                    <label>Duration:</label>
-                    <span>{store.videoHandler.FrameToString({frame: endFrame - startFrame})}</span>
-                  </div>
-                  <div className={S("job-details__detail")}>
-                    <label>Offering:</label>
-                    <span>{job.offering === "default" ? "Default" : job.offering || "Default"}</span>
-                  </div>
-                  {
-                    !resolutionLabel ? null :
-                      <div className={S("job-details__detail")}>
-                        <label>Resolution:</label>
-                        <span>{resolutionLabel}</span>
-                      </div>
-                  }
-                  {
-                    !audioTrackLabel ? null :
-                      <div className={S("job-details__detail")}>
-                        <label>Audio:</label>
-                        <span>{audioTrackLabel}</span>
-                      </div>
-                  }
-                </div>
-              }
-            />
           </div>
         );
       })
@@ -269,7 +270,7 @@ const DownloadHistory = ({store, highlightedJobId, setConfirming}) => {
 
     UpdateStatus();
 
-    const statusUpdateInterval = setInterval(UpdateStatus, 3000);
+    const statusUpdateInterval = setInterval(UpdateStatus, 5000);
 
     return () => clearInterval(statusUpdateInterval);
   }, [jobs]);

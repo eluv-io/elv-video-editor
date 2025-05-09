@@ -11,8 +11,9 @@ import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 const S = CreateModuleClassMatcher();
 
 const SaveProgressModal = observer(() => {
-  const tagProgress = 47.5 * editStore.saveProgress.tags;
-  const overlayProgress = 47.5 * editStore.saveProgress.overlay;
+  const tagProgress = 30 * editStore.saveProgress.tags;
+  const overlayProgress = 30 * editStore.saveProgress.overlay;
+  const aggregationProgress = 30 * editStore.saveProgress.aggregation;
 
   // Last 5% is reserved for finalizing
   return (
@@ -25,7 +26,7 @@ const SaveProgressModal = observer(() => {
     >
       <div className={S("progress")}>
         <progress
-          value={tagProgress + overlayProgress}
+          value={tagProgress + overlayProgress + aggregationProgress}
           max={100}
         />
       </div>
@@ -77,7 +78,7 @@ const TagsAndClipsView = observer(({mode}) => {
     <>
       { !editStore.saving ? null : <SaveProgressModal /> }
       <PanelGroup direction="vertical" className="panel-group">
-        <Panel id="top" order={1} defaultSize={Math.max(40, 60 - trackCount * 3)} minSize={30}>
+        <Panel id="top" order={1} defaultSize={Math.max(40, 60 - trackCount * 3)} minSize={25}>
           <PanelGroup direction="horizontal" className="panel-group">
             <Panel id="side-panel" order={1} style={{"--panel-width": `${sidePanelDimensions?.width}px`}} defaultSize={30} minSize={100 * 425 / window.innerWidth}>
               {

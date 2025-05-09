@@ -222,6 +222,8 @@ const TrackSelection = observer(({mode = "tags"}) => {
   const selectedTracks = Object.keys(activeTracks).map(trackKey => {
     const track = tracks.find(track => track.key === trackKey);
 
+    if(!track) { return null; }
+
     return (
       <div
         key={trackKey}

@@ -33,9 +33,9 @@ export const BareLoader = ({className=""}) => (
   </div>
 );
 
-export const Loader = ({className = "", loaderClassName=""}) => {
+export const Loader = ({className = "", loaderClassName="", ...props}) => {
   return (
-    <div className={JoinClassNames(S("loader"), className)}>
+    <div className={JoinClassNames(S("loader"), className)} {...props}>
       <BareLoader className={loaderClassName}/>
     </div>
   );
@@ -50,6 +50,7 @@ export const LoaderImage = observer(({
   loaderAspectRatio,
   lazy=true,
   showWithoutSource=false,
+  noAnimation,
   delay=25,
   loaderDelay=250,
   setRef,
@@ -82,7 +83,16 @@ export const LoaderImage = observer(({
           ...(loaderAspectRatio ? {aspectRatio: loaderAspectRatio} : {})
         }}
         key={props.key ? `${props.key}--placeholder` : undefined}
-        className={JoinClassNames(S("lazy-image__background"), showLoader ? S("lazy-image__background--error") : "", props.className || "")}
+        className={
+          JoinClassNames(
+            S(
+              "lazy-image__background",
+              showLoader ? "lazy-image__background--error" : "",
+              noAnimation ? "" : "lazy-image__background--animated"
+            ),
+            props.className || ""
+          )
+        }
       />
     );
   }
@@ -131,7 +141,16 @@ export const LoaderImage = observer(({
               ...(loaderAspectRatio ? {aspectRatio: loaderAspectRatio} : {})
             }}
             key={props.key ? `${props.key}--placeholder` : undefined}
-            className={JoinClassNames(S("lazy-image__background"), showLoader ? S("lazy-image__background--visible") : "", props.className || "")}
+            className={
+              JoinClassNames(
+                S(
+                  "lazy-image__background",
+                  showLoader ? "lazy-image__background--visible" : "",
+                  noAnimation ? "" : "lazy-image__background--animated"
+                ),
+                props.className || ""
+              )
+            }
           />
       }
     </>
@@ -649,3 +668,4 @@ export const Confirm = async ({title, text, labels={}, onConfirm, onCancel}) => 
 
   await onConfirm();
 };
+

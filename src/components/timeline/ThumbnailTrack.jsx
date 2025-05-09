@@ -185,6 +185,7 @@ const ThumbnailTrack = observer(({
           return (
             <LoaderImage
               showWithoutSource
+              noAnimation
               src={store.thumbnailStore.ThumbnailImage(startTime)}
               alt="Thumbnail"
               key={`thumbnail-${index}`}
@@ -213,7 +214,11 @@ const ThumbnailTrack = observer(({
         RenderTooltip ?
           RenderTooltip(hoverThumbnail) :
           !hoverThumbnail ? null :
-            <LoaderImage src={hoverThumbnail} className={S("thumbnail-tooltip__thumbnail")}/>
+            <LoaderImage
+              src={hoverThumbnail}
+              noAnimation
+              className={S("thumbnail-tooltip__thumbnail")}
+            />
       }
       classNames={
         RenderTooltip ? null :
