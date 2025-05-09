@@ -19,6 +19,9 @@ const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage,
     progress: 0
   });
 
+  startFrame = startFrame || 0;
+  endFrame = endFrame || store.totalFrames - 1;
+
   useEffect(() => {
     let startTime = store.FrameToTime(startFrame);
     const endTime = store.FrameToTime(endFrame);

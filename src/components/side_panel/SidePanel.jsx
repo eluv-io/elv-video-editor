@@ -3,7 +3,7 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-import {Confirm, Icon, IconButton, Input} from "@/components/common/Common.jsx";
+import {Confirm, Icon, IconButton, Input, Modal} from "@/components/common/Common.jsx";
 import {rootStore, assetStore, compositionStore, tagStore, trackStore, aiStore} from "@/stores/index.js";
 import {TagDetails, TagsList} from "@/components/side_panel/Tags.jsx";
 import Assets from "@/components/side_panel/Assets.jsx";
@@ -11,13 +11,16 @@ import {TrackDetails} from "@/components/side_panel/Tracks.jsx";
 
 import {OverlayTagDetails, OverlayTagsList} from "@/components/side_panel/OverlayTags.jsx";
 import {CompositionBrowser, CompositionClips} from "@/components/side_panel/Compositions.jsx";
-import {Combobox, Menu, PillsInput, RingProgress, Switch, useCombobox} from "@mantine/core";
+import {Combobox, Menu, PillsInput, RingProgress, Switch, Tooltip, useCombobox} from "@mantine/core";
 import {useLocation} from "wouter";
 
 import SelectArrowsIcon from "@/assets/icons/v2/select-arrows.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
 import SettingsIcon from "@/assets/icons/v2/settings.svg";
 import UpdateIndexIcon from "@/assets/icons/v2/reload.svg";
+import SourcesIcon from "@/assets/icons/v2/sources.svg";
+import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
+import {LibraryBrowser, ObjectBrowser} from "@/components/nav/Browser.jsx";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -59,7 +62,7 @@ const SearchIndexSelection = observer(() => {
       shadow="md"
       width={250}
       offset={15}
-      position="bottom-end"
+      position="bottom-middle"
     >
       <Menu.Target>
         <button
@@ -80,7 +83,7 @@ const SearchIndexSelection = observer(() => {
         </button>
       </Menu.Target>
 
-      <Menu.Dropdown w={300} bg="var(--background-toolbar)">
+      <Menu.Dropdown w={300} radius={10} p={0}>
         <div className={S("search__index-menu")}>
           <div className={S("search__index-title")}>
             Search Index
@@ -135,8 +138,127 @@ const SearchIndexSelection = observer(() => {
   );
 });
 
+const SourceSelectionModal = observer(({Select, Cancel}) => {
+  const [libraryId, setLibraryId] = useState(undefined);
+
+  return (
+    <Modal withCloseButton={false} opened centered size={1000} onClose={Cancel}>
+      {
+        libraryId ?
+          <ObjectBrowser
+            libraryId={libraryId}
+            videoOnly
+            frameRate={compositionStore.sourceVideoStore.frameRateRat}
+            Back={() => setLibraryId(undefined)}
+            Select={({objectId, name}) => Select({objectId, name})}
+            className={S("search__source-browser")}
+          /> :
+          <LibraryBrowser
+            title="Select source content for your composition"
+            Select={({libraryId, objectId, name}) => {
+              if(objectId) {
+                Select({objectId, name});
+              } else {
+                setLibraryId(libraryId);
+              }
+            }}
+            className={S("search__source-browser")}
+          />
+      }
+    </Modal>
+  );
+});
+
+const SourceSelection = observer(() => {
+  const [showMenu, setShowMenu] = useState(false);
+  const [showBrowser, setShowBrowser] = useState(false);
+
+  const sources = [
+    {
+      objectId: compositionStore.compositionObject.objectId,
+      name: compositionStore.sourceVideoStore.name
+    },
+    ...compositionStore.secondarySources
+  ];
+
+  return (
+    <>
+      <Menu
+        opened={showMenu}
+        onChange={setShowMenu}
+        shadow="md"
+        width={250}
+        offset={15}
+        position="bottom-end"
+      >
+        <Menu.Target>
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className={S("search__source-button")}
+          >
+            <Icon icon={SourcesIcon} />
+            <span>Select Source</span>
+          </button>
+        </Menu.Target>
+
+        <Menu.Dropdown w={400} radius={10} p={0}>
+          <div className={S("search__source-menu")}>
+            {
+              sources.map(({objectId, name}) =>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  key={`source-${objectId}`}
+                  onClick={() => {
+                    compositionStore.SetSelectedSource({objectId});
+                    setShowMenu(false);
+                  }}
+                  className={S("search__source-option", compositionStore.selectedSourceId === objectId ? "search__source-option--active" : "")}
+                >
+                  <PreviewThumbnail
+                    store={compositionStore.sourceVideoStore}
+                    className={S("search__source-thumbnail")}
+                  />
+                  <Tooltip label={name}>
+                    <div className={S("search__source-text")}>
+                      <div className={S("search__source-option-name", "ellipsis")}>
+                        {name}
+                      </div>
+                      <div className={S("search__source-option-id", "ellipsis")}>
+                        {objectId}
+                      </div>
+                    </div>
+                  </Tooltip>
+                </div>
+              )
+            }
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => {
+                setShowBrowser(true);
+                setShowMenu(false);
+              }}
+              className={S("search__source-option", "search__source-add")}
+            >
+              Add Source
+            </div>
+          </div>
+        </Menu.Dropdown>
+      </Menu>
+      {
+        !showBrowser ? null :
+          <SourceSelectionModal
+            Select={console.log}
+            Cancel={() => setShowBrowser(false)}
+          />
+      }
+    </>
+  );
+});
+
 let filterTimeout;
-const SidebarFilter = observer(({store, label, sideContent, delay=100}) => {
+const SidebarFilter = observer(({store, label, sideContent, delay = 100}) => {
   const [filter, setFilter] = useState(store.filter);
 
   useEffect(() => {
@@ -404,7 +526,17 @@ export const CompositionSidePanel = observer(() => {
   return (
     <div className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
-        <SidebarFilter delay={1500} sideContent={<SearchIndexSelection />} store={compositionStore} label="Search Clips"/>
+        <SidebarFilter
+          delay={1500}
+          sideContent={
+            <>
+              <SearchIndexSelection />
+              <SourceSelection />
+            </>
+          }
+          store={compositionStore}
+          label="Search Clips"
+        />
         <CompositionClips />
       </div>
     </div>

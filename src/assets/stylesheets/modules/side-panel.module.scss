@@ -101,17 +101,21 @@
     width: 20px;
   }
 
+  // Search index menu
+
   &__index-menu {
+    background-color: var(--background-toolbar);
+    border: 1px solid var(--table-border-color);
+    border-radius: 5px;
     max-height: 400px;
     overflow-y: auto;
     position: relative;
   }
 
   &__index-title {
-    background-color: var(--background-toolbar);
     box-shadow: 0 0 3px var(--background-primary);
     font-weight: 500;
-    padding: 10px;
+    padding: 5px 10px;
     position: sticky;
     top: 0;
   }
@@ -147,6 +151,84 @@
   &__index-option-id {
     color: var(--text-secondary);
     font-size: 10px;
+  }
+
+  // Source selection menu
+
+  &__source-button {
+    align-items: center;
+    border: 1px solid var(--text-light-bg);
+    border-radius: 15px;
+    color: var(--text-light-bg);
+    display: flex;
+    font-size: 14px;
+    gap: 5px;
+    justify-content: center;
+    margin-right: -5px;
+    padding: 2px 5px;
+
+    svg {
+      height: 20px;
+      width: 20px;
+    }
+  }
+
+  &__source-menu {
+    background-color: var(--background-toolbar);
+    border: 1px solid var(--table-border-color);
+    border-radius: 5px;
+    max-height: 400px;
+    overflow-y: auto;
+    position: relative;
+  }
+
+  &__source-option {
+    align-items: center;
+    cursor: pointer;
+    display: flex;
+    font-size: 14px;
+    gap: 10px;
+    min-height: 45px;
+    overflow: hidden;
+    padding: 10px;
+    text-align: left;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    width: 100%;
+
+    &:hover {
+      &:not(.search__source-option--active) {
+        background-color: var(--background-active);
+      }
+    }
+
+    &--active {
+      background-color: var(--background-toolbar--highlight);
+    }
+  }
+
+  &__source-thumbnail {
+    min-width: 100px;
+  }
+
+  &__source-text {
+    max-width: 250px;
+  }
+
+  &__source-option-name {
+    color: var(--text-primary);
+  }
+
+  &__source-option-id {
+    color: var(--text-secondary);
+    font-size: 10px;
+  }
+
+  &__source-browser {
+    max-height: 90vh;
+    min-height: unset;
+    padding: 40px 30px;
+
+    --row-height: 50px;
   }
 }
 

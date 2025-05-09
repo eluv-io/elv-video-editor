@@ -112,7 +112,6 @@
   &__row-title-main {
     align-items: center;
     display: flex;
-    font-size: 16px;
     gap: 10px;
     max-width: calc(100% - 50px);
     overflow: hidden;
@@ -129,6 +128,7 @@
   &__cell {
     align-items: center;
     display: flex;
+    font-size: 14px;
     gap: 15px;
     height: var(--row-height);
     justify-content: flex-start;

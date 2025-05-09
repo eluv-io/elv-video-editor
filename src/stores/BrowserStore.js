@@ -129,7 +129,20 @@ class BrowserStore {
     const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
 
     // Try and retrieve video duration
-    let metadata, duration, lastModified, forbidden, isVideo, hasChannels, channels, hasAssets, isLiveStream, isLive, vods;
+    let
+      metadata,
+      duration,
+      frameRate,
+      lastModified,
+      forbidden,
+      isVideo,
+      hasChannels,
+      channels,
+      hasAssets,
+      isLiveStream,
+      isLive,
+      vods;
+
     try {
       metadata = yield this.rootStore.client.ContentObjectMetadata({
         versionHash: versionHash,
@@ -140,6 +153,7 @@ class BrowserStore {
           "channel/offerings/*/display_name",
           "assets",
           "offerings/*/media_struct/duration_rat",
+          "offerings/*/media_struct/streams/*/rate",
           "live_recording/status",
           "live_recording_copies"
         ]
@@ -187,6 +201,11 @@ class BrowserStore {
         duration = this.FormatDuration(duration);
       }
 
+      const videoKey = Object.keys(metadata?.offerings?.[offering]?.media_struct?.streams).find(key => key.startsWith("video"));
+      if(videoKey) {
+        frameRate = metadata.offerings[offering].media_struct.streams[videoKey].rate;
+      }
+
       isLiveStream = !!metadata?.live_recording;
       isLive = isLiveStream && metadata.live_recording?.status?.state === "active";
       vods = metadata.live_recording_copies;
@@ -206,6 +225,7 @@ class BrowserStore {
       forbidden,
       lastModified,
       duration,
+      frameRate,
       isVideo,
       hasChannels,
       hasAssets,

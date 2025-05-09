@@ -9,6 +9,8 @@ import Fraction from "fraction.js";
 class CompositionStore {
   myCompositions = {};
   myClipIds = [];
+  secondarySources = [];
+  selectedSourceId;
 
   videoStore;
   initialized = false;
@@ -75,6 +77,7 @@ class CompositionStore {
 
     this.clipStores = {};
     this.clips = {};
+    this.secondarySources = [];
     this.clipIdList = [];
     this.aiClipIds = [];
     this.myClipIds = [];
@@ -506,6 +509,10 @@ class CompositionStore {
     }
 
     return this.clipStores[key];
+  }
+
+  SetSelectedSource({objectId}) {
+    this.selectedSourceId = objectId;
   }
 
   SetSelectedClip({clipId, source}) {
@@ -965,13 +972,14 @@ class CompositionStore {
 
     this.videoStore.videoHandler = videoHandler;
 
+    let secondarySources = [];
     let updatedClipList = {};
     this.clipIdList = yield Promise.all(
       (metadata?.items || []).map(async item => {
         const clipId = this.rootStore.NextId();
         const clipVersionHash = ExtractHashFromLink(item.source) || versionHash;
-        const objectId = this.client.utils.DecodeVersionHash(clipVersionHash).objectId;
-        const libraryId = await this.client.ContentObjectLibraryId({objectId});
+        const clipObjectId = this.client.utils.DecodeVersionHash(clipVersionHash).objectId;
+        const libraryId = await this.client.ContentObjectLibraryId({objectId: clipObjectId});
         const offeringKey = item.source["/"].split("/").slice(-1)[0];
 
         const clipInFrame = videoHandler.RatToFrame(item.slice_start_rat);
@@ -981,20 +989,28 @@ class CompositionStore {
           clipId,
           name: item.display_name,
           libraryId,
-          objectId,
+          objectId: clipObjectId,
           versionHash: clipVersionHash,
           offering: offeringKey,
           clipInFrame,
           clipOutFrame,
-          storeKey: `${objectId}-${offeringKey}`,
-          clipKey: `${objectId}-${offeringKey}-${clipInFrame}-${clipOutFrame}`
+          storeKey: `${clipObjectId}-${offeringKey}`,
+          clipKey: `${clipObjectId}-${offeringKey}-${clipInFrame}-${clipOutFrame}`
           // TODO: Audio
           //audioRepresentation: store.audioRepresentation,
         };
 
+        if(clipObjectId !== objectId && !secondarySources.includes(clipObjectId)) {
+          secondarySources.push(clipObjectId);
+        }
+
         return clipId;
       })
     );
+
+    // TODO: Look at secondary sources and load stores
+    this.secondarySources = secondarySources.map(id => ({objectId: id, name: "Secondary"}));
+    this.selectedSourceId = objectId;
 
     this.clips = {
       ...this.clips,
