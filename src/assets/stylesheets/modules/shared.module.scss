@@ -159,6 +159,17 @@
     margin: 5px 0 10px;
   }
 
+  &__section-header {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 20px 0 10px;
+  }
+
+  &__message {
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+
   &__inputs {
     display: grid;
     gap: 3px;
