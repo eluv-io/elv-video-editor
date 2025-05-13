@@ -174,7 +174,8 @@ const AIClips = observer(() => {
   const [loading, setLoading] = useState(false);
   const [clipSource, setClipSource] = useState("highlights");
   const clipIds = clipSource === "search" ?
-    compositionStore.searchClipIds : compositionStore.aiClipIds;
+    compositionStore.searchClipIds :
+    compositionStore.selectedSource?.highlightClipIds || [];
 
   useEffect(() => {
     if(!compositionStore.filter) {

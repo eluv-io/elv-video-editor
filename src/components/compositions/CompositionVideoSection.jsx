@@ -514,7 +514,7 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
     >
       <Title clipView={clipView} />
       {
-        !sectionRef ? null :
+        !sectionRef || !clipView ? null :
           <Video
             blank={!clipView && compositionStore.clipIdList.length === 0}
             loading={!clipView && compositionStore.loading}

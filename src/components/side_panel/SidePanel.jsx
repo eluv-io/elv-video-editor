@@ -148,7 +148,7 @@ const SourceSelectionModal = observer(({Select, Cancel}) => {
           <ObjectBrowser
             libraryId={libraryId}
             videoOnly
-            frameRate={compositionStore.sourceVideoStore.frameRateRat}
+            frameRate={compositionStore.primarySourceVideoStore.frameRateRat}
             Back={() => setLibraryId(undefined)}
             Select={({objectId, name}) => Select({objectId, name})}
             className={S("search__source-browser")}
@@ -173,13 +173,9 @@ const SourceSelection = observer(() => {
   const [showMenu, setShowMenu] = useState(false);
   const [showBrowser, setShowBrowser] = useState(false);
 
-  const sources = [
-    {
-      objectId: compositionStore.compositionObject.objectId,
-      name: compositionStore.sourceVideoStore.name
-    },
-    ...compositionStore.secondarySources
-  ];
+  if(!compositionStore.compositionObject) {
+    return null;
+  }
 
   return (
     <>
@@ -204,7 +200,7 @@ const SourceSelection = observer(() => {
         <Menu.Dropdown w={400} radius={10} p={0}>
           <div className={S("search__source-menu")}>
             {
-              sources.map(({objectId, name}) =>
+              Object.values(compositionStore.sources).map(({objectId, name}) =>
                 <div
                   role="button"
                   tabIndex={0}
@@ -216,7 +212,7 @@ const SourceSelection = observer(() => {
                   className={S("search__source-option", compositionStore.selectedSourceId === objectId ? "search__source-option--active" : "")}
                 >
                   <PreviewThumbnail
-                    store={compositionStore.sourceVideoStore}
+                    store={compositionStore.ClipStore({sourceId: objectId})}
                     className={S("search__source-thumbnail")}
                   />
                   <Tooltip label={name}>
@@ -249,7 +245,11 @@ const SourceSelection = observer(() => {
       {
         !showBrowser ? null :
           <SourceSelectionModal
-            Select={console.log}
+            Select={async ({objectId}) => {
+              console.log("SELECT", objectId);
+              setShowBrowser(false);
+              await compositionStore.AddSource({objectId});
+            }}
             Cancel={() => setShowBrowser(false)}
           />
       }

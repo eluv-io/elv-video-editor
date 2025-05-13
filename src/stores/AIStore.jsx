@@ -241,7 +241,7 @@ class AIStore {
 
       const videoObjectId =
         this.rootStore.videoStore.videoObject?.objectId ||
-        this.rootStore.compositionStore.sourceVideoStore?.videoObject?.objectId;
+        this.rootStore.compositionStore.primarySourceVideoStore?.videoObject?.objectId;
 
       if(videoObjectId) {
         const videoLibraryId = yield this.client.ContentObjectLibraryId({objectId: videoObjectId});
