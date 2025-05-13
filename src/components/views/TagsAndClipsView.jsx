@@ -89,7 +89,7 @@ const TagsAndClipsView = observer(({mode}) => {
             </Panel>
             <PanelResizeHandle />
             <Panel id="content" order={2}>
-              <VideoSection showOverlay />
+              <VideoSection showOverlay showSave />
             </Panel>
           </PanelGroup>
         </Panel>
