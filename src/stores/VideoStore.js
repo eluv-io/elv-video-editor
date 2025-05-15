@@ -467,6 +467,7 @@ class VideoStore {
     this.initialized = false;
     this.video = video;
     this.player = player;
+    this.playing = false;
 
     const videoHandler = new FrameAccurateVideo({
       video,
@@ -518,7 +519,7 @@ class VideoStore {
         console.error(data);
 
         // Give up and show an error message after several failures
-        if(this.consecutiveSegmentErrors >= 3) {
+        if(this.consecutiveSegmentErrors >= 8) {
           //this.rootStore.SetError("Playback Error");
           this.Reset();
         }

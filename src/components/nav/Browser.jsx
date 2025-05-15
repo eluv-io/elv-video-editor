@@ -324,7 +324,6 @@ const CompositionBrowser = observer(({selectedObject, Select, Back, className=""
         contentType="composition"
         Select={Select}
         Load={async ({page, perPage, filter}) => {
-          console.log(selectedObject);
           const content = [
             {
               id: "",

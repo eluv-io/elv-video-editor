@@ -1,16 +1,17 @@
 import { flow, makeAutoObservable } from "mobx";
 
 class OverlayStore {
-  overlayEnabled = true;
   metadataOverlayTags = {};
   clipOverlayTags = {};
+  overlayEnabled = true;
   overlayCanvasDimensions = {width: 0, height: 0};
 
   constructor(rootStore) {
     makeAutoObservable(
       this,
       {
-        overlayTags: false
+        clipOverlayTags: false,
+        metadataOverlayTags: false
       }
     );
 
@@ -42,7 +43,6 @@ class OverlayStore {
   Reset() {
     this.metadataOverlayTags = {};
     this.clipOverlayTags = {};
-    this.overlayEnabled = false;
   }
 
   AddTag({frame, trackKey, tag}) {
