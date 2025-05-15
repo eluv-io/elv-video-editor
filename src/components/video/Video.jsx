@@ -43,6 +43,7 @@ const Video = observer(({
   const [video, setVideo] = useState(undefined);
   const [videoId] = useState(rootStore.NextId());
   const [reloadIndex, setReloadIndex] = useState(0);
+  const [resumeTime, setResumeTime] = useState(undefined);
 
   playoutUrl = playoutUrl || store.playoutUrl;
 
@@ -104,13 +105,22 @@ const Video = observer(({
 
     // Reload on fatal error
     player.on(HLSPlayer.Events.ERROR, function (event, data) {
+
       if(data.fatal) {
+        // eslint-disable-next-line no-console
+        console.error("Fatal HLS Error:");
+        // eslint-disable-next-line no-console
+        console.error(data);
+
         switch(data.type) {
           case HLSPlayer.ErrorTypes.MEDIA_ERROR:
             player.recoverMediaError();
             break;
           default:
-            setTimeout(() => setReloadIndex(reloadIndex + 1), 3000);
+            setTimeout(() => {
+              setResumeTime(video.currentTime);
+              setReloadIndex(reloadIndex + 1)
+            }, 3000);
         }
       }
     });
@@ -123,7 +133,14 @@ const Video = observer(({
     store.Initialize(video, player);
 
     // Ensure loading doesn't hang if the video doesn't want to preload
-    setTimeout(() => setReady(true), 2000);
+    setTimeout(() => {
+      if(resumeTime) {
+        video.currentTime = resumeTime;
+        setResumeTime(undefined);
+      }
+
+      setReady(true);
+    }, 2000);
 
     window.player = hlsPlayer;
 
