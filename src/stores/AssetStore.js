@@ -86,6 +86,16 @@ class AssetStore {
       this.rootStore.tagStore.editedAssetTag;
   }
 
+  Reset() {
+    this.filter = "";
+    this.tracks = [];
+    this.activeTracks = {};
+    this.assets = [];
+
+    this._selectedTags = [];
+    this._selectedTag = undefined;
+  }
+
   SetSelectedTags(tags=[], autoselectSingle=false) {
     this.ClearSelectedTags();
 

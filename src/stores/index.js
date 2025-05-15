@@ -73,11 +73,12 @@ class RootStore {
 
   Reset() {
     [
-      this.videoStore,
       this.tagStore,
       this.overlayStore,
       this.trackStore,
-      this.editStore
+      this.editStore,
+      this.compositionStore,
+      this.assetStore
     ]
       .forEach(store => store.Reset());
   }

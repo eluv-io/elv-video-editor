@@ -228,6 +228,8 @@ class EditStore {
 
   // Save tags and clips
   Save = flow(function * () {
+    this.rootStore.tagStore.ClearEditing();
+
     this.saving = true;
 
     const objectId = this.rootStore.videoStore.videoObject.objectId;

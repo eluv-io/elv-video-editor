@@ -129,6 +129,14 @@ class TrackStore {
     this.editingTrack = false;
     this.audioLoading = false;
     this.initialized = false;
+
+    this.tags = {};
+    this.totalTags = 0;
+    this.intervalTrees = {};
+    this.selectedTrack = undefined;
+    this.activeTracks = {};
+    this.activeClipTracks = {};
+    this.editingTrack = false;
   }
 
   TrackColor(key) {

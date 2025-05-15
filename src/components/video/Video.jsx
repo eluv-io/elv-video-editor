@@ -110,7 +110,7 @@ const Video = observer(({
             player.recoverMediaError();
             break;
           default:
-            setTimeout(() => setReloadIndex(reloadIndex + 1), 5000);
+            setTimeout(() => setReloadIndex(reloadIndex + 1), 3000);
         }
       }
     });

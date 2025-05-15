@@ -1,4 +1,5 @@
 import {flow, makeAutoObservable} from "mobx";
+import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 
 class BrowserStore {
   libraries = undefined;
@@ -138,6 +139,8 @@ class BrowserStore {
           "public/display_image",
           "commit/timestamp",
           "channel/offerings/*/display_name",
+          "channel/offerings/*/updated_at",
+          "channel/offerings/*/items",
           "assets",
           "offerings/*/media_struct/duration_rat",
           "live_recording/status",
@@ -155,10 +158,38 @@ class BrowserStore {
         channels = [];
 
         if(metadata?.channel) {
-          channels = Object.keys(metadata?.channel?.offerings || {}).map(channelKey => ({
-            key: channelKey,
-            label: metadata.channel.offerings[channelKey].display_name || channelKey,
-          }));
+          channels = Object.keys(metadata?.channel?.offerings || {}).map(channelKey => {
+            const channel = metadata.channel.offerings[channelKey];
+
+            let lastModified = channel.updated_at;
+            if(lastModified) {
+              lastModified = new Date(lastModified).toLocaleDateString(navigator.language, {month: "short", day: "numeric", year: "numeric"});
+            }
+
+            let duration;
+            if(channel.items) {
+              try {
+                duration = this.FormatDuration(
+                  channel.items.reduce((acc, item) =>
+                      acc + (FrameAccurateVideo.ParseRat(item.slice_end_rat) - FrameAccurateVideo.ParseRat(item.slice_start_rat)),
+                    0
+                  )
+                );
+              } catch(error) {
+                // eslint-disable-next-line no-console
+                console.error("Error parsing channel duration:");
+                // eslint-disable-next-line no-console
+                console.error(error);
+              }
+            }
+
+            return {
+              key: channelKey,
+              label: channel.display_name || channelKey,
+              duration,
+              lastModified
+            };
+          });
         }
 
         if(savedChannels.length > 0) {

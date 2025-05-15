@@ -40,17 +40,21 @@ const TagSwitch = observer(() => {
 });
 
 const SearchIndexSelection = observer(() => {
+  const [updatingIndexes, setUpdatingIndexes] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
 
   if(aiStore.searchIndexes.length === 0) { return null; }
 
-  let updateProgress;
-  aiStore.searchIndexes.forEach(index => {
-    const progress = aiStore.searchIndexUpdateStatus[index.id];
-    if(typeof progress !== "undefined" && (!updateProgress || progress > updateProgress)) {
-      updateProgress = progress;
-    }
+  let indexUpdateProgress;
+  updatingIndexes.forEach(indexId => {
+    const progress = aiStore.searchIndexUpdateProgress[indexId] || 0;
+
+    indexUpdateProgress = indexUpdateProgress ? Math.min(progress, indexUpdateProgress) : progress;
   });
+
+  if(updatingIndexes.length > 0) {
+    indexUpdateProgress = ((indexUpdateProgress || 0) + (aiStore.tagAggregationProgress || 0)) / 2;
+  }
 
   return (
     <Menu
@@ -60,6 +64,7 @@ const SearchIndexSelection = observer(() => {
       width={250}
       offset={15}
       position="bottom-end"
+      zIndex={200}
     >
       <Menu.Target>
         <button
@@ -67,14 +72,14 @@ const SearchIndexSelection = observer(() => {
           className={S("search__button")}
         >
           {
-            typeof updateProgress === "undefined" ?
+            typeof indexUpdateProgress === "undefined" ?
               <Icon icon={SettingsIcon} /> :
               <RingProgress
                 size={25}
                 thickness={3}
                 transitionDuration={500}
                 rootColor="var(--text-secondary)"
-                sections={[{value: updateProgress, color: "var(--color-highlight"}]}
+                sections={[{value: indexUpdateProgress, color: "var(--color-highlight"}]}
               />
           }
         </button>
@@ -113,7 +118,13 @@ const SearchIndexSelection = observer(() => {
                     <IconButton
                       label="Update Search Index"
                       icon={UpdateIndexIcon}
-                      loadingProgress={aiStore.searchIndexUpdateStatus[index.id]}
+                      loadingProgress={
+                        !updatingIndexes.includes(index.id) ? undefined :
+                          (
+                            (aiStore.tagAggregationProgress || 0) +
+                            (aiStore.searchIndexUpdateProgress[index.id] || 0)
+                          ) / 2
+                      }
                       onClick={async event => {
                         event.preventDefault();
                         event.stopPropagation();
@@ -121,7 +132,14 @@ const SearchIndexSelection = observer(() => {
                         await Confirm({
                           title: "Remove Tag",
                           text: "Are you sure you want to update this search index?",
-                          onConfirm: async () => await aiStore.UpdateSearchIndex(index.id)
+                          onConfirm: async () => {
+                            setUpdatingIndexes([...updatingIndexes, index.id]);
+                            try {
+                              await aiStore.UpdateSearchIndex({indexId: index.id, aggregate: true});
+                            } finally {
+                              setUpdatingIndexes(updatingIndexes.filter(id => id !== index.id));
+                            }
+                          }
                         });
                       }}
                     />
