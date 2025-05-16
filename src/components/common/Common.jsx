@@ -184,6 +184,7 @@ export const Linkish = forwardRef(function Linkish({
   onClick,
   disabled,
   styled=false,
+  divButton=false,
   ...props
 }, ref) {
   if(styled) {
@@ -200,7 +201,11 @@ export const Linkish = forwardRef(function Linkish({
   }
 
   if(onClick || props.type === "submit") {
-    return <button disabled={disabled} onClick={onClick} ref={ref} {...props} />;
+    if(divButton) {
+      return <div role="button" tabIndex={0} aria-disabled={disabled} onClick={!disabled ? onClick : undefined} ref={ref} {...props} />;
+    } else {
+      return <button disabled={disabled} onClick={onClick} ref={ref} {...props} />;
+    }
   }
 
   return <div ref={ref} {...props} />;

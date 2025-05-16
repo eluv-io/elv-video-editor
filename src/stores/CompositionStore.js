@@ -681,9 +681,12 @@ class CompositionStore {
     this.myCompositions[sourceObjectId][key] = {
       objectId: sourceObjectId,
       key,
+      compositionKey: key,
       label: name,
       saved: false,
-      new: true
+      new: true,
+      duration: 0,
+      lastUpdated: new Date().toISOString()
     };
 
     let items = [];
@@ -820,6 +823,10 @@ class CompositionStore {
       if(updatePlayoutUrl) {
         yield this.GetCompositionPlayoutUrl();
       }
+
+      this.myCompositions[objectId][compositionKey].duration = this.compositionDuration || 0;
+      this.myCompositions[objectId][compositionKey].lastModified = new Date().toISOString();
+      this.SaveMyCompositions();
 
       this.rootStore.browserStore.AddMyLibraryItem({
         objectId: this.compositionObject.objectId,

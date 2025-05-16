@@ -120,6 +120,17 @@ class BrowserStore {
       .join(":");
   }
 
+  FormatDate(date) {
+    if(!date) { return; }
+
+    try {
+      return new Date(date)
+        .toLocaleDateString(navigator.language, {month: "short", day: "numeric", year: "numeric"});
+    } catch(error) {
+      return undefined;
+    }
+  }
+
   ObjectDetails = flow(function * ({objectId, versionHash, publicMetadata}) {
     if(!versionHash) {
       versionHash = yield this.rootStore.client.LatestVersionHash({objectId});
@@ -149,7 +160,15 @@ class BrowserStore {
       });
 
       const savedChannels = Object.values(this.rootStore.compositionStore.myCompositions[objectId] || {})
-        .filter(channel => channel.writeTokenInfo);
+        .filter(channel => channel.writeTokenInfo)
+        .map(composition => ({
+          ...composition,
+          objectId,
+          duration: this.FormatDuration(composition.duration),
+          lastModifiedISO: composition.lastModified,
+          lastModified: this.FormatDate(composition.lastModified),
+          compositionKey: composition.compositionKey || composition.key
+        }));
 
       hasChannels = !!metadata?.channel || savedChannels.length > 0;
       hasAssets = !!metadata?.assets;
@@ -163,7 +182,7 @@ class BrowserStore {
 
             let lastModified = channel.updated_at;
             if(lastModified) {
-              lastModified = new Date(lastModified).toLocaleDateString(navigator.language, {month: "short", day: "numeric", year: "numeric"});
+              lastModified = this.FormatDate(lastModified);
             }
 
             let duration;
@@ -184,10 +203,12 @@ class BrowserStore {
             }
 
             return {
-              key: channelKey,
+              objectId,
+              compositionKey: channelKey,
               label: channel.display_name || channelKey,
               duration,
-              lastModified
+              lastModifiedISO: channel.updated_at,
+              lastModified: lastModified
             };
           });
         }
@@ -199,12 +220,23 @@ class BrowserStore {
           ];
         }
 
-        channels = channels.sort((a, b) => a.label?.toLowerCase() < b.label?.toLowerCase() ? -1 : 1);
+        channels = channels
+          .sort((a, b) => {
+            if(a.lastModifiedISO && b.lastModifiedISO) {
+              return a.lastModifiedISO > b.lastModifiedISO ? -1 : 1;
+            } else if(a.lastModifiedISO) {
+              return -1;
+            } else if(b.lastModifiedISO) {
+              return 1;
+            }
+
+            return a.label?.toLowerCase() < b.label?.toLowerCase() ? -1 : 1;
+          });
       }
 
       lastModified = metadata?.commit?.timestamp;
       if(lastModified) {
-        lastModified = new Date(lastModified).toLocaleDateString(navigator.language, {month: "short", day: "numeric", year: "numeric"});
+        lastModified = this.FormatDate(lastModified);
       }
 
       const offering = metadata?.offerings?.default ?
@@ -339,15 +371,13 @@ class BrowserStore {
           return {
             ...item,
             duration: this.FormatDuration(item.duration),
-            lastModified: new Date(item.accessedAt)
-              .toLocaleDateString(navigator.language, {month: "short", day: "numeric", year: "numeric"})
+            lastModified: this.FormatDate(item.accessedAt)
           };
         }
 
         return {
           ...(await this.ObjectDetails({objectId: item.objectId})),
-          lastModified: new Date(item.accessedAt)
-            .toLocaleDateString(navigator.language, {month: "short", day: "numeric", year: "numeric"})
+          lastModified: this.FormatDate(item.accessedAt)
         };
       })
     );

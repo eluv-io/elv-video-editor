@@ -21,6 +21,7 @@ import {Tabs, Tooltip} from "@mantine/core";
 import LibraryIcon from "@/assets/icons/v2/library.svg";
 import ObjectIcon from "@/assets/icons/file.svg";
 import VideoIcon from "@/assets/icons/v2/video.svg";
+import CompositionIcon from "@/assets/icons/v2/composition.svg";
 import BackIcon from "@/assets/icons/v2/back.svg";
 import FirstPageIcon from "@/assets/icons/DoubleBackward.svg";
 import LastPageIcon from "@/assets/icons/DoubleForward.svg";
@@ -194,85 +195,96 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
           }
         </div>
         {
-          (content || []).map(item =>
-            <Linkish
-              onClick={() => {
-                if(contentType === "library") {
-                  Select({libraryId: item.id, ...item});
-                } else if(contentType === "object") {
-                  Select({objectId: item.id, ...item});
-                } else if(contentType === "composition") {
-                  Select({compositionKey: item.id, ...item});
-                } else if(contentType === "my-library") {
-                  Select(item);
-                }
-              }}
-              key={`browser-row-${item.id}`}
-              disabled={deleting || item.forbidden || (videoOnly && !item.isVideo)}
-              className={S("browser-table__row", "browser-table__row--content")}
-            >
-              <div className={S("browser-table__cell")}>
-                {
-                  item.image ?
-                    <img src={item.image} alt={item.name} className={S("browser-table__cell-image")}/> :
-                    <SVG src={item.duration ? VideoIcon : defaultIcon} className={S("browser-table__cell-icon")}/>
-                }
-                <div className={S("browser-table__row-title")}>
-                  <Tooltip label={item.name} openDelay={500}>
-                    <div className={S("browser-table__row-title-main")}>
-                      <span>
-                        {item.name}{item.compositionKey ? " (Composition)" : ""}
-                      </span>
+          (content || []).map(item => {
+            const disabled = deleting || item.forbidden || (videoOnly && !item.isVideo);
+            return (
+              <Linkish
+                divButton
+                onClick={() => {
+                  if(contentType === "library") {
+                    Select({libraryId: item.id, ...item});
+                  } else if(contentType === "object") {
+                    Select({objectId: item.id, ...item});
+                  } else if(contentType === "composition") {
+                    Select(item);
+                  } else if(contentType === "my-library") {
+                    Select(item);
+                  }
+                }}
+                key={`browser-row-${item.id || item.key || item.compositionKey}`}
+                disabled={disabled}
+                className={S("browser-table__row", "browser-table__row--content", disabled ? "browser-table__row--disabled" : "")}
+              >
+                <div className={S("browser-table__cell")}>
+                  {
+                    item.image ?
+                      <img src={item.image} alt={item.name} className={S("browser-table__cell-image")}/> :
+                      <SVG
+                        src={
+                          item.compositionKey ? CompositionIcon :
+                            item.duration ?
+                              VideoIcon : defaultIcon
+                        }
+                        className={S("browser-table__cell-icon")}
+                      />
+                  }
+                  <div className={S("browser-table__row-title")}>
+                    <Tooltip label={item.name} openDelay={500}>
+                      <div className={S("browser-table__row-title-main")}>
+                        <span>
+                          {item.name}{item.compositionKey ? " (Composition)" : ""}
+                        </span>
+                        {
+                          !item.isLiveStream ? "" :
+                            <span className={S("browser-table__live-tag", item.isLive ? "browser-table__live-tag--active" : "")}>
+                              { item.isLive ? "LIVE" : "Live Stream" }
+                            </span>
+                        }
+                      </div>
+                    </Tooltip>
+                    <div className={S("browser-table__row-title-id")}>
                       {
-                        !item.isLiveStream ? "" :
-                          <span className={S("browser-table__live-tag", item.isLive ? "browser-table__live-tag--active" : "")}>
-                            { item.isLive ? "LIVE" : "Live Stream" }
-                          </span>
+                        contentType !== "my-library" ? item.id :
+                          `${item.objectId}${item.compositionKey ? ` - ${item.compositionKey}` : ""}`
                       }
                     </div>
-                  </Tooltip>
-                  <div className={S("browser-table__row-title-id")}>
-                    {
-                      contentType !== "my-library" ? item.id :
-                        `${item.objectId}${item.compositionKey ? ` - ${item.compositionKey}` : ""}`
-                    }
                   </div>
                 </div>
-              </div>
-              {
-                !["object", "composition", "my-library"].includes(contentType) ? null :
-                  <>
+                {
+                  !["object", "composition", "my-library"].includes(contentType) ? null :
+                    <>
+                      <div className={S("browser-table__cell", "browser-table__cell--centered")}>
+                        {item.duration || "-"}
+                      </div>
+                      <div className={S("browser-table__cell", "browser-table__cell--centered")}>
+                        {item.lastModified || "-"}
+                      </div>
+                    </>
+                }
+                {
+                  !Delete || !item.id ? null :
                     <div className={S("browser-table__cell", "browser-table__cell--centered")}>
-                      {item.duration || "-"}
-                    </div>
-                    <div className={S("browser-table__cell", "browser-table__cell--centered")}>
-                      {item.lastModified || "-"}
-                    </div>
-                  </>
-              }
-              {
-                !Delete || !item.id ? null :
-                  <div className={S("browser-table__cell", "browser-table__cell--centered")}>
-                    <IconButton
-                      label="Remove Item"
-                      icon={DeleteIcon}
-                      faded
-                      disabled={deleting}
-                      onClick={async event => {
-                        event.stopPropagation();
-                        setDeleting(true);
+                      <IconButton
+                        label="Remove Item"
+                        icon={DeleteIcon}
+                        faded
+                        disabled={deleting}
+                        onClick={async event => {
+                          event.stopPropagation();
+                          setDeleting(true);
 
-                        try {
-                          await Delete(item);
-                        } finally {
-                          setDeleting(false);
-                        }
-                      }}
-                    />
-                  </div>
-              }
-            </Linkish>
-          )
+                          try {
+                            await Delete(item);
+                          } finally {
+                            setDeleting(false);
+                          }
+                        }}
+                      />
+                    </div>
+                }
+              </Linkish>
+            );
+          })
         }
       </div>
     );
@@ -328,11 +340,12 @@ const CompositionBrowser = observer(({selectedObject, Select, Back, className=""
             {
               id: "",
               name: `Main Content - ${selectedObject.name}`,
+              objectId: selectedObject.objectId,
               duration: selectedObject.duration,
               lastModified: selectedObject.lastModified
             },
             ...(selectedObject.channels.map(channel =>
-              ({id: channel.key, name: `Composition - ${channel.name || channel.label}`, ...channel})
+              ({id: channel.compositionKey, name: `Composition - ${channel.name || channel.label}`, ...channel})
             ))
           ]
             .filter(({id}) => !deletedChannels.includes(id))
@@ -445,12 +458,12 @@ const Browser = observer(() => {
       <CompositionBrowser
         selectedObject={selectedObject}
         Back={() => setSelectedObject(undefined)}
-        Select={({compositionKey}) => {
+        Select={({objectId, compositionKey}) => {
           compositionStore.Reset();
           setRedirect(
             compositionKey ?
-              UrlJoin("/compositions", selectedObject.objectId, compositionKey) :
-              UrlJoin("/", selectedObject.objectId)
+              UrlJoin("/compositions", objectId, compositionKey) :
+              UrlJoin("/", objectId)
           );
         }}
       />

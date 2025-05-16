@@ -165,7 +165,10 @@ const TimelineTopBar = observer(({simple}) => {
           })}
         />
         <div className={S("toolbar__separator")}/>
-        <AggregateTagsButton />
+        {
+          simple ? null :
+            <AggregateTagsButton />
+        }
         <Download store={videoStore} />
         <Share store={videoStore}/>
 

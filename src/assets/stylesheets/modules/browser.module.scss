@@ -79,6 +79,7 @@
 
   &__row {
     border-bottom: 1px solid var(--table-border-color);
+    cursor: pointer;
     display: grid;
     height: var(--row-height);
     max-height: var(--row-height);
@@ -99,8 +100,10 @@
       }
     }
 
+    &--disabled,
     &:disabled {
       color: var(--text-tertiary);
+      cursor: unset;
     }
   }
 

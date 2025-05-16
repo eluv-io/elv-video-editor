@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@babel/polyfill": "^7.4.3",
-    "@eluvio/elv-client-js": "^4.0.123",
+    "@eluvio/elv-client-js": "^4.0.128",
     "@mantine/core": "^7.17.2",
     "@mantine/dates": "^7.17.2",
     "@mantine/dropzone": "^7.17.2",

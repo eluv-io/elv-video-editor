@@ -119,7 +119,7 @@ const Video = observer(({
           default:
             setTimeout(() => {
               setResumeTime(video.currentTime);
-              setReloadIndex(reloadIndex + 1)
+              setReloadIndex(reloadIndex + 1);
             }, 3000);
         }
       }

@@ -400,9 +400,6 @@ class DownloadStore {
       params: Unproxy(options)
     })).share;
 
-    share.start_time = share.start_time ? new Date(share.start_time * 1000).toISOString() : null;
-    share.end_time = share.end_time ? new Date(share.end_time * 1000).toISOString() : null;
-
     const formattedShare = yield this.FormatShare({store, share});
 
     if(shareOptions.email) {
