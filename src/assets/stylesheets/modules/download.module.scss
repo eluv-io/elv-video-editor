@@ -25,7 +25,6 @@
    max-width: 100%;
    overflow: hidden;
 
-   &__thumbnail-container,
    &__thumbnail {
      background-color: black;
      border-radius: 10px;
@@ -34,23 +33,6 @@
      img {
        width: 100%;
      }
-   }
-
-   &__thumbnail-container {
-     position: relative;
-   }
-
-   &__thumbnail-duration {
-     background-color: rgb(0 0 0 / 50%);
-     border-radius: 5px;
-     bottom: 10px;
-     font-size: 12px;
-     font-weight: 500;
-     padding: 3px 8px;
-     pointer-events: none;
-     position: absolute;
-     right: 10px;
-     z-index: 1;
    }
 
    &__title {

@@ -40,7 +40,7 @@ import ReloadIcon from "@/assets/icons/v2/reload.svg";
 import CheckmarkIcon from "@/assets/icons/check-circle.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
 import XIcon from "@/assets/icons/X.svg";
-import {AggregateTagsButton, ClipModalButton, LiveToVodButton} from "@/components/timeline/Controls.jsx";
+import {AggregateTagsButton, ClipModalButton, LiveToVodButton, MyClipsButton} from "@/components/timeline/Controls.jsx";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -50,7 +50,11 @@ const TimelineTopBar = observer(({simple}) => {
     <div className={S("toolbar", "timeline-section__top-bar")}>
       <div className={S("toolbar__controls-group", "left")}>
         {
-          simple ? null :
+          simple ?
+            <>
+              <MyClipsButton/>
+              <div className={S("toolbar__separator")}/>
+            </> :
             <>
               <IconButton
                 icon={UndoIcon}

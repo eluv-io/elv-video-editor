@@ -294,7 +294,7 @@ export const CompositionBrowser = observer(() => {
   if(!info) {
     return <Loader />;
   }
-  
+
   let compositions = info;
   if(selectedObjectId) {
     // Specific object selected

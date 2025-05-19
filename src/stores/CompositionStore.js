@@ -170,12 +170,13 @@ class CompositionStore {
     return this.myClipIds
       .map(clipId => this.clips[clipId])
       .filter(clip =>
-        clip.objectId === this.compositionObject?.objectId &&
+        clip.objectId === (this.compositionObject?.objectId || this.rootStore.selectedObjectId) &&
         (
           !this.filter ||
           clip.name?.toLowerCase()?.includes(this.filter)
         )
-      );
+      )
+      .sort((a, b) => a.addedAt < b.addedAt ? 1 : -1);
   }
 
   get aiClips() {
@@ -1307,8 +1308,9 @@ class CompositionStore {
 
   AddMyClip({clip}) {
     clip = {
+      addedAt: Date.now(),
       clipId: this.rootStore.NextId(),
-      name: clip.name || "Saved Clip",
+      name: (clip.name || "Saved Clip").trim(),
       libraryId: clip.libraryId,
       objectId: clip.objectId,
       offering: clip.offering,
@@ -1330,6 +1332,8 @@ class CompositionStore {
     this.SaveMyClips({objectId: clip.objectId});
 
     this.SetSelectedClip({clipId: clip.clipId, source: "side-panel"});
+
+    return clip;
   }
 
   RemoveMyClip(clipId) {
