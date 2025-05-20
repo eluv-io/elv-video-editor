@@ -2,7 +2,7 @@ import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
 import React, {useState, useEffect} from "react";
 import {observer} from "mobx-react-lite";
-import {rootStore, trackStore, tagStore, compositionStore} from "@/stores";
+import {rootStore, trackStore, tagStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
 import {Loader} from "@/components/common/Common";
 import HLSPlayer from "hls.js";

@@ -66,26 +66,28 @@ const SearchIndexSelection = observer(() => {
       shadow="md"
       width={250}
       offset={15}
-      position="bottom-end"
+      position="bottom-middle"
       zIndex={200}
     >
       <Menu.Target>
-        <button
-          onClick={() => setShowMenu(!showMenu)}
-          className={S("search__button")}
-        >
-          {
-            typeof indexUpdateProgress === "undefined" ?
-              <Icon icon={SettingsIcon} /> :
-              <RingProgress
-                size={25}
-                thickness={3}
-                transitionDuration={500}
-                rootColor="var(--text-secondary)"
-                sections={[{value: indexUpdateProgress, color: "var(--color-highlight"}]}
-              />
-          }
-        </button>
+        <Tooltip label="Select Search Index" openDelay={500}>
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className={S("search__button", showMenu ? "search__button--active" : "")}
+          >
+            {
+              typeof indexUpdateProgress === "undefined" ?
+                <Icon icon={SettingsIcon} /> :
+                <RingProgress
+                  size={25}
+                  thickness={3}
+                  transitionDuration={500}
+                  rootColor="var(--text-secondary)"
+                  sections={[{value: indexUpdateProgress, color: "var(--color-highlight"}]}
+                />
+            }
+          </button>
+        </Tooltip>
       </Menu.Target>
 
       <Menu.Dropdown w={300} radius={10} p={0}>
@@ -208,7 +210,7 @@ const SourceSelection = observer(() => {
         <Menu.Target>
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className={S("search__source-button")}
+            className={S("search__source-button", showMenu ? "search__source-button--active" : "")}
           >
             <Icon icon={SourcesIcon} />
             <span>Select Source</span>
@@ -217,6 +219,9 @@ const SourceSelection = observer(() => {
 
         <Menu.Dropdown w={400} radius={10} p={0}>
           <div className={S("search__source-menu")}>
+            <div className={S("search__index-title")}>
+              Select Source
+            </div>
             {
               Object.values(compositionStore.sources).map(({objectId, name}) =>
                 <div
@@ -230,6 +235,7 @@ const SourceSelection = observer(() => {
                   className={S("search__source-option", compositionStore.selectedSourceId === objectId ? "search__source-option--active" : "")}
                 >
                   <PreviewThumbnail
+                    maxThumbnails={10}
                     store={compositionStore.ClipStore({sourceId: objectId})}
                     className={S("search__source-thumbnail")}
                   />
@@ -264,7 +270,6 @@ const SourceSelection = observer(() => {
         !showBrowser ? null :
           <SourceSelectionModal
             Select={async ({objectId}) => {
-              console.log("SELECT", objectId);
               setShowBrowser(false);
               await compositionStore.AddSource({objectId});
             }}

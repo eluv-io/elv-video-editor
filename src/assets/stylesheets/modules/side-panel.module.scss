@@ -99,16 +99,23 @@
     height: 20px;
     justify-content: center;
     width: 20px;
+
+    &--active {
+      color: var(--text-highlight);
+    }
   }
 
   // Search index menu
 
   &__index-menu {
-    background-color: var(--background-toolbar);
-    border: 1px solid var(--table-border-color);
+    background-color: var(--background-secondary);
     border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
     max-height: 400px;
     overflow-y: auto;
+    padding: 5px 10px 10px;
     position: relative;
   }
 
@@ -122,6 +129,8 @@
 
   &__index-option {
     align-items: center;
+    background-color: var(--background-toolbar);
+    border-radius: 5px;
     cursor: pointer;
     display: flex;
     font-size: 14px;
@@ -166,24 +175,43 @@
     justify-content: center;
     margin-right: -5px;
     padding: 2px 5px;
+    transition: border 0.15s ease, color 0.15s ease;
 
     svg {
       height: 20px;
       width: 20px;
     }
+
+    &--active {
+      border: 1px solid var(--color-highlight);
+      color: var(--text-highlight);
+    }
   }
 
   &__source-menu {
-    background-color: var(--background-toolbar);
-    border: 1px solid var(--table-border-color);
+    background-color: var(--background-secondary);
     border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
     max-height: 400px;
     overflow-y: auto;
+    padding: 5px 10px 10px;
     position: relative;
+  }
+
+  &__source-title {
+    box-shadow: 0 0 3px var(--background-primary);
+    font-weight: 500;
+    padding: 5px 10px;
+    position: sticky;
+    top: 0;
   }
 
   &__source-option {
     align-items: center;
+    background-color: var(--background-toolbar);
+    border-radius: 5px;
     cursor: pointer;
     display: flex;
     font-size: 14px;
@@ -197,7 +225,7 @@
 
     &:hover {
       &:not(.search__source-option--active) {
-        background-color: var(--background-active);
+        background-color: var(--background-toolbar--active);
       }
     }
 
@@ -634,6 +662,7 @@
 // Compositions
 
 .clip-group {
+  animation: var(--animation-fadein) 0.5s ease;
   width: 100%;
 
   &--closed {
@@ -650,8 +679,10 @@
     display: flex;
     gap: 10px;
     padding: 10px 20px 10px 15px;
-    position: relative;
+    position: sticky;
+    top: 0;
     width: 100%;
+    z-index: 10;
   }
 
   &__header-icon {
@@ -691,6 +722,14 @@
     height: 30px;
     margin-top: 60px;
     width: 100%;
+  }
+
+  &__empty {
+    align-items: center;
+    display: flex;
+    font-weight: 600;
+    height: 100px;
+    justify-content: center;
   }
 }
 

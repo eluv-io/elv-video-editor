@@ -109,7 +109,8 @@ const ClipGroup = observer(({
   clipIds=[],
   noFilter,
   loading=false,
-  showTagLinks
+  showTagLinks,
+  showEmpty
 }) => {
   const [hide, setHide] = useState(StorageHandler.get({type: "session", key: `hide-clips-${groupKey}`}));
 
@@ -129,9 +130,11 @@ const ClipGroup = observer(({
     );
   }
 
-  if(clips.length === 0 && !loading) {
+  if(clips.length === 0 && !loading && !showEmpty) {
     return null;
   }
+
+  const hidden = hide || (!loading && (!clips || clips.length === 0));
 
   return (
     <div className={S("clip-group", hide ? "clip-group--closed" : "")}>
@@ -160,9 +163,8 @@ const ClipGroup = observer(({
         <Icon icon={hide ? ChevronDownIcon : ChevronUpIcon} className={S("clip-group__header-indicator")} />
       </button>
       {
-        hide || (!loading && (!clips || clips.length === 0)) ? null :
-          loading ?
-            <Loader className={S("clip-group__loader")} /> :
+         hidden ? (showEmpty ? <div className={S("clip-group__empty")}>No Results</div> : null) :
+          loading ? <Loader className={S("clip-group__loader")} /> :
             <div className={S("clip-group__clips")}>
               { clips.map(clip => <SidePanelClip clip={clip} key={`clip-${clip.clipId}`} showTagLink={showTagLinks} />) }
             </div>
@@ -175,7 +177,7 @@ const AIClips = observer(() => {
   const [loading, setLoading] = useState(false);
   const [clipSource, setClipSource] = useState("highlights");
   const clipIds = clipSource === "search" ?
-    compositionStore.searchClipIds :
+    compositionStore.searchClipIds[compositionStore.selectedSourceId] || [] :
     compositionStore.selectedSource?.highlightClipIds || [];
 
   useEffect(() => {
@@ -187,25 +189,36 @@ const AIClips = observer(() => {
 
     setLoading(true);
 
-    compositionStore.SearchClips(compositionStore.filter)
+    const selectedSourceId = compositionStore.selectedSourceId;
+
+    compositionStore.SearchClips({
+      objectId: compositionStore.selectedSourceId,
+      query: compositionStore.filter
+    })
       .finally(() => {
+        if(selectedSourceId !== compositionStore.selectedSourceId) {
+          // Source has changed
+          return;
+        }
+
         setClipSource("search");
         setLoading(false);
       });
-  }, [compositionStore.filter, aiStore.selectedSearchIndexId]);
+  }, [compositionStore.filter, aiStore.selectedSearchIndexId, compositionStore.selectedSourceId]);
 
   return  (
-    !loading && clipIds.length === 0 ? null :
-      <ClipGroup
-        noFilter
-        groupKey="ai"
-        icon={AISparkleIcon}
-        showTagLinks
-        title={compositionStore.filter ? "Results" : "Suggestions"}
-        subtitle={!compositionStore.filter ? "Prompt" : ""}
-        clipIds={clipIds}
-        loading={loading}
-      />
+    <ClipGroup
+      key={`ai-clips-${compositionStore.selectedSourceId}`}
+      noFilter
+      groupKey="ai"
+      icon={AISparkleIcon}
+      showTagLinks
+      title={compositionStore.filter ? "Results" : "Suggestions"}
+      subtitle={!compositionStore.filter ? "Prompt" : ""}
+      clipIds={clipIds}
+      loading={loading}
+      showEmpty
+    />
   );
 });
 

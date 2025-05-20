@@ -7,7 +7,15 @@ import {LoaderImage} from "@/components/common/Common.jsx";
 
 const S = CreateModuleClassMatcher(CommonStyles);
 
-const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage, showDuration=true, ...props}) => {
+const PreviewThumbnail = observer(({
+  store,
+  startFrame,
+  endFrame,
+  useLoaderImage,
+  showDuration=true,
+  maxThumbnails,
+  ...props
+}) => {
   const [ref, setRef] = useState(null);
   const [thumbnails, setThumbnails] = useState(null);
   const [brokenImages, setBrokenImages] = useState({});
@@ -27,7 +35,9 @@ const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage,
     const endTime = store.FrameToTime(endFrame);
 
     // Thumbnail interval based on length of clip
-    const interval = Math.min(60, Math.max(1, (endFrame - startFrame) / store.frameRate / 120));
+    const duration = (endFrame - startFrame) / store.frameRate;
+    let targetCount = Math.max(10, Math.min(duration / 60, maxThumbnails || 100)) + 1;
+    const interval = duration / targetCount;
 
     let thumbnailMap = {};
     let thumbnailList = [];

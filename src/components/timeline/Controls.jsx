@@ -66,86 +66,85 @@ const MyClipsModal = observer(({opened, highlightedClipId, Close}) => {
         centered
         onClose={Close}
         size={850}
+        className={S("my-clips-modal")}
       >
-        <div className={S("my-clips-modal")}>
-          {
-            compositionStore.myClips.length === 0 ?
-              <div className={S("my-clips-modal__empty")}>
-                No saved clips for this content
-              </div> :
-              <div className={S("my-clips-modal__content")}>
-                {
-                  compositionStore.myClips.map(clip =>
-                    <div
-                      key={`my-clip-${clip.clipId}`}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => {
-                        Seek(clip);
-                        Close();
-                      }}
-                      className={S("my-clips-modal__item", clip.clipId === highlightedClipId ? "my-clips-modal__item--highlighted" : "")}
-                    >
-                      <PreviewThumbnail
+        {
+          compositionStore.myClips.length === 0 ?
+            <div className={S("my-clips-modal__empty")}>
+              No saved clips for this content
+            </div> :
+            <div className={S("my-clips-modal__content")}>
+              {
+                compositionStore.myClips.map(clip =>
+                  <div
+                    key={`my-clip-${clip.clipId}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
+                      Seek(clip);
+                      Close();
+                    }}
+                    className={S("my-clips-modal__item", clip.clipId === highlightedClipId ? "my-clips-modal__item--highlighted" : "")}
+                  >
+                    <PreviewThumbnail
+                      store={videoStore}
+                      startFrame={clip.clipInFrame}
+                      endFrame={clip.clipOutFrame}
+                      className={S("my-clips-modal__item-thumbnail")}
+                    />
+                    <div className={S("my-clips-modal__item-text")}>
+                      <Tooltip label={clip.name} openDelay={500}>
+                        <div className={S("my-clips-modal__item-title", "ellipsis")}>
+                          { clip.name }
+                        </div>
+                      </Tooltip>
+                      <ClipTimeInfo
                         store={videoStore}
-                        startFrame={clip.clipInFrame}
-                        endFrame={clip.clipOutFrame}
-                        className={S("my-clips-modal__item-thumbnail")}
+                        clipInFrame={clip.clipInFrame}
+                        clipOutFrame={clip.clipOutFrame}
+                        className={S("my-clips-modal__item-duration")}
                       />
-                      <div className={S("my-clips-modal__item-text")}>
-                        <Tooltip label={clip.name} openDelay={500}>
-                          <div className={S("my-clips-modal__item-title", "ellipsis")}>
-                            { clip.name }
-                          </div>
-                        </Tooltip>
-                        <ClipTimeInfo
-                          store={videoStore}
-                          clipInFrame={clip.clipInFrame}
-                          clipOutFrame={clip.clipOutFrame}
-                          className={S("my-clips-modal__item-duration")}
-                        />
-                      </div>
-                      <div className={S("my-clips-modal__item-actions")}>
-                        <IconButton
-                          icon={DownloadIcon}
-                          onClick={async event => {
-                            event.stopPropagation();
-                            event.preventDefault();
-                            Seek(clip);
-                            setShowDownload(true);
-                          }}
-                        />
-                        <IconButton
-                          icon={ShareIcon}
-                          onClick={async event => {
-                            event.stopPropagation();
-                            event.preventDefault();
-                            Seek(clip);
-                            setShowShare(true);
-                          }}
-                        />
-                        <IconButton
-                          icon={DeleteIcon}
-                          onClick={async event => {
-                            event.stopPropagation();
-                            event.preventDefault();
-
-                            await Confirm({
-                              title: "Remove Clip",
-                              text: "Are you sure you want to remove this clip?",
-                              onConfirm: async () => {
-                                await compositionStore.RemoveMyClip(clip.clipId);
-                              }
-                            });
-                          }}
-                        />
-                      </div>
                     </div>
-                  )
-                }
-              </div>
+                    <div className={S("my-clips-modal__item-actions")}>
+                      <IconButton
+                        icon={DownloadIcon}
+                        onClick={async event => {
+                          event.stopPropagation();
+                          event.preventDefault();
+                          Seek(clip);
+                          setShowDownload(true);
+                        }}
+                      />
+                      <IconButton
+                        icon={ShareIcon}
+                        onClick={async event => {
+                          event.stopPropagation();
+                          event.preventDefault();
+                          Seek(clip);
+                          setShowShare(true);
+                        }}
+                      />
+                      <IconButton
+                        icon={DeleteIcon}
+                        onClick={async event => {
+                          event.stopPropagation();
+                          event.preventDefault();
+
+                          await Confirm({
+                            title: "Remove Clip",
+                            text: "Are you sure you want to remove this clip?",
+                            onConfirm: async () => {
+                              await compositionStore.RemoveMyClip(clip.clipId);
+                            }
+                          });
+                        }}
+                      />
+                    </div>
+                  </div>
+                )
+              }
+            </div>
           }
-        </div>
       </Modal>
       {
         !showDownload ? null :

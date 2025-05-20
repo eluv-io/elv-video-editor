@@ -277,6 +277,8 @@
 }
 
 .my-clips-modal {
+  --mantine-color-body: var(--background-secondary);
+
   padding-bottom: 20px;
 
   &__title {
@@ -300,6 +302,7 @@
     display: flex;
     flex-direction: column;
     gap: 3px;
+    padding-bottom: 20px;
   }
 
   &__item {
