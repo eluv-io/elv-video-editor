@@ -365,22 +365,45 @@ class BrowserStore {
     const contentLength = content.length;
     content = content.slice((page - 1) * perPage, page * perPage);
 
-    content = yield Promise.all(
+    let itemsDeleted = false;
+    content = (yield Promise.all(
       content.map(async item => {
-        if(item.compositionKey) {
+        try {
+          if(item.compositionKey) {
+            return {
+              ...item,
+              duration: this.FormatDuration(item.duration),
+              lastModified: this.FormatDate(item.accessedAt)
+            };
+          }
+
           return {
-            ...item,
-            duration: this.FormatDuration(item.duration),
+            ...(await this.ObjectDetails({objectId: item.objectId})),
             lastModified: this.FormatDate(item.accessedAt)
           };
-        }
+        } catch(error) {
+          // eslint-disable-next-line no-console
+          console.error("Error retrieving my library item:");
+          // eslint-disable-next-line no-console
+          console.error(error);
 
-        return {
-          ...(await this.ObjectDetails({objectId: item.objectId})),
-          lastModified: this.FormatDate(item.accessedAt)
-        };
+          if(typeof error === "string" && error.includes("deleted")) {
+            // eslint-disable-next-line no-console
+            console.warn("Removing library item");
+
+            itemsDeleted = true;
+            await this.RemoveMyLibraryItem(item);
+          }
+
+          return item;
+        }
       })
-    );
+    ));
+
+    if(itemsDeleted) {
+      // Items were deleted - redo listing
+      return yield this.ListMyLibrary({page, perPage, filter});
+    }
 
     return {
       content,
