@@ -19,18 +19,13 @@ export const DownloadPreview = observer(({store, options}) => {
     <div className={S("preview")}>
       {
         !store.thumbnailStore.thumbnailStatus.available ? null :
-          <div style={{aspectRatio: store.aspectRatio}} className={S("preview__thumbnail-container")}>
-            <PreviewThumbnail
-              store={store}
-              key={`thumbnail-${options.noClip}`}
-              startFrame={clipInFrame}
-              endFrame={clipOutFrame}
-              className={S("preview__thumbnail")}
-            />
-            <div className={S("preview__thumbnail-duration")}>
-              {store.videoHandler.FrameToString({frame: clipOutFrame - clipInFrame})}
-            </div>
-          </div>
+          <PreviewThumbnail
+            store={store}
+            key={`thumbnail-${options.noClip}`}
+            startFrame={clipInFrame}
+            endFrame={clipOutFrame}
+            className={S("preview__thumbnail")}
+          />
       }
       <div className={S("preview__title")}>{store.name}</div>
       <ClipTimeInfo store={store} clipInFrame={clipInFrame} clipOutFrame={clipOutFrame} />

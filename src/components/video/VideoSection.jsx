@@ -23,7 +23,7 @@ import DescriptionIcon from "@/assets/icons/v2/description.svg";
 
 const S = CreateModuleClassMatcher(VideoStyles);
 
-const VideoSection = observer(({showOverlay}) => {
+const VideoSection = observer(({showOverlay, showSave}) => {
   useEffect(() => {
     keyboardControlsStore.ToggleKeyboardControls(true);
 
@@ -36,42 +36,46 @@ const VideoSection = observer(({showOverlay}) => {
         <div className={S("ellipsis")}>
           {videoStore.name}
         </div>
-        <AsyncButton
-          color="gray.5"
-          variant="outline"
-          autoContrast
-          h={30}
-          px="xs"
-          disabled={!editStore.HasUnsavedChanges("tags") && !editStore.HasUnsavedChanges("clips")}
-          onClick={async () => {
-            if(videoStore.thumbnailStore?.generating) {
-              let cancelled = false;
-              await Confirm({
-                title: "Save Changes",
-                text: "Warning: Thumbnails are currently generating for this content. If you don't finalize the thumbnails before saving your changes, the thumbnails will be lost and thumbnail generation will have to be restarted. Do you want to proceed?",
-                onConfirm: async () => await videoStore.thumbnailStore?.RemoveThumbnailJob({
-                  objectId: videoStore.videoObject?.objectId
-                }),
-                onCancel: () => cancelled = true
-              });
+        {
+          !showSave ? null :
+            <AsyncButton
+              color="gray.5"
+              variant="outline"
+              autoContrast
+              h={30}
+              px="xs"
+              tooltip="Save Changes"
+              disabled={!editStore.HasUnsavedChanges("tags") && !editStore.HasUnsavedChanges("clips")}
+              onClick={async () => {
+                if(videoStore.thumbnailStore?.generating) {
+                  let cancelled = false;
+                  await Confirm({
+                    title: "Save Changes",
+                    text: "Warning: Thumbnails are currently generating for this content. If you don't finalize the thumbnails before saving your changes, the thumbnails will be lost and thumbnail generation will have to be restarted. Do you want to proceed?",
+                    onConfirm: async () => await videoStore.thumbnailStore?.RemoveThumbnailJob({
+                      objectId: videoStore.videoObject?.objectId
+                    }),
+                    onCancel: () => cancelled = true
+                  });
 
-              if(cancelled) {
-                return;
-              }
-            }
+                  if(cancelled) {
+                    return;
+                  }
+                }
 
-            await Confirm({
-              title: "Save Changes",
-              text: "Are you sure you want to save your changes?",
-              onConfirm: async () => await editStore.Save()
-            });
-          }}
-        >
-          <Icon style={{height: 18}} icon={SaveIcon}/>
-          <span style={{marginLeft: 5}}>
-            Save
-          </span>
-        </AsyncButton>
+                await Confirm({
+                  title: "Save Changes",
+                  text: "Are you sure you want to save your changes?",
+                  onConfirm: async () => await editStore.Save()
+                });
+              }}
+            >
+              <Icon style={{height: 18}} icon={SaveIcon}/>
+              <span style={{marginLeft: 5}}>
+                Save
+              </span>
+            </AsyncButton>
+        }
       </h1>
       <Video store={videoStore} showOverlay={showOverlay} showFrameDownload />
       <div className={S("toolbar")}>

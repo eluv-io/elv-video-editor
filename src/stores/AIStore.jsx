@@ -4,7 +4,8 @@ import UrlJoin from "url-join";
 class AIStore {
   searchIndexes = [];
   selectedSearchIndexId;
-  searchIndexUpdateStatus = {};
+  searchIndexUpdateProgress = {};
+  tagAggregationProgress = 0;
 
   _authTokens = {};
 
@@ -214,9 +215,25 @@ class AIStore {
     return {};
   });
 
-  AggregateUserTags = flow(function * ({objectId, writeToken}) {
+  AggregateUserTags = flow(function * ({objectId}) {
+    this.searchIndexUpdateProgress = {};
+
+    let progressInterval;
     try {
-      return yield this.QueryAIAPI({
+      this.tagAggregationProgress = 0;
+
+      const libraryId = yield this.client.ContentObjectLibraryId({objectId: objectId});
+      const {writeToken} = yield this.client.EditContentObject({libraryId, objectId});
+
+      this.tagAggregationProgress = 15;
+
+      progressInterval = setInterval(() =>
+        runInAction(() =>
+          this.tagAggregationProgress = Math.min(80, this.tagAggregationProgress + 10)
+        ), 3000
+      );
+
+      yield this.QueryAIAPI({
         server: "ai",
         path: UrlJoin("/tagging", objectId, "aggregate"),
         queryParams: {
@@ -227,38 +244,34 @@ class AIStore {
         objectId,
         update: true,
       });
+
+      clearInterval(progressInterval);
+
+      this.tagAggregationProgress = 90;
+
+      yield this.client.FinalizeContentObject({libraryId, objectId, writeToken});
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error("Tag aggregation failed:");
       // eslint-disable-next-line no-console
       console.error(error);
+    } finally {
+      clearInterval(progressInterval);
+      this.tagAggregationProgress = 100;
     }
   });
 
-  UpdateSearchIndex = flow(function * (indexId) {
+  UpdateSearchIndex = flow(function * ({indexId, aggregate=false}) {
     try {
-      this.searchIndexUpdateStatus[indexId] = 5;
-
       const videoObjectId =
         this.rootStore.videoStore.videoObject?.objectId ||
         this.rootStore.compositionStore.primarySourceVideoStore?.videoObject?.objectId;
 
-      if(videoObjectId) {
-        const videoLibraryId = yield this.client.ContentObjectLibraryId({objectId: videoObjectId});
-        const {writeToken} = yield this.client.EditContentObject({
-          libraryId: videoLibraryId,
-          objectId: videoObjectId
-        });
-
-        yield this.AggregateUserTags({objectId: videoObjectId, writeToken});
-
-        yield this.client.FinalizeContentObject({
-          libraryId: videoLibraryId,
-          objectId: videoObjectId,
-          writeToken
-        });
+      if(videoObjectId && aggregate) {
+        yield this.AggregateUserTags({objectId: videoObjectId});
       }
 
+      this.searchIndexUpdateProgress[indexId] = 5;
       // Perform against a search node
       const searchURIs = (yield (
         yield fetch("https://main.net955305.contentfabric.io/config")
@@ -266,7 +279,7 @@ class AIStore {
 
       yield this.client.SetNodes({fabricURIs: searchURIs});
 
-      this.searchIndexUpdateStatus[indexId] = 12;
+      this.searchIndexUpdateProgress[indexId] = 12;
 
       const libraryId = yield this.client.ContentObjectLibraryId({objectId: indexId});
       const siteId = (yield this.client.ContentObjectMetadata({
@@ -291,7 +304,7 @@ class AIStore {
         update: true,
       });
 
-      this.searchIndexUpdateStatus[indexId] = 12;
+      this.searchIndexUpdateProgress[indexId] = 12;
 
       yield this.client.FinalizeContentObject({
         libraryId: siteLibraryId,
@@ -300,13 +313,13 @@ class AIStore {
         commitMessage: "EVIE - Update search index"
       });
 
-      this.searchIndexUpdateStatus[indexId] = 20;
+      this.searchIndexUpdateProgress[indexId] = 20;
       yield new Promise(resolve => setTimeout(resolve, 2000));
-      this.searchIndexUpdateStatus[indexId] = 25;
+      this.searchIndexUpdateProgress[indexId] = 25;
 
       const crawlWriteToken = (yield this.client.EditContentObject({libraryId, objectId: indexId})).writeToken;
 
-      this.searchIndexUpdateStatus[indexId] = 30;
+      this.searchIndexUpdateProgress[indexId] = 30;
 
       yield this.QueryAIAPI({
         server: "ai",
@@ -316,7 +329,7 @@ class AIStore {
         update: true
       });
 
-      this.searchIndexUpdateStatus[indexId] = 35;
+      this.searchIndexUpdateProgress[indexId] = 35;
 
       let crawlStatus = {};
       do {
@@ -328,7 +341,7 @@ class AIStore {
           update: true
         });
       } while(crawlStatus.state !== "terminated");
-      this.searchIndexUpdateStatus[indexId] = 40;
+      this.searchIndexUpdateProgress[indexId] = 40;
 
       yield this.client.FinalizeContentObject({
         libraryId,
@@ -337,9 +350,9 @@ class AIStore {
         commitMessage: "EVIE - Recrawl search index"
       });
 
-      this.searchIndexUpdateStatus[indexId] = 45;
+      this.searchIndexUpdateProgress[indexId] = 45;
       yield new Promise(resolve => setTimeout(resolve, 2000));
-      this.searchIndexUpdateStatus[indexId] = 50;
+      this.searchIndexUpdateProgress[indexId] = 50;
 
       yield this.client.ResetRegion();
 
@@ -367,17 +380,17 @@ class AIStore {
 
             updateProgress[i] = 25 * (updateStatus?.progress || 0);
 
-            runInAction(() => this.searchIndexUpdateStatus[indexId] = 50 + updateProgress[0] + updateProgress[1]);
+            runInAction(() => this.searchIndexUpdateProgress[indexId] = 50 + updateProgress[0] + updateProgress[1]);
           } while(updateStatus?.status !== "finished");
         })
       );
+
+      this.searchIndexUpdateProgress[indexId] = 100;
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error("Failed to update search index", indexId);
       // eslint-disable-next-line no-console
       console.error(error);
-    } finally {
-      delete this.searchIndexUpdateStatus[indexId];
     }
   });
 }

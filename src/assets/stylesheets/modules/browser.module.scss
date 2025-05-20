@@ -67,18 +67,19 @@
 
   &--composition {
     .browser-table__row {
-      grid-template-columns: 1fr 50px;
+      grid-template-columns: 1fr 100px 200px 100px;
     }
   }
 
   &--my-library {
     .browser-table__row {
-      grid-template-columns: 1fr 100px 200px;
+      grid-template-columns: 1fr 100px 200px 100px;
     }
   }
 
   &__row {
     border-bottom: 1px solid var(--table-border-color);
+    cursor: pointer;
     display: grid;
     height: var(--row-height);
     max-height: var(--row-height);
@@ -99,8 +100,10 @@
       }
     }
 
+    &--disabled,
     &:disabled {
       color: var(--text-tertiary);
+      cursor: unset;
     }
   }
 

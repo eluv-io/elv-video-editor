@@ -21,6 +21,7 @@ import {Tabs, Tooltip} from "@mantine/core";
 import LibraryIcon from "@/assets/icons/v2/library.svg";
 import ObjectIcon from "@/assets/icons/file.svg";
 import VideoIcon from "@/assets/icons/v2/video.svg";
+import CompositionIcon from "@/assets/icons/v2/composition.svg";
 import BackIcon from "@/assets/icons/v2/back.svg";
 import FirstPageIcon from "@/assets/icons/DoubleBackward.svg";
 import LastPageIcon from "@/assets/icons/DoubleForward.svg";
@@ -130,16 +131,7 @@ const SearchBar = observer(({filter, setFilter, delay=500, Select}) => {
   );
 });
 
-const BrowserTable = observer(({
-  filter,
-  Load,
-  Select,
-  defaultIcon,
-  contentType="library",
-  videoOnly,
-  frameRate,
-  Delete
-}) => {
+const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="library", videoOnly, Delete}) => {
   const [loading, setLoading] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
   const [content, setContent] = useState(undefined);
@@ -187,110 +179,93 @@ const BrowserTable = observer(({
             Name
           </div>
           {
-            !["object", "my-library"].includes(contentType) ? null :
+            !["object", "composition", "my-library"].includes(contentType) ? null :
               <>
                 <div className={S("browser-table__cell", "browser-table__cell--header", "browser-table__cell--centered")}>
                   Duration
                 </div>
                 <div className={S("browser-table__cell", "browser-table__cell--header", "browser-table__cell--centered")}>
-                  { contentType === "object" ? "Last Modified" : "Last Accessed" }
+                  { ["object", "composition"].includes(contentType) ? "Last Modified" : "Last Accessed" }
                 </div>
               </>
           }
+          {
+            !["composition", "my-library"].includes(contentType) ? null :
+              <div className={S("browser-table__cell", "browser-table__cell--header")} />
+          }
         </div>
         {
-          (content || []).map(({id, name, image, lastModified, forbidden, ...item}) => {
-            let disabled, message;
-            if(deleting) {
-              disabled = true;
-            } else if(forbidden) {
-              disabled = true;
-              message = "You do not have access to this object";
-            } else if(videoOnly && !item.isVideo) {
-              disabled = true;
-              message = "This object does not contain video";
-            } else if(frameRate && item.frameRate !== frameRate) {
-              disabled = true;
-              message = "The framerate of this content is incompatible with the primary source of this composition";
-            }
-
+          (content || []).map(item => {
+            const disabled = deleting || item.forbidden || (videoOnly && !item.isVideo);
             return (
               <Linkish
+                divButton
                 onClick={() => {
                   if(contentType === "library") {
-                    Select({libraryId: id, name});
+                    Select({libraryId: item.id, ...item});
                   } else if(contentType === "object") {
-                    Select({objectId: id, name, ...item});
+                    Select({objectId: item.id, ...item});
                   } else if(contentType === "composition") {
-                    Select({compositionKey: id});
+                    Select(item);
                   } else if(contentType === "my-library") {
-                    Select({id});
+                    Select(item);
                   }
                 }}
-                key={`browser-row-${id}`}
+                key={`browser-row-${item.id || item.key || item.compositionKey}`}
                 disabled={disabled}
-                className={S("browser-table__row", "browser-table__row--content")}
+                className={S("browser-table__row", "browser-table__row--content", disabled ? "browser-table__row--disabled" : "")}
               >
                 <div className={S("browser-table__cell")}>
                   {
-                    image ?
-                      <img src={image} alt={name} className={S("browser-table__cell-image")}/> :
-                      <SVG src={item.duration ? VideoIcon : defaultIcon} className={S("browser-table__cell-icon")}/>
+                    item.image ?
+                      <img src={item.image} alt={item.name} className={S("browser-table__cell-image")}/> :
+                      <SVG
+                        src={
+                          item.compositionKey ? CompositionIcon :
+                            item.duration ?
+                              VideoIcon : defaultIcon
+                        }
+                        className={S("browser-table__cell-icon")}
+                      />
                   }
                   <div className={S("browser-table__row-title")}>
-                    <Tooltip
-                      label={
-                        <div className={S("tooltip")}>
-                          <div className={S("tooltip__item")}>
-                            { name }
-                          </div>
-                          {
-                            !message ? null :
-                              <div className={S("tooltip__item")}>
-                                { message }
-                              </div>
-                          }
-                        </div>
-                      }
-                      openDelay={500}
-                    >
+                    <Tooltip label={item.name} openDelay={500}>
                       <div className={S("browser-table__row-title-main")}>
                         <span>
-                          {name}{item.compositionKey ? " (Composition)" : ""}
+                          {item.name}{item.compositionKey ? " (Composition)" : ""}
                         </span>
                         {
                           !item.isLiveStream ? "" :
-                            <span
-                              className={S("browser-table__live-tag", item.isLive ? "browser-table__live-tag--active" : "")}>
-                              {item.isLive ? "LIVE" : "Live Stream"}
+                            <span className={S("browser-table__live-tag", item.isLive ? "browser-table__live-tag--active" : "")}>
+                              { item.isLive ? "LIVE" : "Live Stream" }
                             </span>
                         }
                       </div>
                     </Tooltip>
                     <div className={S("browser-table__row-title-id")}>
                       {
-                        contentType !== "my-library" ? id :
+                        contentType !== "my-library" ? item.id :
                           `${item.objectId}${item.compositionKey ? ` - ${item.compositionKey}` : ""}`
                       }
                     </div>
                   </div>
                 </div>
                 {
-                  !["object", "my-library"].includes(contentType) ? null :
+                  !["object", "composition", "my-library"].includes(contentType) ? null :
                     <>
                       <div className={S("browser-table__cell", "browser-table__cell--centered")}>
                         {item.duration || "-"}
                       </div>
                       <div className={S("browser-table__cell", "browser-table__cell--centered")}>
-                        {lastModified || "-"}
+                        {item.lastModified || "-"}
                       </div>
                     </>
                 }
                 {
-                  !Delete || !id ? null :
+                  !Delete || !item.id ? null :
                     <div className={S("browser-table__cell", "browser-table__cell--centered")}>
                       <IconButton
-                        label="Delete Item"
+                        label="Remove Item"
                         icon={DeleteIcon}
                         faded
                         disabled={deleting}
@@ -299,7 +274,7 @@ const BrowserTable = observer(({
                           setDeleting(true);
 
                           try {
-                            await Delete({id, name});
+                            await Delete(item);
                           } finally {
                             setDeleting(false);
                           }
@@ -337,7 +312,7 @@ const BrowserTable = observer(({
   );
 });
 
-const ChannelBrowser = observer(({channelInfo, Select, Back, className=""}) => {
+const CompositionBrowser = observer(({selectedObject, Select, Back, className=""}) => {
   const [filter, setFilter] = useState("");
   const [deletedChannels, setDeletedChannels] = useState([]);
 
@@ -352,7 +327,7 @@ const ChannelBrowser = observer(({channelInfo, Select, Back, className=""}) => {
           className={S("browser__header-back")}
         />
         <span>
-          {channelInfo.objectName} / Select Content
+          {selectedObject.name} / Select Content
         </span>
       </h1>
       <BrowserTable
@@ -362,9 +337,15 @@ const ChannelBrowser = observer(({channelInfo, Select, Back, className=""}) => {
         Select={Select}
         Load={async ({page, perPage, filter}) => {
           const content = [
-            {id: "", name: `Main Content - ${channelInfo.objectName}`},
-            ...(channelInfo.channels.map(({key, name, label}) =>
-              ({id: key, name: `Composition - ${name || label}`})
+            {
+              id: "",
+              name: `Main Content - ${selectedObject.name}`,
+              objectId: selectedObject.objectId,
+              duration: selectedObject.duration,
+              lastModified: selectedObject.lastModified
+            },
+            ...(selectedObject.channels.map(channel =>
+              ({id: channel.compositionKey, name: `Composition - ${channel.name || channel.label}`, ...channel})
             ))
           ]
             .filter(({id}) => !deletedChannels.includes(id))
@@ -386,7 +367,7 @@ const ChannelBrowser = observer(({channelInfo, Select, Back, className=""}) => {
           text: `Are you sure you want to delete the composition '${name}'?`,
           onConfirm: async () => {
             await compositionStore.DeleteComposition({
-              objectId: channelInfo.objectId,
+              objectId: selectedObject.objectId,
               compositionKey: id
             });
 
@@ -397,17 +378,7 @@ const ChannelBrowser = observer(({channelInfo, Select, Back, className=""}) => {
   );
 });
 
-export const ObjectBrowser = observer(({
-  libraryId,
-  title,
-  Select,
-  Path,
-  Back,
-  backPath,
-  videoOnly,
-  frameRate,
-  className=""
-}) => {
+export const ObjectBrowser = observer(({libraryId, title, Select, Path, Back, backPath, videoOnly, className=""}) => {
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
@@ -437,7 +408,6 @@ export const ObjectBrowser = observer(({
         defaultIcon={ObjectIcon}
         contentType="object"
         videoOnly={videoOnly}
-        frameRate={frameRate}
         Path={Path}
         Select={Select}
         Load={async args => await browserStore.ListObjects({libraryId, ...args})}
@@ -472,7 +442,7 @@ export const LibraryBrowser = observer(({title, Path, Select, className=""}) => 
 
 const Browser = observer(() => {
   const [selectedLibraryId, setSelectedLibraryId] = useState(undefined);
-  const [channelInfo, setChannelInfo] = useState(undefined);
+  const [selectedObject, setSelectedObject] = useState(undefined);
   const [redirect, setRedirect] = useState(undefined);
 
   useEffect(() => {
@@ -483,58 +453,53 @@ const Browser = observer(() => {
     return <Redirect to={redirect} />;
   }
 
-  if(channelInfo) {
+  if(selectedObject) {
     return (
-      <ChannelBrowser
-        channelInfo={channelInfo}
-        Back={() => setChannelInfo(undefined)}
-        Select={({compositionKey}) => {
+      <CompositionBrowser
+        selectedObject={selectedObject}
+        Back={() => setSelectedObject(undefined)}
+        Select={({objectId, compositionKey}) => {
           compositionStore.Reset();
           setRedirect(
             compositionKey ?
-              UrlJoin("/compositions", channelInfo.objectId, compositionKey) :
-              UrlJoin("/", channelInfo.objectId)
+              UrlJoin("/compositions", objectId, compositionKey) :
+              UrlJoin("/", objectId)
           );
         }}
       />
     );
   }
 
-  const Select = ({libraryId, objectId, name, isVideo, isLiveStream, vods, hasChannels, channels}) => {
-    if(libraryId) {
-      setSelectedLibraryId(libraryId);
+  const Select = (item) => {
+    if(item.libraryId) {
+      setSelectedLibraryId(item.libraryId);
     }
 
-    if(!objectId) { return; }
+    if(!item.objectId) { return; }
 
-    if(isLiveStream) {
-      if(!vods || Object.keys(vods).length === 0) {
+    if(item.isLiveStream) {
+      if(!item.vods || Object.keys(item.vods).length === 0) {
         // No vods, must create new
         browserStore.SetLiveToVodFormFields({
-          liveStreamLibraryId: libraryId,
-          liveStreamId: objectId
+          liveStreamLibraryId: item.libraryId,
+          liveStreamId: item.objectId
         });
         return;
       }
 
-      setRedirect(UrlJoin("/", Object.keys(vods)[0]));
+      setRedirect(UrlJoin("/", Object.keys(item.vods)[0]));
       return;
     }
 
-    if(!isVideo) {
-      setRedirect(UrlJoin("/", objectId, "assets"));
+    if(!item.isVideo) {
+      setRedirect(UrlJoin("/", item.objectId, "assets"));
       return;
     }
 
-    if(hasChannels) {
-      setChannelInfo({
-        libraryId: libraryId || selectedLibraryId,
-        objectId,
-        objectName: name,
-        channels
-      });
+    if(item.hasChannels) {
+      setSelectedObject(item);
     } else {
-      setRedirect(UrlJoin("/", objectId));
+      setRedirect(UrlJoin("/", item.objectId));
     }
   };
 
@@ -584,6 +549,7 @@ const MyLibraryBrowser = observer(() => {
         defaultIcon={ObjectIcon}
         contentType="my-library"
         Select={Select}
+        Delete={async args => browserStore.RemoveMyLibraryItem(args)}
         Load={async args => await browserStore.ListMyLibrary(args)}
       />
     </div>

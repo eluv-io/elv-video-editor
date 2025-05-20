@@ -1,4 +1,5 @@
 import {flow, makeAutoObservable} from "mobx";
+import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 
 class BrowserStore {
   libraries = undefined;
@@ -119,6 +120,17 @@ class BrowserStore {
       .join(":");
   }
 
+  FormatDate(date) {
+    if(!date) { return; }
+
+    try {
+      return new Date(date)
+        .toLocaleDateString(navigator.language, {month: "short", day: "numeric", year: "numeric"});
+    } catch(error) {
+      return undefined;
+    }
+  }
+
   ObjectDetails = flow(function * ({objectId, versionHash, publicMetadata}) {
     if(!versionHash) {
       versionHash = yield this.rootStore.client.LatestVersionHash({objectId});
@@ -151,6 +163,8 @@ class BrowserStore {
           "public/display_image",
           "commit/timestamp",
           "channel/offerings/*/display_name",
+          "channel/offerings/*/updated_at",
+          "channel/offerings/*/items",
           "assets",
           "offerings/*/media_struct/duration_rat",
           "offerings/*/media_struct/streams/*/rate",
@@ -160,7 +174,15 @@ class BrowserStore {
       });
 
       const savedChannels = Object.values(this.rootStore.compositionStore.myCompositions[objectId] || {})
-        .filter(channel => channel.writeTokenInfo);
+        .filter(channel => channel.writeTokenInfo)
+        .map(composition => ({
+          ...composition,
+          objectId,
+          duration: this.FormatDuration(composition.duration),
+          lastModifiedISO: composition.lastModified,
+          lastModified: this.FormatDate(composition.lastModified),
+          compositionKey: composition.compositionKey || composition.key
+        }));
 
       hasChannels = !!metadata?.channel || savedChannels.length > 0;
       hasAssets = !!metadata?.assets;
@@ -169,10 +191,40 @@ class BrowserStore {
         channels = [];
 
         if(metadata?.channel) {
-          channels = Object.keys(metadata?.channel?.offerings || {}).map(channelKey => ({
-            key: channelKey,
-            label: metadata.channel.offerings[channelKey].display_name || channelKey,
-          }));
+          channels = Object.keys(metadata?.channel?.offerings || {}).map(channelKey => {
+            const channel = metadata.channel.offerings[channelKey];
+
+            let lastModified = channel.updated_at;
+            if(lastModified) {
+              lastModified = this.FormatDate(lastModified);
+            }
+
+            let duration;
+            if(channel.items) {
+              try {
+                duration = this.FormatDuration(
+                  channel.items.reduce((acc, item) =>
+                      acc + (FrameAccurateVideo.ParseRat(item.slice_end_rat) - FrameAccurateVideo.ParseRat(item.slice_start_rat)),
+                    0
+                  )
+                );
+              } catch(error) {
+                // eslint-disable-next-line no-console
+                console.error("Error parsing channel duration:");
+                // eslint-disable-next-line no-console
+                console.error(error);
+              }
+            }
+
+            return {
+              objectId,
+              compositionKey: channelKey,
+              label: channel.display_name || channelKey,
+              duration,
+              lastModifiedISO: channel.updated_at,
+              lastModified: lastModified
+            };
+          });
         }
 
         if(savedChannels.length > 0) {
@@ -182,12 +234,23 @@ class BrowserStore {
           ];
         }
 
-        channels = channels.sort((a, b) => a.label?.toLowerCase() < b.label?.toLowerCase() ? -1 : 1);
+        channels = channels
+          .sort((a, b) => {
+            if(a.lastModifiedISO && b.lastModifiedISO) {
+              return a.lastModifiedISO > b.lastModifiedISO ? -1 : 1;
+            } else if(a.lastModifiedISO) {
+              return -1;
+            } else if(b.lastModifiedISO) {
+              return 1;
+            }
+
+            return a.label?.toLowerCase() < b.label?.toLowerCase() ? -1 : 1;
+          });
       }
 
       lastModified = metadata?.commit?.timestamp;
       if(lastModified) {
-        lastModified = new Date(lastModified).toLocaleDateString(navigator.language, {month: "short", day: "numeric", year: "numeric"});
+        lastModified = this.FormatDate(lastModified);
       }
 
       const offering = metadata?.offerings?.default ?
@@ -322,24 +385,45 @@ class BrowserStore {
     const contentLength = content.length;
     content = content.slice((page - 1) * perPage, page * perPage);
 
-    content = yield Promise.all(
+    let itemsDeleted = false;
+    content = (yield Promise.all(
       content.map(async item => {
-        if(item.compositionKey) {
-          return {
-            ...item,
-            duration: this.FormatDuration(item.duration),
-            lastModified: new Date(item.accessedAt)
-              .toLocaleDateString(navigator.language, {month: "short", day: "numeric", year: "numeric"})
-          };
-        }
+        try {
+          if(item.compositionKey) {
+            return {
+              ...item,
+              duration: this.FormatDuration(item.duration),
+              lastModified: this.FormatDate(item.accessedAt)
+            };
+          }
 
-        return {
-          ...(await this.ObjectDetails({objectId: item.objectId})),
-          lastModified: new Date(item.accessedAt)
-            .toLocaleDateString(navigator.language, {month: "short", day: "numeric", year: "numeric"})
-        };
+          return {
+            ...(await this.ObjectDetails({objectId: item.objectId})),
+            lastModified: this.FormatDate(item.accessedAt)
+          };
+        } catch(error) {
+          // eslint-disable-next-line no-console
+          console.error("Error retrieving my library item:");
+          // eslint-disable-next-line no-console
+          console.error(error);
+
+          if(typeof error === "string" && error.includes("deleted")) {
+            // eslint-disable-next-line no-console
+            console.warn("Removing library item");
+
+            itemsDeleted = true;
+            await this.RemoveMyLibraryItem(item);
+          }
+
+          return item;
+        }
       })
-    );
+    ));
+
+    if(itemsDeleted) {
+      // Items were deleted - redo listing
+      return yield this.ListMyLibrary({page, perPage, filter});
+    }
 
     return {
       content,

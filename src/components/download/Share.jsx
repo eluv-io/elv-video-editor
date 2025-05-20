@@ -820,7 +820,7 @@ const ShareDetails = observer(({store, selectedShare, Back, Close}) => {
   );
 });
 
-const ShareModal = observer(({store, ...props}) => {
+export const ShareModal = observer(({store, ...props}) => {
   const [selectedShare, setSelectedShare] = useState(undefined);
   const [downloadOptions, setDownloadOptions] = useState(undefined);
 

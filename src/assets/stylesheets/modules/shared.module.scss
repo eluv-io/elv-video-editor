@@ -154,9 +154,23 @@
 
 .form {
   &__title {
+    align-items: center;
+    display: flex;
     font-size: 18px;
-    font-weight: 500;
+    font-weight: 600;
+    gap: 5px;
     margin: 5px 0 10px;
+  }
+
+  &__section-header {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 20px 0 10px;
+  }
+
+  &__message {
+    font-size: 14px;
+    margin-bottom: 10px;
   }
 
   &__inputs {

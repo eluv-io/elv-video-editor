@@ -467,6 +467,7 @@ class VideoStore {
     this.initialized = false;
     this.video = video;
     this.player = player;
+    this.playing = false;
 
     const videoHandler = new FrameAccurateVideo({
       video,
@@ -510,7 +511,7 @@ class VideoStore {
     }));
 
     this.player.on(HLS.Events.ERROR, action((event, data) => {
-      if(data.fatal || (data.type === "networkError" && parseInt(data.response.code) >= 500)) {
+      if(data.fatal || (data.type === "networkError" && data.response && parseInt(data.response.code) >= 500)) {
         this.consecutiveSegmentErrors += 1;
         // eslint-disable-next-line no-console
         console.error("HLS playback error:");
@@ -518,7 +519,7 @@ class VideoStore {
         console.error(data);
 
         // Give up and show an error message after several failures
-        if(this.consecutiveSegmentErrors >= 3) {
+        if(this.consecutiveSegmentErrors >= 10) {
           //this.rootStore.SetError("Playback Error");
           this.Reset();
         }

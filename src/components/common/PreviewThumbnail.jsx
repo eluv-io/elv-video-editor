@@ -7,7 +7,7 @@ import {LoaderImage} from "@/components/common/Common.jsx";
 
 const S = CreateModuleClassMatcher(CommonStyles);
 
-const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage, ...props}) => {
+const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage, showDuration=true, ...props}) => {
   const [ref, setRef] = useState(null);
   const [thumbnails, setThumbnails] = useState(null);
   const [brokenImages, setBrokenImages] = useState({});
@@ -115,6 +115,12 @@ const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage,
             style={{width: `${hoverInfo.progress * 100}%`}}
             className={S("preview-thumbnail__progress")}
           />
+      }
+      {
+        !showDuration ? null :
+          <div className={S("preview-thumbnail__duration")}>
+            {store.videoHandler.FrameToString({frame: endFrame - startFrame})}
+          </div>
       }
     </div>
   );

@@ -2,13 +2,11 @@ import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
 
 import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react-lite";
-import {compositionStore, editStore, rootStore, tagStore, trackStore, videoStore} from "@/stores";
+import {editStore, rootStore, tagStore, trackStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
 import {
   Confirm,
-  FormTextArea,
   IconButton,
-  Modal,
   SMPTEInput,
   SwitchInput
 } from "@/components/common/Common";
@@ -28,7 +26,6 @@ import Download from "@/components/download/Download.jsx";
 import Share from "@/components/download/Share.jsx";
 import Track from "@/components/timeline/Track.jsx";
 import {CreateTrackButton} from "@/components/forms/CreateTrack.jsx";
-import {Button} from "@mantine/core";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
@@ -38,175 +35,26 @@ import ClipInIcon from "@/assets/icons/v2/clip-start.svg";
 import ClipOutIcon from "@/assets/icons/v2/clip-end.svg";
 import QuestionMarkIcon from "@/assets/icons/v2/question-mark.svg";
 import ZoomOutFullIcon from "@/assets/icons/v2/arrows-horizontal.svg";
-import ClipIcon from "@/assets/icons/v2/clip.svg";
-import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import IsolateClipIcon from "@/assets/icons/v2/isolate.svg";
 import ReloadIcon from "@/assets/icons/v2/reload.svg";
-import LiveToVodIcon from "@/assets/icons/v2/live-to-vod.svg";
 import CheckmarkIcon from "@/assets/icons/check-circle.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
 import XIcon from "@/assets/icons/X.svg";
+import {AggregateTagsButton, ClipModalButton, LiveToVodButton, MyClipsButton} from "@/components/timeline/Controls.jsx";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
-const ClipModalButton = observer(() => {
-  const [showModal, setShowModal] = useState(false);
-  const [name, setName] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    setName("");
-    setSubmitting(false);
-  }, [showModal]);
-
-  const Submit = async () => {
-    if(!name) { return; }
-
-    setSubmitting(true);
-
-    compositionStore.AddMyClip({
-      clip: {
-        name,
-        libraryId: videoStore.videoObject.libraryId,
-        objectId: videoStore.videoObject.objectId,
-        versionHash: videoStore.videoObject.versionHash,
-        offering: videoStore.offeringKey,
-        clipInFrame: videoStore.clipInFrame || 0,
-        clipOutFrame: videoStore.clipOutFrame || videoStore.totalFrames - 1
-      }
-    });
-
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    setShowModal(false);
-  };
-
-  return (
-    <>
-      {
-        !showModal ? null :
-          <Modal
-            title={<div className={S("form__title")}>Save to My Clips</div>}
-            opened
-            centered
-            onClose={() => setShowModal(false)}
-          >
-            <div className={S("form", "clip-form")}>
-              <PreviewThumbnail
-                store={videoStore}
-                startFrame={videoStore.clipInFrame}
-                endFrame={videoStore.clipOutFrame}
-                className={S("clip-form__preview")}
-              />
-              <div className={S("form__inputs")}>
-                <div className={S("clip-form__title")}>
-                  { videoStore.name }
-                </div>
-                <div className={S("clip-form__details")}>
-                  <span>
-                    {videoStore.FrameToSMPTE(videoStore.clipInFrame)}
-                  </span>
-                  <span>-</span>
-                  <span>
-                    {videoStore.FrameToSMPTE(videoStore.clipOutFrame)}
-                  </span>
-                  <span>
-                    ({videoStore.videoHandler.FrameToString({frame: videoStore.clipOutFrame - videoStore.clipInFrame})})
-                  </span>
-                </div>
-                <FormTextArea
-                  autoFocus
-                  label="Clip Description"
-                  autosize
-                  value={name}
-                  onChange={event => setName(event.target.value)}
-                  onKeyPress={event => {
-                    if(event.key === "Enter") {
-                      Submit();
-                    }
-                  }}
-                />
-                <div className={S("form__actions")}>
-                  <Button
-                    w={150}
-                    color="gray.5"
-                    onClick={() => setShowModal(false)}
-                    variant="subtle"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    w={150}
-                    loading={submitting}
-                    autoContrast
-                    color="gray.5"
-                    disabled={!name}
-                    onClick={Submit}
-                  >
-                    Submit
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </Modal>
-      }
-      <IconButton
-        icon={ClipIcon}
-        disabled={!videoStore.clipInFrame && videoStore.clipOutFrame >= videoStore.totalFrames - 1}
-        label="Save Clip"
-        onClick={() => setShowModal(true)}
-      />
-    </>
-  );
-});
-
-const LiveToVodButton = observer(() => {
-  if(!videoStore.videoObject?.objectId) { return null; }
-
-  const progress = editStore.liveToVodProgress[videoStore.videoObject?.objectId];
-
-  return (
-    <IconButton
-      icon={LiveToVodIcon}
-      label="Update VoD from Live Stream"
-      onClick={async () => {
-        if(editStore.HasUnsavedChanges("tags") || editStore.HasUnsavedChanges("clips")) {
-          let cancelled = false;
-          await Confirm({
-            title: "Regenerate Live to VoD",
-            text: "Warning: You have unsaved changes. If you proceed in regenerating this VoD your changes will be lost",
-            onConfirm: () => {
-              editStore.ResetPage("tags");
-              editStore.ResetPage("clips");
-            },
-            onCancel: () => cancelled = true
-          });
-
-          if(cancelled) {
-            return;
-          }
-        }
-
-        await Confirm({
-          title: "Regenerate Live to VoD",
-          text: "Are you sure you want to update this VoD from the live stream? This may take several minutes and will cause the content to reload when finished.",
-          onConfirm: async () => {
-            await editStore.RegenerateLiveToVOD({vodObjectId: videoStore.videoObject?.objectId});
-          }
-        });
-      }}
-      loadingProgress={progress}
-      className={S("search__button")}
-    />
-  );
-});
 
 const TimelineTopBar = observer(({simple}) => {
   return (
     <div className={S("toolbar", "timeline-section__top-bar")}>
       <div className={S("toolbar__controls-group", "left")}>
         {
-          simple ? null :
+          simple ?
+            <>
+              <MyClipsButton/>
+              <div className={S("toolbar__separator")}/>
+            </> :
             <>
               <IconButton
                 icon={UndoIcon}
@@ -321,6 +169,10 @@ const TimelineTopBar = observer(({simple}) => {
           })}
         />
         <div className={S("toolbar__separator")}/>
+        {
+          simple ? null :
+            <AggregateTagsButton />
+        }
         <Download store={videoStore} />
         <Share store={videoStore}/>
 

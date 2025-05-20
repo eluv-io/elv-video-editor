@@ -10,7 +10,8 @@ import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import UrlJoin from "url-join";
 
 import ClipIcon from "@/assets/icons/v2/clip.svg";
-import MediaIcon from "@/assets/icons/v2/play-clip.svg";
+import VideoIcon from "@/assets/icons/v2/video.svg";
+import CompositionIcon from "@/assets/icons/v2/composition.svg";
 import AISparkleIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import XIcon from "@/assets/icons/X.svg";
 import TagIcon from "@/assets/icons/v2/tag.svg";
@@ -267,29 +268,62 @@ export const CompositionClips = observer(() => {
 export const CompositionBrowser = observer(() => {
   const [info, setInfo] = useState(undefined);
   const [deleting, setDeleting] = useState(false);
+  const [selectedObjectId, setSelectedObjectId] = useState(undefined);
 
   useEffect(() => {
-    if(!rootStore.selectedObjectId || deleting) {
-      return;
+    if(deleting) { return; }
+
+    setInfo(undefined);
+
+    if(!rootStore.selectedObjectId) {
+      // Load from my library
+      browserStore.ListMyLibrary({page: 1, perPage: 1000})
+        .then(({content}) => {
+          setSelectedObjectId(undefined);
+          setInfo(content.filter(item => item.compositionKey));
+        });
+    } else if(rootStore.selectedObjectId) {
+      browserStore.LookupContent(rootStore.selectedObjectId)
+        .then(objectInfo => {
+          setSelectedObjectId(rootStore.selectedObjectId);
+          setInfo(objectInfo);
+        });
+      setSelectedObjectId(rootStore.selectedObjectId);
     }
-
-    browserStore.LookupContent(rootStore.selectedObjectId)
-      .then(setInfo);
   }, [rootStore.selectedObjectId, deleting]);
-
-  if(!rootStore.selectedObjectId) {
-    return null;
-  }
 
   if(!info) {
     return <Loader />;
   }
 
-  let compositions = (info.channels || [])
-    .filter(({label, key}) =>
+  let compositions = info;
+  if(selectedObjectId) {
+    // Specific object selected
+    compositions = [
+      {
+        id: "",
+        label: `Main Content - ${info.name}`,
+        objectId: info.objectId,
+        lastModified: info.lastModified,
+        compositionKey: ""
+      },
+      ...(info.channels || [])
+    ];
+  }
+
+  compositions = compositions
+    .map(composition => ({
+      ...composition,
+      name:
+        compositionStore.myCompositions[composition.objectId]?.[composition.compositionKey]?.name ||
+        composition.name ||
+        composition.label ||
+        composition.compositionKey
+    }))
+    .filter(({name, compositionKey}) =>
       !compositionStore.filter ||
-      label.toLowerCase().includes(compositionStore.filter.toLowerCase()) ||
-      key.toLowerCase().includes(compositionStore.filter.toLowerCase())
+      name.toLowerCase().includes(compositionStore.filter.toLowerCase()) ||
+      compositionKey.toLowerCase().includes(compositionStore.filter.toLowerCase())
     );
 
   return (
@@ -298,47 +332,71 @@ export const CompositionBrowser = observer(() => {
         compositions.length === 0 ?
           <div className={S("composition-browser__empty")}>No Compositions</div> :
           <div className={S("composition-browser__content")}>
-            {compositions.map(({label, key}) =>
+            <div className={S("composition-browser__header", "composition-browser__item")}>
+              <span />
+              <span>Name</span>
+              <span>Last Modified</span>
+              <span />
+            </div>
+            {compositions.map(({name, objectId, compositionKey, lastModified}) =>
               <Linkish
                 disabled={deleting}
-                key={key}
+                key={compositionKey}
                 onClick={() => compositionStore.SetFilter("")}
-                to={UrlJoin("/compositions", rootStore.selectedObjectId, key)}
+                to={
+                  !compositionKey ?
+                    UrlJoin("/", objectId) :
+                    UrlJoin("/compositions", objectId, compositionKey)
+                }
                 className={S("composition-browser__item")}
               >
+                <Icon icon={compositionKey ? CompositionIcon : VideoIcon}
+                      className={S("composition-browser__item-icon")}/>
+                <Tooltip openDelay={500} label={name}>
+                  <div className={S("ellipsis")}>
+                    <div className={S("composition-browser__item-name", "ellipsis")}>
+                      { name }
+                    </div>
+                    <div className={S("composition-browser__item-id")}>
+                      { objectId }
+                    </div>
+                  </div>
+                </Tooltip>
                 <span>
-                  <Icon icon={MediaIcon} />
-                  { compositionStore.myCompositions[rootStore.selectedObjectId]?.[key]?.name || label }
+                  {lastModified}
                 </span>
                 <span>
-                  <IconButton
-                    icon={DeleteIcon}
-                    label="Delete Composition"
-                    disabled={deleting}
-                    faded
-                    small
-                    loading={deleting === key}
-                    onClick={async event => {
-                      event.stopPropagation();
-                      event.preventDefault();
+                  {
+                    !compositionKey ? null :
+                      <IconButton
+                        icon={DeleteIcon}
+                        label="Delete Composition"
+                        disabled={deleting}
+                        faded
+                        small
+                        loading={deleting === compositionKey}
+                        onClick={async event => {
+                          event.stopPropagation();
+                          event.preventDefault();
 
-                      await Confirm({
-                        title: "Delete Composition",
-                        text: `Are you sure you want to delete the composition '${label}'?`,
-                        onConfirm: async () => {
-                          setDeleting(key);
-                          try {
-                            await compositionStore.DeleteComposition({
-                              objectId: rootStore.selectedObjectId,
-                              compositionKey: key
-                            });
-                          } finally {
-                            setDeleting(false);
-                          }
-                        }
-                      });
-                    }}
-                  />
+                          await Confirm({
+                            title: "Delete Composition",
+                            text: `Are you sure you want to delete the composition '${name}'?`,
+                            onConfirm: async () => {
+                              setDeleting(compositionKey);
+                              try {
+                                await compositionStore.DeleteComposition({
+                                  objectId: objectId,
+                                  compositionKey
+                                });
+                              } finally {
+                                setDeleting(false);
+                              }
+                            }
+                          });
+                        }}
+                      />
+                  }
                 </span>
               </Linkish>
             )}

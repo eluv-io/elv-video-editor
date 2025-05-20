@@ -11,7 +11,7 @@ import SourceIcon from "@/assets/icons/v2/folder.svg";
 import TagIcon from "@/assets/icons/v2/tag.svg";
 import ClipIcon from "@/assets/icons/v2/clip.svg";
 import AssetIcon from "@/assets/icons/v2/asset.svg";
-import CompositionIcon from "@/assets/icons/v2/play-clip.svg";
+import CompositionIcon from "@/assets/icons/v2/composition.svg";
 
 const S = CreateModuleClassMatcher(NavStyles);
 
