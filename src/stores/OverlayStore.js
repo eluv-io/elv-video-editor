@@ -3,17 +3,11 @@ import { flow, makeAutoObservable } from "mobx";
 class OverlayStore {
   metadataOverlayTags = {};
   clipOverlayTags = {};
-  overlayEnabled = true;
+  overlayEnabled = false;
   overlayCanvasDimensions = {width: 0, height: 0};
 
   constructor(rootStore) {
-    makeAutoObservable(
-      this,
-      {
-        clipOverlayTags: false,
-        metadataOverlayTags: false
-      }
-    );
+    makeAutoObservable(this);
 
     this.rootStore = rootStore;
   }
@@ -46,29 +40,32 @@ class OverlayStore {
   }
 
   AddTag({frame, trackKey, tag}) {
-    if(!this.overlayTags[frame.toString()]) {
-      this[this.tagField][frame.toString()] = {
+    frame = frame.toString();
+
+    if(!this[this.tagField][frame]) {
+      this[this.tagField][frame] = {
         // timestamp sec is actually ms??
         timestamp_sec: Math.floor(this.rootStore.videoStore.FrameToTime(frame) * 1000)
       };
     }
 
-    if(!this.overlayTags[frame.toString()][trackKey]) {
-      this[this.tagField][frame.toString()][trackKey] = { tags: [] };
+    if(!this[this.tagField][frame][trackKey]) {
+      this[this.tagField][frame][trackKey] = { tags: [] };
     }
 
-    this.overlayTags[frame.toString()][trackKey].tags = [
-      ...(this[this.tagField][frame.toString()][trackKey].tags || []),
+    this[this.tagField][frame][trackKey].tags = [
+      ...(this[this.tagField][frame][trackKey].tags || []),
       tag
     ];
   }
 
   ModifyTag({frame, modifiedTag}) {
     const trackKey = this.rootStore.trackStore.Track(modifiedTag.trackId)?.key;
+    frame = frame.toString();
 
     if(!trackKey) { return; }
 
-    this[this.tagField][frame.toString()][trackKey].tags = this.overlayTags[frame.toString()][trackKey].tags
+    this[this.tagField][frame][trackKey].tags = this[this.tagField][frame][trackKey].tags
       .map(tag =>
         tag.tagId === modifiedTag.tagId ?
           { ...modifiedTag } :
@@ -77,14 +74,14 @@ class OverlayStore {
   }
 
   DeleteTag({frame, tagId}) {
-    Object.keys(this.overlayTags[frame?.toString()]).forEach(trackKey => {
-      if(this.overlayTags[frame.toString()][trackKey]?.tags) {
-        this[this.tagField][frame.toString()][trackKey].tags = this.overlayTags[frame.toString()][trackKey].tags
+    frame = frame.toString();
+    Object.keys(this[this.tagField][frame?.toString()]).forEach(trackKey => {
+      if(this[this.tagField][frame][trackKey]?.tags) {
+        this[this.tagField][frame][trackKey].tags = this[this.tagField][frame][trackKey].tags
           .filter(tag => tag.tagId !== tagId);
       }
     });
   }
-
 
   AddOverlayTracks = flow(function * () {
     try {
@@ -107,7 +104,7 @@ class OverlayStore {
             overlayTags[frame][trackKey].tags = (overlayTags[frame][trackKey]?.tags || [])
               .map((tag, tagIndex) => ({
                 ...tag,
-                tagId: this.rootStore.NextId(),
+                tagId: tag.id || this.rootStore.NextId(true),
                 frame: parseInt(frame),
                 trackId: trackIdMap[trackKey],
                 o: {
@@ -120,16 +117,14 @@ class OverlayStore {
         );
 
         this.clipOverlayTags = overlayTags;
-
-        this.overlayEnabled = true;
       }
 
       if(!metadata.video_tags || !metadata.video_tags.overlay_tags) {
+        this.overlayEnabled = true;
         return;
       }
 
       // Load ML overlay tags from files
-      this.overlayEnabled = true;
       const tagFileLinks = Object.keys(metadata.video_tags.overlay_tags);
       for(let i = 0; i < tagFileLinks.length; i++) {
         const tagInfo = yield this.rootStore.client.LinkData({
@@ -148,7 +143,7 @@ class OverlayStore {
             overlayTags[frame][trackKey].tags = (overlayTags[frame][trackKey]?.tags || [])
               .map((tag, tagIndex) => ({
                 ...tag,
-                tagId: this.rootStore.NextId(),
+                tagId: tag.id || this.rootStore.NextId(),
                 frame: parseInt(frame),
                 trackId: trackIdMap[trackKey],
                 o: {
@@ -165,6 +160,8 @@ class OverlayStore {
           ...overlayTags,
           version: tagInfo.version || this.metadataOverlayTags?.version || 0,
         };
+
+        this.overlayEnabled = true;
       }
     } catch(error) {
       // eslint-disable-next-line no-console

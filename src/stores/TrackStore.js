@@ -172,7 +172,7 @@ class TrackStore {
 
   AddTag({trackId, tag}) {
     if(!tag.tagId) {
-      tag.tagId = this.rootStore.NextId();
+      tag.tagId = tag.id || this.rootStore.NextId(true);
     }
 
     this.tags[trackId][tag.tagId] = JSON.parse(JSON.stringify(tag));
@@ -509,7 +509,14 @@ class TrackStore {
           if(!tag) { return; }
         }
 
+        let tagId;
+        if(tag?.lk === "user" && tag.id) {
+          // Ensure user tags have UUID tag IDs
+          tagId = this.rootStore.NextId(true);
+        }
+
         let parsedTag = Cue({
+          tagId,
           trackKey: key,
           tagType: type,
           startTime: millis ? (tag.start_time / 1000) : tag.start_time,

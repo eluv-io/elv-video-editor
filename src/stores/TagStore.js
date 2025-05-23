@@ -641,6 +641,7 @@ class TagStore {
     }
 
     const tag = Cue({
+      tagId: this.rootStore.NextId(true),
       trackId,
       trackKey: track.key,
       startTime,
@@ -685,7 +686,7 @@ class TagStore {
 
     const tag = {
       trackId,
-      tagId: this.rootStore.NextId(),
+      tagId: this.rootStore.NextId(true),
       text,
       confidence: 1,
       frame,

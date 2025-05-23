@@ -13,6 +13,7 @@ import DownloadStore from "@/stores/DownloadStore.js";
 import AIStore from "@/stores/AIStore.jsx";
 import Id from "@/utils/Id.js";
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
+import {v4 as UUID, parse as UUIDParse} from "uuid";
 
 import LocalizationEN from "@/assets/localizations/en.yml";
 import UrlJoin from "url-join";
@@ -214,7 +215,11 @@ class RootStore {
     this.expandedPanel = panel;
   }
 
-  NextId() {
+  NextId(uuid=false) {
+    if(uuid) {
+      return this.client.utils.B58(UUIDParse(UUID()));
+    }
+
     return Id.next();
   }
 

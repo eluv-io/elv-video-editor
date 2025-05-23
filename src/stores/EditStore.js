@@ -377,6 +377,7 @@ class EditStore {
             break;
         }
 
+        // End of track handling
         continue;
       }
 
@@ -410,6 +411,7 @@ class EditStore {
           }
 
           modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags.push({
+            id: tag.tagId,
             text: tag.text,
             start_time: Math.floor(tag.startTime * 1000),
             end_time: Math.ceil(tag.endTime * 1000),
@@ -419,6 +421,7 @@ class EditStore {
 
         case "modify":
           modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags[tagOrigin.ti] = {
+            tagId: tag.tagId,
             ...modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags[tagOrigin.ti],
             text: tag.text,
             start_time: Math.floor(tag.startTime * 1000),
@@ -608,6 +611,7 @@ class EditStore {
             break;
         }
 
+        // End track handling
         continue;
       }
 
@@ -640,6 +644,7 @@ class EditStore {
           }
 
           modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey].tags.push({
+            id: tag.tagId,
             text: tag.text,
             box: tag.box,
             confidence: tag.confidence
@@ -649,6 +654,7 @@ class EditStore {
 
         case "modify":
           modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey].tags[tagOrigin.ti] = {
+            id: tag.tagId,
             ...modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey].tags[tagOrigin.ti],
             text: tag.text,
             box: tag.box,
