@@ -167,7 +167,7 @@ class AssetStore {
     return {
       key,
       trackId: this.rootStore.NextId(),
-      color: this.rootStore.trackStore.TrackColor(key),
+      color: this.rootStore.trackStore.TrackColor(key, "metadata"),
       label: key
         .split("_")
         .map(str => str.toLowerCase() === "llava" ? "LLAVA" : Capitalize(str))

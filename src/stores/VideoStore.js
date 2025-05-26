@@ -379,7 +379,7 @@ class VideoStore {
           });
         }
 
-        yield this.rootStore.trackStore.InitializeTracks(metadataTags, clipTags);
+        yield this.rootStore.trackStore.InitializeTracks(videoObject.metadata, metadataTags, clipTags);
 
         this.ready = true;
       }

@@ -267,7 +267,7 @@ export const CompositionClips = observer(() => {
         Object.keys(compositionStore.sourceClipIds).map(category =>
           <ClipGroup
             title={compositionStore.sourceClipIds[category].label || category}
-            color={trackStore.TrackColor(category)}
+            color={trackStore.TrackColor(category, "clip")}
             key={`clip-${category}`}
             groupKey={`clip-${category}`}
             clipIds={compositionStore.sourceClipIds[category].clipIds}

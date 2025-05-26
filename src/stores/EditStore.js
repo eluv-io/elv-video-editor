@@ -1,6 +1,6 @@
 import {flow, makeAutoObservable, runInAction} from "mobx";
 import UrlJoin from "url-join";
-import {Unproxy} from "@/utils/Utils.js";
+import {ConvertColor, Unproxy} from "@/utils/Utils.js";
 import ABRProfileLiveToVod from "@eluvio/elv-client-js/src/abr_profiles/abr_profile_live_to_vod.js";
 
 class EditStore {
@@ -246,6 +246,8 @@ class EditStore {
 
     yield this.SavePrimaryClip();
 
+    yield this.SaveTrackSettings();
+
     /*
     // Show some progress while aggregation is running
     const progressInterval = setInterval(() =>
@@ -273,6 +275,35 @@ class EditStore {
     this.ResetPage("tags");
     this.ResetPage("clips");
     this.rootStore.videoStore.Reload();
+  });
+
+  SaveTrackSettings = flow(function * () {
+    const objectId = this.rootStore.videoStore.videoObject.objectId;
+    const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
+    const writeToken = yield this.rootStore.editStore.InitializeWrite({objectId});
+
+    yield Promise.all(
+      ["metadata", "clip"].map(async type => {
+        const tracks = this.rootStore.trackStore.tracks.filter(track => track.trackType === type);
+        let trackSettings = {};
+
+        tracks.forEach(track =>
+          trackSettings[track.key] = {
+            key: track.key,
+            label: track.label,
+            color: ConvertColor({rgb: track.color})
+          }
+        );
+
+        await this.client.ReplaceMetadata({
+          libraryId,
+          objectId,
+          writeToken,
+          metadataSubtree: UrlJoin("/", type === "clip" ? "clips" : "video_tags", "evie", "tracks"),
+          metadata: Unproxy(trackSettings)
+        });
+      })
+    );
   });
 
   SaveTags = flow(function * () {
