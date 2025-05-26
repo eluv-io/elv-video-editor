@@ -155,8 +155,32 @@
   transition: color 0.1s ease;
 
   &--copied {
-    color: var(--text-primary-color);
     transition: color 1s ease;
+  }
+}
+
+.copyable-field {
+  align-items: center;
+  display: flex;
+  gap: 5px;
+
+  &--show-hover {
+    .copyable-field__button {
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    &:hover {
+      .copyable-field__button {
+        opacity: 1;
+      }
+    }
+  }
+
+  &__button {
+    color: inherit;
+    height: 17px;
+    min-height: 17px;
   }
 }
 

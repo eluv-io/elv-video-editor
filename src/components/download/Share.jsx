@@ -3,7 +3,7 @@ import DownloadStyles from "@/assets/stylesheets/modules/download.module.scss";
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {
-  AsyncButton, Confirm,
+  AsyncButton, Confirm, CopyableField,
   FormDateTimeInput,
   FormSelect, FormTextArea,
   FormTextInput,
@@ -700,7 +700,7 @@ const ShareDetails = observer(({store, selectedShare, Back, Close}) => {
               </div>
               <div className={S("share-details__detail")}>
                 <label>Share ID:</label>
-                <span>{selectedShare.share_id}</span>
+                <CopyableField value={selectedShare.share_id}  />
               </div>
               <div className={S("share-details__detail")}>
                 <label>Note:</label>
@@ -749,17 +749,18 @@ const ShareDetails = observer(({store, selectedShare, Back, Close}) => {
                 store.channel ? null :
                   <>
                     <div className={S("share-details__detail")}>
-                      <div className={S("share-details__detail")}>
-                        <label>Start Time:</label>
-                        <span
-                          className="monospace">{store.FrameToSMPTE(selectedShare.clipDetails.clipInFrame || 0)}</span>
-                      </div>
-                      <div className={S("share-details__detail")}>
-                        <label>End Time:</label>
-                        <span
-                          className="monospace">{store.FrameToSMPTE(selectedShare.clipDetails.clipOutFrame || store.totalFrames - 1)}
-                        </span>
-                      </div>
+                      <label>Start Time:</label>
+                      <span className="monospace">
+                        {store.FrameToSMPTE(selectedShare.clipDetails.clipInFrame || 0)}
+                      </span>
+                    </div>
+                    <div className={S("share-details__detail")}>
+                      <label>End Time:</label>
+                      <span className="monospace">
+                        {store.FrameToSMPTE(selectedShare.clipDetails.clipOutFrame || store.totalFrames - 1)}
+                      </span>
+                    </div>
+                    <div className={S("share-details__detail")}>
                       <label>Duration:</label>
                       <span>{selectedShare.clipDetails.durationString}</span>
                     </div>
