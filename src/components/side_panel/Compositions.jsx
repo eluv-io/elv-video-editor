@@ -4,7 +4,7 @@ import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, DragHandler, StorageHandler} from "@/utils/Utils.js";
 import {aiStore, browserStore, compositionStore, rootStore, trackStore} from "@/stores/index.js";
-import {ClipTimeInfo, Confirm, Icon, IconButton, Linkish, Loader} from "@/components/common/Common.jsx";
+import {ClipTimeInfo, Confirm, CopyableField, Icon, IconButton, Linkish, Loader} from "@/components/common/Common.jsx";
 import {Tooltip} from "@mantine/core";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import UrlJoin from "url-join";
@@ -357,7 +357,7 @@ export const CompositionBrowser = observer(() => {
                       { name }
                     </div>
                     <div className={S("composition-browser__item-id")}>
-                      { objectId }
+                      <CopyableField value={objectId} showOnHover />
                     </div>
                   </div>
                 </Tooltip>

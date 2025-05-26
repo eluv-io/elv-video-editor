@@ -3,7 +3,7 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-import {Confirm, Icon, IconButton, Input} from "@/components/common/Common.jsx";
+import {Confirm, CopyableField, Icon, IconButton, Input} from "@/components/common/Common.jsx";
 import {rootStore, assetStore, compositionStore, tagStore, trackStore, aiStore} from "@/stores/index.js";
 import {TagDetails, TagsList} from "@/components/side_panel/Tags.jsx";
 import Assets from "@/components/side_panel/Assets.jsx";
@@ -109,7 +109,7 @@ const SearchIndexSelection = observer(() => {
                   {
                     !index.name ? null :
                       <div className={S("search__index-option-id")}>
-                        { index.id }
+                        <CopyableField value={index.id} />
                       </div>
                   }
                 </div>

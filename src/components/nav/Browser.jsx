@@ -6,7 +6,7 @@ import {rootStore, browserStore, compositionStore, editStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {
   AsyncButton,
-  Confirm,
+  Confirm, CopyableField,
   FormSelect,
   FormTextInput,
   IconButton,
@@ -244,8 +244,10 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
                     </Tooltip>
                     <div className={S("browser-table__row-title-id")}>
                       {
-                        contentType !== "my-library" ? item.id :
-                          `${item.objectId}${item.compositionKey ? ` - ${item.compositionKey}` : ""}`
+                        !["composition", "my-library"].includes(contentType) ?
+                          <CopyableField value={item.id} showOnHover /> :
+                          contentType !== "my-library" ? item.id :
+                            `${item.objectId}${item.compositionKey ? ` - ${item.compositionKey}` : ""}`
                       }
                     </div>
                   </div>
