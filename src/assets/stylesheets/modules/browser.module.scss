@@ -63,6 +63,12 @@
     .browser-table__row {
       grid-template-columns: 1fr 100px 200px;
     }
+
+    &--no-duration {
+      .browser-table__row {
+        grid-template-columns: 1fr 200px;
+      }
+    }
   }
 
   &--composition {

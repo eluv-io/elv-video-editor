@@ -3,7 +3,7 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-import {Confirm, CopyableField, Icon, IconButton, Input} from "@/components/common/Common.jsx";
+import {Confirm, CopyableField, Icon, IconButton, Input, Modal} from "@/components/common/Common.jsx";
 import {rootStore, assetStore, compositionStore, tagStore, trackStore, aiStore} from "@/stores/index.js";
 import {TagDetails, TagsList} from "@/components/side_panel/Tags.jsx";
 import Assets from "@/components/side_panel/Assets.jsx";
@@ -18,6 +18,7 @@ import SelectArrowsIcon from "@/assets/icons/v2/select-arrows.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
 import SettingsIcon from "@/assets/icons/v2/settings.svg";
 import UpdateIndexIcon from "@/assets/icons/v2/reload.svg";
+import {LibraryBrowser, ObjectBrowser} from "@/components/nav/Browser.jsx";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -39,9 +40,40 @@ const TagSwitch = observer(() => {
   );
 });
 
+const SearchIndexBrowseModal = observer(({Select, Cancel}) => {
+  const [libraryId, setLibraryId] = useState(undefined);
+
+  return (
+    <Modal withCloseButton={false} opened centered size={1000} onClose={Cancel}>
+      {
+        libraryId ?
+          <ObjectBrowser
+            libraryId={libraryId}
+            noDuration
+            Back={() => setLibraryId(undefined)}
+            Select={({objectId, name}) => Select({objectId, name})}
+            className={S("composition-selection__browser")}
+          /> :
+          <LibraryBrowser
+            title="Select search index"
+            Select={({libraryId, objectId, name}) => {
+              if(objectId) {
+                Select({objectId, name});
+              } else {
+                setLibraryId(libraryId);
+              }
+            }}
+            className={S("composition-selection__browser")}
+          />
+      }
+    </Modal>
+  );
+});
+
 const SearchIndexSelection = observer(() => {
   const [updatingIndexes, setUpdatingIndexes] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
+  const [showBrowser, setShowBrowser] = useState(false);
 
   if(aiStore.searchIndexes.length === 0) { return null; }
 
@@ -57,104 +89,152 @@ const SearchIndexSelection = observer(() => {
   }
 
   return (
-    <Menu
-      opened={showMenu}
-      onChange={setShowMenu}
-      shadow="md"
-      width={250}
-      offset={15}
-      position="bottom-end"
-      zIndex={200}
-    >
-      <Menu.Target>
-        <button
-          onClick={() => setShowMenu(!showMenu)}
-          className={S("search__button")}
-        >
-          {
-            typeof indexUpdateProgress === "undefined" ?
-              <Icon icon={SettingsIcon} /> :
-              <RingProgress
-                size={25}
-                thickness={3}
-                transitionDuration={500}
-                rootColor="var(--text-secondary)"
-                sections={[{value: indexUpdateProgress, color: "var(--color-highlight"}]}
-              />
-          }
-        </button>
-      </Menu.Target>
+    <>
+      {
+        !showBrowser ? null :
+          <SearchIndexBrowseModal
+            Select={async ({objectId}) => {
+              await aiStore.AddSearchIndex({objectId});
+              setShowBrowser(false);
+              setShowMenu(true);
+            }}
+            Cancel={() => setShowBrowser(false)}
+          />
+      }
+      <Menu
+        opened={showMenu}
+        onChange={setShowMenu}
+        shadow="md"
+        width={250}
+        offset={15}
+        position="bottom-end"
+        zIndex={200}
+      >
+        <Menu.Target>
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className={S("search__button")}
+          >
+            {
+              typeof indexUpdateProgress === "undefined" ?
+                <Icon icon={SettingsIcon} /> :
+                <RingProgress
+                  size={25}
+                  thickness={3}
+                  transitionDuration={500}
+                  rootColor="var(--text-secondary)"
+                  sections={[{value: indexUpdateProgress, color: "var(--color-highlight"}]}
+                />
+            }
+          </button>
+        </Menu.Target>
 
-      <Menu.Dropdown w={300} bg="var(--background-toolbar)">
-        <div className={S("search__index-menu")}>
-          <div className={S("search__index-title")}>
-            Search Index
-          </div>
-          {
-            aiStore.searchIndexes.map(index =>
-              <div
-                role="button"
-                tabIndex={0}
-                key={`index-${index.id}`}
-                onClick={() => {
-                  aiStore.SetSelectedSearchIndex(index.id);
-                  setShowMenu(false);
-                }}
-                className={S("search__index-option", aiStore.selectedSearchIndexId === index.id ? "search__index-option--active" : "")}
-              >
-                <div className={S("search__index-text")}>
-                  <div className={S("search__index-option-name")}>
-                    { index.name || index.id }
+        <Menu.Dropdown w={400} bg="var(--background-toolbar)">
+          <div className={S("search__index-menu")}>
+            <div className={S("search__index-title")}>
+              Search Index
+            </div>
+            {
+              aiStore.searchIndexes.map(index =>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  key={`index-${index.id}`}
+                  onClick={() => {
+                    aiStore.SetSelectedSearchIndex(index.id);
+                    setShowMenu(false);
+                  }}
+                  className={S("search__index-option", aiStore.selectedSearchIndexId === index.id ? "search__index-option--active" : "")}
+                >
+                  <div className={S("search__index-text")}>
+                    <div className={S("search__index-option-name", "ellipsis")}>
+                      {index.name || index.id}
+                    </div>
+                    {
+                      !index.name ? null :
+                        <div className={S("search__index-option-id")}>
+                          <CopyableField value={index.id}/>
+                        </div>
+                    }
                   </div>
-                  {
-                    !index.name ? null :
-                      <div className={S("search__index-option-id")}>
-                        <CopyableField value={index.id} />
-                      </div>
-                  }
-                </div>
-                {
-                  !index.canEdit ? null :
-                    <IconButton
-                      label="Update Search Index"
-                      icon={UpdateIndexIcon}
-                      loadingProgress={
-                        !updatingIndexes.includes(index.id) ? undefined :
-                          (
-                            (aiStore.tagAggregationProgress || 0) +
-                            (aiStore.searchIndexUpdateProgress[index.id] || 0)
-                          ) / 2
-                      }
-                      onClick={async event => {
-                        event.preventDefault();
-                        event.stopPropagation();
+                  <div className={S("search__index-actions")}>
+                    {
+                      !index.custom ? null :
+                        <IconButton
+                          label="Remove Search Index"
+                          icon={XIcon}
+                          onClick={async event => {
+                            event.preventDefault();
+                            event.stopPropagation();
 
-                        await Confirm({
-                          title: "Remove Tag",
-                          text: "Are you sure you want to update this search index?",
-                          onConfirm: async () => {
-                            setUpdatingIndexes([...updatingIndexes, index.id]);
-                            try {
-                              await aiStore.UpdateSearchIndex({indexId: index.id, aggregate: true});
-                            } finally {
-                              setUpdatingIndexes(updatingIndexes.filter(id => id !== index.id));
-                            }
+                            await Confirm({
+                              title: "Remove Index",
+                              text: "Are you sure you want to remove this search index?",
+                              onConfirm: async () => {
+                                await aiStore.RemoveSearchIndex({objectId: index.id});
+                                setShowMenu(true);
+                              },
+                              onCancel: () => setShowMenu(true)
+                            });
+                          }}
+                        />
+                    }
+                    {
+                      !index.canEdit ? null :
+                        <IconButton
+                          label="Update Search Index"
+                          icon={UpdateIndexIcon}
+                          loadingProgress={
+                            !updatingIndexes.includes(index.id) ? undefined :
+                              (
+                                (aiStore.tagAggregationProgress || 0) +
+                                (aiStore.searchIndexUpdateProgress[index.id] || 0)
+                              ) / 2
                           }
-                        });
-                      }}
-                    />
-                }
-              </div>
-            )
-          }
-        </div>
-      </Menu.Dropdown>
-    </Menu>
+                          onClick={async event => {
+                            event.preventDefault();
+                            event.stopPropagation();
+
+                            await Confirm({
+                              title: "Remove Tag",
+                              text: "Are you sure you want to update this search index?",
+                              onCancel: () => setShowMenu(true),
+                              onConfirm: async () => {
+                                setUpdatingIndexes([...updatingIndexes, index.id]);
+                                try {
+                                  await aiStore.UpdateSearchIndex({indexId: index.id, aggregate: true});
+                                } finally {
+                                  setUpdatingIndexes(updatingIndexes.filter(id => id !== index.id));
+                                }
+                              }
+                            });
+                          }}
+                        />
+                    }
+                  </div>
+                </div>
+              )
+            }
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => {
+                setShowBrowser(true);
+                setShowMenu(false);
+              }}
+              className={S("search__index-option")}
+            >
+              Add Search Index
+            </div>
+          </div>
+        </Menu.Dropdown>
+      </Menu>
+    </>
   );
 });
 
 let filterTimeout;
-const SidebarFilter = observer(({store, label, sideContent, delay=100}) => {
+const SidebarFilter = observer(({store, label, sideContent, delay = 100}) => {
   const [filter, setFilter] = useState(store.filter);
 
   useEffect(() => {

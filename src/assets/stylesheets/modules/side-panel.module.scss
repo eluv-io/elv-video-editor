@@ -140,6 +140,16 @@
     }
   }
 
+  &__index-text {
+    max-width: 300px;
+  }
+
+  &__index-actions {
+    align-items: center;
+    display: flex;
+    gap: 5px;
+  }
+
   &__index-option-name {
     color: var(--text-primary);
   }

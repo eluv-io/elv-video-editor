@@ -131,7 +131,16 @@ const SearchBar = observer(({filter, setFilter, delay=500, Select}) => {
   );
 });
 
-const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="library", videoOnly, Delete}) => {
+const BrowserTable = observer(({
+  filter,
+  Load,
+  Select,
+  defaultIcon,
+  contentType="library",
+  videoOnly,
+  noDuration,
+  Delete
+}) => {
   const [loading, setLoading] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
   const [content, setContent] = useState(undefined);
@@ -173,7 +182,7 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
     );
   } else {
     table = (
-      <div className={S("browser-table", `browser-table--${contentType}`)}>
+      <div className={S("browser-table", `browser-table--${contentType}`, noDuration ? `browser-table--${contentType}--no-duration` : "")}>
         <div className={S("browser-table__row", "browser-table__row--header")}>
           <div className={S("browser-table__cell", "browser-table__cell--header")}>
             Name
@@ -181,9 +190,12 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
           {
             !["object", "composition", "my-library"].includes(contentType) ? null :
               <>
-                <div className={S("browser-table__cell", "browser-table__cell--header", "browser-table__cell--centered")}>
-                  Duration
-                </div>
+                {
+                  noDuration ? null :
+                    <div className={S("browser-table__cell", "browser-table__cell--header", "browser-table__cell--centered")}>
+                      Duration
+                    </div>
+                }
                 <div className={S("browser-table__cell", "browser-table__cell--header", "browser-table__cell--centered")}>
                   { ["object", "composition"].includes(contentType) ? "Last Modified" : "Last Accessed" }
                 </div>
@@ -255,9 +267,12 @@ const BrowserTable = observer(({filter, Load, Select, defaultIcon, contentType="
                 {
                   !["object", "composition", "my-library"].includes(contentType) ? null :
                     <>
-                      <div className={S("browser-table__cell", "browser-table__cell--centered")}>
-                        {item.duration || "-"}
-                      </div>
+                      {
+                        noDuration ? null :
+                          <div className={S("browser-table__cell", "browser-table__cell--centered")}>
+                            {item.duration || "-"}
+                          </div>
+                      }
                       <div className={S("browser-table__cell", "browser-table__cell--centered")}>
                         {item.lastModified || "-"}
                       </div>
@@ -380,7 +395,7 @@ const CompositionBrowser = observer(({selectedObject, Select, Back, className=""
   );
 });
 
-export const ObjectBrowser = observer(({libraryId, title, Select, Path, Back, backPath, videoOnly, className=""}) => {
+export const ObjectBrowser = observer(({libraryId, title, Select, Path, Back, backPath, videoOnly, noDuration, className=""}) => {
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
@@ -410,6 +425,7 @@ export const ObjectBrowser = observer(({libraryId, title, Select, Path, Back, ba
         defaultIcon={ObjectIcon}
         contentType="object"
         videoOnly={videoOnly}
+        noDuration={noDuration}
         Path={Path}
         Select={Select}
         Load={async args => await browserStore.ListObjects({libraryId, ...args})}
