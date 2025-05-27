@@ -173,6 +173,8 @@ const BrowserTable = observer(({
     LoadPage(1);
   }, [filter, deleting]);
 
+  console.log(content)
+
   let table;
   if(showLoader) {
     table = (
@@ -256,8 +258,8 @@ const BrowserTable = observer(({
                     </Tooltip>
                     <div className={S("browser-table__row-title-id")}>
                       {
-                        !["composition", "my-library"].includes(contentType) ?
-                          <CopyableField value={item.id} showOnHover /> :
+                        !["composition"].includes(contentType) ?
+                          <CopyableField value={item.objectId || item.id} showOnHover>{item.id}</CopyableField> :
                           contentType !== "my-library" ? item.id :
                             `${item.objectId}${item.compositionKey ? ` - ${item.compositionKey}` : ""}`
                       }
