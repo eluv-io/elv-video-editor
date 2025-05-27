@@ -139,6 +139,7 @@ const BrowserTable = observer(({
   contentType="library",
   videoOnly,
   frameRate,
+  noDuration,
   Delete
 }) => {
   const [loading, setLoading] = useState(false);
@@ -182,7 +183,7 @@ const BrowserTable = observer(({
     );
   } else {
     table = (
-      <div className={S("browser-table", `browser-table--${contentType}`)}>
+      <div className={S("browser-table", `browser-table--${contentType}`, noDuration ? `browser-table--${contentType}--no-duration` : "")}>
         <div className={S("browser-table__row", "browser-table__row--header")}>
           <div className={S("browser-table__cell", "browser-table__cell--header")}>
             Name
@@ -190,9 +191,12 @@ const BrowserTable = observer(({
           {
             !["object", "composition", "my-library"].includes(contentType) ? null :
               <>
-                <div className={S("browser-table__cell", "browser-table__cell--header", "browser-table__cell--centered")}>
-                  Duration
-                </div>
+                {
+                  noDuration ? null :
+                    <div className={S("browser-table__cell", "browser-table__cell--header", "browser-table__cell--centered")}>
+                      Duration
+                    </div>
+                }
                 <div className={S("browser-table__cell", "browser-table__cell--header", "browser-table__cell--centered")}>
                   { ["object", "composition"].includes(contentType) ? "Last Modified" : "Last Accessed" }
                 </div>
@@ -292,9 +296,12 @@ const BrowserTable = observer(({
                 {
                   !["object", "composition", "my-library"].includes(contentType) ? null :
                     <>
-                      <div className={S("browser-table__cell", "browser-table__cell--centered")}>
-                        {item.duration || "-"}
-                      </div>
+                      {
+                        noDuration ? null :
+                          <div className={S("browser-table__cell", "browser-table__cell--centered")}>
+                            {item.duration || "-"}
+                          </div>
+                      }
                       <div className={S("browser-table__cell", "browser-table__cell--centered")}>
                         {item.lastModified || "-"}
                       </div>
@@ -426,6 +433,7 @@ export const ObjectBrowser = observer(({
   backPath,
   videoOnly,
   frameRate,
+  noDuration,
   className=""
 }) => {
   const [filter, setFilter] = useState("");
@@ -458,6 +466,7 @@ export const ObjectBrowser = observer(({
         contentType="object"
         videoOnly={videoOnly}
         frameRate={frameRate}
+        noDuration={noDuration}
         Path={Path}
         Select={Select}
         Load={async args => await browserStore.ListObjects({libraryId, ...args})}
