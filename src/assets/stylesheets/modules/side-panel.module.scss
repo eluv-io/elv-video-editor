@@ -101,6 +101,14 @@
     width: 20px;
   }
 
+  &__index-browser {
+    max-height: 90vh;
+    min-height: unset;
+    padding: 40px 30px;
+
+    --row-height: 50px;
+  }
+
   &__index-menu {
     max-height: 400px;
     overflow-y: auto;

@@ -52,7 +52,7 @@ const SearchIndexBrowseModal = observer(({Select, Cancel}) => {
             noDuration
             Back={() => setLibraryId(undefined)}
             Select={({objectId, name}) => Select({objectId, name})}
-            className={S("composition-selection__browser")}
+            className={S("search__index-browser")}
           /> :
           <LibraryBrowser
             title="Select search index"
@@ -63,7 +63,7 @@ const SearchIndexBrowseModal = observer(({Select, Cancel}) => {
                 setLibraryId(libraryId);
               }
             }}
-            className={S("composition-selection__browser")}
+            className={S("search__index-browser")}
           />
       }
     </Modal>
