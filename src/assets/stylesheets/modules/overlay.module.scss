@@ -6,6 +6,15 @@
   margin-inline: auto;
   position: absolute;
   z-index: 1;
+
+  &__tooltip-content {
+    max-height: 80vh;
+    max-width: 700px;
+
+    p, pre {
+      max-width: 700px;
+    }
+  }
 }
 
 .overlay-edit {

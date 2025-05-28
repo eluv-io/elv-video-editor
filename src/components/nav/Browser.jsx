@@ -172,7 +172,7 @@ const BrowserTable = observer(({
 
     LoadPage(1);
   }, [filter, deleting]);
-  
+
   let table;
   if(showLoader) {
     table = (

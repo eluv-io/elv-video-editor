@@ -414,7 +414,6 @@
   border-radius: 5px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
   padding: 10px;
   position: relative;
   transition: background-color 0.25s ease, color 0.25s ease;
@@ -446,8 +445,13 @@
     word-break: break-all;
   }
 
+  &__name {
+    margin-top: 5px;
+  }
+
   &__key {
     color: var(--text-tertiary);
+    margin-top: 2px;
   }
 }
 

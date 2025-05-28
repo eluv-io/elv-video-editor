@@ -512,21 +512,22 @@ const Overlay = observer(({element, asset, highlightTag}) => {
       />
     );
   }
-
+  
   return (
     <div className={S("overlay")} style={{width: `${overlayStore.overlayCanvasDimensions.width}px`}}>
-      <Tooltip.Floating
+      <Tooltip
         disabled={hoverTags.length === 0}
-        position="bottom"
-        offset={20}
+        position="left"
+        offset={10}
+        openDelay={500}
         label={
-          <div className={S("tooltip")}>
+          <div className={S("tooltip", "overlay__tooltip")}>
             {hoverTags.map((tag, index) =>
               <div className={S("tooltip__item")} key={`tag-${index}`}>
                 <div className={S("tooltip__label")}>
-                  { tag.label }
+                  {tag.label}
                 </div>
-                <div className={S("tooltip__content")}>
+                <div className={S("tooltip__content", "overlay__tooltip-content")}>
                   {
                     (Array.isArray(tag.text) ? tag.text : [tag.text])
                       .map((text, ti) => <p key={`tag-${ti}`}>{text}</p>)
@@ -556,7 +557,7 @@ const Overlay = observer(({element, asset, highlightTag}) => {
           onMouseLeave={() => setHoverPosition({...hoverPosition, hovering: false})}
           className={S("overlay__canvas")}
         />
-      </Tooltip.Floating>
+      </Tooltip>
     </div>
   );
 });
