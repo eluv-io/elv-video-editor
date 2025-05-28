@@ -439,10 +439,15 @@
     width: 100%;
   }
 
-  &__name {
+  &__name,
+  &__key {
     font-size: 10px;
     font-weight: 600;
     word-break: break-all;
+  }
+
+  &__key {
+    color: var(--text-tertiary);
   }
 }
 

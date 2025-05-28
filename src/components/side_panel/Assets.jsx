@@ -435,11 +435,20 @@ const Asset = observer(({asset, selected}) => {
         src={assetStore.AssetLink(asset.key, {width: 400})}
         className={S("asset__image")}
       />
-      <div className={S("asset__name")}>
-        { asset.key }
-      </div>
+      <Tooltip openDelay={500} label={asset.title || asset.key}>
+        <div className={S("asset__name", "ellipsis")}>
+          {asset.title || asset.key}
+        </div>
+      </Tooltip>
+      {
+        !asset.title ? null :
+          <div className={S("asset__key", "ellipsis")}>
+            {asset.key}
+          </div>
+      }
+
     </Linkish>
-  );
+);
 });
 
 const AssetsList = observer(() => {
