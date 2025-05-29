@@ -63,6 +63,12 @@
     .browser-table__row {
       grid-template-columns: 1fr 100px 200px;
     }
+
+    &--no-duration {
+      .browser-table__row {
+        grid-template-columns: 1fr 200px;
+      }
+    }
   }
 
   &--composition {
@@ -79,6 +85,7 @@
 
   &__row {
     border-bottom: 1px solid var(--table-border-color);
+    cursor: pointer;
     display: grid;
     height: var(--row-height);
     max-height: var(--row-height);
@@ -99,8 +106,10 @@
       }
     }
 
+    &--disabled,
     &:disabled {
       color: var(--text-tertiary);
+      cursor: unset;
     }
   }
 

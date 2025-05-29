@@ -147,7 +147,7 @@ class RootStore {
     this.address = yield this.client.CurrentAccountAddress();
     this.network = (yield this.client.NetworkInfo()).name;
     this.publicToken = client.utils.B64(JSON.stringify({qspace_id: yield this.client.ContentSpaceId()}));
-    this.signedToken = yield client.CreateFabricToken({duration: 24 * 60 * 60 * 1000});
+    this.signedToken = yield client.CreateFabricToken({duration: 7 * 24 * 60 * 60 * 1000});
 
     this.tenantContractId = yield client.userProfileClient.TenantContractId();
 

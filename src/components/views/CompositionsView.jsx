@@ -44,12 +44,9 @@ const CompositionsView = observer(() => {
       <PanelGroup direction="vertical" className="panel-group">
         <Panel id="top" order={1} minSize={30} defaultSize={30}>
           <PanelGroup direction="horizontal" className="panel-group">
-            {
-              !rootStore.selectedObjectId ? null :
-                <Panel id="browser" order={1}>
-                  <CompositionBrowserPanel />
-                </Panel>
-            }
+            <Panel id="browser" order={1}>
+              <CompositionBrowserPanel />
+            </Panel>
             <PanelResizeHandle />
             <Panel id="video" order={2} defaultSize={50}>
               <CompositionVideoSection store={compositionStore.videoStore} />

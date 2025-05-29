@@ -184,6 +184,7 @@ export const Linkish = forwardRef(function Linkish({
   onClick,
   disabled,
   styled=false,
+  divButton=false,
   ...props
 }, ref) {
   if(styled) {
@@ -200,7 +201,11 @@ export const Linkish = forwardRef(function Linkish({
   }
 
   if(onClick || props.type === "submit") {
-    return <button disabled={disabled} onClick={onClick} ref={ref} {...props} />;
+    if(divButton) {
+      return <div role="button" tabIndex={0} aria-disabled={disabled} onClick={!disabled ? onClick : undefined} ref={ref} {...props} />;
+    } else {
+      return <button disabled={disabled} onClick={onClick} ref={ref} {...props} />;
+    }
   }
 
   return <div ref={ref} {...props} />;
@@ -332,7 +337,10 @@ export const CopyButton = observer(({value, ...props}) => {
     <IconButton
       {...props}
       icon={!copied ? CopyIcon : CheckIcon}
-      onClick={() => {
+      onClick={event => {
+        event.stopPropagation();
+        event.preventDefault();
+
         clearTimeout(copyTimeout);
         Copy(value);
         setCopied(true);
@@ -346,6 +354,21 @@ export const CopyButton = observer(({value, ...props}) => {
         )
       }
     />
+  );
+});
+
+export const CopyableField = observer(({value, children, buttonProps={}, showOnHover=false, className="", ...props}) => {
+  return (
+    <div {...props} className={JoinClassNames(S("copyable-field", showOnHover ? "copyable-field--show-hover" : ""), className)}>
+      <div className={S("copyable-field__value", "ellipsis")}>
+        { children || value }
+      </div>
+      <CopyButton
+        {...buttonProps}
+        value={value}
+        className={JoinClassNames(S("copyable-field__button", "ellipsis"), buttonProps.className)}
+      />
+    </div>
   );
 });
 
@@ -668,4 +691,3 @@ export const Confirm = async ({title, text, labels={}, onConfirm, onCancel}) => 
 
   await onConfirm();
 };
-

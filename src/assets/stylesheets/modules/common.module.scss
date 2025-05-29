@@ -155,8 +155,32 @@
   transition: color 0.1s ease;
 
   &--copied {
-    color: var(--text-primary-color);
     transition: color 1s ease;
+  }
+}
+
+.copyable-field {
+  align-items: center;
+  display: flex;
+  gap: 5px;
+
+  &--show-hover {
+    .copyable-field__button {
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    &:hover {
+      .copyable-field__button {
+        opacity: 1;
+      }
+    }
+  }
+
+  &__button {
+    color: inherit;
+    height: 18px;
+    min-height: 18px;
   }
 }
 
@@ -488,6 +512,20 @@
     left: 0;
     position: absolute;
     z-index: 2;
+  }
+
+  &__duration {
+    background-color: rgb(0 0 0 / 50%);
+    border-radius: 5px;
+    bottom: 10px;
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 8px;
+    pointer-events: none;
+    position: absolute;
+    right: 10px;
+    z-index: 1;
   }
 }
 

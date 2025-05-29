@@ -347,7 +347,7 @@ const DownloadModalContent = observer(({store, tab, setTab, setConfirming, Close
   );
 });
 
-const DownloadModal = observer(({store, ...modalProps}) => {
+export const DownloadModal = observer(({store, ...modalProps}) => {
   const [confirming, setConfirming] = useState(false);
   const [tab, setTab] = useState("details");
 

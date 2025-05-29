@@ -3,19 +3,191 @@ import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {aiStore, compositionStore, editStore, videoStore} from "@/stores/index.js";
-import {AsyncButton, Confirm, FormTextArea, IconButton, Modal} from "@/components/common/Common.jsx";
+import {
+  AsyncButton,
+  ClipTimeInfo,
+  Confirm,
+  FormTextArea,
+  Icon,
+  IconButton,
+  Modal
+} from "@/components/common/Common.jsx";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
-import {Button, Checkbox} from "@mantine/core";
+import {Button, Checkbox, Tooltip} from "@mantine/core";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {DownloadModal} from "@/components/download/Download.jsx";
+import {ShareModal} from "@/components/download/Share.jsx";
 
 import ClipIcon from "@/assets/icons/v2/clip.svg";
 import LiveToVodIcon from "@/assets/icons/v2/live-to-vod.svg";
 import AggregateIcon from "@/assets/icons/v2/settings.svg";
+import DeleteIcon from "@/assets/icons/trash.svg";
+import DownloadIcon from "@/assets/icons/v2/download.svg";
+import ShareIcon from "@/assets/icons/v2/share.svg";
+
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
+const MyClipsModal = observer(({opened, highlightedClipId, Close}) => {
+  const [showDownload, setShowDownload] = useState(false);
+  const [showShare, setShowShare] = useState(false);
+  const [submodalOpened, setSubmodalOpened] = useState(false);
+
+  useEffect(() => {
+    if(!opened) {
+      setShowDownload(false);
+      setShowShare(false);
+      setSubmodalOpened(false);
+    }
+  }, [opened]);
+
+  useEffect(() => {
+    if(showDownload || showShare) {
+      setTimeout(() => setSubmodalOpened(true), 100);
+    } else {
+      setSubmodalOpened(false);
+    }
+  }, [showDownload, showShare]);
+
+  const Seek = clip => {
+    videoStore.SetClipMark({
+      inFrame: clip.clipInFrame || 0,
+      outFrame: clip.clipOutFrame || videoStore.totalFrames - 1
+    });
+
+    videoStore.Seek(clip.clipInFrame);
+  };
+
+  return (
+    <>
+      <Modal
+        title={<div className={S("my-clips-modal__title")}><Icon icon={ClipIcon} /><span>My Clips</span></div>}
+        opened={opened}
+        centered
+        onClose={Close}
+        size={850}
+      >
+        <div className={S("my-clips-modal")}>
+          {
+            compositionStore.myClips.length === 0 ?
+              <div className={S("my-clips-modal__empty")}>
+                No saved clips for this content
+              </div> :
+              <div className={S("my-clips-modal__content")}>
+                {
+                  compositionStore.myClips.map(clip =>
+                    <div
+                      key={`my-clip-${clip.clipId}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => {
+                        Seek(clip);
+                        Close();
+                      }}
+                      className={S("my-clips-modal__item", clip.clipId === highlightedClipId ? "my-clips-modal__item--highlighted" : "")}
+                    >
+                      <PreviewThumbnail
+                        store={videoStore}
+                        startFrame={clip.clipInFrame}
+                        endFrame={clip.clipOutFrame}
+                        className={S("my-clips-modal__item-thumbnail")}
+                      />
+                      <div className={S("my-clips-modal__item-text")}>
+                        <Tooltip label={clip.name} openDelay={500}>
+                          <div className={S("my-clips-modal__item-title", "ellipsis")}>
+                            { clip.name }
+                          </div>
+                        </Tooltip>
+                        <ClipTimeInfo
+                          store={videoStore}
+                          clipInFrame={clip.clipInFrame}
+                          clipOutFrame={clip.clipOutFrame}
+                          className={S("my-clips-modal__item-duration")}
+                        />
+                      </div>
+                      <div className={S("my-clips-modal__item-actions")}>
+                        <IconButton
+                          icon={DownloadIcon}
+                          onClick={async event => {
+                            event.stopPropagation();
+                            event.preventDefault();
+                            Seek(clip);
+                            setShowDownload(true);
+                          }}
+                        />
+                        <IconButton
+                          icon={ShareIcon}
+                          onClick={async event => {
+                            event.stopPropagation();
+                            event.preventDefault();
+                            Seek(clip);
+                            setShowShare(true);
+                          }}
+                        />
+                        <IconButton
+                          icon={DeleteIcon}
+                          onClick={async event => {
+                            event.stopPropagation();
+                            event.preventDefault();
+
+                            await Confirm({
+                              title: "Remove Clip",
+                              text: "Are you sure you want to remove this clip?",
+                              onConfirm: async () => {
+                                await compositionStore.RemoveMyClip(clip.clipId);
+                              }
+                            });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )
+                }
+              </div>
+          }
+        </div>
+      </Modal>
+      {
+        !showDownload ? null :
+          <DownloadModal
+            store={videoStore}
+            opened={submodalOpened}
+            onClose={() => setShowDownload(false)}
+          />
+      }
+      {
+        !showShare ? null :
+          <ShareModal
+            store={videoStore}
+            opened={submodalOpened}
+            onClose={() => setShowShare(false)}
+          />
+      }
+    </>
+  );
+});
+
+export const MyClipsButton = observer(() => {
+  const [showModal, setShowModal] = useState(false);
+
+  return (
+    <>
+      <button onClick={() => setShowModal(true)} className={S("my-clips-button")}>
+        <Icon icon={ClipIcon} />
+        <span>My Clips</span>
+      </button>
+      <MyClipsModal
+        opened={showModal}
+        Close={() => setShowModal(false)}
+      />
+    </>
+  );
+});
+
 export const ClipModalButton = observer(() => {
   const [showModal, setShowModal] = useState(false);
+  const [showMyClipsModal, setShowMyClipsModal] = useState(false);
+  const [highlightedClipId, setHighlightedClipId] = useState(undefined);
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -29,7 +201,7 @@ export const ClipModalButton = observer(() => {
 
     setSubmitting(true);
 
-    compositionStore.AddMyClip({
+    const clip = await compositionStore.AddMyClip({
       clip: {
         name,
         libraryId: videoStore.videoObject.libraryId,
@@ -44,10 +216,20 @@ export const ClipModalButton = observer(() => {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     setShowModal(false);
+    setShowMyClipsModal(true);
+    setHighlightedClipId(clip.clipId);
   };
 
   return (
     <>
+      {
+        !showMyClipsModal ? null :
+          <MyClipsModal
+            opened
+            highlightedClipId={highlightedClipId}
+            Close={() => setShowMyClipsModal(false)}
+          />
+      }
       {
         !showModal ? null :
           <Modal
@@ -67,29 +249,18 @@ export const ClipModalButton = observer(() => {
                 <div className={S("clip-form__title")}>
                   { videoStore.name }
                 </div>
-                <div className={S("clip-form__details")}>
-                  <span>
-                    {videoStore.FrameToSMPTE(videoStore.clipInFrame)}
-                  </span>
-                  <span>-</span>
-                  <span>
-                    {videoStore.FrameToSMPTE(videoStore.clipOutFrame)}
-                  </span>
-                  <span>
-                    ({videoStore.videoHandler.FrameToString({frame: videoStore.clipOutFrame - videoStore.clipInFrame})})
-                  </span>
-                </div>
+                <ClipTimeInfo
+                  store={videoStore}
+                  clipInFrame={videoStore.clipInFrame}
+                  clipOutFrame={videoStore.clipOutFrame}
+                  className={S("clip-form__details")}
+                />
                 <FormTextArea
                   autoFocus
                   label="Clip Description"
                   autosize
                   value={name}
                   onChange={event => setName(event.target.value)}
-                  onKeyPress={event => {
-                    if(event.key === "Enter") {
-                      Submit();
-                    }
-                  }}
                 />
                 <div className={S("form__actions")}>
                   <Button

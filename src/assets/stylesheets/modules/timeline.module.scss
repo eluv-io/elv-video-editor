@@ -250,13 +250,112 @@
 
   &__details {
     color: var(--text-tertiary);
-    display: flex;
-    font-size: 14px;
-    font-weight: 500;
-    gap: 5px;
     margin-bottom: 20px;
-    text-align: center;
-    width: 100%;
+  }
+}
+
+.my-clips-button {
+  align-items: center;
+  border: 1px solid var(--text-tertiary);
+  border-radius: 8px;
+  display: flex;
+  font-size: 14px;
+  font-weight: 600;
+  gap: 5px;
+  padding: 2px 10px;
+  transition: background-color 0.25s ease;
+
+  svg {
+    height: 20px;
+    width: 20px;
+  }
+
+  &:focus-visible,
+  &:hover {
+    background-color: var(--background-toolbar--active);
+  }
+}
+
+.my-clips-modal {
+  padding-bottom: 20px;
+
+  &__title {
+    align-items: center;
+    display: flex;
+    font-weight: 600;
+    gap: 10px;
+    max-width: 100%;
+  }
+
+  &__empty {
+    align-items: center;
+    display: flex;
+    font-weight: 600;
+    height: 200px;
+    justify-content: center;
+    padding-bottom: 50px;
+  }
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  &__item {
+    align-items: center;
+    background-color: var(--background-toolbar);
+    border-radius: 5px;
+    cursor: pointer;
+    display: grid;
+    gap: 15px;
+    grid-template-columns: 125px 1fr 100px;
+    padding: 10px;
+    transition: background-color 0.25s ease;
+
+    &:not(.my-clips-modal__item--highlighted) {
+      &:hover,
+      &:focus-visible {
+        background-color: var(--background-toolbar--active);
+      }
+    }
+
+    &--highlighted {
+      background-color: var(--background-toolbar--highlight);
+      color: var(--text-primary);
+
+      .my-clips-modal__item-duration {
+        color: var(--text-secondary);
+      }
+    }
+  }
+
+  &__item-thumbnail {
+    border-radius: 8px;
+  }
+
+  &__item-text {
+    font-size: 14px;
+    margin-bottom: 5px;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  &__item-title {
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  &__item-duration {
+    color: var(--text-tertiary);
+  }
+
+  &__item-actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-right: 10px;
   }
 }
 

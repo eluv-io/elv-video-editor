@@ -1,8 +1,10 @@
 import {flow, makeAutoObservable, runInAction} from "mobx";
 import UrlJoin from "url-join";
+import {Unproxy} from "@/utils/Utils.js";
 
 class AIStore {
   searchIndexes = [];
+  customSearchIndexIds = [];
   selectedSearchIndexId;
   searchIndexUpdateProgress = {};
   tagAggregationProgress = 0;
@@ -137,11 +139,28 @@ class AIStore {
   // Search indexes
 
   LoadSearchIndexes = flow(function * () {
-    let searchIndexes = ((yield this.client.ContentObjectMetadata({
+    let info = yield this.client.ContentObjectMetadata({
       libraryId: this.rootStore.tenantContractId.replace(/^iten/, "ilib"),
       objectId: this.rootStore.tenantContractId.replace(/^iten/, "iq__"),
-      metadataSubtree: "/public/search/indexes"
-    })) || [])
+      metadataSubtree: "public",
+      select: [
+        "ml_config",
+        "search/indexes"
+      ]
+    });
+
+    let searchIndexes;
+    if(info?.ml_config) {
+      searchIndexes = yield this.client.ContentObjectMetadata({
+        libraryId: yield this.client.ContentObjectLibraryId({objectId: info.ml_config}),
+        objectId: info.ml_config,
+        metadataSubtree: "public/search/indexes"
+      });
+    } else {
+      searchIndexes = info?.search?.indexes;
+    }
+
+    searchIndexes = (searchIndexes || [])
       .filter((x, i, a) => a.findIndex(other => x.id === other.id) === i);
 
     searchIndexes = (yield Promise.all(
@@ -158,6 +177,28 @@ class AIStore {
 
     this.searchIndexes = searchIndexes;
 
+    let customSearchIndexIds = yield this.client.walletClient.ProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: `custom-search-indexes${this.rootStore.localhost ? "-dev" : ""}`
+    });
+
+    if(customSearchIndexIds) {
+      try {
+        this.customSearchIndexIds = JSON.parse(customSearchIndexIds);
+
+        yield Promise.all(
+          this.customSearchIndexIds.map(async objectId =>
+            await this.AddSearchIndex({objectId, add: false})
+          )
+        );
+      } catch(error) {
+        // eslint-disable-next-line no-console
+        console.error("Error parsing custom search indexes");
+      }
+    }
+
     this.SetSelectedSearchIndex(this.searchIndexes[0]?.id);
   });
 
@@ -165,13 +206,64 @@ class AIStore {
     this.selectedSearchIndexId = id;
   }
 
-  GetSearchFields = flow(function * (searchIndex) {
-    const indexId = searchIndex.id;
+  AddSearchIndex = flow(function * ({objectId, add=true}) {
+    const name = yield this.client.ContentObjectMetadata({
+      libraryId: yield this.client.ContentObjectLibraryId({objectId}),
+      objectId: objectId,
+      metadataSubtree: "public/name"
+    });
 
-    if(!indexId) { return; }
+    this.searchIndexes.unshift({
+      id: objectId,
+      name,
+      custom: true,
+      ...(yield this.GetSearchFields({id: objectId})),
+      canEdit: yield this.client.CallContractMethod({
+        contractAddress: this.client.utils.HashToAddress(objectId),
+        methodName: "canEdit"
+      })
+    });
+
+    if(add) {
+      this.customSearchIndexIds.push(objectId);
+
+      yield this.client.walletClient.SetProfileMetadata({
+        type: "app",
+        appId: "video-editor",
+        mode: "private",
+        key: `custom-search-indexes${this.rootStore.localhost ? "-dev" : ""}`,
+        value: Unproxy(this.customSearchIndexIds)
+      });
+
+      this.SetSelectedSearchIndex(objectId);
+    }
+  });
+
+  RemoveSearchIndex = flow(function * ({objectId}) {
+    this.searchIndexes = this.searchIndexes
+      .filter(({id}) => id !== objectId);
+
+    this.customSearchIndexIds = this.customSearchIndexIds
+      .filter(id => id !== objectId);
+
+    yield this.client.walletClient.SetProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: `custom-search-indexes${this.rootStore.localhost ? "-dev" : ""}`,
+      value: Unproxy(this.customSearchIndexIds)
+    });
+
+    if(this.selectedSearchIndexId === objectId) {
+      this.selectedSearchIndexId = this.searchIndexes[0]?.id;
+    }
+  });
+
+  GetSearchFields = flow(function * ({id}) {
+    if(!id) { return; }
 
     try {
-      const versionHash = yield this.client.LatestVersionHash({objectId: indexId});
+      const versionHash = yield this.client.LatestVersionHash({objectId: id});
 
       const indexerFields = yield this.client.ContentObjectMetadata({
         versionHash,
