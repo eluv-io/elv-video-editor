@@ -150,6 +150,17 @@
       white-space: pre-wrap;
     }
   }
+
+  &--fixed {
+    .tooltip__content {
+      max-height: 80vh;
+      max-width: 700px;
+
+      p, pre {
+        max-width: 700px;
+      }
+    }
+  }
 }
 
 .form {
