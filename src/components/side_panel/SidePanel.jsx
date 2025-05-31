@@ -513,7 +513,12 @@ export const CompositionBrowserPanel = observer(() => {
   return (
     <div className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
-        <SidebarFilter key="composition-browser" store={compositionStore} label="Search Compositions" />
+        <SidebarFilter
+          key="composition-browser"
+          store={compositionStore}
+          label="Search Compositions"
+          sideContent={<SearchIndexSelection />}
+        />
         <CompositionBrowser />
       </div>
     </div>
