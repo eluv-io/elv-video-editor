@@ -687,7 +687,7 @@ class CompositionStore {
       saved: false,
       new: true,
       duration: 0,
-      lastUpdated: new Date().toISOString()
+      lastModified: new Date().toISOString()
     };
 
     let items = [];

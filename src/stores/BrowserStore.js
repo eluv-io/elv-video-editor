@@ -131,8 +131,12 @@ class BrowserStore {
     }
   }
 
-  ObjectDetails = flow(function * ({objectId, versionHash, publicMetadata}) {
-    if(!this.objectDetails[objectId] || Date.now() - this.objectDetails[objectId].retrievedAt < 60 * 1000) {
+  ObjectDetails = flow(function * ({objectId, versionHash, publicMetadata, noCache}) {
+    while(!this.rootStore.compositionStore.myCompositionsLoaded) {
+      yield new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    if(noCache || !this.objectDetails[objectId] || Date.now() - this.objectDetails[objectId].retrievedAt > 60 * 1000) {
       if(!versionHash) {
         versionHash = yield this.rootStore.client.LatestVersionHash({objectId});
       }
@@ -182,7 +186,7 @@ class BrowserStore {
             channels = Object.keys(metadata?.channel?.offerings || {}).map(channelKey => {
               const channel = metadata.channel.offerings[channelKey];
 
-              let lastModified = channel.updated_at;
+              let lastModified = channel.lastUpdated || channel.updated_at;
               if(lastModified) {
                 lastModified = this.FormatDate(lastModified);
               }
@@ -264,6 +268,7 @@ class BrowserStore {
       metadata = metadata || {public: publicMetadata};
 
       this.objectDetails[objectId] = {
+        retrievedAt: Date.now(),
         libraryId,
         id: objectId,
         objectId: objectId,
@@ -290,6 +295,10 @@ class BrowserStore {
 
     return this.objectDetails[objectId];
   });
+
+  ClearObjectDetails({objectId}) {
+    delete this.objectDetails[objectId];
+  }
 
   ListObjects = flow(function * ({libraryId, page=1, perPage=25, filter="", cacheId=""}) {
     if(filter.startsWith("iq__") || filter.startsWith("hq__")) {
@@ -543,7 +552,7 @@ class BrowserStore {
         case "library":
           return { libraryId };
         case "object":
-          return yield this.ObjectDetails({objectId, versionHash});
+          return yield this.ObjectDetails({objectId, versionHash, noCache: true});
         default:
           // eslint-disable-next-line no-console
           console.error("Invalid content:", contentId, accessType);

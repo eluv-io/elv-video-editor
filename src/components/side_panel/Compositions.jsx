@@ -399,9 +399,11 @@ export const CompositionBrowser = observer(() => {
                               setDeleting(compositionKey);
                               try {
                                 await compositionStore.DeleteComposition({
-                                  objectId: objectId,
+                                  objectId,
                                   compositionKey
                                 });
+
+                                browserStore.ClearObjectDetails({objectId});
                               } finally {
                                 setDeleting(false);
                               }
