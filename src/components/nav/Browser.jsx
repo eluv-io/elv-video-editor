@@ -549,9 +549,7 @@ const MyLibraryBrowser = observer(() => {
   }
 
   const Select = ({id, objectId, isVideo}) => {
-    const item =
-      objectId ? {objectId, isVideo} :
-      browserStore.myLibraryItems.find(item => item.id === id);
+    const item = browserStore.myLibraryItems.find(item => item.id === id) || (objectId ? {objectId, isVideo} : undefined);
 
     if(!item) { return; }
 
