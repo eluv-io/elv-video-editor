@@ -327,96 +327,104 @@ export const CompositionBrowser = observer(() => {
     );
 
   return (
-    <div className={S("composition-browser")}>
-      {
-        compositions.length === 0 ?
-          <div className={S("composition-browser__empty")}>No Compositions</div> :
-          <div className={S("composition-browser__content")}>
-            <div className={S("composition-browser__header", "composition-browser__item")}>
-              <span>
-                {
-                  !selectedObjectId ? null :
-                    <IconButton
-                      faded
-                      icon={BackIcon}
-                      label="Back to All My Compositions"
-                      onClick={() => {
-                        setInfo(undefined);
-                        setSelectedObjectId(undefined);
-                      }}
-                    />
-                }
-              </span>
-              <span>Name</span>
-              <span>Last Modified</span>
-              <span />
-            </div>
-            {compositions.map(({name, objectId, compositionKey, lastModified}) =>
-              <Linkish
-                disabled={deleting}
-                key={compositionKey}
-                onClick={() => compositionStore.SetFilter("")}
-                to={
-                  !compositionKey ?
-                    UrlJoin("/", objectId) :
-                    UrlJoin("/compositions", objectId, compositionKey)
-                }
-                className={S("composition-browser__item")}
-              >
-                <Icon icon={compositionKey ? CompositionIcon : VideoIcon}
-                      className={S("composition-browser__item-icon")}/>
-                <Tooltip openDelay={500} label={name}>
-                  <div className={S("ellipsis")}>
-                    <div className={S("composition-browser__item-name", "ellipsis")}>
-                      { name }
-                    </div>
-                    <div className={S("composition-browser__item-id")}>
-                      <CopyableField value={objectId} showOnHover />
-                    </div>
-                  </div>
-                </Tooltip>
-                <span>
-                  {lastModified}
-                </span>
-                <span>
-                  {
-                    !compositionKey ? null :
-                      <IconButton
-                        icon={DeleteIcon}
-                        label="Delete Composition"
-                        disabled={deleting}
-                        faded
-                        small
-                        loading={deleting === compositionKey}
-                        onClick={async event => {
-                          event.stopPropagation();
-                          event.preventDefault();
-
-                          await Confirm({
-                            title: "Delete Composition",
-                            text: `Are you sure you want to delete the composition '${name}'?`,
-                            onConfirm: async () => {
-                              setDeleting(compositionKey);
-                              try {
-                                await compositionStore.DeleteComposition({
-                                  objectId,
-                                  compositionKey
-                                });
-
-                                browserStore.ClearObjectDetails({objectId});
-                              } finally {
-                                setDeleting(false);
-                              }
-                            }
-                          });
-                        }}
-                      />
+    <>
+      <div className={S("composition-browser-header")}>
+        {
+          !selectedObjectId ? "My Compositions" :
+            <>
+              <IconButton
+                faded
+                icon={BackIcon}
+                label="Back to My Compositions"
+                onClick={() => {
+                  setInfo(undefined);
+                  setSelectedObjectId(undefined);
+                }}
+              />
+              <span className={S("ellipsis")}>{info?.name}</span>
+            </>
+        }
+      </div>
+      <div className={S("composition-browser")}>
+        {
+          deleting ?
+            <Loader /> :
+            compositions.length === 0 ?
+            <div className={S("composition-browser__empty")}>No Compositions</div> :
+            <div className={S("composition-browser__content")}>
+              <div className={S("composition-browser__header", "composition-browser__item")}>
+                <span />
+                <span>Name</span>
+                <span>Last Modified</span>
+                <span />
+              </div>
+              {compositions.map(({name, objectId, compositionKey, lastModified}) =>
+                <Linkish
+                  disabled={deleting}
+                  key={compositionKey}
+                  onClick={() => compositionStore.SetFilter("")}
+                  to={
+                    !compositionKey ?
+                      UrlJoin("/", objectId) :
+                      UrlJoin("/compositions", objectId, compositionKey)
                   }
-                </span>
-              </Linkish>
-            )}
-          </div>
-      }
-    </div>
+                  className={S("composition-browser__item")}
+                >
+                  <Icon icon={compositionKey ? CompositionIcon : VideoIcon}
+                        className={S("composition-browser__item-icon")}/>
+                  <Tooltip openDelay={500} label={name}>
+                    <div className={S("ellipsis")}>
+                      <div className={S("composition-browser__item-name", "ellipsis")}>
+                        { name }
+                      </div>
+                      <div className={S("composition-browser__item-id")}>
+                        <CopyableField value={objectId} showOnHover />
+                      </div>
+                    </div>
+                  </Tooltip>
+                  <span>
+                    {lastModified}
+                  </span>
+                  <span>
+                    {
+                      !compositionKey ? null :
+                        <IconButton
+                          icon={DeleteIcon}
+                          label="Delete Composition"
+                          disabled={deleting}
+                          faded
+                          small
+                          loading={deleting === compositionKey}
+                          onClick={async event => {
+                            event.stopPropagation();
+                            event.preventDefault();
+
+                            await Confirm({
+                              title: "Delete Composition",
+                              text: `Are you sure you want to delete the composition '${name}'?`,
+                              onConfirm: async () => {
+                                setDeleting(compositionKey);
+                                try {
+                                  await compositionStore.DeleteComposition({
+                                    objectId,
+                                    compositionKey
+                                  });
+
+                                  browserStore.ClearObjectDetails({objectId});
+                                } finally {
+                                  setDeleting(false);
+                                }
+                              }
+                            });
+                          }}
+                        />
+                    }
+                  </span>
+                </Linkish>
+              )}
+            </div>
+        }
+      </div>
+    </>
   );
 });

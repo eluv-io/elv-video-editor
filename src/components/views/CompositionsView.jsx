@@ -38,7 +38,7 @@ const CompositionsView = observer(() => {
     );
   }
 
-  if(!objectId) {
+  if(!objectId || !compositionKey) {
     // Selection view
     return (
       <PanelGroup direction="vertical" className="panel-group">

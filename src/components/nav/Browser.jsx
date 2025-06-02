@@ -28,6 +28,7 @@ import LastPageIcon from "@/assets/icons/DoubleForward.svg";
 import PageForwardIcon from "@/assets/icons/Forward.svg";
 import PageBackIcon from "@/assets/icons/Backward.svg";
 import DeleteIcon from "@/assets/icons/trash.svg";
+import XIcon from "@/assets/icons/v2/x.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -288,7 +289,7 @@ const BrowserTable = observer(({
                     <div className={S("browser-table__cell", "browser-table__cell--centered")}>
                       <IconButton
                         label="Remove Item"
-                        icon={DeleteIcon}
+                        icon={contentType === "my-library" ? XIcon : DeleteIcon}
                         faded
                         disabled={deleting}
                         onClick={async event => {
