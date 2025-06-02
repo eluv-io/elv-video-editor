@@ -1270,6 +1270,8 @@ class CompositionStore {
 
       this.myCompositions = myCompositions;
     }
+
+    this.myCompositionsLoaded = true;
   });
 
   async SaveMyCompositions() {

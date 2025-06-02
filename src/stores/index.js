@@ -152,7 +152,7 @@ class RootStore {
     this.tenantContractId = yield client.userProfileClient.TenantContractId();
 
     yield this.aiStore.LoadSearchIndexes();
-    this.compositionStore.Initialize();
+    yield this.compositionStore.Initialize();
   });
 
 

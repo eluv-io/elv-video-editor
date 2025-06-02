@@ -8,6 +8,7 @@ import {ClipTimeInfo, Confirm, CopyableField, Icon, IconButton, Linkish, Loader}
 import {Tooltip} from "@mantine/core";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import UrlJoin from "url-join";
+import {ClipTooltipContent} from "@/components/compositions/Clips.jsx";
 
 import ClipIcon from "@/assets/icons/v2/clip.svg";
 import VideoIcon from "@/assets/icons/v2/video.svg";
@@ -18,7 +19,7 @@ import TagIcon from "@/assets/icons/v2/tag.svg";
 import DeleteIcon from "@/assets/icons/trash.svg";
 import ChevronUpIcon from "@/assets/icons/chevron-up.svg";
 import ChevronDownIcon from "@/assets/icons/chevron-down.svg";
-import {ClipTooltipContent} from "@/components/compositions/Clips.jsx";
+import BackIcon from "@/assets/icons/v2/back.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -267,29 +268,29 @@ export const CompositionClips = observer(() => {
 export const CompositionBrowser = observer(() => {
   const [info, setInfo] = useState(undefined);
   const [deleting, setDeleting] = useState(false);
-  const [selectedObjectId, setSelectedObjectId] = useState(undefined);
+  const [selectedObjectId, setSelectedObjectId] = useState(rootStore.selectedObjectId);
 
   useEffect(() => {
     if(deleting) { return; }
 
     setInfo(undefined);
 
-    if(!rootStore.selectedObjectId) {
+    if(!selectedObjectId) {
       // Load from my library
       browserStore.ListMyLibrary({page: 1, perPage: 1000})
         .then(({content}) => {
           setSelectedObjectId(undefined);
           setInfo(content.filter(item => item.compositionKey));
         });
-    } else if(rootStore.selectedObjectId) {
-      browserStore.LookupContent(rootStore.selectedObjectId)
+    } else if(selectedObjectId) {
+      browserStore.LookupContent(selectedObjectId)
         .then(objectInfo => {
-          setSelectedObjectId(rootStore.selectedObjectId);
+          setSelectedObjectId(selectedObjectId);
           setInfo(objectInfo);
         });
-      setSelectedObjectId(rootStore.selectedObjectId);
+      setSelectedObjectId(selectedObjectId);
     }
-  }, [rootStore.selectedObjectId, deleting]);
+  }, [selectedObjectId, deleting]);
 
   if(!info) {
     return <Loader />;
@@ -332,7 +333,20 @@ export const CompositionBrowser = observer(() => {
           <div className={S("composition-browser__empty")}>No Compositions</div> :
           <div className={S("composition-browser__content")}>
             <div className={S("composition-browser__header", "composition-browser__item")}>
-              <span />
+              <span>
+                {
+                  !selectedObjectId ? null :
+                    <IconButton
+                      faded
+                      icon={BackIcon}
+                      label="Back to All My Compositions"
+                      onClick={() => {
+                        setInfo(undefined);
+                        setSelectedObjectId(undefined);
+                      }}
+                    />
+                }
+              </span>
               <span>Name</span>
               <span>Last Modified</span>
               <span />

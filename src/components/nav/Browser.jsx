@@ -208,6 +208,11 @@ const BrowserTable = observer(({
         </div>
         {
           (content || []).map(item => {
+            if(!item) {
+              // eslint-disable-next-line no-console
+              console.warn("Browser table missing item", content);
+            }
+
             const disabled = deleting || item.forbidden || (videoOnly && !item.isVideo);
             return (
               <Linkish
