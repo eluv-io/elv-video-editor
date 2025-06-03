@@ -28,6 +28,7 @@ import LastPageIcon from "@/assets/icons/DoubleForward.svg";
 import PageForwardIcon from "@/assets/icons/Forward.svg";
 import PageBackIcon from "@/assets/icons/Backward.svg";
 import DeleteIcon from "@/assets/icons/trash.svg";
+import XIcon from "@/assets/icons/v2/x.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -209,6 +210,12 @@ const BrowserTable = observer(({
         </div>
         {
           (content || []).map(item => {
+            if(!item) {
+              // eslint-disable-next-line no-console
+              console.warn("Browser table missing item", content);
+              return null;
+            }
+
             let disabled, message;
             if(deleting) {
               disabled = true;
@@ -285,8 +292,8 @@ const BrowserTable = observer(({
                     </Tooltip>
                     <div className={S("browser-table__row-title-id")}>
                       {
-                        !["composition", "my-library"].includes(contentType) ?
-                          <CopyableField value={item.id} showOnHover /> :
+                        !["composition"].includes(contentType) ?
+                          <CopyableField value={item.objectId || item.id} showOnHover>{item.id}</CopyableField> :
                           contentType !== "my-library" ? item.id :
                             `${item.objectId}${item.compositionKey ? ` - ${item.compositionKey}` : ""}`
                       }
@@ -312,7 +319,7 @@ const BrowserTable = observer(({
                     <div className={S("browser-table__cell", "browser-table__cell--centered")}>
                       <IconButton
                         label="Remove Item"
-                        icon={DeleteIcon}
+                        icon={contentType === "my-library" ? XIcon : DeleteIcon}
                         faded
                         disabled={deleting}
                         onClick={async event => {
@@ -585,9 +592,7 @@ const MyLibraryBrowser = observer(() => {
   }
 
   const Select = ({id, objectId, isVideo}) => {
-    const item =
-      objectId ? {objectId, isVideo} :
-      browserStore.myLibraryItems.find(item => item.id === id);
+    const item = browserStore.myLibraryItems.find(item => item.id === id) || (objectId ? {objectId, isVideo} : undefined);
 
     if(!item) { return; }
 

@@ -51,10 +51,7 @@ const TimelineTopBar = observer(({simple}) => {
       <div className={S("toolbar__controls-group", "left")}>
         {
           simple ?
-            <>
-              <MyClipsButton/>
-              <div className={S("toolbar__separator")}/>
-            </> :
+            null :
             <>
               <IconButton
                 icon={UndoIcon}
@@ -255,6 +252,14 @@ const TimelineBottomBar = observer(({simple}) => {
         }}
         label="Reset Timeline Scale"
       />
+      {
+        !simple ? null :
+          <>
+            <div className={S("toolbar__separator")}/>
+            <MyClipsButton/>
+          </>
+      }
+
     </div>
   );
 });

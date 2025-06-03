@@ -46,16 +46,17 @@ const AssetTags = observer(({asset, setHoverTag}) => {
           return (
             <div key={`track-${trackKey}`} className={S("asset-tags__track")}>
               <div className={S("asset-tags__track-title")}>
-                { track.label }
+                {track.label}
               </div>
               <div className={S("asset-tags__tags")}>
                 {
                   (asset.image_tags[trackKey].tags || []).map((tag, index) =>
-                    <Tooltip.Floating
-                      position="top"
+                    <Tooltip
+                      openDelay={500}
+                      position="left"
                       offset={30}
                       label={
-                        <div className={S("tooltip")}>
+                        <div className={S("tooltip", "tooltip--fixed")}>
                           <div className={S("tooltip__item")}>
                             <div className={S("tooltip__label")}>
                               {track.label}
@@ -93,7 +94,7 @@ const AssetTags = observer(({asset, setHoverTag}) => {
                           {tag.text}
                         </div>
                       </button>
-                    </Tooltip.Floating>
+                    </Tooltip>
                   )
                 }
               </div>
@@ -101,11 +102,22 @@ const AssetTags = observer(({asset, setHoverTag}) => {
           );
         })
       }
+      <div className={S("asset-tags__display-metadata")}>
+        <h2>Display Metadata</h2>
+        {
+          Object.keys(asset.display_metadata || {}).sort().map(key =>
+            <div key={key} className={S("asset-tags__metadata-field")}>
+              <label htmlFor={key}>{key}:</label>
+              <div name={key}>{asset.display_metadata[key]}</div>
+            </div>
+          )
+        }
+      </div>
     </div>
   );
 });
 
-const SaveAssetButton = observer(({className=""}) =>
+const SaveAssetButton = observer(({className = ""}) =>
   <AsyncButton
     color="gray.5"
     variant="outline"
@@ -133,9 +145,20 @@ const AssetContent = observer(({asset, hoverTag}) => {
 
   return (
     <div className={S("asset")}>
-      <h2 className={S("asset__toolbar", "asset__title")}>
-        <div>
-          {asset.label || asset.key}
+      <h2 className={S("asset__toolbar")}>
+        <div className={S("asset__title-container")}>
+          {
+            asset.title ?
+              <>
+                <div className={S("asset__title", "ellipsis")}>
+                  {asset.title}
+                </div>
+                <div className={S("asset__subtitle")}>
+                  {asset.label || asset.key}
+                </div>
+              </> :
+              asset.label || asset.key
+          }
         </div>
         <SaveAssetButton />
       </h2>

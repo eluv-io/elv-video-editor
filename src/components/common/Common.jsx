@@ -357,11 +357,11 @@ export const CopyButton = observer(({value, ...props}) => {
   );
 });
 
-export const CopyableField = observer(({value, buttonProps={}, showOnHover=false, className="", ...props}) => {
+export const CopyableField = observer(({value, children, buttonProps={}, showOnHover=false, className="", ...props}) => {
   return (
     <div {...props} className={JoinClassNames(S("copyable-field", showOnHover ? "copyable-field--show-hover" : ""), className)}>
       <div className={S("copyable-field__value", "ellipsis")}>
-        { value }
+        { children || value }
       </div>
       <CopyButton
         {...buttonProps}

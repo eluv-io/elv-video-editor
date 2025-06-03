@@ -135,7 +135,7 @@
   }
 
   &__content {
-    max-height: 400px;
+    max-height: 300px;
     max-width: 500px;
     overflow: hidden;
 
@@ -148,6 +148,17 @@
     p {
       max-width: 500px;
       white-space: pre-wrap;
+    }
+  }
+
+  &--fixed {
+    .tooltip__content {
+      max-height: 80vh;
+      max-width: 700px;
+
+      p, pre {
+        max-width: 700px;
+      }
     }
   }
 }

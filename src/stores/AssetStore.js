@@ -55,6 +55,12 @@ class AssetStore {
                 (((asset.image_tags[category] || {}).tags) || [])
                   .find(tag => (tag.text || "").toLowerCase().includes(term))
               )
+          ) ||
+          !!Object.keys(asset.display_metadata || {}).find(displayMetadataKey =>
+            asset.display_metadata[displayMetadataKey]
+              ?.toString()
+              ?.toLowerCase()
+              ?.includes(term)
           )
         )
       );
@@ -134,6 +140,14 @@ class AssetStore {
     };
 
     this.assets = Object.keys(assets).sort().map(key => {
+      const asset = assets[key];
+
+      const titleKey = Object.keys(asset.display_metadata || {}).find(key =>
+        ["headline", "title"].includes(key.toLowerCase())
+      );
+
+      const title = titleKey ? asset.display_metadata[titleKey] : undefined;
+
       let assetId = this.rootStore.NextId();
       let tags = assets[key].image_tags || {};
       Object.keys(tags).forEach(trackKey => {
@@ -152,6 +166,8 @@ class AssetStore {
 
       return {
         ...assets[key],
+        title,
+        titleKey,
         assetId,
         image_tags: tags,
         key
