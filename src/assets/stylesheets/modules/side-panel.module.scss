@@ -766,13 +766,13 @@
   &__item {
     align-items: center;
     display: grid;
-    text-align: left;
     font-size: 14px;
     gap: 10px;
     grid-template-columns: 20px 2fr 1fr 30px;
     height:  50px;
     justify-content: space-between;
     padding: 5px 10px 5px 5px;
+    text-align: left;
     transition: background-color 0.15s ease;
 
     &:disabled {
@@ -787,5 +787,9 @@
     &:not(:last-child) {
       border-bottom: 1px solid var(--table-border-color);
     }
+  }
+
+  &__loader {
+    margin-top: 20px;
   }
 }

@@ -1210,6 +1210,8 @@ class CompositionStore {
         },
         commitMessage: `EVIE: Remove composition '${compositionKey}'`
       });
+
+      this.rootStore.ClearResource({key: "object-details", id: objectId});
     }
 
     // Remove from my compositions
@@ -1244,34 +1246,38 @@ class CompositionStore {
   });
 
   LoadMyCompositions = flow(function * () {
-    const compositions = yield this.client.walletClient.ProfileMetadata({
-      type: "app",
-      appId: "video-editor",
-      mode: "private",
-      key: `my-compositions${this.rootStore.localhost ? "-dev" : ""}`
-    });
-
-    if(compositions) {
-      const myCompositions = JSON.parse(this.client.utils.FromB64(compositions));
-
-      Object.keys(myCompositions).forEach(objectId => {
-        Object.keys(myCompositions[objectId] || {}).forEach(compositionKey => {
-          // Ensure nodes are set for write tokens
-          const writeTokenInfo = myCompositions[objectId][compositionKey].writeTokenInfo;
-
-          if(writeTokenInfo) {
-            this.client.RecordWriteToken({
-              writeToken: writeTokenInfo.write_token,
-              fabricNodeUrl: writeTokenInfo.nodeUrl
-            });
-          }
+    yield this.rootStore.LoadResource({
+      key: "my-compositions",
+      id: "my-compositions",
+      Load: flow(function * () {
+        const compositions = yield this.client.walletClient.ProfileMetadata({
+          type: "app",
+          appId: "video-editor",
+          mode: "private",
+          key: `my-compositions${this.rootStore.localhost ? "-dev" : ""}`
         });
-      });
 
-      this.myCompositions = myCompositions;
-    }
+        if(compositions) {
+          const myCompositions = JSON.parse(this.client.utils.FromB64(compositions));
 
-    this.myCompositionsLoaded = true;
+          Object.keys(myCompositions).forEach(objectId => {
+            Object.keys(myCompositions[objectId] || {}).forEach(compositionKey => {
+              // Ensure nodes are set for write tokens
+              const writeTokenInfo = myCompositions[objectId][compositionKey].writeTokenInfo;
+
+              if(writeTokenInfo) {
+                this.client.RecordWriteToken({
+                  writeToken: writeTokenInfo.write_token,
+                  fabricNodeUrl: writeTokenInfo.nodeUrl
+                });
+              }
+            });
+          });
+
+          this.myCompositions = myCompositions;
+        }
+      }).bind(this)
+    });
   });
 
   async SaveMyCompositions() {

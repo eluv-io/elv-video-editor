@@ -49,7 +49,7 @@ const CompositionsView = observer(() => {
             </Panel>
             <PanelResizeHandle />
             <Panel id="video" order={2} defaultSize={50}>
-              <CompositionVideoSection store={compositionStore.videoStore} />
+              <CompositionVideoSection store={compositionStore.videoStore} blank />
             </Panel>
           </PanelGroup>
         </Panel>

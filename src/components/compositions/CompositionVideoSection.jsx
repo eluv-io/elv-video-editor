@@ -420,7 +420,7 @@ const Title = observer(({clipView}) => {
   );
 });
 
-const CompositionVideoSection = observer(({store, clipView=false}) => {
+const CompositionVideoSection = observer(({store, blank=false, clipView=false}) => {
   const [sectionRef, setSectionRef] = useState(undefined);
   const [active, setActive] = useState(false);
 
@@ -516,7 +516,7 @@ const CompositionVideoSection = observer(({store, clipView=false}) => {
       {
         !sectionRef ? null :
           <Video
-            blank={!clipView && compositionStore.clipIdList.length === 0}
+            blank={blank || !clipView && compositionStore.clipIdList.length === 0}
             loading={!clipView && compositionStore.loading}
             muted={clipView ? compositionStore.clipMuted : compositionStore.compositionMuted}
             volume={clipView ? compositionStore.clipVolume : compositionStore.compositionVolume}
