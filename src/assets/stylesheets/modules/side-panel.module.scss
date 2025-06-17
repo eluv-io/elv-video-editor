@@ -127,8 +127,8 @@
   }
 
   &__index-title {
-    box-shadow: 0 0 3px var(--background-primary);
     background-color: var(--background-secondary);
+    box-shadow: 0 0 3px var(--background-primary);
     font-weight: 500;
     padding: 10px;
     position: sticky;
@@ -144,7 +144,6 @@
     font-size: 14px;
     gap: 10px;
     justify-content: space-between;
-    //min-height: 45px;
     padding: 10px;
     text-align: left;
     transition: background-color 0.15s ease, color 0.15s ease;
@@ -184,25 +183,25 @@
 
   &__source-button {
     align-items: center;
-    border: 1px solid var(--text-light-bg);
-    border-radius: 15px;
-    color: var(--text-light-bg);
+    border: 1px solid transparent;
+    border-radius: 5px;
     display: flex;
     font-size: 14px;
     gap: 5px;
+    height: 35px;
     justify-content: center;
     margin-right: -5px;
-    padding: 2px 5px;
+    padding: 5px;
     transition: border 0.15s ease, color 0.15s ease;
+    width: 35px;
 
     svg {
-      height: 20px;
-      width: 20px;
+      min-height: 20px;
+      min-width: 20px;
     }
 
     &--active {
-      border: 1px solid var(--color-highlight);
-      color: var(--text-highlight);
+      border: 1px solid var(--text-tertiary);
     }
   }
 
@@ -261,6 +260,7 @@
 
   &__source-option-name {
     color: var(--text-primary);
+    max-width: 290px;
   }
 
   &__source-option-id {

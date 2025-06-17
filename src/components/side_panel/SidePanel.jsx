@@ -19,7 +19,7 @@ import SelectArrowsIcon from "@/assets/icons/v2/select-arrows.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
 import SettingsIcon from "@/assets/icons/v2/settings.svg";
 import UpdateIndexIcon from "@/assets/icons/v2/reload.svg";
-import SourcesIcon from "@/assets/icons/v2/sources.svg";
+import SourcesIcon from "@/assets/icons/v2/folder.svg";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
@@ -283,20 +283,21 @@ const SourceSelection = observer(() => {
         onChange={setShowMenu}
         shadow="md"
         width={250}
-        offset={15}
-        position="bottom-end"
+        offset={10}
+        position="bottom-middle"
       >
         <Menu.Target>
-          <button
-            onClick={() => setShowMenu(!showMenu)}
-            className={S("search__source-button", showMenu ? "search__source-button--active" : "")}
-          >
-            <Icon icon={SourcesIcon} />
-            <span>Select Source</span>
-          </button>
+          <Tooltip label="Select Source" openDelay={500}>
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className={S("search__source-button", showMenu ? "search__source-button--active" : "")}
+            >
+              <Icon icon={SourcesIcon} />
+            </button>
+          </Tooltip>
         </Menu.Target>
 
-        <Menu.Dropdown w={400} radius={10} p={0}>
+        <Menu.Dropdown w={450} radius={10} p={0}>
           <div className={S("search__source-menu")}>
             <div className={S("search__index-title")}>
               Select Source
@@ -360,7 +361,7 @@ const SourceSelection = observer(() => {
 });
 
 let filterTimeout;
-const SidebarFilter = observer(({store, label, sideContent, delay = 100}) => {
+const SidebarFilter = observer(({store, label, sideContent, afterContent, delay = 100}) => {
   const [filter, setFilter] = useState(store.filter);
 
   useEffect(() => {
@@ -397,6 +398,7 @@ const SidebarFilter = observer(({store, label, sideContent, delay = 100}) => {
           }
         rightSectionWidth="max-content"
       />
+      { afterContent }
     </div>
   );
 });
@@ -630,12 +632,8 @@ export const CompositionSidePanel = observer(() => {
       <div className={S("side-panel")}>
         <SidebarFilter
           delay={1500}
-          sideContent={
-            <>
-              <SearchIndexSelection />
-              <SourceSelection />
-            </>
-          }
+          sideContent={<SearchIndexSelection />}
+          afterContent={<SourceSelection />}
           store={compositionStore}
           label="Search Clips"
         />
