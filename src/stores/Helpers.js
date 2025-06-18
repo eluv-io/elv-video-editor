@@ -226,7 +226,7 @@ export const FormatTags = ({tagData}) => {
   return metadataTags;
 };
 
-export const Cue = ({store, tagType, label, startTime, endTime, text, tag, ...extra}) => {
+export const Cue = ({store, tagType, tagId, label, startTime, endTime, text, tag, ...extra}) => {
   store = store || rootStore.videoStore;
 
   const isSMPTE = typeof startTime === "string" && startTime.split(":").length > 1;
@@ -250,7 +250,7 @@ export const Cue = ({store, tagType, label, startTime, endTime, text, tag, ...ex
   }
 
   return {
-    tagId: rootStore.NextId(),
+    tagId: tagId || rootStore.NextId(),
     tagType,
     label,
     startTime,

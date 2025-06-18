@@ -428,6 +428,8 @@ class TagStore {
             Undo: () => this.rootStore.trackStore.ModifyTrack(originalTrack)
           });
         }
+
+        this.lastSelectedTrackId = originalTrack.id;
       } else if(this.editedTag) {
         // Tag
         const tagType = this.editedTag.tagType === "clip" ? "Clip" : "Tag";
@@ -443,6 +445,7 @@ class TagStore {
             Action: () => this.rootStore.trackStore.AddTag({trackId: tag.trackId, tag}),
             Undo: () => this.rootStore.trackStore.DeleteTag({trackId: tag.trackId, tagId: tag.tagId})
           });
+
         } else {
           const originalTag = Unproxy(this.selectedTag);
           const modifiedTag = Unproxy(this.editedTag);
@@ -462,6 +465,8 @@ class TagStore {
         this.selectedTagId = this.editedTag.tagId;
         this.selectedTagTrackId = this.editedTag.trackId;
         this.selectedTime = this.editedTag.startTime;
+
+        this.lastSelectedTrackId = this.selectedTagTrackId;
       } else if(this.editedOverlayTag) {
         // Overlay
         if(this.editedOverlayTag.isNew) {
@@ -619,6 +624,7 @@ class TagStore {
   }
 
   AddTag({trackId, tagType="metadata", text}) {
+    trackId = trackId || this.lastSelectedTrackId;
     let track = this.rootStore.trackStore.Track(trackId);
 
     if(!["metadata", "clip"].includes(track?.trackType)) {
@@ -641,6 +647,7 @@ class TagStore {
     }
 
     const tag = Cue({
+      tagId: this.rootStore.NextId(true),
       trackId,
       trackKey: track.key,
       startTime,
@@ -685,7 +692,7 @@ class TagStore {
 
     const tag = {
       trackId,
-      tagId: this.rootStore.NextId(),
+      tagId: this.rootStore.NextId(true),
       text,
       confidence: 1,
       frame,

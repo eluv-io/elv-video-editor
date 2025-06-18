@@ -139,6 +139,7 @@ const BrowserTable = observer(({
   defaultIcon,
   contentType="library",
   videoOnly,
+  frameRate,
   noDuration,
   Delete
 }) => {
@@ -212,9 +213,23 @@ const BrowserTable = observer(({
             if(!item) {
               // eslint-disable-next-line no-console
               console.warn("Browser table missing item", content);
+              return null;
             }
 
-            const disabled = deleting || item.forbidden || (videoOnly && !item.isVideo);
+            let disabled, message;
+            if(deleting) {
+              disabled = true;
+            } else if(item.forbidden) {
+              disabled = true;
+              message = "You do not have access to this object";
+            } else if(videoOnly && !item.isVideo) {
+              disabled = true;
+              message = "This object does not contain video";
+            } else if(frameRate && item.frameRate !== frameRate) {
+              disabled = true;
+              message = "The framerate of this content is incompatible with the primary source of this composition";
+            }
+
             return (
               <Linkish
                 divButton
@@ -247,9 +262,24 @@ const BrowserTable = observer(({
                       />
                   }
                   <div className={S("browser-table__row-title")}>
-                    <Tooltip label={item.name} openDelay={500}>
+                    <Tooltip
+                      label={
+                        <div className={S("tooltip")}>
+                          <div className={S("tooltip__item")}>
+                            { item.name }
+                          </div>
+                          {
+                            !message ? null :
+                              <div className={S("tooltip__item")}>
+                                { message }
+                              </div>
+                          }
+                        </div>
+                      }
+                      openDelay={500}
+                    >
                       <div className={S("browser-table__row-title-main")}>
-                        <span>
+                        <span className={S("ellipsis")}>
                           {item.name}{item.compositionKey ? " (Composition)" : ""}
                         </span>
                         {
@@ -401,7 +431,18 @@ const CompositionBrowser = observer(({selectedObject, Select, Back, className=""
   );
 });
 
-export const ObjectBrowser = observer(({libraryId, title, Select, Path, Back, backPath, videoOnly, noDuration, className=""}) => {
+export const ObjectBrowser = observer(({
+  libraryId,
+  title,
+  Select,
+  Path,
+  Back,
+  backPath,
+  videoOnly,
+  frameRate,
+  noDuration,
+  className=""
+}) => {
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
@@ -431,6 +472,7 @@ export const ObjectBrowser = observer(({libraryId, title, Select, Path, Back, ba
         defaultIcon={ObjectIcon}
         contentType="object"
         videoOnly={videoOnly}
+        frameRate={frameRate}
         noDuration={noDuration}
         Path={Path}
         Select={Select}

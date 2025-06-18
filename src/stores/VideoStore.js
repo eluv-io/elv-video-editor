@@ -379,7 +379,7 @@ class VideoStore {
           });
         }
 
-        yield this.rootStore.trackStore.InitializeTracks(metadataTags, clipTags);
+        yield this.rootStore.trackStore.InitializeTracks(videoObject.metadata, metadataTags, clipTags);
 
         this.ready = true;
       }
@@ -597,7 +597,8 @@ class VideoStore {
       console.error("Video error: ");
       // eslint-disable-next-line no-console
       console.error(video.error);
-      this.videoKey = this.videoKey + 1;
+
+      //setTimeout(() => this.videoKey = this.videoKey + 1, 1000);
     }));
 
     this.loading = false;

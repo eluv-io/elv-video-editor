@@ -29,7 +29,7 @@
     "dayjs": "^1.11.13",
     "deep-object-diff": "^1.1.0",
     "fraction.js": "^4.0.12",
-    "hls.js": "1.6.0",
+    "hls.js": "^1.6.2",
     "m3u8-parser": "^4.7.0",
     "mantine-datatable": "^7.15.1",
     "mime-types": "^2.1.35",
@@ -44,6 +44,7 @@
     "resize-observer-polyfill": "^1.5.1",
     "tiff.js": "^1.0.0",
     "url-join": "^4.0.0",
+    "uuid": "^11.1.0",
     "wouter": "^3.5.0"
   },
   "devDependencies": {
@@ -72,7 +73,6 @@
     "stylelint-config-standard-scss": "^14.0.0",
     "stylelint-order": "^6.0.3",
     "url": "^0.11.2",
-    "uuid": "^8.3.2",
     "vite": "^5.4.11",
     "vite-plugin-node-polyfills": "^0.22.0",
     "vite-plugin-static-copy": "^2.2.0"

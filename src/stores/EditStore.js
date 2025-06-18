@@ -1,6 +1,6 @@
 import {flow, makeAutoObservable, runInAction} from "mobx";
 import UrlJoin from "url-join";
-import {Unproxy} from "@/utils/Utils.js";
+import {ConvertColor, Unproxy} from "@/utils/Utils.js";
 import ABRProfileLiveToVod from "@eluvio/elv-client-js/src/abr_profiles/abr_profile_live_to_vod.js";
 
 class EditStore {
@@ -246,6 +246,8 @@ class EditStore {
 
     yield this.SavePrimaryClip();
 
+    yield this.SaveTrackSettings();
+
     /*
     // Show some progress while aggregation is running
     const progressInterval = setInterval(() =>
@@ -273,6 +275,35 @@ class EditStore {
     this.ResetPage("tags");
     this.ResetPage("clips");
     this.rootStore.videoStore.Reload();
+  });
+
+  SaveTrackSettings = flow(function * () {
+    const objectId = this.rootStore.videoStore.videoObject.objectId;
+    const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
+    const writeToken = yield this.rootStore.editStore.InitializeWrite({objectId});
+
+    yield Promise.all(
+      ["metadata", "clip"].map(async type => {
+        const tracks = this.rootStore.trackStore.tracks.filter(track => track.trackType === type);
+        let trackSettings = {};
+
+        tracks.forEach(track =>
+          trackSettings[track.key] = {
+            key: track.key,
+            label: track.label,
+            color: ConvertColor({rgb: track.color})
+          }
+        );
+
+        await this.client.ReplaceMetadata({
+          libraryId,
+          objectId,
+          writeToken,
+          metadataSubtree: UrlJoin("/", type === "clip" ? "clips" : "video_tags", "evie", "tracks"),
+          metadata: Unproxy(trackSettings)
+        });
+      })
+    );
   });
 
   SaveTags = flow(function * () {
@@ -377,6 +408,7 @@ class EditStore {
             break;
         }
 
+        // End of track handling
         continue;
       }
 
@@ -410,6 +442,7 @@ class EditStore {
           }
 
           modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags.push({
+            id: tag.tagId,
             text: tag.text,
             start_time: Math.floor(tag.startTime * 1000),
             end_time: Math.ceil(tag.endTime * 1000),
@@ -419,6 +452,7 @@ class EditStore {
 
         case "modify":
           modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags[tagOrigin.ti] = {
+            tagId: tag.tagId,
             ...modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags[tagOrigin.ti],
             text: tag.text,
             start_time: Math.floor(tag.startTime * 1000),
@@ -608,6 +642,7 @@ class EditStore {
             break;
         }
 
+        // End track handling
         continue;
       }
 
@@ -640,6 +675,7 @@ class EditStore {
           }
 
           modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey].tags.push({
+            id: tag.tagId,
             text: tag.text,
             box: tag.box,
             confidence: tag.confidence
@@ -649,6 +685,7 @@ class EditStore {
 
         case "modify":
           modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey].tags[tagOrigin.ti] = {
+            id: tag.tagId,
             ...modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey].tags[tagOrigin.ti],
             text: tag.text,
             box: tag.box,
