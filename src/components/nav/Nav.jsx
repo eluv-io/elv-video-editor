@@ -2,7 +2,7 @@ import NavStyles from "@/assets/stylesheets/modules/nav.module.scss";
 
 import React from "react";
 import {observer} from "mobx-react-lite";
-import {compositionStore, editStore, rootStore, videoStore} from "@/stores";
+import {compositionStore, editStore, groundTruthStore, rootStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {IconButton} from "@/components/common/Common";
 import UrlJoin from "url-join";
@@ -12,6 +12,7 @@ import TagIcon from "@/assets/icons/v2/tag.svg";
 import ClipIcon from "@/assets/icons/v2/clip.svg";
 import AssetIcon from "@/assets/icons/v2/asset.svg";
 import CompositionIcon from "@/assets/icons/v2/composition.svg";
+import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
 
 const S = CreateModuleClassMatcher(NavStyles);
 
@@ -62,6 +63,14 @@ const Nav = observer(() => {
       icon: AssetIcon,
       active: rootStore.page === "assets",
       hasChanges: editStore.HasUnsavedChanges("assets")
+    },
+    {
+      label: "Ground Truth",
+      key: "ground-truth",
+      to: "/ground-truth",
+      icon: GroundTruthIcon,
+      active: rootStore.page === "ground-truth",
+      hasChanges: groundTruthStore.hasUnsavedChanges
     }
   ];
 

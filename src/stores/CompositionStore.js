@@ -1369,6 +1369,7 @@ class CompositionStore {
     yield this.rootStore.LoadResource({
       key: "my-compositions",
       id: "my-compositions",
+      bind: this,
       Load: flow(function * () {
         const compositions = yield this.client.walletClient.ProfileMetadata({
           type: "app",
@@ -1396,7 +1397,7 @@ class CompositionStore {
 
           this.myCompositions = myCompositions;
         }
-      }).bind(this)
+      })
     });
   });
 

@@ -142,6 +142,7 @@ class BrowserStore {
       id: objectId,
       force: noCache,
       ttl: 60,
+      bind: this,
       Load: flow(function * () {
         yield this.rootStore.compositionStore.LoadMyCompositions();
 
@@ -312,11 +313,11 @@ class BrowserStore {
             }),
           metadata
         };
-      }).bind(this)
+      })
     });
   });
 
-  ListObjects = flow(function * ({libraryId, page=1, perPage=25, filter="", cacheId=""}) {
+  ListObjects = flow(function * ({libraryId, page=1, perPage=25, filter=""}) {
     if(filter.startsWith("iq__") || filter.startsWith("hq__")) {
       filter = "";
     }
@@ -336,8 +337,7 @@ class BrowserStore {
         filter: filters,
         start: (page-1) * perPage,
         limit: perPage,
-        sort: "public/name",
-        cacheId
+        sort: "public/name"
       }
     });
 
@@ -361,11 +361,43 @@ class BrowserStore {
     };
   });
 
+  ListGroundTruthPools = flow(function * ({start=0, limit=10, page, perPage, filter=""}) {
+    if(page && perPage) {
+      start = (page - 1) * perPage;
+      limit = perPage;
+    }
+
+    yield this.rootStore.groundTruthStore.LoadGroundTruthPools();
+
+    const pools = Object.values(this.rootStore.groundTruthStore.pools)
+      .filter(pool => !filter || pool.name.toLowerCase().includes(filter.toLowerCase()))
+      .sort((a, b) => a?.name?.localeCompare(b?.name));
+    const total = pools.length;
+
+    return {
+      content: yield Promise.all(
+        pools.slice(start, start + limit)
+          .map(async pool =>
+            await this.ObjectDetails({objectId: pool.objectId})
+          )
+      ),
+      paging: {
+        page,
+        perPage,
+        start,
+        limit,
+        pages: Math.ceil(total / perPage),
+        total
+      }
+    };
+  });
+
   // My library
   LoadMyLibrary = flow(function * () {
     yield this.rootStore.LoadResource({
       key: "my-library",
       id: "my-library",
+      bind: this,
       Load: flow(function * () {
         const myLibraryItems = yield this.client.walletClient.ProfileMetadata({
           type: "app",
@@ -379,7 +411,7 @@ class BrowserStore {
         } else {
           this.myLibraryItems = [];
         }
-      }).bind(this)
+      })
     });
   });
 

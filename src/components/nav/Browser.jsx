@@ -2,7 +2,7 @@ import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 
 import React, {useState, useEffect} from "react";
 import {observer} from "mobx-react-lite";
-import {rootStore, browserStore, compositionStore, editStore} from "@/stores";
+import {rootStore, browserStore, compositionStore, editStore, groundTruthStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {
   AsyncButton,
@@ -29,6 +29,7 @@ import PageForwardIcon from "@/assets/icons/Forward.svg";
 import PageBackIcon from "@/assets/icons/Backward.svg";
 import DeleteIcon from "@/assets/icons/trash.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
+import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -132,7 +133,7 @@ const SearchBar = observer(({filter, setFilter, delay=500, Select}) => {
   );
 });
 
-const BrowserTable = observer(({
+export const BrowserTable = observer(({
   filter,
   Load,
   Select,
@@ -190,7 +191,7 @@ const BrowserTable = observer(({
             Name
           </div>
           {
-            !["object", "composition", "my-library"].includes(contentType) ? null :
+            !["object", "composition", "my-library", "ground-truth"].includes(contentType) ? null :
               <>
                 {
                   noDuration ? null :
@@ -238,9 +239,7 @@ const BrowserTable = observer(({
                     Select({libraryId: item.id, ...item});
                   } else if(contentType === "object") {
                     Select({objectId: item.id, ...item});
-                  } else if(contentType === "composition") {
-                    Select(item);
-                  } else if(contentType === "my-library") {
+                  } else {
                     Select(item);
                   }
                 }}
@@ -254,9 +253,10 @@ const BrowserTable = observer(({
                       <img src={item.image} alt={item.name} className={S("browser-table__cell-image")}/> :
                       <SVG
                         src={
-                          item.compositionKey ? CompositionIcon :
-                            item.duration ?
-                              VideoIcon : defaultIcon
+                          contentType === "ground-truth" ? GroundTruthIcon :
+                            item.compositionKey ? CompositionIcon :
+                              item.duration ?
+                                VideoIcon : defaultIcon
                         }
                         className={S("browser-table__cell-icon")}
                       />
@@ -301,7 +301,7 @@ const BrowserTable = observer(({
                   </div>
                 </div>
                 {
-                  !["object", "composition", "my-library"].includes(contentType) ? null :
+                  !["object", "composition", "my-library", "ground-truth"].includes(contentType) ? null :
                     <>
                       {
                         noDuration ? null :
@@ -583,6 +583,40 @@ const Browser = observer(() => {
   return <LibraryBrowser Select={Select} />;
 });
 
+export const GroundTruthPoolBrowser = observer(() => {
+  const [filter, setFilter] = useState("");
+  const [redirect, setRedirect] = useState(undefined);
+
+  if(redirect) {
+    return <Redirect to={redirect} />;
+  }
+
+  const Select = ({id, objectId}) => {
+    const pool = groundTruthStore.pools[id] || groundTruthStore.pools[objectId];
+
+    if(!pool) { return; }
+
+    setRedirect("/" + id || objectId);
+  };
+
+  return (
+    <div className={S("browser-page")}>
+      <div className={S("browser", "browser--ground-truth")}>
+        <SearchBar filter={filter} setFilter={setFilter} Select={Select}/>
+        <h1 className={S("browser__header")}>All Ground Truth</h1>
+        <BrowserTable
+          filter={filter}
+          defaultIcon={ObjectIcon}
+          contentType="ground-truth"
+          noDuration
+          Select={Select}
+          Load={async args => await browserStore.ListGroundTruthPools(args)}
+        />
+      </div>
+    </div>
+  );
+});
+
 const MyLibraryBrowser = observer(() => {
   const [filter, setFilter] = useState("");
   const [redirect, setRedirect] = useState(undefined);
@@ -753,8 +787,8 @@ const BrowserPage = observer(() => {
         </Tabs.List>
         {
           tab === "content" ?
-            <Browser /> :
-            <MyLibraryBrowser />
+            <Browser/> :
+            <MyLibraryBrowser/>
         }
       </Tabs>
     </div>

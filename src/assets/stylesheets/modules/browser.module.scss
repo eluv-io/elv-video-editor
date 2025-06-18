@@ -77,6 +77,12 @@
     }
   }
 
+  &--ground-truth {
+    .browser-table__row {
+      grid-template-columns: 1fr 200px;
+    }
+  }
+
   &--my-library {
     .browser-table__row {
       grid-template-columns: 1fr 100px 200px 100px;

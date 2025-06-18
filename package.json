@@ -45,7 +45,7 @@
     "tiff.js": "^1.0.0",
     "url-join": "^4.0.0",
     "uuid": "^11.1.0",
-    "wouter": "^3.5.0"
+    "wouter": "^3.7.1"
   },
   "devDependencies": {
     "@modyfi/vite-plugin-yaml": "^1.1.1",

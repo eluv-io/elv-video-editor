@@ -1,4 +1,8 @@
 import {configure, makeAutoObservable, flow} from "mobx";
+import Id from "@/utils/Id.js";
+import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
+import {v4 as UUID, parse as UUIDParse} from "uuid";
+
 import AssetStore from "@/stores/AssetStore.js";
 import BrowserStore from "./BrowserStore";
 import EditStore from "./EditStore";
@@ -10,10 +14,9 @@ import VideoStore from "./VideoStore";
 import FileBrowserStore from "./FileBrowserStore.js";
 import CompositionStore from "@/stores/CompositionStore.js";
 import DownloadStore from "@/stores/DownloadStore.js";
-import AIStore from "@/stores/AIStore.jsx";
-import Id from "@/utils/Id.js";
-import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
-import {v4 as UUID, parse as UUIDParse} from "uuid";
+import AIStore from "@/stores/AIStore.js";
+import GroundTruthStore from "@/stores/GroundTruthStore.js";
+
 
 import LocalizationEN from "@/assets/localizations/en.yml";
 import UrlJoin from "url-join";
@@ -52,25 +55,30 @@ class RootStore {
   selectedObjectName = "";
 
   _resources = {};
-  logTiming = true;
+  logTiming = new URLSearchParams(window.location.search).has("logTiming") || sessionStorage.getItem("log-timing");
 
   constructor() {
     makeAutoObservable(this);
 
     this.aiStore = new AIStore(this);
-    this.editStore = new EditStore(this);
-    this.tagStore = new TagStore(this);
-    this.keyboardControlStore = new KeyboardControlStore(this);
+    this.assetStore = new AssetStore(this);
     this.browserStore = new BrowserStore(this);
+    this.compositionStore = new CompositionStore(this);
+    this.downloadStore = new DownloadStore(this);
+    this.editStore = new EditStore(this);
+    this.fileBrowserStore = new FileBrowserStore(this);
+    this.groundTruthStore = new GroundTruthStore(this);
+    this.keyboardControlStore = new KeyboardControlStore(this);
     this.overlayStore = new OverlayStore(this);
+    this.tagStore = new TagStore(this);
     this.trackStore = new TrackStore(this);
     this.videoStore = new VideoStore(this);
-    this.compositionStore = new CompositionStore(this);
-    this.assetStore = new AssetStore(this);
-    this.fileBrowserStore = new FileBrowserStore(this);
-    this.downloadStore = new DownloadStore(this);
 
     this.InitializeClient();
+
+    if(this.logTiming) {
+      sessionStorage.setItem("log-timing", "true");
+    }
 
     window.rootStore = this;
   }
@@ -271,7 +279,7 @@ class RootStore {
   });
 
   // Ensure the specified load method is called only once unless forced
-  LoadResource = flow(function * ({key, id, force=false, ttl, Load}) {
+  LoadResource = flow(function * ({key, id, force=false, ttl, Load, bind}) {
     if(force || (ttl && this._resources[key]?.[id] && Date.now() - this._resources[key][id].retrievedAt > ttl * 1000)) {
       // Force - drop all loaded content
       this._resources[key] = {};
@@ -280,6 +288,10 @@ class RootStore {
     this._resources[key] = this._resources[key] || {};
 
     if(force || !this._resources[key][id]) {
+      if(bind) {
+        Load = Load.bind(bind);
+      }
+
       if(this.logTiming) {
         this._resources[key][id] = {
           promise: (async (...args) => {
@@ -316,15 +328,17 @@ class RootStore {
 const root = new RootStore();
 
 export const rootStore = root;
-export const editStore = rootStore.editStore;
-export const tagStore = rootStore.tagStore;
-export const keyboardControlsStore = rootStore.keyboardControlStore;
+
+export const aiStore = rootStore.aiStore;
+export const assetStore = rootStore.assetStore;
 export const browserStore = rootStore.browserStore;
+export const compositionStore = rootStore.compositionStore;
+export const downloadStore = rootStore.downloadStore;
+export const editStore = rootStore.editStore;
+export const fileBrowserStore = rootStore.fileBrowserStore;
+export const groundTruthStore = rootStore.groundTruthStore;
+export const keyboardControlsStore = rootStore.keyboardControlStore;
 export const overlayStore = rootStore.overlayStore;
+export const tagStore = rootStore.tagStore;
 export const trackStore = rootStore.trackStore;
 export const videoStore = rootStore.videoStore;
-export const compositionStore = rootStore.compositionStore;
-export const assetStore = rootStore.assetStore;
-export const fileBrowserStore = rootStore.fileBrowserStore;
-export const downloadStore = rootStore.downloadStore;
-export const aiStore = rootStore.aiStore;
