@@ -104,7 +104,7 @@ const PageControls = observer(({currentPage, pages, maxSpread=15, SetPage}) => {
   );
 });
 
-const SearchBar = observer(({filter, setFilter, delay=500, Select}) => {
+export const SearchBar = observer(({filter, setFilter, delay=500, placeholder, Select}) => {
   const [updateTimeout, setUpdateTimeout] = useState(undefined);
   const [input, setInput] = useState(filter);
 
@@ -117,7 +117,7 @@ const SearchBar = observer(({filter, setFilter, delay=500, Select}) => {
   return (
     <input
       value={input}
-      placeholder="Title, Content ID, Version Hash"
+      placeholder={placeholder || "Title, Content ID, Version Hash"}
       onChange={event => setInput(event.target.value)}
       onKeyDown={async event => {
         if(!Select || event.key !== "Enter") { return; }
@@ -180,7 +180,7 @@ export const BrowserTable = observer(({
   if(showLoader) {
     table = (
       <div className={S("browser-table", "browser-table--loading")}>
-        <Loader />
+        <Loader/>
       </div>
     );
   } else {

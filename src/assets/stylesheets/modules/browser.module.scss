@@ -27,7 +27,7 @@
     display: flex;
     font-size: 20px;
     font-weight: 600;
-    gap: 10px;
+    gap: 15px;
     margin: 15px 0 5px;
   }
 
@@ -36,6 +36,12 @@
     color: var(--text-secondary);
     height: 30px;
     width: 30px;
+  }
+
+  &__header-chevron {
+    font-size: 10px;
+    font-weight: 400;
+    padding-top: 2px;
   }
 }
 

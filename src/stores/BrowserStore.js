@@ -130,7 +130,7 @@ class BrowserStore {
     }
   }
 
-  ObjectDetails = flow(function * ({objectId, versionHash, publicMetadata, noCache}) {
+  ObjectDetails = flow(function * ({objectId, versionHash, publicMetadata, force}) {
     if(!versionHash) {
       versionHash = yield this.rootStore.client.LatestVersionHash({objectId});
     }
@@ -140,7 +140,7 @@ class BrowserStore {
     return yield this.rootStore.LoadResource({
       key: "object-details",
       id: objectId,
-      force: noCache,
+      force,
       ttl: 60,
       bind: this,
       Load: flow(function * () {
@@ -370,7 +370,11 @@ class BrowserStore {
     yield this.rootStore.groundTruthStore.LoadGroundTruthPools();
 
     const pools = Object.values(this.rootStore.groundTruthStore.pools)
-      .filter(pool => !filter || pool.name.toLowerCase().includes(filter.toLowerCase()))
+      .filter(pool =>
+        !filter ||
+        pool.name.toLowerCase().includes(filter.toLowerCase()) ||
+        pool.objectId.toLowerCase().includes(filter.toLowerCase())
+      )
       .sort((a, b) => a?.name?.localeCompare(b?.name));
     const total = pools.length;
 
@@ -613,7 +617,7 @@ class BrowserStore {
         case "library":
           return { libraryId };
         case "object":
-          return yield this.ObjectDetails({objectId, versionHash, noCache: true});
+          return yield this.ObjectDetails({objectId, versionHash, force: true});
         default:
           // eslint-disable-next-line no-console
           console.error("Invalid content:", contentId, accessType);

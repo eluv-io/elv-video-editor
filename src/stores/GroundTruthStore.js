@@ -12,11 +12,11 @@ class GroundTruthStore {
     return this.rootStore.client;
   }
 
-  LoadGroundTruthPools = flow(function * ({noCache}={}) {
+  LoadGroundTruthPools = flow(function * ({force}={}) {
     return yield this.rootStore.LoadResource({
       key: "ground-truth-pools",
       id: "load",
-      force: noCache,
+      force,
       bind: this,
       Load: flow(function * () {
         // TODO: this should be loaded properly
@@ -27,6 +27,7 @@ class GroundTruthStore {
           poolIds.map(async poolId => {
             try {
               pools[poolId] = {
+                ...(this.pools[poolId] || {}),
                 objectId: poolId,
                 name: (await this.client.ContentObjectMetadata({
                   libraryId: await this.client.ContentObjectLibraryId({objectId: poolId}),
@@ -44,6 +45,37 @@ class GroundTruthStore {
         );
 
         this.pools = pools;
+      })
+    });
+  });
+
+  LoadGroundTruthPool = flow(function * ({poolId, force}) {
+    return yield this.rootStore.LoadResource({
+      key: "ground-truth",
+      id: poolId,
+      force,
+      bind: this,
+      Load: flow(function * () {
+        const libraryId = yield this.client.ContentObjectLibraryId({objectId: poolId});
+        const versionHash = yield this.client.LatestVersionHash({objectId: poolId});
+
+        const metadata = (yield this.client.ContentObjectMetadata({
+          versionHash,
+          metadataSubtree: "/",
+          produceLinkUrls: true,
+          select: [
+            "/public/name",
+            "/ground_truth"
+          ]
+        }));
+
+        this.pools[poolId] = {
+          libraryId,
+          objectId: poolId,
+          versionHash,
+          name: metadata?.public?.name || metadata?.ground_truth?.model_domain || poolId,
+          metadata: metadata.ground_truth || {}
+        };
       })
     });
   });
