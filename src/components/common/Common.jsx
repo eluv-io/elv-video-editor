@@ -645,6 +645,8 @@ export const Modal = observer((props) => {
 });
 
 export const ClipTimeInfo = observer(({store, clipInFrame, clipOutFrame, className=""}) => {
+  if(!store) { return null; }
+
   clipInFrame = clipInFrame || 0;
   clipOutFrame = clipOutFrame || store.totalFrames - 1;
 

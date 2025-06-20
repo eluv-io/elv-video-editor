@@ -13,7 +13,7 @@ import {
   LoaderImage,
   SMPTEInput
 } from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher, useIsVisible} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 
 import EditIcon from "@/assets/icons/Edit.svg";

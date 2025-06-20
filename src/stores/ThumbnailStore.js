@@ -24,7 +24,7 @@ class ThumbnailStore {
     );
   }
 
-  ThumbnailImages(startTime, endTime) {
+  ThumbnailImages(startTime, endTime, maxThumbnails) {
     if(!this.thumbnailStatus.available) { return []; }
 
     if(typeof endTime === "undefined") {
@@ -32,6 +32,19 @@ class ThumbnailStore {
     }
 
     let thumbnailIndexes = this.intervalTree?.search(startTime, endTime);
+
+    if(maxThumbnails && thumbnailIndexes.length > maxThumbnails) {
+      const interval = thumbnailIndexes.length / maxThumbnails;
+      let trimmedThumbnails = [];
+      for(let i = 0; i < maxThumbnails; i++) {
+        trimmedThumbnails.push(
+          thumbnailIndexes[Math.floor(i * interval)]
+        );
+      }
+
+      thumbnailIndexes = trimmedThumbnails;
+    }
+
     return thumbnailIndexes.map(thumbnailIndex => {
       const tag = this.thumbnails?.[thumbnailIndex?.toString()];
 

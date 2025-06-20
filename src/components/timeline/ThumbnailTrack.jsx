@@ -135,6 +135,10 @@ const ThumbnailTrack = observer(({
     return () => resizeObserver?.disconnect();
   }, [ref]);
 
+  if(!store) {
+    return null;
+  }
+
   const scale = (endFrame - startFrame) / store.totalFrames;
   const startProgress = startFrame / store.totalFrames;
 

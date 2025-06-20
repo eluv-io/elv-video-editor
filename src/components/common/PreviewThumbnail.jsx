@@ -13,7 +13,7 @@ const PreviewThumbnail = observer(({
   endFrame,
   useLoaderImage,
   showDuration=true,
-  //maxThumbnails,
+  maxThumbnails=50,
   loadingClassName,
   ...props
 }) => {
@@ -32,13 +32,18 @@ const PreviewThumbnail = observer(({
   endFrame = endFrame || store.totalFrames - 1;
 
   useEffect(() => {
+    if(!store || !store?.thumbnailStore.thumbnailStatus.available) {
+      return;
+    }
+
     setThumbnails(
       store.thumbnailStore.ThumbnailImages(
         store.FrameToTime(startFrame),
-        store.FrameToTime(endFrame)
+        store.FrameToTime(endFrame),
+        maxThumbnails
       )
     );
-  }, [store.thumbnailStore.thumbnailStatus.available]);
+  }, [store?.thumbnailStore.thumbnailStatus.available]);
 
   useEffect(() => {
     if(!ref) { return; }
@@ -64,7 +69,7 @@ const PreviewThumbnail = observer(({
     });
   }, [ref, clientX]);
 
-  if(!store.thumbnailStore.thumbnailStatus.available || !thumbnails) {
+  if(!store?.thumbnailStore.thumbnailStatus.available || !thumbnails) {
     return !useLoaderImage ? null :
       <LoaderImage
         {...props}

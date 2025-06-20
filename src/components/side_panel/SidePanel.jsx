@@ -314,7 +314,7 @@ const SourceSelection = observer(() => {
                   className={S("search__source-option", compositionStore.selectedSourceId === objectId ? "search__source-option--active" : "")}
                 >
                   <PreviewThumbnail
-                    //maxThumbnails={10}
+                    maxThumbnails={10}
                     store={compositionStore.ClipStore({sourceId: objectId})}
                     className={S("search__source-thumbnail")}
                   />
