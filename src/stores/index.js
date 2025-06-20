@@ -13,6 +13,7 @@ import DownloadStore from "@/stores/DownloadStore.js";
 import AIStore from "@/stores/AIStore.jsx";
 import Id from "@/utils/Id.js";
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
+import {v4 as UUID, parse as UUIDParse} from "uuid";
 
 import LocalizationEN from "@/assets/localizations/en.yml";
 import UrlJoin from "url-join";
@@ -49,6 +50,9 @@ class RootStore {
 
   selectedObjectId;
   selectedObjectName = "";
+
+  _resources = {};
+  logTiming = true;
 
   constructor() {
     makeAutoObservable(this);
@@ -152,7 +156,7 @@ class RootStore {
     this.tenantContractId = yield client.userProfileClient.TenantContractId();
 
     yield this.aiStore.LoadSearchIndexes();
-    this.compositionStore.Initialize();
+    yield this.compositionStore.Initialize();
   });
 
 
@@ -214,7 +218,11 @@ class RootStore {
     this.expandedPanel = panel;
   }
 
-  NextId() {
+  NextId(uuid=false) {
+    if(uuid) {
+      return this.client.utils.B58(UUIDParse(UUID()));
+    }
+
     return Id.next();
   }
 
@@ -261,7 +269,53 @@ class RootStore {
 
     return this.versionHashes[objectId].versionHash;
   });
+
+  // Ensure the specified load method is called only once unless forced
+  LoadResource = flow(function * ({key, id, force=false, ttl, Load}) {
+    if(force || (ttl && this._resources[key]?.[id] && Date.now() - this._resources[key][id].retrievedAt > ttl * 1000)) {
+      // Force - drop all loaded content
+      this._resources[key] = {};
+    }
+
+    this._resources[key] = this._resources[key] || {};
+
+    if(force || !this._resources[key][id]) {
+      if(this.logTiming) {
+        this._resources[key][id] = {
+          promise: (async (...args) => {
+            let start = Date.now();
+            // eslint-disable-next-line no-console
+            console.log(`Start Timing ${key.split("-").join(" ")} - ${id}`);
+            const result = await Load(...args);
+            // eslint-disable-next-line no-console
+            console.log(`${(Date.now() - start)}ms | End Timing ${key.split("-").join(" ")} - ${id}`);
+
+            return result;
+          })(),
+          retrievedAt: Date.now()
+        };
+      } else {
+        this._resources[key][id] = {
+          promise: Load(),
+          retrievedAt: Date.now()
+        };
+      }
+    }
+
+    return yield this._resources[key][id].promise;
+  });
+
+  ClearResource({key, id}) {
+    if(this._resources[key]) {
+      if(id) {
+        delete this._resources[key][id];
+      } else {
+        delete this._resources[key];
+      }
+    }
+  }
 }
+
 
 const root = new RootStore();
 

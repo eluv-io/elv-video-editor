@@ -512,7 +512,7 @@ const Overlay = observer(({element, asset, highlightTag}) => {
       />
     );
   }
-  
+
   return (
     <div className={S("overlay")} style={{width: `${overlayStore.overlayCanvasDimensions.width}px`}}>
       <Tooltip
@@ -521,13 +521,13 @@ const Overlay = observer(({element, asset, highlightTag}) => {
         offset={10}
         openDelay={500}
         label={
-          <div className={S("tooltip", "overlay__tooltip")}>
+          <div className={S("tooltip", "tooltip--fixed")}>
             {hoverTags.map((tag, index) =>
               <div className={S("tooltip__item")} key={`tag-${index}`}>
                 <div className={S("tooltip__label")}>
                   {tag.label}
                 </div>
-                <div className={S("tooltip__content", "overlay__tooltip-content")}>
+                <div className={S("tooltip__content")}>
                   {
                     (Array.isArray(tag.text) ? tag.text : [tag.text])
                       .map((text, ti) => <p key={`tag-${ti}`}>{text}</p>)

@@ -23,7 +23,7 @@ const CompositionsView = observer(() => {
       if(objectId !== compositionStore.compositionObject?.objectId) {
         compositionStore.LoadMyClips({objectId});
         compositionStore.SetCompositionObject({objectId, compositionKey, addToMyLibrary: true})
-          .then(() => rootStore.SetSelectedObjectId(objectId, compositionStore.videoStore.sourceVideoStore.name));
+          .then(() => rootStore.SetSelectedObjectId(objectId, compositionStore.compositionObject?.name));
       }
     }
   }, [objectId, compositionKey]);
@@ -38,7 +38,7 @@ const CompositionsView = observer(() => {
     );
   }
 
-  if(!objectId) {
+  if(!objectId || !compositionKey) {
     // Selection view
     return (
       <PanelGroup direction="vertical" className="panel-group">
@@ -49,7 +49,7 @@ const CompositionsView = observer(() => {
             </Panel>
             <PanelResizeHandle />
             <Panel id="video" order={2} defaultSize={50}>
-              <CompositionVideoSection store={compositionStore.videoStore} />
+              <CompositionVideoSection store={compositionStore.videoStore} blank />
             </Panel>
           </PanelGroup>
         </Panel>

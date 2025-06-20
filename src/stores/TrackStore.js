@@ -44,6 +44,7 @@ class TrackStore {
 
   totalTags = 0;
   uiUpdateDelayFactor = 1;
+  trackAlpha = 100;
 
   colors = [
     "#FFFFFF",
@@ -55,7 +56,7 @@ class TrackStore {
     "#405ff5",
     "#be6ef6",
     "#fb8e3e"
-  ].map(color => ConvertColor({hex: color, alpha: 100}));
+  ].map(color => ConvertColor({hex: color, alpha: this.trackAlpha}));
 
   constructor(rootStore) {
     makeAutoObservable(
@@ -139,7 +140,18 @@ class TrackStore {
     this.editingTrack = false;
   }
 
-  TrackColor(key) {
+  TrackColor(key, type) {
+    let savedTrackInfo;
+    if(type === "metadata") {
+      savedTrackInfo = this.tagTrackSettings?.[key];
+    } else if(type === "clip") {
+      savedTrackInfo = this.clipTrackSettings?.[key];
+    }
+
+    if(savedTrackInfo) {
+      return ConvertColor({hex: savedTrackInfo.color, alpha: this.trackAlpha});
+    }
+
     const index = key.split("").reduce((acc, v, i) => acc + v.charCodeAt(0) * i, 0) % this.colors.length;
 
     return this.colors[index];
@@ -172,7 +184,7 @@ class TrackStore {
 
   AddTag({trackId, tag}) {
     if(!tag.tagId) {
-      tag.tagId = this.rootStore.NextId();
+      tag.tagId = tag.id || this.rootStore.NextId(true);
     }
 
     this.tags[trackId][tag.tagId] = JSON.parse(JSON.stringify(tag));
@@ -306,7 +318,7 @@ class TrackStore {
 
     this.tracks.push({
       trackId,
-      color: color || this.TrackColor(key),
+      color: color || this.TrackColor(key, type),
       version: 1,
       label,
       key: key || `track-${label}`,
@@ -509,7 +521,14 @@ class TrackStore {
           if(!tag) { return; }
         }
 
+        let tagId;
+        if(tag?.lk === "user" && tag.id) {
+          // Ensure user tags have UUID tag IDs
+          tagId = this.rootStore.NextId(true);
+        }
+
         let parsedTag = Cue({
+          tagId,
           trackKey: key,
           tagType: type,
           startTime: millis ? (tag.start_time / 1000) : tag.start_time,
@@ -692,8 +711,12 @@ class TrackStore {
   }
 
 
-  InitializeTracks = flow(function * (metadataTags, clipTags) {
+  InitializeTracks = flow(function * (metadata, metadataTags, clipTags) {
     if(this.initialized) { return; }
+
+    // Get saved track settings from metadata
+    this.tagTrackSettings = metadata?.video_tags?.evie?.tracks;
+    this.clipTrackSettings = metadata?.clips?.evie?.tracks;
 
     this.AddPrimaryContentTrack();
     yield this.AddSubtitleTracks();

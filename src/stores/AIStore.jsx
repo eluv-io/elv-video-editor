@@ -357,7 +357,7 @@ class AIStore {
     try {
       const videoObjectId =
         this.rootStore.videoStore.videoObject?.objectId ||
-        this.rootStore.compositionStore.sourceVideoStore?.videoObject?.objectId;
+        this.rootStore.compositionStore.primarySourceVideoStore?.videoObject?.objectId;
 
       if(videoObjectId && aggregate) {
         yield this.AggregateUserTags({objectId: videoObjectId});

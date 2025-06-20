@@ -190,17 +190,20 @@ class DownloadStore {
       };
 
       this.SaveDownloadJobInfo();
-      this.downloadJobInfo[response.job_id].automaticDownloadInterval = setInterval(async () => {
+      let interval = setInterval(async () => {
         const status = await this.DownloadJobStatus({jobId: response.job_id}) || {};
 
         if(status?.status === "completed") {
+          clearInterval(interval);
           this.SaveDownloadJob({jobId: response.job_id});
         }
 
         if(status?.status !== "processing") {
-          clearInterval(this.downloadJobInfo?.[response.job_id]?.automaticDownloadInterval);
+          clearInterval(interval);
         }
       }, 10000);
+
+      this.downloadJobInfo[response.job_id].automaticDownloadInterval = interval;
 
       return {
         jobId: response.job_id,

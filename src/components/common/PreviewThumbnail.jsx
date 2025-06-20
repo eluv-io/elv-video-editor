@@ -7,7 +7,16 @@ import {LoaderImage} from "@/components/common/Common.jsx";
 
 const S = CreateModuleClassMatcher(CommonStyles);
 
-const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage, showDuration=true, ...props}) => {
+const PreviewThumbnail = observer(({
+  store,
+  startFrame,
+  endFrame,
+  useLoaderImage,
+  showDuration=true,
+  maxThumbnails=50,
+  loadingClassName,
+  ...props
+}) => {
   const [ref, setRef] = useState(null);
   const [thumbnails, setThumbnails] = useState(null);
   const [brokenImages, setBrokenImages] = useState({});
@@ -19,28 +28,22 @@ const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage,
     progress: 0
   });
 
+  startFrame = startFrame || 0;
+  endFrame = endFrame || store.totalFrames - 1;
+
   useEffect(() => {
-    let startTime = store.FrameToTime(startFrame);
-    const endTime = store.FrameToTime(endFrame);
-
-    // Thumbnail interval based on length of clip
-    const interval = Math.min(60, Math.max(1, (endFrame - startFrame) / store.frameRate / 120));
-
-    let thumbnailMap = {};
-    let thumbnailList = [];
-    while(startTime < endTime) {
-      const thumbnailUrl = store.thumbnailStore.ThumbnailImage(startTime);
-
-      if(!thumbnailMap[thumbnailUrl]) {
-        thumbnailList.push(thumbnailUrl);
-        thumbnailMap[thumbnailUrl] = true;
-      }
-
-      startTime += interval;
+    if(!store || !store?.thumbnailStore.thumbnailStatus.available) {
+      return;
     }
 
-    setThumbnails(thumbnailList);
-  }, [store.thumbnailStore.thumbnailStatus.available]);
+    setThumbnails(
+      store.thumbnailStore.ThumbnailImages(
+        store.FrameToTime(startFrame),
+        store.FrameToTime(endFrame),
+        maxThumbnails
+      )
+    );
+  }, [store?.thumbnailStore.thumbnailStatus.available]);
 
   useEffect(() => {
     if(!ref) { return; }
@@ -66,12 +69,12 @@ const PreviewThumbnail = observer(({store, startFrame, endFrame, useLoaderImage,
     });
   }, [ref, clientX]);
 
-  if(!store.thumbnailStore.thumbnailStatus.available || !thumbnails) {
+  if(!store?.thumbnailStore.thumbnailStatus.available || !thumbnails) {
     return !useLoaderImage ? null :
       <LoaderImage
         {...props}
         showWithoutSource
-        className={JoinClassNames(S("preview-thumbnail"), props.className)}
+        className={JoinClassNames(S("preview-thumbnail"), props.className, loadingClassName)}
       />;
   }
 

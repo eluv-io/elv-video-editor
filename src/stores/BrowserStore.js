@@ -5,7 +5,6 @@ class BrowserStore {
   libraries = undefined;
   selectedObject;
   myLibraryItems;
-
   liveToVodFormFields = {};
 
   constructor(rootStore) {
@@ -131,159 +130,190 @@ class BrowserStore {
     }
   }
 
-  ObjectDetails = flow(function * ({objectId, versionHash, publicMetadata}) {
+  ObjectDetails = flow(function * ({objectId, versionHash, publicMetadata, noCache}) {
     if(!versionHash) {
       versionHash = yield this.rootStore.client.LatestVersionHash({objectId});
     }
 
     objectId = this.rootStore.client.utils.DecodeVersionHash(versionHash).objectId;
 
-    const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
-
-    // Try and retrieve video duration
-    let metadata, duration, lastModified, forbidden, isVideo, hasChannels, channels, hasAssets, isLiveStream, isLive, vods;
-    try {
-      metadata = yield this.rootStore.client.ContentObjectMetadata({
-        versionHash: versionHash,
-        select: [
-          "public/name",
-          "public/display_image",
-          "commit/timestamp",
-          "channel/offerings/*/display_name",
-          "channel/offerings/*/updated_at",
-          "channel/offerings/*/items",
-          "assets",
-          "offerings/*/media_struct/duration_rat",
-          "live_recording/status",
-          "live_recording_copies"
-        ]
-      });
-
-      const savedChannels = Object.values(this.rootStore.compositionStore.myCompositions[objectId] || {})
-        .filter(channel => channel.writeTokenInfo)
-        .map(composition => ({
-          ...composition,
-          objectId,
-          duration: this.FormatDuration(composition.duration),
-          lastModifiedISO: composition.lastModified,
-          lastModified: this.FormatDate(composition.lastModified),
-          compositionKey: composition.compositionKey || composition.key
-        }));
-
-      hasChannels = !!metadata?.channel || savedChannels.length > 0;
-      hasAssets = !!metadata?.assets;
-
-      if(hasChannels) {
-        channels = [];
-
-        if(metadata?.channel) {
-          channels = Object.keys(metadata?.channel?.offerings || {}).map(channelKey => {
-            const channel = metadata.channel.offerings[channelKey];
-
-            let lastModified = channel.updated_at;
-            if(lastModified) {
-              lastModified = this.FormatDate(lastModified);
-            }
-
-            let duration;
-            if(channel.items) {
-              try {
-                duration = this.FormatDuration(
-                  channel.items.reduce((acc, item) =>
-                      acc + (FrameAccurateVideo.ParseRat(item.slice_end_rat) - FrameAccurateVideo.ParseRat(item.slice_start_rat)),
-                    0
-                  )
-                );
-              } catch(error) {
-                // eslint-disable-next-line no-console
-                console.error("Error parsing channel duration:");
-                // eslint-disable-next-line no-console
-                console.error(error);
-              }
-            }
-
-            return {
-              objectId,
-              compositionKey: channelKey,
-              label: channel.display_name || channelKey,
-              duration,
-              lastModifiedISO: channel.updated_at,
-              lastModified: lastModified
-            };
-          });
-        }
-
-        if(savedChannels.length > 0) {
-          channels = [
-            ...savedChannels,
-            ...channels.filter(({key}) => !savedChannels.find(channel => channel.key === key))
-          ];
-        }
-
-        channels = channels
-          .sort((a, b) => {
-            if(a.lastModifiedISO && b.lastModifiedISO) {
-              return a.lastModifiedISO > b.lastModifiedISO ? -1 : 1;
-            } else if(a.lastModifiedISO) {
-              return -1;
-            } else if(b.lastModifiedISO) {
-              return 1;
-            }
-
-            return a.label?.toLowerCase() < b.label?.toLowerCase() ? -1 : 1;
-          });
-      }
-
-      lastModified = metadata?.commit?.timestamp;
-      if(lastModified) {
-        lastModified = this.FormatDate(lastModified);
-      }
-
-      const offering = metadata?.offerings?.default ?
-        "default" :
-        Object.keys(metadata?.offerings || {})[0];
-
-      duration = metadata?.offerings?.[offering]?.media_struct?.duration_rat;
-
-      if(duration) {
-        isVideo = true;
-        duration = this.FormatDuration(duration);
-      }
-
-      isLiveStream = !!metadata?.live_recording;
-      isLive = isLiveStream && metadata.live_recording?.status?.state === "active";
-      vods = metadata.live_recording_copies;
-    } catch(error) {
-      if(error.status === 403) {
-        forbidden = true;
-      }
-    }
-
-    metadata = metadata || { public: publicMetadata };
-
-    return {
-      libraryId,
+    return yield this.rootStore.LoadResource({
+      key: "object-details",
       id: objectId,
-      objectId: objectId,
-      versionHash: versionHash,
-      forbidden,
-      lastModified,
-      duration,
-      isVideo,
-      hasChannels,
-      hasAssets,
-      channels,
-      isLiveStream,
-      isLive,
-      vods,
-      name: metadata?.public?.name || objectId,
-      image: !metadata?.public?.display_image ? undefined :
-        yield this.rootStore.client.LinkUrl({
+      force: noCache,
+      ttl: 60,
+      Load: flow(function * () {
+        yield this.rootStore.compositionStore.LoadMyCompositions();
+
+        const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
+
+        // Try and retrieve video duration
+        let
+          metadata,
+          duration,
+          frameRate,
+          lastModified,
+          forbidden,
+          isVideo,
+          hasChannels,
+          channels,
+          hasAssets,
+          isLiveStream,
+          isLive,
+          vods;
+
+        try {
+          metadata = yield this.rootStore.client.ContentObjectMetadata({
+            versionHash: versionHash,
+            select: [
+              "public/name",
+              "public/display_image",
+              "commit/timestamp",
+              "channel/offerings/*/display_name",
+              "channel/offerings/*/updated_at",
+              "channel/offerings/*/items",
+              "assets",
+              "offerings/*/media_struct/duration_rat",
+              "offerings/*/media_struct/streams/*/rate",
+              "live_recording/status",
+              "live_recording_copies"
+            ]
+          });
+
+          const savedChannels = Object.values(this.rootStore.compositionStore.myCompositions[objectId] || {})
+            .filter(channel => channel.writeTokenInfo)
+            .map(composition => ({
+              ...composition,
+              objectId,
+              duration: this.FormatDuration(composition.duration),
+              lastModifiedISO: composition.lastModified,
+              lastModified: this.FormatDate(composition.lastModified),
+              compositionKey: composition.compositionKey || composition.key
+            }));
+
+          hasChannels = !!metadata?.channel || savedChannels.length > 0;
+          hasAssets = !!metadata?.assets;
+
+          if(hasChannels) {
+            channels = [];
+
+            if(metadata?.channel) {
+              channels = Object.keys(metadata?.channel?.offerings || {}).map(channelKey => {
+                const channel = metadata.channel.offerings[channelKey];
+
+                let lastModified = channel.lastUpdated || channel.updated_at;
+                if(lastModified) {
+                  lastModified = this.FormatDate(lastModified);
+                }
+
+                let duration;
+                if(channel.items) {
+                  try {
+                    duration = this.FormatDuration(
+                      channel.items.reduce((acc, item) =>
+                          acc + (FrameAccurateVideo.ParseRat(item.slice_end_rat) - FrameAccurateVideo.ParseRat(item.slice_start_rat)),
+                        0
+                      )
+                    );
+                  } catch(error) {
+                    // eslint-disable-next-line no-console
+                    console.error("Error parsing channel duration:");
+                    // eslint-disable-next-line no-console
+                    console.error(error);
+                  }
+                }
+
+                return {
+                  objectId,
+                  compositionKey: channelKey,
+                  label: channel.display_name || channelKey,
+                  duration,
+                  lastModifiedISO: channel.updated_at,
+                  lastModified: lastModified
+                };
+              });
+            }
+
+            if(savedChannels.length > 0) {
+              channels = [
+                ...savedChannels,
+                ...channels.filter(({key}) => !savedChannels.find(channel => channel.key === key))
+              ];
+            }
+
+            channels = channels
+              .sort((a, b) => {
+                if(a.lastModifiedISO && b.lastModifiedISO) {
+                  return a.lastModifiedISO > b.lastModifiedISO ? -1 : 1;
+                } else if(a.lastModifiedISO) {
+                  return -1;
+                } else if(b.lastModifiedISO) {
+                  return 1;
+                }
+
+                return a.label?.toLowerCase() < b.label?.toLowerCase() ? -1 : 1;
+              });
+          }
+
+          lastModified = metadata?.commit?.timestamp;
+          if(lastModified) {
+            lastModified = this.FormatDate(lastModified);
+          }
+
+          const offering = metadata?.offerings?.default ?
+            "default" :
+            Object.keys(metadata?.offerings || {})[0];
+
+          duration = metadata?.offerings?.[offering]?.media_struct?.duration_rat;
+
+          if(duration) {
+            isVideo = true;
+            duration = this.FormatDuration(duration);
+          }
+
+          const videoKey = Object.keys(metadata?.offerings?.[offering]?.media_struct?.streams).find(key => key.startsWith("video"));
+          if(videoKey) {
+            frameRate = metadata.offerings[offering].media_struct.streams[videoKey].rate;
+          }
+
+          isLiveStream = !!metadata?.live_recording;
+          isLive = isLiveStream && metadata.live_recording?.status?.state === "active";
+          vods = metadata.live_recording_copies;
+        } catch(error) {
+          if(error.status === 403) {
+            forbidden = true;
+          }
+        }
+
+        metadata = metadata || {public: publicMetadata};
+
+        return {
+          retrievedAt: Date.now(),
+          libraryId,
+          id: objectId,
+          objectId: objectId,
           versionHash: versionHash,
-          linkPath: "/public/display_image"
-        }),
-      metadata
-    };
+          forbidden,
+          lastModified,
+          duration,
+          frameRate,
+          isVideo,
+          hasChannels,
+          hasAssets,
+          channels,
+          isLiveStream,
+          isLive,
+          vods,
+          name: metadata?.public?.name || objectId,
+          image: !metadata?.public?.display_image ? undefined :
+            yield this.rootStore.client.LinkUrl({
+              versionHash: versionHash,
+              linkPath: "/public/display_image"
+            }),
+          metadata
+        };
+      }).bind(this)
+    });
   });
 
   ListObjects = flow(function * ({libraryId, page=1, perPage=25, filter="", cacheId=""}) {
@@ -333,23 +363,34 @@ class BrowserStore {
 
   // My library
   LoadMyLibrary = flow(function * () {
-    if(this.myLibraryItems) { return; }
+    yield this.rootStore.LoadResource({
+      key: "my-library",
+      id: "my-library",
+      Load: flow(function * () {
+        const myLibraryItems = yield this.client.walletClient.ProfileMetadata({
+          type: "app",
+          appId: "video-editor",
+          mode: "private",
+          key: `my-library${this.rootStore.localhost ? "-dev" : ""}`
+        });
 
-    const myLibraryItems = yield this.client.walletClient.ProfileMetadata({
-      type: "app",
-      appId: "video-editor",
-      mode: "private",
-      key: `my-library${this.rootStore.localhost ? "-dev" : ""}`
+        if(myLibraryItems) {
+          this.myLibraryItems = JSON.parse(this.client.utils.FromB64(myLibraryItems));
+        } else {
+          this.myLibraryItems = [];
+        }
+      }).bind(this)
     });
-
-    if(myLibraryItems) {
-      this.myLibraryItems = JSON.parse(this.client.utils.FromB64(myLibraryItems));
-    } else {
-      this.myLibraryItems = [];
-    }
   });
 
-  ListMyLibrary = flow(function * ({page, perPage, filter=""}) {
+  ListMyLibrary = flow(function * ({page, perPage, start=0, limit=10, filter="", type}) {
+    if(page && perPage) {
+      start = (page - 1) * perPage;
+      limit = perPage;
+    }
+
+    yield this.rootStore.compositionStore.LoadMyCompositions();
+
     yield this.LoadMyLibrary();
 
     filter = filter.toLowerCase();
@@ -360,27 +401,25 @@ class BrowserStore {
         item.name?.toLowerCase()?.includes(filter) ||
         item.compositionKey?.toLowerCase()?.includes(filter) ||
         item.objectId?.toLowerCase()?.includes(filter)
+      )
+      .filter(item =>
+        !type ||
+        (type === "composition" && item.compositionKey)
       );
 
     const contentLength = content.length;
-    content = content.slice((page - 1) * perPage, page * perPage);
+    // Slice now and load details - don't want to load details for all items at once
+    content = content.slice(start, start + limit);
 
-    let itemsDeleted = false;
-    content = (yield Promise.all(
-      content.map(async item => {
+    const objectIds = content
+      .map(item => item.objectId)
+      .filter((v, i, s) => s.indexOf(v) === i);
+
+    let objectDetails = {};
+    yield Promise.all(
+      objectIds.map(async objectId => {
         try {
-          if(item.compositionKey) {
-            return {
-              ...item,
-              duration: this.FormatDuration(item.duration),
-              lastModified: this.FormatDate(item.accessedAt)
-            };
-          }
-
-          return {
-            ...(await this.ObjectDetails({objectId: item.objectId})),
-            lastModified: this.FormatDate(item.accessedAt)
-          };
+          objectDetails[objectId] = await this.ObjectDetails({objectId});
         } catch(error) {
           // eslint-disable-next-line no-console
           console.error("Error retrieving my library item:");
@@ -388,21 +427,56 @@ class BrowserStore {
           console.error(error);
 
           if(typeof error === "string" && error.includes("deleted")) {
-            // eslint-disable-next-line no-console
-            console.warn("Removing library item");
+            objectDetails[objectId] = "deleted";
+          }
+        }
+      })
+    );
 
+    let itemsDeleted = false;
+    content = (yield Promise.all(
+      content.map(async item => {
+        if(objectDetails[item.objectId] === "deleted") {
+          // eslint-disable-next-line no-console
+          console.warn("Removing deleted library item: ", item);
+          this.RemoveMyLibraryItem(item);
+          itemsDeleted = true;
+          return;
+        } else if(!objectDetails[item.objectId]) {
+          return;
+        }
+
+        if(item.compositionKey) {
+          if(
+            !this.rootStore.compositionStore.myCompositions[item.objectId]?.[item.compositionKey] &&
+            !objectDetails[item.objectId]?.channels?.find(channel =>
+              channel.compositionKey === item.compositionKey
+            )
+          ) {
+            // eslint-disable-next-line no-console
+            console.warn("Removing deleted composition from my library: ", item.objectId, item.compositionKey);
+            this.RemoveMyLibraryItem(item);
             itemsDeleted = true;
-            await this.RemoveMyLibraryItem(item);
+            return;
           }
 
-          return item;
+          return {
+            ...item,
+            duration: this.FormatDuration(item.duration),
+            lastModified: this.FormatDate(item.accessedAt)
+          };
         }
+
+        return {
+          ...(objectDetails[item.objectId]),
+          lastModified: this.FormatDate(item.accessedAt)
+        };
       })
     ));
 
     if(itemsDeleted) {
-      // Items were deleted - redo listing
-      return yield this.ListMyLibrary({page, perPage, filter});
+      // Items were deleted - redo listing to ensure pagination is correct
+      return yield this.ListMyLibrary({page, perPage, start, limit, filter, type});
     }
 
     return {
@@ -410,6 +484,8 @@ class BrowserStore {
       paging: {
         page,
         perPage,
+        start,
+        limit,
         pages: Math.ceil(contentLength / perPage),
         total: contentLength
       }
@@ -505,7 +581,7 @@ class BrowserStore {
         case "library":
           return { libraryId };
         case "object":
-          return yield this.ObjectDetails({objectId, versionHash});
+          return yield this.ObjectDetails({objectId, versionHash, noCache: true});
         default:
           // eslint-disable-next-line no-console
           console.error("Invalid content:", contentId, accessType);

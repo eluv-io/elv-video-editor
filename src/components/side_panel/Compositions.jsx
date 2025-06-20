@@ -8,6 +8,8 @@ import {ClipTimeInfo, Confirm, CopyableField, Icon, IconButton, Linkish, Loader}
 import {Tooltip} from "@mantine/core";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import UrlJoin from "url-join";
+import {ClipTooltipContent} from "@/components/compositions/Clips.jsx";
+import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 
 import ClipIcon from "@/assets/icons/v2/clip.svg";
 import VideoIcon from "@/assets/icons/v2/video.svg";
@@ -18,7 +20,7 @@ import TagIcon from "@/assets/icons/v2/tag.svg";
 import DeleteIcon from "@/assets/icons/trash.svg";
 import ChevronUpIcon from "@/assets/icons/chevron-up.svg";
 import ChevronDownIcon from "@/assets/icons/chevron-down.svg";
-import {ClipTooltipContent} from "@/components/compositions/Clips.jsx";
+import BackIcon from "@/assets/icons/v2/back.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -47,8 +49,9 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
         onDragEnd={() => compositionStore.EndDrag()}
         startFrame={clip.clipInFrame}
         endFrame={clip.clipOutFrame}
-        style={{aspectRatio: store.aspectRatio}}
+        style={!store? {} : {aspectRatio: store.aspectRatio}}
         className={S("clip__image")}
+        loadingClassName={S("clip__image--loading")}
       />
       <Tooltip
         disabled={!!compositionStore.draggingClip}
@@ -67,6 +70,12 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
             clipOutFrame={clip.clipOutFrame}
             className={S("clip__time")}
           />
+      }
+      {
+        clip.offering === "default" ? null :
+          <div className={S("clip__offering")}>
+            Offering: {clip.offering}
+          </div>
       }
       {
         !compositionStore.myClipIds.includes(clip.clipId) ? null :
@@ -109,7 +118,8 @@ const ClipGroup = observer(({
   clipIds=[],
   noFilter,
   loading=false,
-  showTagLinks
+  showTagLinks,
+  showEmpty
 }) => {
   const [hide, setHide] = useState(StorageHandler.get({type: "session", key: `hide-clips-${groupKey}`}));
 
@@ -129,9 +139,11 @@ const ClipGroup = observer(({
     );
   }
 
-  if(clips.length === 0 && !loading) {
+  if(clips.length === 0 && !loading && !showEmpty) {
     return null;
   }
+
+  const hidden = hide || (!loading && (!clips || clips.length === 0));
 
   return (
     <div className={S("clip-group", hide ? "clip-group--closed" : "")}>
@@ -160,9 +172,8 @@ const ClipGroup = observer(({
         <Icon icon={hide ? ChevronDownIcon : ChevronUpIcon} className={S("clip-group__header-indicator")} />
       </button>
       {
-        hide || (!loading && (!clips || clips.length === 0)) ? null :
-          loading ?
-            <Loader className={S("clip-group__loader")} /> :
+         hidden ? (showEmpty ? <div className={S("clip-group__empty")}>No Results</div> : null) :
+          loading ? <Loader className={S("clip-group__loader")} /> :
             <div className={S("clip-group__clips")}>
               { clips.map(clip => <SidePanelClip clip={clip} key={`clip-${clip.clipId}`} showTagLink={showTagLinks} />) }
             </div>
@@ -175,7 +186,8 @@ const AIClips = observer(() => {
   const [loading, setLoading] = useState(false);
   const [clipSource, setClipSource] = useState("highlights");
   const clipIds = clipSource === "search" ?
-    compositionStore.searchClipIds : compositionStore.aiClipIds;
+    compositionStore.searchClipIds[compositionStore.selectedSourceId] || [] :
+    compositionStore.selectedSource?.highlightClipIds || [];
 
   useEffect(() => {
     if(!compositionStore.filter) {
@@ -186,25 +198,36 @@ const AIClips = observer(() => {
 
     setLoading(true);
 
-    compositionStore.SearchClips(compositionStore.filter)
+    const selectedSourceId = compositionStore.selectedSourceId;
+
+    compositionStore.SearchClips({
+      objectId: compositionStore.selectedSourceId,
+      query: compositionStore.filter
+    })
       .finally(() => {
+        if(selectedSourceId !== compositionStore.selectedSourceId) {
+          // Source has changed
+          return;
+        }
+
         setClipSource("search");
         setLoading(false);
       });
-  }, [compositionStore.filter, aiStore.selectedSearchIndexId]);
+  }, [compositionStore.filter, aiStore.selectedSearchIndexId, compositionStore.selectedSourceId]);
 
   return  (
-    !loading && clipIds.length === 0 ? null :
-      <ClipGroup
-        noFilter
-        groupKey="ai"
-        icon={AISparkleIcon}
-        showTagLinks
-        title={compositionStore.filter ? "Results" : "Suggestions"}
-        subtitle={!compositionStore.filter ? "Prompt" : ""}
-        clipIds={clipIds}
-        loading={loading}
-      />
+    <ClipGroup
+      key={`ai-clips-${compositionStore.selectedSourceId}`}
+      noFilter
+      groupKey="ai"
+      icon={AISparkleIcon}
+      showTagLinks
+      title={compositionStore.filter ? "Results" : "Suggestions"}
+      subtitle={!compositionStore.filter ? "Prompt" : ""}
+      clipIds={clipIds}
+      loading={loading}
+      showEmpty
+    />
   );
 });
 
@@ -253,7 +276,7 @@ export const CompositionClips = observer(() => {
         Object.keys(compositionStore.sourceClipIds).map(category =>
           <ClipGroup
             title={compositionStore.sourceClipIds[category].label || category}
-            color={trackStore.TrackColor(category)}
+            color={trackStore.TrackColor(category, "clip")}
             key={`clip-${category}`}
             groupKey={`clip-${category}`}
             clipIds={compositionStore.sourceClipIds[category].clipIds}
@@ -265,142 +288,188 @@ export const CompositionClips = observer(() => {
 });
 
 export const CompositionBrowser = observer(() => {
-  const [info, setInfo] = useState(undefined);
+  const [selectedObjectInfo, setSelectedObjectInfo] = useState(undefined);
+  const [myLibraryInfo, setMyLibraryInfo] = useState({content: []});
   const [deleting, setDeleting] = useState(false);
-  const [selectedObjectId, setSelectedObjectId] = useState(undefined);
+  const [selectedObjectId, setSelectedObjectId] = useState(rootStore.selectedObjectId);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if(deleting) { return; }
 
-    setInfo(undefined);
+    setSelectedObjectInfo(undefined);
 
-    if(!rootStore.selectedObjectId) {
-      // Load from my library
-      browserStore.ListMyLibrary({page: 1, perPage: 1000})
-        .then(({content}) => {
-          setSelectedObjectId(undefined);
-          setInfo(content.filter(item => item.compositionKey));
-        });
-    } else if(rootStore.selectedObjectId) {
-      browserStore.LookupContent(rootStore.selectedObjectId)
-        .then(objectInfo => {
-          setSelectedObjectId(rootStore.selectedObjectId);
-          setInfo(objectInfo);
-        });
-      setSelectedObjectId(rootStore.selectedObjectId);
+    if(selectedObjectId) {
+      setLoading(true);
+      browserStore.LookupContent(selectedObjectId)
+        .then(info => setSelectedObjectInfo(info))
+        .finally(() => setLoading(false));
     }
-  }, [rootStore.selectedObjectId, deleting]);
+  }, [selectedObjectId, deleting]);
 
-  if(!info) {
-    return <Loader />;
-  }
-
-  let compositions = info;
+  let compositions = myLibraryInfo.content;
   if(selectedObjectId) {
+    if(!selectedObjectInfo) {
+      return <Loader />;
+    }
+
     // Specific object selected
     compositions = [
       {
         id: "",
-        label: `Main Content - ${info.name}`,
-        objectId: info.objectId,
-        lastModified: info.lastModified,
+        label: `Main Content - ${selectedObjectInfo.name}`,
+        objectId: selectedObjectInfo.objectId,
+        lastModified: selectedObjectInfo.lastModified,
         compositionKey: ""
       },
-      ...(info.channels || [])
-    ];
+      ...(selectedObjectInfo.channels || [])
+    ]
+      .map(composition => ({
+        ...composition,
+        name:
+          compositionStore.myCompositions[composition.objectId]?.[composition.compositionKey]?.name ||
+          composition.name ||
+          composition.label ||
+          composition.compositionKey
+      }))
+      .filter(({name, compositionKey}) =>
+        !compositionStore.filter ||
+        name.toLowerCase().includes(compositionStore.filter.toLowerCase()) ||
+        compositionKey.toLowerCase().includes(compositionStore.filter.toLowerCase())
+      );
   }
 
-  compositions = compositions
-    .map(composition => ({
-      ...composition,
-      name:
-        compositionStore.myCompositions[composition.objectId]?.[composition.compositionKey]?.name ||
-        composition.name ||
-        composition.label ||
-        composition.compositionKey
-    }))
-    .filter(({name, compositionKey}) =>
-      !compositionStore.filter ||
-      name.toLowerCase().includes(compositionStore.filter.toLowerCase()) ||
-      compositionKey.toLowerCase().includes(compositionStore.filter.toLowerCase())
-    );
-
   return (
-    <div className={S("composition-browser")}>
-      {
-        compositions.length === 0 ?
-          <div className={S("composition-browser__empty")}>No Compositions</div> :
-          <div className={S("composition-browser__content")}>
-            <div className={S("composition-browser__header", "composition-browser__item")}>
-              <span />
-              <span>Name</span>
-              <span>Last Modified</span>
-              <span />
-            </div>
-            {compositions.map(({name, objectId, compositionKey, lastModified}) =>
-              <Linkish
-                disabled={deleting}
-                key={compositionKey}
-                onClick={() => compositionStore.SetFilter("")}
-                to={
-                  !compositionKey ?
-                    UrlJoin("/", objectId) :
-                    UrlJoin("/compositions", objectId, compositionKey)
-                }
-                className={S("composition-browser__item")}
-              >
-                <Icon icon={compositionKey ? CompositionIcon : VideoIcon}
-                      className={S("composition-browser__item-icon")}/>
-                <Tooltip openDelay={500} label={name}>
-                  <div className={S("ellipsis")}>
-                    <div className={S("composition-browser__item-name", "ellipsis")}>
-                      { name }
-                    </div>
-                    <div className={S("composition-browser__item-id")}>
-                      <CopyableField value={objectId} showOnHover />
-                    </div>
-                  </div>
-                </Tooltip>
-                <span>
-                  {lastModified}
-                </span>
-                <span>
-                  {
-                    !compositionKey ? null :
-                      <IconButton
-                        icon={DeleteIcon}
-                        label="Delete Composition"
-                        disabled={deleting}
-                        faded
-                        small
-                        loading={deleting === compositionKey}
-                        onClick={async event => {
-                          event.stopPropagation();
-                          event.preventDefault();
+    <>
+      <div className={S("composition-browser-header")}>
+        {
+          !selectedObjectId ? "My Compositions" :
+            <>
+              <IconButton
+                faded
+                icon={BackIcon}
+                label="Back to My Compositions"
+                onClick={() => {
+                  setSelectedObjectInfo(undefined);
+                  setSelectedObjectId(undefined);
+                }}
+              />
+              <span className={S("ellipsis")}>{selectedObjectInfo?.name}</span>
+            </>
+        }
+      </div>
+      <div className={S("composition-browser")}>
+        <InfiniteScroll
+          watchList={[selectedObjectId]}
+          batchSize={5}
+          className={S("composition-browser__content")}
+          Update={async limit => {
+            if(
+              selectedObjectId ||
+              (myLibraryInfo.paging && myLibraryInfo.paging.start >= myLibraryInfo.content.length)
+            ) { return; }
 
-                          await Confirm({
-                            title: "Delete Composition",
-                            text: `Are you sure you want to delete the composition '${name}'?`,
-                            onConfirm: async () => {
-                              setDeleting(compositionKey);
-                              try {
-                                await compositionStore.DeleteComposition({
-                                  objectId: objectId,
-                                  compositionKey
-                                });
-                              } finally {
-                                setDeleting(false);
-                              }
-                            }
-                          });
-                        }}
-                      />
-                  }
-                </span>
-              </Linkish>
-            )}
+            setLoading(true);
+
+            try {
+              const {content, paging} = await browserStore.ListMyLibrary({
+                start: myLibraryInfo.content.length,
+                limit,
+                type: "composition"
+              });
+
+              setMyLibraryInfo({
+                content: [...myLibraryInfo.content, ...content],
+                paging
+              });
+            } catch(error) {
+              // eslint-disable-next-line no-console
+              console.error(error);
+            } finally {
+              setLoading(false);
+            }
+          }}
+        >
+          <div className={S("composition-browser__header", "composition-browser__item")}>
+            <span />
+            <span>Name</span>
+            <span>Last Modified</span>
+            <span />
           </div>
-      }
-    </div>
+
+          {compositions.map(({name, objectId, compositionKey, lastModified}) =>
+            <Linkish
+              disabled={deleting}
+              key={compositionKey}
+              onClick={() => compositionStore.SetFilter("")}
+              to={
+                !compositionKey ?
+                  UrlJoin("/", objectId) :
+                  UrlJoin("/compositions", objectId, compositionKey)
+              }
+              className={S("composition-browser__item")}
+            >
+              <Icon
+                icon={compositionKey ? CompositionIcon : VideoIcon}
+                className={S("composition-browser__item-icon")}
+              />
+              <Tooltip openDelay={500} label={name || compositionKey}>
+                <div className={S("ellipsis")}>
+                  <div className={S("composition-browser__item-name", "ellipsis")}>
+                    { name || compositionKey }
+                  </div>
+                  <div className={S("composition-browser__item-id")}>
+                    <CopyableField value={objectId} showOnHover />
+                  </div>
+                </div>
+              </Tooltip>
+              <span>
+                {lastModified}
+              </span>
+              <span>
+                {
+                  !compositionKey ? null :
+                    <IconButton
+                      icon={DeleteIcon}
+                      label="Delete Composition"
+                      disabled={deleting}
+                      faded
+                      small
+                      loading={deleting === compositionKey}
+                      onClick={async event => {
+                        event.stopPropagation();
+                        event.preventDefault();
+
+                        await Confirm({
+                          title: "Delete Composition",
+                          text: `Are you sure you want to delete the composition '${name}'?`,
+                          onConfirm: async () => {
+                            setDeleting(compositionKey);
+
+                            try {
+                              await compositionStore.DeleteComposition({
+                                objectId,
+                                compositionKey
+                              });
+
+                              setMyLibraryInfo({content: []});
+                            } finally {
+                              setDeleting(false);
+                            }
+                          }
+                        });
+                      }}
+                    />
+                }
+              </span>
+            </Linkish>
+          )}
+          {
+            !loading ? null :
+              <Loader className={S("composition-browser__loader")} />
+          }
+        </InfiniteScroll>
+      </div>
+    </>
   );
 });

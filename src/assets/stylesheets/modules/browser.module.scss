@@ -115,19 +115,18 @@
 
   &__row-title {
     max-width: 100%;
+    overflow: hidden;
     width: 100%;
   }
 
   &__row-title-main {
     align-items: center;
     display: flex;
-    font-size: 16px;
     gap: 10px;
-    max-width: calc(100% - 50px);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    width: max-content;
+    width: 100%;
   }
 
   &__row-title-id {
@@ -138,6 +137,7 @@
   &__cell {
     align-items: center;
     display: flex;
+    font-size: 14px;
     gap: 15px;
     height: var(--row-height);
     justify-content: flex-start;

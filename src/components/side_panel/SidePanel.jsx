@@ -11,14 +11,16 @@ import {TrackDetails} from "@/components/side_panel/Tracks.jsx";
 
 import {OverlayTagDetails, OverlayTagsList} from "@/components/side_panel/OverlayTags.jsx";
 import {CompositionBrowser, CompositionClips} from "@/components/side_panel/Compositions.jsx";
-import {Combobox, Menu, PillsInput, RingProgress, Switch, useCombobox} from "@mantine/core";
+import {Combobox, Menu, PillsInput, RingProgress, Switch, Tooltip, useCombobox} from "@mantine/core";
 import {useLocation} from "wouter";
+import {LibraryBrowser, ObjectBrowser} from "@/components/nav/Browser.jsx";
 
 import SelectArrowsIcon from "@/assets/icons/v2/select-arrows.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
 import SettingsIcon from "@/assets/icons/v2/settings.svg";
 import UpdateIndexIcon from "@/assets/icons/v2/reload.svg";
-import {LibraryBrowser, ObjectBrowser} from "@/components/nav/Browser.jsx";
+import SourcesIcon from "@/assets/icons/v2/folder.svg";
+import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -107,29 +109,31 @@ const SearchIndexSelection = observer(() => {
         shadow="md"
         width={250}
         offset={15}
-        position="bottom-end"
+        position="bottom-middle"
         zIndex={200}
       >
         <Menu.Target>
-          <button
-            onClick={() => setShowMenu(!showMenu)}
-            className={S("search__button")}
-          >
-            {
-              typeof indexUpdateProgress === "undefined" ?
-                <Icon icon={SettingsIcon} /> :
-                <RingProgress
-                  size={25}
-                  thickness={3}
-                  transitionDuration={500}
-                  rootColor="var(--text-secondary)"
-                  sections={[{value: indexUpdateProgress, color: "var(--color-highlight"}]}
-                />
-            }
-          </button>
+          <Tooltip label="Select Search Index" openDelay={500}>
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className={S("search__button")}
+            >
+              {
+                typeof indexUpdateProgress === "undefined" ?
+                  <Icon icon={SettingsIcon} /> :
+                  <RingProgress
+                    size={25}
+                    thickness={3}
+                    transitionDuration={500}
+                    rootColor="var(--text-secondary)"
+                    sections={[{value: indexUpdateProgress, color: "var(--color-highlight"}]}
+                  />
+              }
+            </button>
+          </Tooltip>
         </Menu.Target>
 
-        <Menu.Dropdown w={400} bg="var(--background-toolbar)">
+        <Menu.Dropdown p={0} w={450} bg="var(--background-toolbar)">
           <div className={S("search__index-menu")}>
             <div className={S("search__index-title")}>
               Search Index
@@ -233,8 +237,130 @@ const SearchIndexSelection = observer(() => {
   );
 });
 
+const SourceSelectionModal = observer(({Select, Cancel}) => {
+  const [libraryId, setLibraryId] = useState(undefined);
+
+  return (
+    <Modal withCloseButton={false} opened centered size={1000} onClose={Cancel}>
+      {
+        libraryId ?
+          <ObjectBrowser
+            libraryId={libraryId}
+            videoOnly
+            Back={() => setLibraryId(undefined)}
+            Select={({objectId, name}) => Select({objectId, name})}
+            className={S("search__source-browser")}
+          /> :
+          <LibraryBrowser
+            title="Select source content for your composition"
+            Select={({libraryId, objectId, name}) => {
+              if(objectId) {
+                Select({objectId, name});
+              } else {
+                setLibraryId(libraryId);
+              }
+            }}
+            className={S("search__source-browser")}
+          />
+      }
+    </Modal>
+  );
+});
+
+const SourceSelection = observer(() => {
+  const [showMenu, setShowMenu] = useState(false);
+  const [showBrowser, setShowBrowser] = useState(false);
+
+  if(!compositionStore.compositionObject) {
+    return null;
+  }
+
+  return (
+    <>
+      <Menu
+        opened={showMenu}
+        onChange={setShowMenu}
+        shadow="md"
+        width={250}
+        offset={10}
+        position="bottom-middle"
+      >
+        <Menu.Target>
+          <Tooltip label="Select Source" openDelay={500}>
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className={S("search__source-button", showMenu ? "search__source-button--active" : "")}
+            >
+              <Icon icon={SourcesIcon} />
+            </button>
+          </Tooltip>
+        </Menu.Target>
+
+        <Menu.Dropdown w={450} radius={10} p={0}>
+          <div className={S("search__source-menu")}>
+            <div className={S("search__index-title")}>
+              Select Source
+            </div>
+            {
+              Object.values(compositionStore.sources).map(({objectId, name}) =>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  key={`source-${objectId}`}
+                  onClick={() => {
+                    compositionStore.SetSelectedSource({objectId});
+                    setShowMenu(false);
+                  }}
+                  className={S("search__source-option", compositionStore.selectedSourceId === objectId ? "search__source-option--active" : "")}
+                >
+                  <PreviewThumbnail
+                    maxThumbnails={10}
+                    store={compositionStore.ClipStore({sourceId: objectId})}
+                    className={S("search__source-thumbnail")}
+                  />
+                  <Tooltip label={name}>
+                    <div className={S("search__source-text")}>
+                      <div className={S("search__source-option-name", "ellipsis")}>
+                        {name}
+                      </div>
+                      <div className={S("search__source-option-id", "ellipsis")}>
+                        <CopyableField value={objectId} />
+                      </div>
+                    </div>
+                  </Tooltip>
+                </div>
+              )
+            }
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => {
+                setShowBrowser(true);
+                setShowMenu(false);
+              }}
+              className={S("search__source-option", "search__source-add")}
+            >
+              Add Source
+            </div>
+          </div>
+        </Menu.Dropdown>
+      </Menu>
+      {
+        !showBrowser ? null :
+          <SourceSelectionModal
+            Select={async ({objectId}) => {
+              setShowBrowser(false);
+              await compositionStore.AddSource({objectId});
+            }}
+            Cancel={() => setShowBrowser(false)}
+          />
+      }
+    </>
+  );
+});
+
 let filterTimeout;
-const SidebarFilter = observer(({store, label, sideContent, delay = 100}) => {
+const SidebarFilter = observer(({store, label, sideContent, afterContent, delay = 100}) => {
   const [filter, setFilter] = useState(store.filter);
 
   useEffect(() => {
@@ -271,6 +397,7 @@ const SidebarFilter = observer(({store, label, sideContent, delay = 100}) => {
           }
         rightSectionWidth="max-content"
       />
+      { afterContent }
     </div>
   );
 });
@@ -502,7 +629,13 @@ export const CompositionSidePanel = observer(() => {
   return (
     <div className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
-        <SidebarFilter delay={1500} sideContent={<SearchIndexSelection />} store={compositionStore} label="Search Clips"/>
+        <SidebarFilter
+          delay={1500}
+          sideContent={<SearchIndexSelection />}
+          afterContent={<SourceSelection />}
+          store={compositionStore}
+          label="Search Clips"
+        />
         <CompositionClips />
       </div>
     </div>
@@ -513,7 +646,12 @@ export const CompositionBrowserPanel = observer(() => {
   return (
     <div className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
-        <SidebarFilter key="composition-browser" store={compositionStore} label="Search Compositions" />
+        <SidebarFilter
+          key="composition-browser"
+          store={compositionStore}
+          label="Search Compositions"
+          sideContent={<SearchIndexSelection />}
+        />
         <CompositionBrowser />
       </div>
     </div>

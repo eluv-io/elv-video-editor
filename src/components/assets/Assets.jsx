@@ -51,11 +51,12 @@ const AssetTags = observer(({asset, setHoverTag}) => {
               <div className={S("asset-tags__tags")}>
                 {
                   (asset.image_tags[trackKey].tags || []).map((tag, index) =>
-                    <Tooltip.Floating
-                      position="top"
+                    <Tooltip
+                      openDelay={500}
+                      position="left"
                       offset={30}
                       label={
-                        <div className={S("tooltip")}>
+                        <div className={S("tooltip", "tooltip--fixed")}>
                           <div className={S("tooltip__item")}>
                             <div className={S("tooltip__label")}>
                               {track.label}
@@ -93,7 +94,7 @@ const AssetTags = observer(({asset, setHoverTag}) => {
                           {tag.text}
                         </div>
                       </button>
-                    </Tooltip.Floating>
+                    </Tooltip>
                   )
                 }
               </div>
