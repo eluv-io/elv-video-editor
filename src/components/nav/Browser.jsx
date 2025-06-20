@@ -11,7 +11,7 @@ import {
   FormTextInput,
   IconButton,
   Linkish,
-  Loader
+  Loader, StyledButton
 } from "@/components/common/Common";
 import SVG from "react-inlinesvg";
 import {Redirect} from "wouter";
@@ -30,6 +30,8 @@ import PageBackIcon from "@/assets/icons/Backward.svg";
 import DeleteIcon from "@/assets/icons/trash.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
 import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
+import CreateIcon from "@/assets/icons/v2/add2.svg";
+import {GroundTruthPoolForm} from "@/components/ground_truth/GroundTruthForms.jsx";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -586,6 +588,7 @@ const Browser = observer(() => {
 export const GroundTruthPoolBrowser = observer(() => {
   const [filter, setFilter] = useState("");
   const [redirect, setRedirect] = useState(undefined);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   if(redirect) {
     return <Redirect to={redirect} />;
@@ -601,9 +604,29 @@ export const GroundTruthPoolBrowser = observer(() => {
 
   return (
     <div className={S("browser-page")}>
+      {
+        !showCreateModal ? null :
+          <GroundTruthPoolForm
+            Close={poolId => {
+              setShowCreateModal(false);
+
+              if(poolId) {
+                Select({objectId: poolId});
+              }
+            }}
+          />
+      }
       <div className={S("browser", "browser--ground-truth")}>
         <SearchBar filter={filter} setFilter={setFilter} Select={Select}/>
         <h1 className={S("browser__header")}>All Ground Truth</h1>
+        <div className={S("browser__actions")}>
+          <StyledButton
+            icon={CreateIcon}
+            onClick={() => setShowCreateModal(true)}
+          >
+            New
+          </StyledButton>
+        </div>
         <BrowserTable
           filter={filter}
           defaultIcon={ObjectIcon}

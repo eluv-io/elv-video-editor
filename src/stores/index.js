@@ -45,6 +45,7 @@ class RootStore {
   l10n = LocalizationEN;
 
   tenantContractId;
+  tenantInfoObjectId;
   signedToken;
   authToken;
 
@@ -162,6 +163,18 @@ class RootStore {
     this.signedToken = yield client.CreateFabricToken({duration: 7 * 24 * 60 * 60 * 1000});
 
     this.tenantContractId = yield client.userProfileClient.TenantContractId();
+
+    this.tenantInfoObjectId = yield this.client.ContentObjectMetadata({
+      libraryId: this.tenantContractId.replace(/^iten/, "ilib"),
+      objectId: this.tenantContractId.replace(/^iten/, "iq__"),
+      metadataSubtree: "public/ml_config",
+    });
+
+    if(!this.tenantInfoObjectId) {
+      // eslint-disable-next-line no-console
+      console.warn(`Tenant info object ID (public/ml_config) not set for this tenant (${this.tenantContractId})`);
+      this.tenantInfoObjectId = this.tenantContractId.replace(/^iten/, "iq__");
+    }
 
     yield this.aiStore.LoadSearchIndexes();
     yield this.compositionStore.Initialize();

@@ -289,3 +289,7 @@ export const useIsVisible = (ref) => {
 
   return isIntersecting;
 };
+
+export const CSVtoList = (v="") => {
+  return v.trim().split(",").map(i => i.trim()).filter(i => i);
+};

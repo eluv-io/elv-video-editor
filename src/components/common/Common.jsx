@@ -402,6 +402,27 @@ export const AsyncButton = observer(({onClick, tooltip, ...props}) => {
   );
 });
 
+export const StyledButton = observer(({icon, variant="primary", color="--color-highlight", children, ...props}) => {
+  return (
+    <Linkish
+      {...props}
+      style={{
+        ...(props.style || {}),
+        "--button-color": `var(${color})`
+      }}
+      className={S("styled-button", `styled-button--${variant}`)}
+    >
+      {
+        !icon ? null :
+          <Icon icon={icon} className={S("styled-button__icon")} />
+      }
+      <div className={S("styled-button__children")}>
+        { children }
+      </div>
+    </Linkish>
+  );
+});
+
 export const Input = observer(({label, monospace, rightIcon, ...props}) => {
   const input = (
     <TextInput
@@ -488,8 +509,8 @@ export const FormNumberInput = observer(props =>
 export const FormTextArea = observer(props =>
   <Textarea
     autosize
-    maxRows={10}
-    minRows={3}
+    maxRows={props.maxRows || 10}
+    minRows={props.minRows || 3}
     resize="vertical"
     {...props}
     classNames={{
@@ -664,12 +685,19 @@ export const ClipTimeInfo = observer(({store, clipInFrame, clipOutFrame, classNa
   );
 });
 
+let cancelTimeout;
 export const Confirm = async ({title, text, labels={}, onConfirm, onCancel}) => {
   if(!await new Promise(resolve => {
     const Title = () => {
       // For some reason, closing the modal any way except the cancel button *doesn't* call onCancel
       // Detect when one of the components is unrendered to ensure the promise is resolved
-      useEffect(() => () => setTimeout(() => resolve(false), 100), []);
+      useEffect(() => {
+        clearTimeout(cancelTimeout);
+
+        return () => {
+          cancelTimeout = setTimeout(() => resolve(false), 100);
+        };
+      }, []);
 
       return <div className={S("confirm__title")}>{title || "Confirm"}</div>;
     };

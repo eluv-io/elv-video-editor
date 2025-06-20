@@ -88,3 +88,115 @@
     height: 100%;
   }
 }
+
+.ground-truth-form {
+  display: grid;
+  gap: 10px;
+  padding-right: 20px;
+
+  &__header {
+    align-items: center;
+    display: flex;
+    font-weight: 600;
+    gap: 15px;
+  }
+
+  &__actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding: 20px 0;
+  }
+
+  &__browser {
+    max-height: 90vh;
+    min-height: unset;
+    padding: 40px 30px;
+
+    --row-height: 50px;
+  }
+
+  &__attributes {
+    display: grid;
+    gap: 10px;
+  }
+
+  &__attribute-drag-indicator {
+    background-color: red;
+    box-shadow: 0 0 10px red;
+    box-shadow: 0 0 3px var(--text-highlight);
+    height: 0;
+    width: 100%;
+  }
+
+  &__add-attribute {
+    align-items: center;
+    background-color: var(--background-form-button);
+    border-radius: 5px;
+    display: flex;
+    font-size: 18px;
+    font-weight: 600;
+    gap: 10px;
+    height: 50px;
+    justify-content: center;
+    margin-top: 10px;
+
+    svg {
+      height: 25px;
+      width: 25px;
+    }
+  }
+}
+
+.attribute-form {
+  align-items: center;
+  background-color: var(--background-modal);
+  border: 1px solid var(--text-disabled);
+  border-radius: 10px;
+  display: flex;
+  padding: 10px;
+  width: 100%;
+
+  &--indicator-before {
+    border-top: 1px solid var(--color-highlight);
+  }
+
+  &--indicator-after {
+    border-bottom: 1px solid var(--color-highlight);
+  }
+
+  &__inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  &__inputs-label {
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+
+  &__actions {
+    align-items: flex-start;
+    color: var(--text-tertiary);
+    display: flex;
+    height: 100%;
+    padding: 0 5px;
+  }
+
+  &__options-wrapper {
+    position: relative;
+    width: 100%;
+  }
+
+  &__options {
+    color: var(--text-tertiary);
+    height: 15px;
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    width: 15px;
+  }
+}

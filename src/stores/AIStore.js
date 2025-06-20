@@ -139,26 +139,10 @@ class AIStore {
   // Search indexes
 
   LoadSearchIndexes = flow(function * () {
-    let info = yield this.client.ContentObjectMetadata({
-      libraryId: this.rootStore.tenantContractId.replace(/^iten/, "ilib"),
-      objectId: this.rootStore.tenantContractId.replace(/^iten/, "iq__"),
-      metadataSubtree: "public",
-      select: [
-        "ml_config",
-        "search/indexes"
-      ]
+    let searchIndexes = yield this.client.ContentObjectMetadata({
+      versionHash: yield this.client.LatestVersionHash({objectId: this.rootStore.tenantInfoObjectId}),
+      metadataSubtree: "public/search/indexes",
     });
-
-    let searchIndexes;
-    if(info?.ml_config) {
-      searchIndexes = yield this.client.ContentObjectMetadata({
-        libraryId: yield this.client.ContentObjectLibraryId({objectId: info.ml_config}),
-        objectId: info.ml_config,
-        metadataSubtree: "public/search/indexes"
-      });
-    } else {
-      searchIndexes = info?.search?.indexes;
-    }
 
     searchIndexes = (searchIndexes || [])
       .filter((x, i, a) => a.findIndex(other => x.id === other.id) === i);

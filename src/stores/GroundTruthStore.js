@@ -1,7 +1,9 @@
 import {flow, makeAutoObservable} from "mobx";
+import {CSVtoList} from "@/utils/Utils.js";
 
 class GroundTruthStore {
   pools = {};
+  domains = {};
 
   constructor(rootStore) {
     makeAutoObservable(this);
@@ -19,12 +21,16 @@ class GroundTruthStore {
       force,
       bind: this,
       Load: flow(function * () {
-        // TODO: this should be loaded properly
-        const poolIds = ["iq__3jxxA9MhGyeae8A1wKTtLEAzav6G"];
+        const poolInfo = yield this.client.ContentObjectMetadata({
+          versionHash: yield this.client.LatestVersionHash({objectId: this.rootStore.tenantInfoObjectId}),
+          metadataSubtree: "/public/tagging/ground_truth"
+        });
+
+        this.domains = poolInfo.domains;
 
         let pools = {};
         yield Promise.all(
-          poolIds.map(async poolId => {
+          (poolInfo?.pools || []).map(async poolId => {
             try {
               pools[poolId] = {
                 ...(this.pools[poolId] || {}),
@@ -78,6 +84,80 @@ class GroundTruthStore {
         };
       })
     });
+  });
+
+  CreateGroundTruthPool = flow(function * ({libraryId, name, description, model, attributes}) {
+    const types = yield rootStore.client.ContentTypes();
+    const type =
+      Object.values(types).find(type => type.name?.toLowerCase()?.endsWith("title")) ||
+      Object.values(types).find(type => type.name?.toLowerCase()?.includes("title")) ||
+      Object.values(types)[0];
+
+    const response = yield this.client.CreateAndFinalizeContentObject({
+      libraryId,
+      options: {
+        type: type?.id,
+      },
+      callback: async ({objectId, writeToken}) => {
+        await this.client.ReplaceMetadata({
+          libraryId,
+          objectId,
+          writeToken,
+          metadataSubtree: "/public",
+          metadata: {
+            name,
+            description,
+            asset_metadata: {}
+          }
+        });
+
+        let schema = {};
+
+        attributes.map(attribute => {
+          schema[attribute.key] = {
+            type: "string"
+          };
+
+          const options = CSVtoList(attribute.options);
+
+          if(options.length > 0) {
+            schema[attribute.key].options = options;
+          }
+        });
+
+        await this.client.ReplaceMetadata({
+          libraryId,
+          objectId,
+          writeToken,
+          metadataSubtree: "/ground_truth",
+          metadata: {
+            entities: [],
+            model_domain: model,
+            entity_data_schema: {
+              type: "object",
+              properties: schema
+            }
+          }
+        });
+
+        await this.client.SetPermission({
+          libraryId,
+          objectId,
+          writeToken,
+          permission: "editable"
+        });
+      }
+    });
+
+    this.pools[response.objectId] = {
+      objectId: response.objectId,
+      name
+    };
+
+    yield this.LoadGroundTruthPool({poolId: response.objectId});
+
+    // TODO: Add item to the tenant object
+    return response.objectId;
   });
 }
 
