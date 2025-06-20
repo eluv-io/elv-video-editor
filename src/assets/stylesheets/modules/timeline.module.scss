@@ -248,9 +248,17 @@
     font-weight: 600;
   }
 
+  &__offering,
   &__details {
     color: var(--text-tertiary);
-    margin-bottom: 20px;
+  }
+
+  &__offering {
+    font-size: 14px;
+  }
+
+  &__description {
+    margin-top: 10px;
   }
 }
 
@@ -310,7 +318,7 @@
     background-color: var(--background-toolbar);
     border-radius: 5px;
     cursor: pointer;
-    display: grid;
+    display: flex;
     gap: 15px;
     grid-template-columns: 125px 1fr 100px;
     padding: 10px;
@@ -335,9 +343,11 @@
 
   &__item-thumbnail {
     border-radius: 8px;
+    width: 125px;
   }
 
   &__item-text {
+    flex-grow: 1;
     font-size: 14px;
     margin-bottom: 5px;
     max-width: 100%;
@@ -349,8 +359,13 @@
     overflow: hidden;
   }
 
+  &__item-offering,
   &__item-duration {
     color: var(--text-tertiary);
+
+    * {
+      color: var(--text-tertiary);
+    }
   }
 
   &__item-actions {

@@ -95,7 +95,7 @@ const MyClipsModal = observer(({opened, highlightedClipId, Close}) => {
                     <div className={S("my-clips-modal__item-text")}>
                       <Tooltip label={clip.name} openDelay={500}>
                         <div className={S("my-clips-modal__item-title", "ellipsis")}>
-                          { clip.name }
+                          {clip.name}
                         </div>
                       </Tooltip>
                       <ClipTimeInfo
@@ -104,6 +104,9 @@ const MyClipsModal = observer(({opened, highlightedClipId, Close}) => {
                         clipOutFrame={clip.clipOutFrame}
                         className={S("my-clips-modal__item-duration")}
                       />
+                      <div className={S("my-clips-modal__item-offering")}>
+                        {clip.offering}
+                      </div>
                     </div>
                     <div className={S("my-clips-modal__item-actions")}>
                       <IconButton
@@ -246,7 +249,7 @@ export const ClipModalButton = observer(() => {
               />
               <div className={S("form__inputs")}>
                 <div className={S("clip-form__title")}>
-                  { videoStore.name }
+                  {videoStore.name}
                 </div>
                 <ClipTimeInfo
                   store={videoStore}
@@ -254,12 +257,16 @@ export const ClipModalButton = observer(() => {
                   clipOutFrame={videoStore.clipOutFrame}
                   className={S("clip-form__details")}
                 />
+                <div className={S("clip-form__offering")}>
+                  Offering: {videoStore.offeringKey === "default" ? "Default" : videoStore.offeringKey}
+                </div>
                 <FormTextArea
                   autoFocus
                   label="Clip Description"
                   autosize
                   value={name}
                   onChange={event => setName(event.target.value)}
+                  className={S("clip-form__description")}
                 />
                 <div className={S("form__actions")}>
                   <Button

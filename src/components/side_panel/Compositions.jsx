@@ -49,8 +49,9 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
         onDragEnd={() => compositionStore.EndDrag()}
         startFrame={clip.clipInFrame}
         endFrame={clip.clipOutFrame}
-        style={{aspectRatio: store.aspectRatio}}
+        style={!store? {} : {aspectRatio: store.aspectRatio}}
         className={S("clip__image")}
+        loadingClassName={S("clip__image--loading")}
       />
       <Tooltip
         disabled={!!compositionStore.draggingClip}
@@ -69,6 +70,12 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
             clipOutFrame={clip.clipOutFrame}
             className={S("clip__time")}
           />
+      }
+      {
+        clip.offering === "default" ? null :
+          <div className={S("clip__offering")}>
+            Offering: {clip.offering}
+          </div>
       }
       {
         !compositionStore.myClipIds.includes(clip.clipId) ? null :

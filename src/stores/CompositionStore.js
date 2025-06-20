@@ -177,14 +177,17 @@ class CompositionStore {
   }
 
   get myClipIds() {
-    return this.allMyClipIds[this.selectedSourceId || this.rootStore.selectedObjectId] || [];
+    if(this.rootStore.page === "compositions") {
+      return this.allMyClipIds[this.selectedSourceId || this.compositionObject?.objectId] || [];
+    } else {
+      return this.allMyClipIds[this.rootStore.selectedObjectId] || [];
+    }
   }
 
   get myClips() {
     return this.myClipIds
       .map(clipId => this.clips[clipId])
       .filter(clip =>
-        clip.objectId === (this.compositionObject?.objectId || this.rootStore.selectedObjectId) &&
         (
           !this.filter ||
           clip.name?.toLowerCase()?.includes(this.filter)
@@ -337,6 +340,27 @@ class CompositionStore {
       });
     }
   }
+
+  SetClipOffering = flow(function * ({clipId, offering}) {
+    const clip = this.clips[clipId];
+
+    if(!clip) { return; }
+
+    const storeId = yield this.InitializeVideoStore({objectId: clip.objectId, offering});
+
+    this.ModifyClip({
+      clipId,
+      attrs: {
+        offering,
+        // Pass clip points so they are validated for the new offering
+        clipInFrame: clip.clipInFrame,
+        clipOutFrame: clip.clipOutFrame,
+        storeKey: storeId,
+        clipKey: `${clip.objectId}-${offering}-${clip.clipInFrame}-${clip.clipOutFrame}`
+      },
+      label: "Change Offering"
+    });
+  });
 
   RemoveClip(clipId) {
     this.PerformAction({
@@ -531,8 +555,8 @@ class CompositionStore {
   }
 
   SetSelectedClip({clipId, source}) {
-    if(source === "timeline" || (source === "side-panel" && this.myClipIds.includes(clipId))) {
-      // Clip is on timeline or from my clips, changes should apply to it directly
+    if(source === "timeline") {
+      // Clip is on timeline, changes should apply to it directly
       this.selectedClipId = clipId;
     } else {
       // Clip was selected from sidebar, do not change source clip
@@ -553,33 +577,58 @@ class CompositionStore {
     this.selectedClipId = undefined;
   }
 
-  InitializeClip = flow(function * ({name, objectId, offering="default", clipInFrame, clipOutFrame, source}) {
-    const key = `${objectId}-${offering}`;
-    if(!this.clipStores[key]) {
-      this.clipLoading = true;
+  InitializeVideoStore = flow(function * ({objectId, offering="default"}) {
+    const storeId = `${objectId}-${offering}`;
+    return yield this.rootStore.LoadResource({
+      key: "composition-video-store",
+      id: storeId,
+      Load: flow(function * () {
+        const videoStore = new VideoStore(
+          this.rootStore,
+          {
+            tags: false
+          }
+        );
 
-      const clipStore = new VideoStore(
-        this.rootStore,
-        {
-          tags: false,
-          clipKey: key
+        videoStore.id = storeId;
+        videoStore.sliderMarks = 20;
+        videoStore.majorMarksEvery = 5;
+
+        yield videoStore.SetVideo({objectId, preferredOfferingKey: offering, noTags: true});
+        this.clipStores[storeId] = videoStore;
+
+        if(offering !== videoStore.offeringKey){
+          // Selected offering is different from requested offering - ensure expected key is set
+          this.clipStores[`${objectId}-${this.clipStores[storeId].offeringKey}`] = videoStore;
         }
-      );
 
-      clipStore.id = `Clip Store ${key}`;
-      clipStore.sliderMarks = 20;
-      clipStore.majorMarksEvery = 5;
+        return storeId
+      }).bind(this)
+    });
+  });
 
-      yield clipStore.SetVideo({objectId, preferredOfferingKey: offering, noTags: true});
-      this.clipStores[key] = clipStore;
-
-      if(offering !== clipStore.offeringKey){
-        // Selected offering is different from requested offering - ensure expected key is set
-        this.clipStores[`${objectId}-${this.clipStores[key].offeringKey}`] = clipStore;
-      }
-    }
+  InitializeClip = flow(function * ({
+    name,
+    objectId,
+    offering="default",
+    clipInFrame,
+    clipInTime,
+    clipOutFrame,
+    clipOutTime,
+    source
+  }) {
+    const key = `${objectId}-${offering}`;
+    yield this.InitializeVideoStore({objectId, offering});
 
     const store = this.clipStores[key];
+
+    if(clipInTime) {
+      clipInFrame = store.videoHandler.TimeToFrame(clipInTime);
+    }
+
+    if(clipOutTime) {
+      clipOutFrame = store.videoHandler.TimeToFrame(clipOutTime);
+    }
 
     const clipId = this.rootStore.NextId();
     this.clips[clipId] = {
@@ -602,8 +651,6 @@ class CompositionStore {
         this.clips[clipId].clipOutFrame = store.totalFrames - 2;
       };
     }
-
-    this.clipLoading = false;
 
     return clipId;
   });
@@ -787,18 +834,16 @@ class CompositionStore {
 
       const {name, libraryId, objectId, sourceObjectId, sourceOfferingKey, compositionKey} = this.compositionObject;
       const writeToken = yield this.WriteToken({objectId, compositionKey, create: true});
-      const sourceHash = yield this.client.LatestVersionHash({objectId: sourceObjectId});
 
-      let sourceLink;
-      if(objectId === sourceObjectId) {
-        sourceLink = {
-          "/": UrlJoin("./", "rep", "playout", sourceOfferingKey)
-        };
-      } else {
-        sourceLink = {
-          "/": UrlJoin("/qfab", sourceHash, "rep", "playout", sourceOfferingKey)
-        };
-      }
+      let sourceHashes = {};
+      yield Promise.all(
+        this.clipList
+          .map(clip => clip.objectId)
+          .filter((x, i, a) => a.findIndex(other => x.id === other.id) === i)
+          .map(async objectId =>
+            sourceHashes[objectId] = await this.client.LatestVersionHash({objectId})
+          )
+      );
 
       const items = this.clipList.map(clip => {
         const store = this.clipStores[clip.storeKey];
@@ -807,6 +852,17 @@ class CompositionStore {
         const sourceEndFrame = store.videoHandler.RatToFrame(store.metadata.offerings[clip.offering].media_struct.duration_rat);
 
         let clipOutFrame = Math.min(clip.clipOutFrame, sourceEndFrame - 1);
+
+        let sourceLink;
+        if(clip.objectId === sourceObjectId) {
+          sourceLink = {
+            "/": UrlJoin("./", "rep", "playout", clip.offering || sourceOfferingKey)
+          };
+        } else {
+          sourceLink = {
+            "/": UrlJoin("/qfab", sourceHashes[clip.objectId], "rep", "playout", clip.offering || sourceOfferingKey)
+          };
+        }
 
         return {
           display_name: clip.name || "Clip",
@@ -1009,6 +1065,8 @@ class CompositionStore {
         const libraryId = await this.client.ContentObjectLibraryId({objectId: clipObjectId});
         const offeringKey = item.source["/"].split("/").slice(-1)[0];
 
+        await this.InitializeVideoStore({objectId: clipObjectId, offering: offeringKey});
+
         const clipInFrame = primarySource.videoHandler.RatToFrame(item.slice_start_rat);
         const clipOutFrame = primarySource.videoHandler.RatToFrame(item.slice_end_rat);
 
@@ -1115,7 +1173,6 @@ class CompositionStore {
     const store = this.ClipStore({clipId: sourceFullClipId});
     const videoHandler = new FrameAccurateVideo({frameRateRat: store.frameRateRat});
 
-    // tODO: Load my clips
     // Load content clips
     let sourceClipIds = {};
     const sourceClips = store.videoObject.metadata?.clips?.metadata_tags || {};
@@ -1435,16 +1492,12 @@ class CompositionStore {
     });
 
     if(clips) {
-      this.allMyClipIds[objectId] = JSON.parse(this.client.utils.FromB64(clips))
-        .filter(clip => clip.objectId === objectId)
-        // Update clip IDs
-        .map(clip => {
-          clip = {...clip, clipId: this.rootStore.NextId() };
-
-          this.clips[clip.clipId] = clip;
-
-          return clip.clipId;
-        });
+      this.allMyClipIds[objectId] = yield Promise.all(
+        JSON.parse(this.client.utils.FromB64(clips))
+          .filter(clip => clip.objectId === objectId)
+          // Load clips
+          .map(async clip => await this.InitializeClip(clip))
+      );
     }
   });
 

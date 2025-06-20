@@ -13,7 +13,8 @@ const PreviewThumbnail = observer(({
   endFrame,
   useLoaderImage,
   showDuration=true,
-  maxThumbnails,
+  maxThumbnails=50,
+  loadingClassName,
   ...props
 }) => {
   const [ref, setRef] = useState(null);
@@ -31,29 +32,18 @@ const PreviewThumbnail = observer(({
   endFrame = endFrame || store.totalFrames - 1;
 
   useEffect(() => {
-    let startTime = store.FrameToTime(startFrame);
-    const endTime = store.FrameToTime(endFrame);
-
-    // Thumbnail interval based on length of clip
-    const duration = (endFrame - startFrame) / store.frameRate;
-    let targetCount = Math.max(10, Math.min(duration / 60, maxThumbnails || 100)) + 1;
-    const interval = duration / targetCount;
-
-    let thumbnailMap = {};
-    let thumbnailList = [];
-    while(startTime < endTime) {
-      const thumbnailUrl = store.thumbnailStore.ThumbnailImage(startTime);
-
-      if(!thumbnailMap[thumbnailUrl]) {
-        thumbnailList.push(thumbnailUrl);
-        thumbnailMap[thumbnailUrl] = true;
-      }
-
-      startTime += interval;
+    if(!store || !store?.thumbnailStore.thumbnailStatus.available) {
+      return;
     }
 
-    setThumbnails(thumbnailList);
-  }, [store.thumbnailStore.thumbnailStatus.available]);
+    setThumbnails(
+      store.thumbnailStore.ThumbnailImages(
+        store.FrameToTime(startFrame),
+        store.FrameToTime(endFrame),
+        maxThumbnails
+      )
+    );
+  }, [store?.thumbnailStore.thumbnailStatus.available]);
 
   useEffect(() => {
     if(!ref) { return; }
@@ -79,12 +69,12 @@ const PreviewThumbnail = observer(({
     });
   }, [ref, clientX]);
 
-  if(!store.thumbnailStore.thumbnailStatus.available || !thumbnails) {
+  if(!store?.thumbnailStore.thumbnailStatus.available || !thumbnails) {
     return !useLoaderImage ? null :
       <LoaderImage
         {...props}
         showWithoutSource
-        className={JoinClassNames(S("preview-thumbnail"), props.className)}
+        className={JoinClassNames(S("preview-thumbnail"), props.className, loadingClassName)}
       />;
   }
 

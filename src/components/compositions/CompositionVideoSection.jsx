@@ -6,14 +6,13 @@ import {compositionStore, keyboardControlsStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, DragHandler} from "@/utils/Utils.js";
 import {
   AudioControls,
-  OfferingControls,
   PlaybackRateControl,
   PlayCurrentClipButton, QualityControls,
   SubtitleControls,
 } from "@/components/video/VideoControls";
 import Video from "@/components/video/Video";
 import MarkedSlider from "@/components/common/MarkedSlider.jsx";
-import {AsyncButton, Confirm, FormTextArea, Icon, IconButton, Modal} from "@/components/common/Common.jsx";
+import {AsyncButton, Confirm, FormTextArea, Icon, IconButton, Modal, SelectInput} from "@/components/common/Common.jsx";
 import {Button, Tooltip} from "@mantine/core";
 import {useLocation} from "wouter";
 
@@ -190,7 +189,7 @@ const ClipSeekBar = observer(() => {
           progress => (
             <div className={S("thumbnail-hover")}>
               <img
-                src={store.thumbnailStore.ThumbnailImage(store.ProgressToTime(progress))}
+                src={store.thumbnailStore.ThumbnailImages(store.ProgressToTime(progress))[0]}
                 style={{aspectRatio: store.aspectRatio}}
                 className={S("thumbnail-hover__image")}
               />
@@ -420,6 +419,26 @@ const Title = observer(({clipView}) => {
   );
 });
 
+export const ClipOfferingControls = observer(({store}) => {
+  let offerings = Object.keys(store.availableOfferings || {})
+    .sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: "base"}))
+    .map(offeringKey => ({
+      value: offeringKey,
+      label: store.availableOfferings[offeringKey].display_name || offeringKey,
+      disabled: store.availableOfferings[offeringKey].disabled || false
+    }));
+
+
+  return (
+    <SelectInput
+      label="Offering"
+      value={store.offeringKey}
+      options={offerings}
+      onChange={value => value && compositionStore.SetClipOffering({clipId: compositionStore.selectedClipId, offering: value})}
+    />
+  );
+});
+
 const CompositionVideoSection = observer(({store, blank=false, clipView=false}) => {
   const [sectionRef, setSectionRef] = useState(undefined);
   const [active, setActive] = useState(false);
@@ -564,7 +583,7 @@ const CompositionVideoSection = observer(({store, blank=false, clipView=false}) 
                 {
                   !clipView ? null :
                     <>
-                      <OfferingControls store={store}/>
+                      <ClipOfferingControls store={store}/>
                       <SubtitleControls store={store}/>
                     </>
                 }
