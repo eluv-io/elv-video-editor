@@ -307,7 +307,11 @@ class RootStore {
 
   ClearResource({key, id}) {
     if(this._resources[key]) {
-      delete this._resources[key][id];
+      if(id) {
+        delete this._resources[key][id];
+      } else {
+        delete this._resources[key];
+      }
     }
   }
 }

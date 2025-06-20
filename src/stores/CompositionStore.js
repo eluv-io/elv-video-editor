@@ -76,7 +76,6 @@ class CompositionStore {
     this.videoStore = new VideoStore(this.rootStore, {tags: false, channel: true});
     this.videoStore.id = "Composition Store";
 
-    this.clipStores = {};
     this.clips = {};
     this.secondarySourceIds = [];
     this.clipIdList = [];
@@ -94,7 +93,10 @@ class CompositionStore {
     this.compositionObject = undefined;
     this.compositionPlayoutUrl = undefined;
     this.draggingClip = undefined;
+    this.clipStores = {};
     this.saved = false;
+
+    this.rootStore.ClearResource({key: "composition-video-store"});
 
     this.EndDrag();
     this.ClearSelectedClip();
@@ -602,7 +604,7 @@ class CompositionStore {
           this.clipStores[`${objectId}-${this.clipStores[storeId].offeringKey}`] = videoStore;
         }
 
-        return storeId
+        return storeId;
       }).bind(this)
     });
   });
@@ -617,8 +619,7 @@ class CompositionStore {
     clipOutTime,
     source
   }) {
-    const key = `${objectId}-${offering}`;
-    yield this.InitializeVideoStore({objectId, offering});
+    const key = yield this.InitializeVideoStore({objectId, offering});
 
     const store = this.clipStores[key];
 
