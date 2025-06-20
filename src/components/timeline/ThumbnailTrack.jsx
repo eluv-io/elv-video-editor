@@ -158,7 +158,7 @@ const ThumbnailTrack = observer(({
       key={`thumbnail-${store?.thumbnailStore?.thumbnailStatus?.available}`}
       onMouseMove={event => {
         setHoverThumbnail(
-          store.thumbnailStore.ThumbnailImage(CalculateProgress(event) * store.duration)
+          store.thumbnailStore.ThumbnailImages(CalculateProgress(event) * store.duration)[0]
         );
         setHovering(true);
       }}
@@ -186,7 +186,7 @@ const ThumbnailTrack = observer(({
             <LoaderImage
               showWithoutSource
               noAnimation
-              src={store.thumbnailStore.ThumbnailImage(startTime)}
+              src={store.thumbnailStore.ThumbnailImages(startTime)[0]}
               alt="Thumbnail"
               key={`thumbnail-${index}`}
               style={{

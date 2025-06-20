@@ -213,7 +213,7 @@ const TagForm = observer(() => {
                   <LoaderImage
                     loaderAspectRatio={videoStore.aspectRatio}
                     key={`preview-${tag.startTime}-${tag.endTime}`}
-                    src={videoStore.thumbnailStore.ThumbnailImage(tag.startTime)}
+                    src={videoStore.thumbnailStore.ThumbnailImages(tag.startTime)[0]}
                     className={S("tag-details__thumbnail")}
                   /> :
                   <PreviewThumbnail
@@ -343,7 +343,7 @@ export const TagDetails = observer(() => {
                 {
                   duration < 10 ?
                     <LoaderImage
-                      src={videoStore.thumbnailStore.ThumbnailImage(tag.startTime)}
+                      src={videoStore.thumbnailStore.ThumbnailImages(tag.startTime)[0]}
                       style={{aspectRatio: videoStore.aspectRatio}}
                       className={S("tag-details__thumbnail")}
                     /> :
@@ -438,7 +438,7 @@ const Tag = observer(({track, tag, setTagRef}) => {
         {
           !videoStore.thumbnailStore.thumbnailStatus.available ? null :
             <LoaderImage
-              src={videoStore.thumbnailStore.ThumbnailImage(tag.startTime)}
+              src={videoStore.thumbnailStore.ThumbnailImages(tag.startTime)[0]}
               style={{aspectRatio: videoStore.aspectRatio}}
               className={S("tag__image")}
             />

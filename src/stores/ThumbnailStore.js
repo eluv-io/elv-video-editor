@@ -24,15 +24,21 @@ class ThumbnailStore {
     );
   }
 
-  ThumbnailImage(time) {
-    if(!this.thumbnailStatus.available) { return; }
+  ThumbnailImages(startTime, endTime) {
+    if(!this.thumbnailStatus.available) { return []; }
 
-    let thumbnailIndex = this.intervalTree?.search(time, time + 10)[0];
-    const tag = this.thumbnails?.[thumbnailIndex?.toString()];
+    if(typeof endTime === "undefined") {
+      endTime = startTime + 6;
+    }
 
-    if(!tag) { return; }
+    let thumbnailIndexes = this.intervalTree?.search(startTime, endTime);
+    return thumbnailIndexes.map(thumbnailIndex => {
+      const tag = this.thumbnails?.[thumbnailIndex?.toString()];
 
-    if(!tag.thumbnailUrl) {
+      if(!tag) {
+        return;
+      }
+
       if(!this.thumbnailCanvas) {
         this.thumbnailCanvas = document.createElement("canvas");
       }
@@ -45,11 +51,9 @@ class ThumbnailStore {
         this.thumbnailCanvas.width = w;
         const context = this.thumbnailCanvas.getContext("2d");
         context.drawImage(image, x, y, w, h, 0, 0, w, h);
-        tag.thumbnailUrl = this.thumbnailCanvas.toDataURL("image/png");
+        return this.thumbnailCanvas.toDataURL("image/png");
       }
-    }
-
-    return tag.thumbnailUrl;
+    });
   }
 
   LoadThumbnails = flow(function * (thumbnailTrackUrl) {
@@ -72,6 +76,10 @@ class ThumbnailStore {
     const vttData = yield (yield fetch(thumbnailTrackUrl, {headers: {Authorization: `Bearer ${authToken}`}})).text();
 
     let tags = yield ParseVTTTrack({track: {label: "Thumbnails", vttData}, store: this.parentStore});
+
+    Object.keys(tags || {}).forEach(key =>
+      tags[key].endTime = tags[key].startTime
+    );
 
     let imageUrls = {};
     Object.keys(tags).map(id => {

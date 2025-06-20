@@ -13,7 +13,7 @@ const PreviewThumbnail = observer(({
   endFrame,
   useLoaderImage,
   showDuration=true,
-  maxThumbnails,
+  //maxThumbnails,
   ...props
 }) => {
   const [ref, setRef] = useState(null);
@@ -31,28 +31,12 @@ const PreviewThumbnail = observer(({
   endFrame = endFrame || store.totalFrames - 1;
 
   useEffect(() => {
-    let startTime = store.FrameToTime(startFrame);
-    const endTime = store.FrameToTime(endFrame);
-
-    // Thumbnail interval based on length of clip
-    const duration = (endFrame - startFrame) / store.frameRate;
-    let targetCount = Math.max(10, Math.min(duration / 60, maxThumbnails || 100)) + 1;
-    const interval = duration / targetCount;
-
-    let thumbnailMap = {};
-    let thumbnailList = [];
-    while(startTime < endTime) {
-      const thumbnailUrl = store.thumbnailStore.ThumbnailImage(startTime);
-
-      if(!thumbnailMap[thumbnailUrl]) {
-        thumbnailList.push(thumbnailUrl);
-        thumbnailMap[thumbnailUrl] = true;
-      }
-
-      startTime += interval;
-    }
-
-    setThumbnails(thumbnailList);
+    setThumbnails(
+      store.thumbnailStore.ThumbnailImages(
+        store.FrameToTime(startFrame),
+        store.FrameToTime(endFrame)
+      )
+    );
   }, [store.thumbnailStore.thumbnailStatus.available]);
 
   useEffect(() => {
