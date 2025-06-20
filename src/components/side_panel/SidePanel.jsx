@@ -247,7 +247,6 @@ const SourceSelectionModal = observer(({Select, Cancel}) => {
           <ObjectBrowser
             libraryId={libraryId}
             videoOnly
-            frameRate={compositionStore.primarySourceVideoStore.frameRateRat}
             Back={() => setLibraryId(undefined)}
             Select={({objectId, name}) => Select({objectId, name})}
             className={S("search__source-browser")}
