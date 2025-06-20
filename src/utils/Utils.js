@@ -271,15 +271,20 @@ export const DragHandler = fn => event => {
 };
 
 // React hook to get if the component is currently visible
-export const useIsVisible = (ref) => {
+export const useIsVisible = (ref, unloadDelay=0) => {
   const [isIntersecting, setIntersecting] = useState(false);
 
   useEffect(() => {
     if(!ref) { return; }
 
-    const observer = new IntersectionObserver(([entry]) =>
-      setIntersecting(entry.isIntersecting)
-    );
+    let timeout;
+    const observer = new IntersectionObserver(([entry]) => {
+      clearTimeout(timeout);
+
+      entry.isIntersecting ?
+        setIntersecting(true) :
+        timeout = setTimeout(() => setIntersecting(false), unloadDelay);
+    });
 
     observer.observe(ref);
     return () => {

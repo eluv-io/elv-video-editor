@@ -14,6 +14,7 @@ const PreviewThumbnail = observer(({
   useLoaderImage,
   showDuration=true,
   //maxThumbnails,
+  loadingClassName,
   ...props
 }) => {
   const [ref, setRef] = useState(null);
@@ -68,7 +69,7 @@ const PreviewThumbnail = observer(({
       <LoaderImage
         {...props}
         showWithoutSource
-        className={JoinClassNames(S("preview-thumbnail"), props.className)}
+        className={JoinClassNames(S("preview-thumbnail"), props.className, loadingClassName)}
       />;
   }
 

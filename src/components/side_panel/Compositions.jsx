@@ -51,6 +51,7 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
         endFrame={clip.clipOutFrame}
         style={{aspectRatio: store.aspectRatio}}
         className={S("clip__image")}
+        loadingClassName={S("clip__image--loading")}
       />
       <Tooltip
         disabled={!!compositionStore.draggingClip}

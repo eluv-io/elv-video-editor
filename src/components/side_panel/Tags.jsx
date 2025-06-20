@@ -388,8 +388,9 @@ export const TagDetails = observer(() => {
 });
 
 const Tag = observer(({track, tag, setTagRef}) => {
+  // eslint-disable-next-line no-unused-vars
   const [ref, setRef] = useState(null);
-  const visible = useIsVisible(ref);
+  const visible = true; // useIsVisible(ref, 5000);
 
   if(!track || !tag) {
     return null;
@@ -434,16 +435,17 @@ const Tag = observer(({track, tag, setTagRef}) => {
         style={{backgroundColor: `rgb(${color?.r} ${color?.g} ${color?.b}`}}
         className={S("tag__color")}
       />
-      <div className={S("tag__left")}>
         {
           !videoStore.thumbnailStore.thumbnailStatus.available ? null :
             <LoaderImage
               src={videoStore.thumbnailStore.ThumbnailImages(tag.startTime)[0]}
+              loaderDelay={0}
+              loaderAspectRatio={videoStore.aspectRatio}
               style={{aspectRatio: videoStore.aspectRatio}}
               className={S("tag__image")}
             />
         }
-        <div className={S("tag__text")}>
+        <div className={S("tag__content")}>
           <Tooltip
             position="top"
             openDelay={500}
@@ -469,7 +471,6 @@ const Tag = observer(({track, tag, setTagRef}) => {
             <span>{videoStore.TimeToSMPTE(tag.startTime)}</span> | <span>{videoStore.TimeToString(parseFloat((tag.endTime - tag.startTime)), true)}</span>
           </div>
         </div>
-      </div>
       <div className={S("tag__actions")}>
         {
           tag.trackKey === "shot_tags" ? null :
@@ -506,6 +507,7 @@ export const TagsList = observer(({mode="tags"}) => {
   const perPage = 10;
   const [pages, setPages] = useDebouncedState({previous: 1, next: 1}, 250);
   const [update, setUpdate] = useDebouncedState(0, 250);
+  const [key, setKey] = useDebouncedState(0, 250);
   const [scrollTagId, setScrollTagId] = useState(undefined);
   const [scrolled, setScrolled] = useState(false);
   const [tags, setTags] = useState([]);
@@ -541,6 +543,7 @@ export const TagsList = observer(({mode="tags"}) => {
     setScrolled(false);
     setScrollTagId(tagStore.scrollTagId);
     setUpdate(update + 1);
+    setKey(key + 1);
   }, [
     videoStore.scaleMin,
     videoStore.scaleMax,
@@ -573,11 +576,7 @@ export const TagsList = observer(({mode="tags"}) => {
     setTags(tags);
 
     if(!scrollTagId) {
-      setTimeout(() =>   setLoading(false), 500);
-    }
-
-    if(info.center === 0 && ref.current) {
-      ref.current.scrollTop = 0;
+      setTimeout(() => setLoading(false), 500);
     }
   }, [update]);
 
@@ -611,6 +610,7 @@ export const TagsList = observer(({mode="tags"}) => {
       }
       <div
         ref={ref}
+        key={`key-${key}`}
         onScroll={CheckUpdate}
         className={S("tags")}
       >
