@@ -346,14 +346,20 @@ class CompositionStore {
 
     if(!clip) { return; }
 
-    yield this.InitializeVideoStore({objectId: clip.objectId, offering});
+    const storeId = yield this.InitializeVideoStore({objectId: clip.objectId, offering});
 
-    this.clips[clipId] = {
-      ...clip,
-      offering,
-      storeKey: `${clip.objectId}-${offering}`,
-      clipKey: `${clip.objectId}-${offering}-${clip.clipInFrame}-${clip.clipOutFrame}`
-    };
+    this.ModifyClip({
+      clipId,
+      attrs: {
+        offering,
+        // Pass clip points so they are validated for the new offering
+        clipInFrame: clip.clipInFrame,
+        clipOutFrame: clip.clipOutFrame,
+        storeKey: storeId,
+        clipKey: `${clip.objectId}-${offering}-${clip.clipInFrame}-${clip.clipOutFrame}`
+      },
+      label: "Change Offering"
+    });
   });
 
   RemoveClip(clipId) {
@@ -595,6 +601,8 @@ class CompositionStore {
           // Selected offering is different from requested offering - ensure expected key is set
           this.clipStores[`${objectId}-${this.clipStores[storeId].offeringKey}`] = videoStore;
         }
+
+        return storeId
       }).bind(this)
     });
   });
