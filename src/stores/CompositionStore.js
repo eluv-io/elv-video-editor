@@ -787,18 +787,16 @@ class CompositionStore {
 
       const {name, libraryId, objectId, sourceObjectId, sourceOfferingKey, compositionKey} = this.compositionObject;
       const writeToken = yield this.WriteToken({objectId, compositionKey, create: true});
-      const sourceHash = yield this.client.LatestVersionHash({objectId: sourceObjectId});
 
-      let sourceLink;
-      if(objectId === sourceObjectId) {
-        sourceLink = {
-          "/": UrlJoin("./", "rep", "playout", sourceOfferingKey)
-        };
-      } else {
-        sourceLink = {
-          "/": UrlJoin("/qfab", sourceHash, "rep", "playout", sourceOfferingKey)
-        };
-      }
+      let sourceHashes = {};
+      yield Promise.all(
+        this.clipList
+          .map(clip => clip.objectId)
+          .filter((x, i, a) => a.findIndex(other => x.id === other.id) === i)
+          .map(async objectId =>
+            sourceHashes[objectId] = await this.client.LatestVersionHash({objectId})
+          )
+      );
 
       const items = this.clipList.map(clip => {
         const store = this.clipStores[clip.storeKey];
@@ -807,6 +805,18 @@ class CompositionStore {
         const sourceEndFrame = store.videoHandler.RatToFrame(store.metadata.offerings[clip.offering].media_struct.duration_rat);
 
         let clipOutFrame = Math.min(clip.clipOutFrame, sourceEndFrame - 1);
+
+        let sourceLink;
+        if(clip.objectId === sourceObjectId) {
+          sourceLink = {
+            "/": UrlJoin("./", "rep", "playout", sourceOfferingKey)
+          };
+        } else {
+          sourceLink = {
+            "/": UrlJoin("/qfab", sourceHashes[clip.objectId], "rep", "playout", sourceOfferingKey)
+          };
+        }
+
 
         return {
           display_name: clip.name || "Clip",
