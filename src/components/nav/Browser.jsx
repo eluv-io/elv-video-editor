@@ -402,6 +402,10 @@ const CompositionBrowser = observer(({selectedObject, Select, Back, className=""
             ))
           ]
             .filter(({id}) => !deletedChannels.includes(id))
+            // Filter duplicates
+            .filter(({objectId, compositionKey}, i, s) =>
+              i === s.findIndex(other => other.objectId === objectId && other.compositionKey === compositionKey)
+            )
             .filter(({name}) => !filter || name.toLowerCase().includes(filter.toLowerCase()));
 
           const total = content.length;
