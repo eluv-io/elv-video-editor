@@ -366,6 +366,7 @@ class BrowserStore {
     yield this.rootStore.LoadResource({
       key: "my-library",
       id: "my-library",
+      ttl: 10,
       Load: flow(function * () {
         const myLibraryItems = yield this.client.walletClient.ProfileMetadata({
           type: "app",
