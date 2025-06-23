@@ -6,7 +6,7 @@ import {
   Button,
   ColorInput,
   Modal as MantineModal, MultiSelect,
-  NumberInput, RingProgress,
+  NumberInput, Progress, RingProgress,
   Select,
   Switch,
   Textarea,
@@ -730,3 +730,25 @@ export const Confirm = async ({title, text, labels={}, onConfirm, onCancel}) => 
 
   await onConfirm();
 };
+
+export const ProgressModal = observer(({progress, title}) => {
+  // Last 5% is reserved for finalizing
+  return (
+    <Modal
+      title={title}
+      alwaysOpened
+      centered
+      onClose={() => {}}
+      withCloseButton={false}
+    >
+      <div className={S("progress")}>
+        <Progress
+          value={progress}
+          max={100}
+          transitionDuration={1000}
+          mb="md"
+        />
+      </div>
+    </Modal>
+  );
+});

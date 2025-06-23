@@ -603,7 +603,7 @@ export const GroundTruthPoolBrowser = observer(() => {
 
     if(!pool) { return; }
 
-    setRedirect("/" + id || objectId);
+    setRedirect(UrlJoin("/", id || objectId));
   };
 
   return (
@@ -637,6 +637,15 @@ export const GroundTruthPoolBrowser = observer(() => {
           contentType="ground-truth"
           noDuration
           Select={Select}
+          Delete={async ({id, name}) => await Confirm({
+            title: "Delete Ground Truth Pool",
+            text: `Are you sure you want to delete the ground truth pool '${name}'? This action cannot be undone.`,
+            onConfirm: async () => {
+              await groundTruthStore.DeleteGroundTruthPool({
+                objectId: id
+              });
+            }
+          })}
           Load={async args => await browserStore.ListGroundTruthPools(args)}
         />
       </div>

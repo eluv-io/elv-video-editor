@@ -15,7 +15,7 @@ const GroundTruthView = observer(() => {
 
   return (
     <Switch>
-      <Route path=":poolId/entities/:entityId/items/:itemIndexOrId">
+      <Route path=":poolId/entities/:entityId/assets/:assetIndexOrId">
         <GroundTruthAsset />
       </Route>
       <Route path=":poolId/entities/:entityId">

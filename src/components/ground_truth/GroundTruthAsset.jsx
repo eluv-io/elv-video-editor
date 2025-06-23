@@ -19,7 +19,7 @@ const GroundTruthAsset = observer(() => {
   const pool = groundTruthStore.pools[poolId] || {};
   const entity = pool?.metadata?.entities?.[entityId];
   let asset =
-    (entity?.sample_files || []).find(asset => asset.id === assetIndexOrId) ||
+    (entity?.sample_files || []).find(asset => asset.id && asset.id === assetIndexOrId) ||
     (entity?.sample_files || [])[assetIndexOrId];
   const filename = asset?.link?.["/"]?.split("/")?.slice(-1)[0];
 

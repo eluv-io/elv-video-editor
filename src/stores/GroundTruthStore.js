@@ -4,6 +4,7 @@ import {CSVtoList} from "@/utils/Utils.js";
 class GroundTruthStore {
   pools = {};
   domains = {};
+  saveProgress = 0;
 
   constructor(rootStore) {
     makeAutoObservable(this);
@@ -91,6 +92,8 @@ class GroundTruthStore {
   });
 
   CreateGroundTruthPool = flow(function * ({libraryId, name, description, model, attributes}) {
+    this.saveProgress = 0;
+
     const types = yield rootStore.client.ContentTypes();
     const type =
       Object.values(types).find(type => type.name?.toLowerCase()?.endsWith("title")) ||
@@ -103,6 +106,8 @@ class GroundTruthStore {
         type: type?.id,
       },
       callback: async ({objectId, writeToken}) => {
+        this.saveProgress = 10;
+
         await this.client.ReplaceMetadata({
           libraryId,
           objectId,
@@ -143,25 +148,90 @@ class GroundTruthStore {
             }
           }
         });
-
-        await this.client.SetPermission({
-          libraryId,
-          objectId,
-          writeToken,
-          permission: "editable"
-        });
       }
     });
 
-    this.pools[response.objectId] = {
-      objectId: response.objectId,
-      name
-    };
+    this.saveProgress = 40;
 
-    yield this.LoadGroundTruthPool({poolId: response.objectId});
+    const objectId = response.id;
 
-    // TODO: Add item to the tenant object
-    return response.objectId;
+    yield this.client.SetPermission({
+      libraryId,
+      objectId,
+      permission: "editable"
+    });
+
+    this.saveProgress = 70;
+
+    const infoLibraryId = yield this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId});
+    const infoId = this.rootStore.tenantInfoObjectId;
+    yield this.client.EditAndFinalizeContentObject({
+      libraryId: infoLibraryId,
+      objectId: infoId,
+      commitMessage: `EVIE: Add ground truth pool '${name}'`,
+      callback: async ({writeToken}) => {
+        const pools = (await this.client.ContentObjectMetadata({
+          libraryId: infoLibraryId,
+          objectId: infoId,
+          writeToken,
+          metadataSubtree: "/public/tagging/ground_truth/pools"
+        })) || [];
+
+        await this.client.ReplaceMetadata({
+          libraryId: infoLibraryId,
+          objectId: infoId,
+          writeToken,
+          metadataSubtree: "/public/tagging/ground_truth/pools",
+          metadata: [...pools, objectId]
+        });
+
+        this.saveProgress = 90;
+      }
+    });
+
+    yield this.LoadGroundTruthPools({force: true});
+
+    return objectId;
+  });
+
+  DeleteGroundTruthPool = flow(function * ({objectId}) {
+    const name = yield this.client.ContentObjectMetadata({
+      versionHash: yield this.client.LatestVersionHash({objectId}),
+      metadataSubtree: "/public/name"
+    });
+
+    yield this.client.DeleteContentObject({
+      libraryId: yield this.client.ContentObjectLibraryId({objectId}),
+      objectId
+    });
+
+    const infoLibraryId = yield this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId});
+    const infoId = this.rootStore.tenantInfoObjectId;
+    yield this.client.EditAndFinalizeContentObject({
+      libraryId: infoLibraryId,
+      objectId: infoId,
+      commitMessage: `EVIE: Remove ground truth pool '${name || objectId}'`,
+      callback: async ({writeToken}) => {
+        const pools = (await this.client.ContentObjectMetadata({
+          libraryId: infoLibraryId,
+          objectId: infoId,
+          writeToken,
+          metadataSubtree: "/public/tagging/ground_truth/pools"
+        })) || [];
+
+        await this.client.ReplaceMetadata({
+          libraryId: infoLibraryId,
+          objectId: infoId,
+          writeToken,
+          metadataSubtree: "/public/tagging/ground_truth/pools",
+          metadata: pools.filter(id => id !== objectId)
+        });
+
+        this.saveProgress = 90;
+      }
+    });
+
+    delete this.pools[objectId];
   });
 }
 

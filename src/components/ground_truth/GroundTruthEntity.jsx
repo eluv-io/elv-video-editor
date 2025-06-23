@@ -19,30 +19,30 @@ import BackIcon from "@/assets/icons/v2/back.svg";
 const S = CreateModuleClassMatcher(BrowserStyles, GroundTruthStyles);
 
 let batchSize = 24;
-const Items = observer(({filter}) => {
+const Assets = observer(({filter}) => {
   const {poolId, entityId} = useParams();
 
   const pool = groundTruthStore.pools[poolId];
   const entity = pool?.metadata?.entities?.[entityId];
-  const [items, setItems] = useState([]);
+  const [assets, setAssets] = useState([]);
   const [limit, setLimit] = useState(batchSize);
 
   filter = filter.toLowerCase();
 
   useEffect(() => {
-    setItems(
+    setAssets(
       (entity?.sample_files || [])
-        .map(item => ({
-          ...item,
-          filename: item.link?.["/"]?.split("/")?.slice(-1)[0]
+        .map(asset => ({
+          ...asset,
+          filename: asset.link?.["/"]?.split("/")?.slice(-1)[0]
         }))
-        .filter(item =>
+        .filter(asset =>
           !filter ||
-          item.label?.toLowerCase()?.includes(filter) ||
-          item.filename?.toLowerCase()?.includes(filter)
+          asset.label?.toLowerCase()?.includes(filter) ||
+          asset.filename?.toLowerCase()?.includes(filter)
         )
         .slice(0, limit)
-        );
+    );
   }, [limit, filter]);
 
   if(!pool) {
@@ -57,30 +57,30 @@ const Items = observer(({filter}) => {
       className={S("entity-grid")}
     >
       {
-        items.map((item, index) =>
+        assets.map((asset, index) =>
           <Linkish
-            to={UrlJoin("/", poolId, "entities", entityId, "items", item.id || index.toString())}
-            key={`item-${item.filename || index}`}
+            to={UrlJoin("/", poolId, "entities", entityId, "assets", asset.id || index.toString())}
+            key={`asset-${asset.filename || index}`}
             className={S("entity-card")}
           >
             <div className={S("entity-card__image-container")}>
               {
-                !item.link?.url ?
+                !asset.link?.url ?
                   <div className={S("entity-card__image", "entity-card__image--blank")}>
                     <Icon icon={ImageIcon} />
                   </div>:
                   <LoaderImage
                     width={300}
-                    src={item.link?.url}
+                    src={asset.link?.url}
                     loaderAspectRatio={1}
                     className={S("entity-card__image", "entity-card__image--contain")}
                   />
               }
             </div>
             <div className={S("entity-card__text")}>
-              <Tooltip openDelay={500} label={item.label || item.filename}>
+              <Tooltip openDelay={500} label={asset.label || asset.filename}>
                 <div className={S("entity-card__title", "ellipsis")}>
-                  { item.label || item.filename }
+                  { asset.label || asset.filename }
                 </div>
               </Tooltip>
               <div className={S("entity-card__actions")}>
@@ -116,7 +116,7 @@ const GroundTruthEntity = observer(() => {
   return (
     <div className={S("browser-page")}>
       <div className={S("browser")}>
-        <SearchBar placeholder="Filter Items" filter={filter} setFilter={setFilter}/>
+        <SearchBar placeholder="Filter Assets" filter={filter} setFilter={setFilter}/>
         <h1 className={S("browser__header")}>
           <IconButton
             icon={BackIcon}
@@ -141,7 +141,7 @@ const GroundTruthEntity = observer(() => {
             <div className={S("browser-table", "browser-table--loading")}>
               <Loader/>
             </div> :
-            <Items filter={filter} />
+            <Assets filter={filter} />
         }
       </div>
     </div>

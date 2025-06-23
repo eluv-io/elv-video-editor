@@ -39,7 +39,8 @@ const Entities = observer(({filter}) => {
             id: entityId,
             label: entity.label,
             image: anchorImage,
-            attrs: Object.values(entity.meta || {})
+            attrs: Object.values(entity.meta || {}),
+            assetCount: entity.sample_files?.length || 0
           };
         })
         .filter(entity =>
@@ -83,8 +84,11 @@ const Entities = observer(({filter}) => {
             </div>
             <div className={S("entity-card__text")}>
               <Tooltip openDelay={500} label={entity.label}>
-                <div className={S("entity-card__title", "ellipsis")}>
-                  { entity.label }
+                <div className={S("entity-card__title")}>
+                  <div className={S("ellipsis")}>
+                    {entity.label}
+                  </div>
+                  <div className={S("entity-card__count")}>({entity.assetCount || 0})</div>
                 </div>
               </Tooltip>
               <div className={S("entity-card__actions")}>

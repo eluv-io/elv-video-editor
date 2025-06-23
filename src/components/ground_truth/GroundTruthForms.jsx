@@ -8,7 +8,7 @@ import {
   FormTextInput,
   Icon,
   IconButton,
-  Modal
+  Modal, ProgressModal
 } from "@/components/common/Common.jsx";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, CSVtoList} from "@/utils/Utils.js";
@@ -139,6 +139,8 @@ export const GroundTruthPoolForm = observer(({Close}) => {
   const [attributesRef, setAttributesRef] = useState(undefined);
   const [draggingIndex, setDraggingIndex] = useState(undefined);
   const [dragIndicatorIndex, setDragIndicatorIndex] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const dragging = typeof draggingIndex !== "undefined";
 
   const [formData, setFormData] = useState({
@@ -273,8 +275,21 @@ export const GroundTruthPoolForm = observer(({Close}) => {
             <span>Add a Configurable Field</span>
           </button>
 
+          {
+            !error ? null :
+              <div className={S("ground-truth-form__error")}>
+                { error }
+              </div>
+          }
+
           <div className={S("ground-truth-form__actions")}>
-            <Button w={150} variant="subtle" color="gray.5" onClick={() => Close()}>
+            <Button
+              disabled={submitting}
+              w={150}
+              variant="subtle"
+              color="gray.5"
+              onClick={() => Close()}
+            >
               Cancel
             </Button>
             <AsyncButton
@@ -288,7 +303,18 @@ export const GroundTruthPoolForm = observer(({Close}) => {
                     .filter((x, i, a) => a.indexOf(x) == i)
                     .map(message => <div key={message}>{message}</div>)
               }
-              onClick={async () => await groundTruthStore.CreateGroundTruthPool(formData)}
+              onClick={async () => {
+                setSubmitting(true);
+
+                try {
+                  const poolId = await groundTruthStore.CreateGroundTruthPool(formData);
+                  Close(poolId);
+                } catch (error) {
+                  setError("Failed to create ground truth pool. Please try again");
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
             >
               Create
             </AsyncButton>
@@ -307,6 +333,13 @@ export const GroundTruthPoolForm = observer(({Close}) => {
               className={S("ground-truth-form__browser")}
             />
           </Modal>
+      }
+      {
+        !submitting ? null :
+          <ProgressModal
+            title="Creating ground truth pool..."
+            progress={groundTruthStore.saveProgress}
+          />
       }
     </>
   );
