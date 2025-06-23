@@ -1,5 +1,5 @@
 import {flow, makeAutoObservable} from "mobx";
-import {CSVtoList} from "@/utils/Utils.js";
+import {CSVtoList, Unproxy} from "@/utils/Utils.js";
 
 class GroundTruthStore {
   pools = {};
@@ -61,6 +61,8 @@ class GroundTruthStore {
   });
 
   LoadGroundTruthPool = flow(function * ({poolId, force}) {
+    yield this.LoadGroundTruthPools();
+
     return yield this.rootStore.LoadResource({
       key: "ground-truth",
       id: poolId,
@@ -76,16 +78,28 @@ class GroundTruthStore {
           produceLinkUrls: true,
           select: [
             "/public/name",
+            "/public/description",
             "/ground_truth"
           ]
         }));
+
+        const attributes = metadata?.ground_truth?.entity_data_schema?.properties || {};
 
         this.pools[poolId] = {
           libraryId,
           objectId: poolId,
           versionHash,
           name: metadata?.public?.name || metadata?.ground_truth?.model_domain || poolId,
-          metadata: metadata.ground_truth || {}
+          description: metadata?.public?.description,
+          metadata: metadata.ground_truth || {},
+          attributes: Object.keys(attributes)
+            .sort((a, b) => attributes[a].order < attributes[b].order ? -1 : 1)
+            .map(attributeKey => ({
+              id: Math.random(),
+              key: attributeKey,
+              options: (attributes[attributeKey]?.options || [])
+                .join(",")
+            }))
         };
       })
     });
@@ -192,6 +206,78 @@ class GroundTruthStore {
     yield this.LoadGroundTruthPools({force: true});
 
     return objectId;
+  });
+
+  UpdateGroundTruthPool = flow(function * ({objectId, name, description, model, attributes}) {
+    const libraryId = yield this.client.ContentObjectLibraryId({objectId});
+    const {writeToken} = yield this.client.EditContentObject({
+      libraryId,
+      objectId,
+    });
+
+    this.saveProgress = 30;
+
+    let schema = {};
+    attributes.map((attribute, index) => {
+      schema[attribute.key] = {
+        type: "string",
+        order: index
+      };
+
+      const options = CSVtoList(attribute.options);
+
+      if(options.length > 0) {
+        schema[attribute.key].options = options;
+      }
+    });
+
+    yield this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: "/public/name",
+      metadata: name
+    });
+
+    this.saveProgress = 40;
+
+    yield this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: "/public/description",
+      metadata: description
+    });
+
+    this.saveProgress = 50;
+
+    yield this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: "/ground_truth/model_domain",
+      metadata: model
+    });
+
+    this.saveProgress = 60;
+
+    yield this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: "/ground_truth/entity_data_schema/properties",
+      metadata: Unproxy(schema)
+    });
+
+    this.saveProgress = 80;
+
+    yield this.client.FinalizeContentObject({
+      libraryId,
+      objectId,
+      writeToken
+    });
+
+    yield this.LoadGroundTruthPool({poolId: objectId, force: true});
   });
 
   DeleteGroundTruthPool = flow(function * ({objectId}) {

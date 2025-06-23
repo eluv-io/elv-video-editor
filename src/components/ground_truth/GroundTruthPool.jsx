@@ -5,7 +5,7 @@ import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {useParams} from "wouter";
 import {groundTruthStore} from "@/stores/index.js";
-import {Icon, IconButton, Linkish, Loader, LoaderImage} from "@/components/common/Common.jsx";
+import {Icon, IconButton, Linkish, Loader, LoaderImage, StyledButton} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {SearchBar} from "@/components/nav/Browser.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
@@ -15,9 +15,81 @@ import {Tooltip} from "@mantine/core";
 import ImageIcon from "@/assets/icons/v2/asset.svg";
 import MenuIcon from "@/assets/icons/v2/dots-vertical.svg";
 import BackIcon from "@/assets/icons/v2/back.svg";
-
+import EditIcon from "@/assets/icons/Edit.svg";
+import CreateIcon from "@/assets/icons/v2/add2.svg";
+import {GroundTruthPoolForm} from "@/components/ground_truth/GroundTruthForms.jsx";
 
 const S = CreateModuleClassMatcher(BrowserStyles, GroundTruthStyles);
+
+const PoolDetails = observer(() => {
+  const {poolId} = useParams();
+  const [editing, setEditing] = useState(false);
+
+  const pool = groundTruthStore.pools[poolId];
+
+  if(!pool || !pool.metadata) { return null; }
+
+  let entityCount = (Object.keys(pool.metadata.entities || {})).length || 0;
+  let assetCount = Object.keys(pool.metadata.entities || {}).reduce((acc, entityKey) => {
+    return acc + (pool.metadata.entities[entityKey]?.sample_files?.length || 0);
+  }, 0);
+
+  return (
+    <>
+      {
+        !editing ? null :
+          <GroundTruthPoolForm
+            pool={pool}
+            Close={() => setEditing(false)}
+          />
+      }
+      <div className={S("details")}>
+        <IconButton
+          icon={EditIcon}
+          onClick={() => setEditing(true)}
+          label="Edit Pool Details"
+          className={S("details__edit")}
+        />
+
+        <div className={S("details__header")}>
+          Pool Details
+        </div>
+        <div className={S("details__title")}>
+          {pool.name || poolId}
+        </div>
+        {
+          !pool.description ? null :
+            <div className={S("details__text")}>
+              {pool.description}
+            </div>
+        }
+        <div className={S("details__break")}/>
+        <div className={S("details__subtitle")}>
+          Entities: {entityCount}
+        </div>
+        <div className={S("details__subtitle")}>
+          Assets: {assetCount}
+        </div>
+        <div className={S("details__break")}/>
+        {
+          pool.attributes.length === 0 ? null :
+            <>
+              <div className={S("details__subtitle")}>
+                Configurable Fields:
+              </div>
+              {
+                pool.attributes.map(attribute =>
+                  <div key={attribute.key} className={S("details__text", "details__indent")}>
+                    {attribute.key}
+                  </div>
+                )
+              }
+            </>
+        }
+      </div>
+    </>
+  );
+});
 
 let batchSize = 24;
 const Entities = observer(({filter}) => {
@@ -54,6 +126,14 @@ const Entities = observer(({filter}) => {
 
   if(!pool) {
     return null;
+  }
+
+  if(entities.length === 0) {
+    return (
+      <div className={S("entity-grid", "entity-grid--empty")}>
+        { filter ? "No Results" : "No Entities" }
+      </div>
+    );
   }
 
   return (
@@ -110,8 +190,8 @@ const Entities = observer(({filter}) => {
 
 const GroundTruthPool = observer(() => {
   const {poolId} = useParams();
-
   const [filter, setFilter] = useState("");
+  const [showEntityModal, setShowEntityModal] = useState(false);
   const pool = groundTruthStore.pools[poolId] || {};
 
   useEffect(() => {
@@ -139,12 +219,23 @@ const GroundTruthPool = observer(() => {
             {pool.name || pool.objectId}
           </span>
         </h1>
+        <div className={S("browser__actions")}>
+          <StyledButton
+            icon={CreateIcon}
+            onClick={() => setShowEntityModal(true)}
+          >
+            New Entity
+          </StyledButton>
+        </div>
         {
           !pool?.metadata ?
             <div className={S("browser-table", "browser-table--loading")}>
               <Loader/>
             </div> :
-            <Entities filter={filter} />
+            <div className={S("list-page")}>
+              <Entities filter={filter}/>
+              <PoolDetails/>
+            </div>
         }
       </div>
     </div>

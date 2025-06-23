@@ -162,6 +162,10 @@
   padding-inline: 25px;
   transition: opacity 0.1s ease;
 
+  * {
+    animation: var(--animation-fadein) 0.25s ease;
+  }
+
   &:hover,
   &:focus-visible {
     opacity: 0.9;
@@ -180,9 +184,12 @@
     color: var(--button-color);
   }
 
+  &__icon-container,
   &__icon {
-    height: 20px;
-    width: 20px;
+    max-height: 20px;
+    max-width: 20px;
+    min-height: 20px;
+    min-width: 20px;
   }
 }
 

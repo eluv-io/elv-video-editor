@@ -28,6 +28,7 @@ const S = CreateModuleClassMatcher(GroundTruthStyles);
 
 const AttributeForm = observer(({
   attribute,
+  dragging,
   StartDrag,
   EndDrag,
   Update,
@@ -54,11 +55,12 @@ const AttributeForm = observer(({
       ref={setRef}
       className={S(
         "attribute-form",
+        dragging ? "attribute-form--dragging" : "",
         dragIndicatorBefore ? "attribute-form--indicator-before" : "",
         dragIndicatorAfter ? "attribute-form--indicator-after" : ""
       )}
     >
-      <div className={S("attribute-form__actions")}>
+      <div className={S("attribute-form__actions", "attribute-form__actions--left")}>
         <IconButton
           faded
           draggable
@@ -70,6 +72,7 @@ const AttributeForm = observer(({
           icon={DragIcon}
         />
       </div>
+      <div className={S("attribute-form__dragging-name")}>{attributeInfo.key}</div>
       <div className={S("attribute-form__inputs")}>
         <label className={S("attribute-form__inputs-label")}>Configurable Field</label>
         <FormTextInput
@@ -82,7 +85,7 @@ const AttributeForm = observer(({
         <div className={S("attribute-form__options-wrapper")}>
           <FormTextArea
             label="Options"
-            placeholder="Enter possible values for this field, separated by commas. Leave blank for freeform entry."
+            placeholder="Enter possible values for this field, separated by commas."
             value={attributeInfo.options}
             onChange={UpdateField("options")}
             minRows={1}
@@ -101,7 +104,7 @@ const AttributeForm = observer(({
           />
         </div>
       </div>
-      <div className={S("attribute-form__actions")}>
+      <div className={S("attribute-form__actions", "attribute-form__actions--right")}>
         <IconButton
           icon={DeleteIcon}
           faded
@@ -134,7 +137,21 @@ function GetDragIndicatorPosition(event, container) {
   return typeof index === "undefined" || index < 0 ? draggableElements.length : index;
 }
 
-export const GroundTruthPoolForm = observer(({Close}) => {
+// Convert saved pool info to form fields
+const PoolToFields = pool => {
+  browserStore.ListLibraries({filter: pool.libraryId});
+
+  return {
+    libraryId: pool.libraryId,
+    objectId: pool.objectId,
+    name: pool.name,
+    description: pool.description,
+    model: pool.metadata.model_domain,
+    attributes: pool.attributes
+  };
+};
+
+export const GroundTruthPoolForm = observer(({pool, Close}) => {
   const [showLibraryBrowser, setShowLibraryBrowser] = useState(false);
   const [attributesRef, setAttributesRef] = useState(undefined);
   const [draggingIndex, setDraggingIndex] = useState(undefined);
@@ -142,14 +159,18 @@ export const GroundTruthPoolForm = observer(({Close}) => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const dragging = typeof draggingIndex !== "undefined";
+  const isNew = !pool;
 
-  const [formData, setFormData] = useState({
-    libraryId: "",
-    name: "",
-    description: "",
-    model: Object.keys(groundTruthStore.domains)[0],
-    attributes: []
-  });
+  const [formData, setFormData] = useState(
+    pool ? PoolToFields(pool) :
+      {
+        libraryId: "",
+        name: "",
+        description: "",
+        model: Object.keys(groundTruthStore.domains)[0],
+        attributes: []
+      }
+  );
 
   let errorMessages = [];
   if(!formData.libraryId) {
@@ -158,6 +179,7 @@ export const GroundTruthPoolForm = observer(({Close}) => {
   if(!formData.name) {
     errorMessages.push("Name must be specified");
   }
+
   formData.attributes.map((attribute, index) => {
     if(!attribute.key) {
       errorMessages.push("Attribute name must be specified");
@@ -171,10 +193,15 @@ export const GroundTruthPoolForm = observer(({Close}) => {
   return (
     <>
       <Modal
-        title={<div className={S("ground-truth-form__header")}><Icon icon={GroundTruthIcon} /><span>New Ground Truth Pool</span></div>}
+        title={
+          <div className={S("ground-truth-form__header")}>
+            <Icon icon={GroundTruthIcon} />
+            <span>{isNew ? "New" : "Update"} Ground Truth Pool</span>
+          </div>
+        }
         alwaysOpened
         centered
-        onClose={() => {}}
+        onClose={() => submitting ? null : Close()}
         withCloseButton={false}
         size={650}
       >
@@ -201,6 +228,7 @@ export const GroundTruthPoolForm = observer(({Close}) => {
             label="Library"
             placeholder="Select a Library"
             required
+            disabled={!isNew}
             value={browserStore.libraries?.[formData.libraryId]?.name || formData.libraryId}
             onChange={() => {}}
             onClick={() => setShowLibraryBrowser(true)}
@@ -237,18 +265,17 @@ export const GroundTruthPoolForm = observer(({Close}) => {
             {
               formData.attributes.map((attribute, index) =>
                 <AttributeForm
+                  dragging={dragging}
                   key={`attribute-${attribute.id}`}
                   attribute={{
                     ...attribute,
                     index
                   }}
                   dragIndicatorBefore={
-                    dragging && dragIndicatorIndex === index
+                    dragging && dragIndicatorIndex === index && draggingIndex >= index
                   }
                   dragIndicatorAfter={
-                    dragging &&
-                    index === formData.attributes.length - 1 &&
-                    dragIndicatorIndex === formData.attributes.length
+                    dragging && dragIndicatorIndex === index && draggingIndex < index
                   }
                   StartDrag={attribute => setDraggingIndex(attribute.index)}
                   EndDrag={() => setDraggingIndex(undefined)}
@@ -307,7 +334,10 @@ export const GroundTruthPoolForm = observer(({Close}) => {
                 setSubmitting(true);
 
                 try {
-                  const poolId = await groundTruthStore.CreateGroundTruthPool(formData);
+                  const poolId =
+                    isNew ?
+                      await groundTruthStore.CreateGroundTruthPool(formData) :
+                      await groundTruthStore.UpdateGroundTruthPool(formData);
                   Close(poolId);
                 } catch (error) {
                   setError("Failed to create ground truth pool. Please try again");
@@ -316,7 +346,7 @@ export const GroundTruthPoolForm = observer(({Close}) => {
                 }
               }}
             >
-              Create
+              { isNew ? "Create" : "Update" }
             </AsyncButton>
           </div>
         </div>
@@ -337,7 +367,7 @@ export const GroundTruthPoolForm = observer(({Close}) => {
       {
         !submitting ? null :
           <ProgressModal
-            title="Creating ground truth pool..."
+            title={`${isNew ? "Creating" : "Updating"} ground truth pool...`}
             progress={groundTruthStore.saveProgress}
           />
       }

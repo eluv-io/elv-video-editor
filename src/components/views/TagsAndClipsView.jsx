@@ -6,7 +6,6 @@ import {ClipTimeline, TagTimeline} from "@/components/timeline/Timeline.jsx";
 import {editStore, keyboardControlsStore, rootStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {ProgressModal} from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 
 const TagsAndClipsView = observer(({mode}) => {
   const [sidePanel, setSidePanel] = useState(undefined);

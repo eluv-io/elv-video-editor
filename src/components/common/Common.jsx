@@ -414,7 +414,9 @@ export const StyledButton = observer(({icon, variant="primary", color="--color-h
     >
       {
         !icon ? null :
-          <Icon icon={icon} className={S("styled-button__icon")} />
+          <div className={S("styled-button__icon-container")}>
+            <Icon icon={icon} className={S("styled-button__icon")} />
+          </div>
       }
       <div className={S("styled-button__children")}>
         { children }
