@@ -402,6 +402,7 @@ class BrowserStore {
       key: "my-library",
       id: "my-library",
       bind: this,
+      ttl: 10,
       Load: flow(function * () {
         const myLibraryItems = yield this.client.walletClient.ProfileMetadata({
           type: "app",

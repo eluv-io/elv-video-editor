@@ -332,6 +332,10 @@ export const CompositionBrowser = observer(() => {
           composition.label ||
           composition.compositionKey
       }))
+      // Filter duplicates
+      .filter(({objectId, compositionKey}, i, s) =>
+        i === s.findIndex(other => other.objectId === objectId && other.compositionKey === compositionKey)
+      )
       .filter(({name, compositionKey}) =>
         !compositionStore.filter ||
         name.toLowerCase().includes(compositionStore.filter.toLowerCase()) ||
@@ -360,6 +364,7 @@ export const CompositionBrowser = observer(() => {
       </div>
       <div className={S("composition-browser")}>
         <InfiniteScroll
+          key={`scroll-${selectedObjectId}`}
           watchList={[selectedObjectId]}
           batchSize={5}
           className={S("composition-browser__content")}

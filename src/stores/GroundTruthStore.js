@@ -26,6 +26,10 @@ class GroundTruthStore {
           metadataSubtree: "/public/tagging/ground_truth"
         });
 
+        if(!poolInfo) {
+          return;
+        }
+
         this.domains = poolInfo.domains;
 
         let pools = {};

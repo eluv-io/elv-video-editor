@@ -170,7 +170,7 @@ export const GroundTruthPoolForm = observer(({Close}) => {
     <>
       <Modal
         title={<div className={S("ground-truth-form__header")}><Icon icon={GroundTruthIcon} /><span>New Ground Truth Pool</span></div>}
-        opened
+        alwaysOpened
         centered
         onClose={() => {}}
         withCloseButton={false}

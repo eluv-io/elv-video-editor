@@ -650,7 +650,16 @@ export const SwitchInput = observer(({...props}) => {
   );
 });
 
-export const Modal = observer((props) => {
+export const Modal = observer(({alwaysOpened, ...props}) => {
+  const [opened, setOpened] = useState(props.opened);
+
+  useEffect(() => {
+    if(alwaysOpened) {
+      // Show open effect even if it was newly created
+      setTimeout(() => setOpened(true), 0);
+    }
+  }, []);
+
   // Disable keyboard controls when modal is opened
   useEffect(() => {
     if(!props.opened) { return; }
@@ -662,7 +671,7 @@ export const Modal = observer((props) => {
     return () => keyboardControlsStore.ToggleKeyboardControls(controlsOriginallyEnabled);
   }, [props.opened]);
 
-  return <MantineModal {...props} />;
+  return <MantineModal opened={props.opened || opened} {...props} />;
 });
 
 export const ClipTimeInfo = observer(({store, clipInFrame, clipOutFrame, className=""}) => {

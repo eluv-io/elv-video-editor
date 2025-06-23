@@ -944,7 +944,8 @@ class EditStore {
         body: {
           "live_qhash": liveHash,
           "variant_key": "default",
-          "include_tags": true  // Copy video tags from live stream
+          "include_tags": true, // Copy video tags from live stream,
+          "recording_period": -1
         },
         constant: false,
         format: "text"
