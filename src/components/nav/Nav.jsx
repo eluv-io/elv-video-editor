@@ -69,7 +69,7 @@ const Nav = observer(() => {
       key: "ground-truth",
       to: "/ground-truth",
       icon: GroundTruthIcon,
-      active: rootStore.page === "ground-truth",
+      active: rootStore.page === "groundTruth",
       hasChanges: groundTruthStore.hasUnsavedChanges
     }
   ];

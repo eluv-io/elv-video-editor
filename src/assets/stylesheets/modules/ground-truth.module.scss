@@ -70,6 +70,7 @@
     align-items: center;
     display: flex;
     justify-content: space-between;
+    position: relative;
   }
 
   &__title {
@@ -77,7 +78,7 @@
     display: flex;
     font-weight: 700;
     gap: 5px;
-    max-width: 230px;
+    max-width: calc(100% - 30px);
     word-break: break-all;
   }
 
@@ -89,6 +90,9 @@
   }
 
   &__actions {
+    position: absolute;
+    right: 0;
+
     * {
       color: var(--text-tertiary);
     }
@@ -139,12 +143,22 @@
   }
 
   &__field {
-    align-items: center;
     color: var(--text-secondary);
-    display: flex;
+    display: grid;
+    font-size: 14px;
     gap: 10px;
+    grid-template-columns: 1fr 1fr;
     justify-content: space-between;
     margin-top: 5px;
+    padding-bottom: 5px;
+
+    &:not(:last-child) {
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    label {
+      color: var(--text-tertiary);
+    }
   }
 }
 

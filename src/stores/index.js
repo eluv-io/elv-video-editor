@@ -52,6 +52,8 @@ class RootStore {
   libraryIds = {};
   versionHashes = {};
 
+  authTokens = {};
+
   selectedObjectId;
   selectedObjectName = "";
 
@@ -189,7 +191,7 @@ class RootStore {
 
     let urlPath = UrlJoin("s", this.network);
     if(auth === "private") {
-      urlPath = UrlJoin("t", this.authToken);
+      urlPath = UrlJoin("t", this.authTokens[objectId]);
     }
 
     if(versionHash) {
@@ -288,6 +290,23 @@ class RootStore {
     }
 
     return this.versionHashes[objectId].versionHash;
+  });
+
+  SetAuthToken = flow(function * ({objectId, versionHash}) {
+    if(!versionHash) {
+      versionHash = yield this.client.LatestVersionHash({objectId});
+    } else {
+      objectId = yield this.client.utils.DecodeVersionHash(versionHash).objectId;
+    }
+
+    if(!this.authTokens[objectId]) {
+      const baseFileUrl = yield this.client.FileUrl({
+        versionHash: versionHash,
+        filePath: "/"
+      });
+
+      this.authTokens[objectId] = new URL(baseFileUrl).searchParams.get("authorization");
+    }
   });
 
   // Ensure the specified load method is called only once unless forced

@@ -9,7 +9,7 @@ import GroundTruthAsset from "@/components/ground_truth/GroundTruthAsset.jsx";
 
 const GroundTruthView = observer(() => {
   useEffect(() => {
-    rootStore.SetPage("ground-truth");
+    rootStore.SetPage("groundTruth");
     keyboardControlsStore.ToggleKeyboardControls(false);
   }, []);
 

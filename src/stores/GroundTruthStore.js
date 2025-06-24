@@ -101,6 +101,8 @@ class GroundTruthStore {
                 .join(",")
             }))
         };
+
+        this.rootStore.SetAuthToken({versionHash});
       })
     });
   });
@@ -319,6 +321,98 @@ class GroundTruthStore {
 
     delete this.pools[objectId];
   });
+
+  NextEntityId(poolId) {
+    const key = Object.keys(this.pools[poolId]?.metadata?.entities || {}).sort().reverse()[0];
+    const prefix = key?.replace(/\d+/, "");
+    const count = key?.replace(/\D+/, "");
+
+    if(!key || isNaN(parseInt(count))) {
+      return "asset0000001";
+    }
+
+    return `${prefix}${(parseInt(count) + 1).toString().padStart(count.length, "0")}`;
+  }
+
+  /* Entities */
+  AddEntity({poolId, ...entity}) {
+    const pool = this.pools[poolId];
+
+    if(!pool) { throw Error("Unable to find pool " + poolId); }
+
+    const entityId = this.NextEntityId(poolId);
+
+    entity = {
+      ...entity,
+      id: entityId
+    };
+
+    this.rootStore.editStore.PerformAction({
+      label: `Add Entity ${entity.label}`,
+      type: "entity",
+      action: "create",
+      modifiedItem: entity,
+      Action: () => {
+        this.pools[poolId].metadata.entities[entityId] = entity;
+      },
+      Undo: () => {
+        delete this.pools[poolId].metadata.entities[entityId];
+      }
+    });
+
+    return entityId;
+  }
+
+  ModifyEntity({poolId, entityId, ...entity}) {
+    const pool = this.pools[poolId];
+
+    if(!pool) { throw Error("Unable to find pool " + poolId); }
+
+    entity = {
+      ...entity,
+      id: entityId
+    };
+
+    const originalEntity = pool.metadata.entities[entityId];
+
+    this.rootStore.editStore.PerformAction({
+      label: `Modify Entity ${entity.label}`,
+      type: "entity",
+      action: "modify",
+      modifiedItem: entity,
+      Action: () => {
+        this.pools[poolId].metadata.entities[entityId] = entity;
+      },
+      Undo: () => {
+        this.pools[poolId].metadata.entities[entityId] = originalEntity;
+      }
+    });
+
+    return entityId;
+  }
+
+  DeleteEntity({poolId, entityId}) {
+    const pool = this.pools[poolId];
+
+    if(!pool) { throw Error("Unable to find pool " + poolId); }
+
+    const originalEntity = pool.metadata.entities[entityId];
+
+    this.rootStore.editStore.PerformAction({
+      label: `Delete Entity ${originalEntity?.label}`,
+      type: "entity",
+      action: "delete",
+      modifiedItem: originalEntity,
+      Action: () => {
+        delete this.pools[poolId].metadata.entities[entityId];
+      },
+      Undo: () => {
+        this.pools[poolId].metadata.entities[entityId] = originalEntity;
+      }
+    });
+
+    return entityId;
+  }
 }
 
 export default GroundTruthStore;

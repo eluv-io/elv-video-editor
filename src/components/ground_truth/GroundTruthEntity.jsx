@@ -3,7 +3,7 @@ import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
-import {useParams} from "wouter";
+import {Redirect, useParams} from "wouter";
 import {groundTruthStore} from "@/stores/index.js";
 import {Icon, IconButton, Linkish, Loader, LoaderImage, StyledButton} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
@@ -15,7 +15,10 @@ import {Tooltip} from "@mantine/core";
 import ImageIcon from "@/assets/icons/v2/asset.svg";
 import MenuIcon from "@/assets/icons/v2/dots-vertical.svg";
 import BackIcon from "@/assets/icons/v2/back.svg";
-import {GroundTruthPoolForm} from "@/components/ground_truth/GroundTruthForms.jsx";
+import {
+  GroundTruthAssetForm,
+  GroundTruthEntityForm,
+} from "@/components/ground_truth/GroundTruthForms.jsx";
 import EditIcon from "@/assets/icons/Edit.svg";
 import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
 
@@ -35,8 +38,9 @@ const EntityDetails = observer(() => {
     <>
       {
         !editing ? null :
-          <GroundTruthPoolForm
-            pool={pool}
+          <GroundTruthEntityForm
+            poolId={poolId}
+            entityId={entityId}
             Close={() => setEditing(false)}
           />
       }
@@ -67,13 +71,19 @@ const EntityDetails = observer(() => {
         <div className={S("details__break")}/>
         {
           pool.attributes.length === 0 ? null :
-
-            pool.attributes.map(attribute =>
-              <div key={attribute.key} className={S("details__field")}>
-                <label>{attribute.key}:</label>
-                <div>{entity?.meta?.[attribute.key] || ""}</div>
+            <>
+              <div className={S("details__subtitle")}>
+                Attributes
               </div>
-            )
+              {
+                pool.attributes.map(attribute =>
+                  <div key={attribute.key} className={S("details__field")}>
+                    <label>{attribute.key}:</label>
+                    <div>{entity?.meta?.[attribute.key] || ""}</div>
+                  </div>
+                )
+              }
+            </>
 
         }
       </div>
@@ -111,6 +121,14 @@ const Assets = observer(({filter}) => {
 
   if(!pool) {
     return null;
+  }
+
+  if(assets.length === 0) {
+    return (
+      <div className={S("entity-grid", "entity-grid--empty")}>
+        { filter ? "No Results" : "No Assets" }
+      </div>
+    );
   }
 
   return (
@@ -179,49 +197,59 @@ const GroundTruthEntity = observer(() => {
     groundTruthStore.LoadGroundTruthPool({poolId});
   }, [poolId]);
 
+  if(!entity) {
+    return <Redirect to={UrlJoin("/", poolId)} />;
+  }
+
   return (
-    <div className={S("browser-page")}>
-      <div className={S("browser")}>
-        <SearchBar placeholder="Filter Assets" filter={filter} setFilter={setFilter}/>
-        <h1 className={S("browser__header")}>
-          <IconButton
-            icon={BackIcon}
-            label="Back to Ground Truth Pool"
-            to={UrlJoin("/", poolId)}
-            className={S("browser__header-back")}
-          />
-          <Linkish to="/">
-            All Ground Truth
-          </Linkish>
-          <span className={S("browser__header-chevron")}>▶</span>
-          <Linkish to={UrlJoin("/", poolId)}>
-            {pool.name || pool.objectId}
-          </Linkish>
-          <span className={S("browser__header-chevron")}>▶</span>
-          <span>
-            {entity.label || entityId}
-          </span>
-        </h1>
-        <div className={S("browser__actions")}>
-          <StyledButton
-            icon={GroundTruthIcon}
-            onClick={() => setShowAssetModal(true)}
-          >
-            Add New Ground Truth Assets
-          </StyledButton>
+    <>
+      <div className={S("browser-page")}>
+        <div className={S("browser")}>
+          <SearchBar placeholder="Filter Assets" filter={filter} setFilter={setFilter}/>
+          <h1 className={S("browser__header")}>
+            <IconButton
+              icon={BackIcon}
+              label="Back to Ground Truth Pool"
+              to={UrlJoin("/", poolId)}
+              className={S("browser__header-back")}
+            />
+            <Linkish to="/">
+              All Ground Truth
+            </Linkish>
+            <span className={S("browser__header-chevron")}>▶</span>
+            <Linkish to={UrlJoin("/", poolId)}>
+              {pool.name || pool.objectId}
+            </Linkish>
+            <span className={S("browser__header-chevron")}>▶</span>
+            <span>
+              {entity.label || entityId}
+            </span>
+          </h1>
+          <div className={S("browser__actions")}>
+            <StyledButton
+              icon={GroundTruthIcon}
+              onClick={() => setShowAssetModal(true)}
+            >
+              Add New Ground Truth Assets
+            </StyledButton>
+          </div>
+          {
+            !entity ?
+              <div className={S("browser-table", "browser-table--loading")}>
+                <Loader/>
+              </div> :
+              <div className={S("list-page")}>
+                <Assets filter={filter}/>
+                <EntityDetails/>
+              </div>
+          }
         </div>
-        {
-          !entity ?
-            <div className={S("browser-table", "browser-table--loading")}>
-              <Loader/>
-            </div> :
-            <div className={S("list-page")}>
-              <Assets filter={filter}/>
-              <EntityDetails/>
-            </div>
-        }
       </div>
-    </div>
+      {
+        !showAssetModal ? null :
+          <GroundTruthAssetForm poolId={poolId} entityId={entityId} Close={() => setShowAssetModal(false)} />
+      }
+    </>
   );
 });
 

@@ -47,7 +47,6 @@ class VideoStore {
   playoutUrl;
   baseUrl = undefined;
   baseStateChannelUrl = undefined;
-  baseFileUrl = undefined;
 
   dropFrame = false;
   frameRateKey = "NTSC";
@@ -161,7 +160,6 @@ class VideoStore {
     this.downloadOfferingKeys = [];
 
     this.playoutUrl = undefined;
-    this.baseFileUrl = undefined;
     this.baseUrl = undefined;
 
     this.dropFrame = false;
@@ -239,12 +237,7 @@ class VideoStore {
         channelAuth: true
       });
 
-      this.baseFileUrl = yield this.rootStore.client.FileUrl({
-        versionHash: this.versionHash,
-        filePath: "/"
-      });
-
-      this.rootStore.authToken = new URL(this.baseFileUrl).searchParams.get("authorization");
+      this.rootStore.SetAuthToken({versionHash: this.versionHash});
 
       this.metadata = videoObject.metadata;
       this.isVideo = videoObject.isVideo;
@@ -440,7 +433,7 @@ class VideoStore {
 
   // Update version hash and urls without reloading (e.g. uploading files)
   UpdateObjectVersion = flow(function * () {
-    if(!this.videoObject.objectId) { return; }
+    if(!this.videoObject?.objectId) { return; }
 
     this.versionHash = yield this.rootStore.client.LatestVersionHash({objectId: this.videoObject.objectId});
 
@@ -451,11 +444,6 @@ class VideoStore {
     this.baseStateChannelUrl = yield this.rootStore.client.FabricUrl({
       versionHash: this.versionHash,
       channelAuth: true
-    });
-
-    this.baseFileUrl = yield this.rootStore.client.FileUrl({
-      versionHash: this.versionHash,
-      filePath: "/"
     });
 
     this.videoObject.versionHash = this.versionHash;

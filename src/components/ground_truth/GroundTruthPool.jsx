@@ -3,7 +3,7 @@ import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
-import {useParams} from "wouter";
+import {Redirect, useLocation, useParams} from "wouter";
 import {groundTruthStore} from "@/stores/index.js";
 import {Icon, IconButton, Linkish, Loader, LoaderImage, StyledButton} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
@@ -17,7 +17,7 @@ import MenuIcon from "@/assets/icons/v2/dots-vertical.svg";
 import BackIcon from "@/assets/icons/v2/back.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
 import CreateIcon from "@/assets/icons/v2/add2.svg";
-import {GroundTruthPoolForm} from "@/components/ground_truth/GroundTruthForms.jsx";
+import {GroundTruthEntityForm, GroundTruthPoolForm} from "@/components/ground_truth/GroundTruthForms.jsx";
 
 const S = CreateModuleClassMatcher(BrowserStyles, GroundTruthStyles);
 
@@ -75,7 +75,7 @@ const PoolDetails = observer(() => {
           pool.attributes.length === 0 ? null :
             <>
               <div className={S("details__subtitle")}>
-                Configurable Fields:
+                Attributes
               </div>
               {
                 pool.attributes.map(attribute =>
@@ -193,6 +193,7 @@ const GroundTruthPool = observer(() => {
   const [filter, setFilter] = useState("");
   const [showEntityModal, setShowEntityModal] = useState(false);
   const pool = groundTruthStore.pools[poolId] || {};
+  const [, navigate] = useLocation();
 
   useEffect(() => {
     if(!poolId) { return; }
@@ -200,45 +201,61 @@ const GroundTruthPool = observer(() => {
     groundTruthStore.LoadGroundTruthPool({poolId});
   }, [poolId]);
 
+  if(!pool) {
+    return <Redirect to="/" />;
+  }
+
   return (
-    <div className={S("browser-page")}>
-      <div className={S("browser")}>
-        <SearchBar placeholder="Filter Entities" filter={filter} setFilter={setFilter}/>
-        <h1 className={S("browser__header")}>
-          <IconButton
-            icon={BackIcon}
-            label="Back to Ground Truth Pools"
-            to="/"
-            className={S("browser__header-back")}
-          />
-          <Linkish to="/">
-            All Ground Truth
-          </Linkish>
-          <span className={S("browser__header-chevron")}>▶</span>
-          <span>
-            {pool.name || pool.objectId}
-          </span>
-        </h1>
-        <div className={S("browser__actions")}>
-          <StyledButton
-            icon={CreateIcon}
-            onClick={() => setShowEntityModal(true)}
-          >
-            New Entity
-          </StyledButton>
+    <>
+      <div className={S("browser-page")}>
+        <div className={S("browser")}>
+          <SearchBar placeholder="Filter Entities" filter={filter} setFilter={setFilter}/>
+          <h1 className={S("browser__header")}>
+            <IconButton
+              icon={BackIcon}
+              label="Back to Ground Truth Pools"
+              to="/"
+              className={S("browser__header-back")}
+            />
+            <Linkish to="/">
+              All Ground Truth
+            </Linkish>
+            <span className={S("browser__header-chevron")}>▶</span>
+            <span>
+              {pool.name || pool.objectId}
+            </span>
+          </h1>
+          <div className={S("browser__actions")}>
+            <StyledButton
+              icon={CreateIcon}
+              onClick={() => setShowEntityModal(true)}
+            >
+              New Entity
+            </StyledButton>
+          </div>
+          {
+            !pool?.metadata ?
+              <div className={S("browser-table", "browser-table--loading")}>
+                <Loader/>
+              </div> :
+              <div className={S("list-page")}>
+                <Entities filter={filter}/>
+                <PoolDetails/>
+              </div>
+          }
         </div>
-        {
-          !pool?.metadata ?
-            <div className={S("browser-table", "browser-table--loading")}>
-              <Loader/>
-            </div> :
-            <div className={S("list-page")}>
-              <Entities filter={filter}/>
-              <PoolDetails/>
-            </div>
-        }
       </div>
-    </div>
+      {
+        !showEntityModal ? null :
+          <GroundTruthEntityForm
+            poolId={poolId}
+            Close={entityId => {
+              setShowEntityModal(false);
+              entityId && navigate(UrlJoin("/", poolId, "entities", entityId));
+            }}
+          />
+      }
+    </>
   );
 });
 

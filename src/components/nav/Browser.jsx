@@ -813,7 +813,7 @@ const BrowserPage = observer(() => {
   return (
     <div className={S("browser-page")}>
       <Tabs value={tab} onChange={setTab} color="var(--text-secondary)">
-        <Tabs.List fz={24} fw={800}>
+        <Tabs.List mb={20} fz={24} fw={800}>
           <Tabs.Tab px="xl" value="content" className={tab !== "content" ? S("tab--inactive") : ""}>
             Content Libraries
           </Tabs.Tab>

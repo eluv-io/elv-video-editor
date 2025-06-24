@@ -30,6 +30,7 @@ import {
 import UrlJoin from "url-join";
 import {useDebouncedValue} from "@mantine/hooks";
 import {ScaleImage} from "@/utils/Utils.js";
+import Path from "path";
 
 export const SortTable = ({sortStatus, AdditionalCondition}) => {
   return (a, b) => {
@@ -77,7 +78,7 @@ import {
 // Table showing the status of file uploads in the upload form
 const UploadStatus = observer(({selectedFiles, fileStatus}) => {
   const [records, setRecords] = useState([]);
-  const [sortStatus, setSortStatus] = useState({columnAccessor: "progress", direction: "desc"});
+  const [sortStatus, setSortStatus] = useState({columnAccessor: "filename", direction: "asc"});
 
   useEffect(() => {
     setRecords(
@@ -149,8 +150,61 @@ const UploadStatus = observer(({selectedFiles, fileStatus}) => {
 // Form for uploading files
 const UploadForm = observer(({objectId, path, Close}) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const [directoryUploadInput, setDirectoryUploadInput] = useState(undefined);
   const fileStatus = rootStore.fileBrowserStore.uploadStatus[objectId] || {};
   const uploading = fileBrowserStore.activeUploadJobs[objectId] > 0;
+
+  const Upload = async files => {
+    if(!files || files.length === 0) {
+      return;
+    }
+
+    let formattedFiles = [];
+
+    let dirname = "";
+    setSelectedFiles([
+      ...files.map(file => {
+        const filepath = UrlJoin(path, file.overrideName || file.webkitRelativePath || file.name).replace(/^\/+/g, "");
+
+        if(filepath.includes(".DS_Store")) {
+          return;
+        }
+
+        const parts = filepath.split(Path.sep);
+
+        if(!dirname) { dirname = parts[0]; }
+
+        if(parts.length > 2) {
+          const dirInfo = files[parts[1]] || {};
+          formattedFiles.push({
+            path: filepath,
+            type: "directory",
+            mime_type: file.type,
+            size: (dirInfo.size || 0) + file.size,
+            data: file
+          });
+        } else {
+          formattedFiles.push({
+            path: filepath,
+            type: "file",
+            mime_type: file.type,
+            size: file.size,
+            data: file
+          });
+        }
+
+        // Add to list of files added
+        return {
+          filename: (file.webkitRelativePath || file.name),
+          filepath,
+          size: file.size
+        };
+      }).filter(f => f),
+      ...selectedFiles
+    ]);
+
+    fileBrowserStore.UploadFiles({objectId, files: formattedFiles});
+  };
 
   return (
     <Modal
@@ -166,68 +220,59 @@ const UploadForm = observer(({objectId, path, Close}) => {
           multiple
           py={50}
           mx="auto"
-          onDrop={async (files) => {
-            if(!files || files.length === 0) { return; }
-
-            let formattedFiles = [];
-
-            setSelectedFiles([
-              ...files.map(file => {
-                const filename = (file.webkitRelativePath || file.name);
-                const filepath = UrlJoin(path, filename.replace(/^\/+/g, ""));
-
-                // Formatted request to send to client
-                formattedFiles.push({
-                  path: filepath,
-                  type: "file",
-                  mime_type: file.type,
-                  size: file.size,
-                  data: file,
-                });
-
-                // Add to list of files added
-                return {
-                  filename: (file.webkitRelativePath || file.name),
-                  filepath,
-                  size: file.size
-                };
-              }),
-              ...selectedFiles
-            ]);
-
-            fileBrowserStore.UploadFiles({objectId, files: formattedFiles});
-          }}
+          onDrop={Upload}
         >
           <Group justify="center" align="center">
             <Dropzone.Accept>
-              <IconUpload />
+              <IconUpload/>
             </Dropzone.Accept>
             <Dropzone.Reject>
-              <IconX />
+              <IconX/>
             </Dropzone.Reject>
             <Dropzone.Idle>
-              <IconFiles />
+              <IconFiles/>
             </Dropzone.Idle>
 
             <Text size="xl" inline>
-              { rootStore.l10n.components.file_browser.upload_instructions_drag }
+              {rootStore.l10n.components.file_browser.upload_instructions_drag}
             </Text>
           </Group>
           <Group justify="center" align="center">
             <Text size="sm" mt="sm" inline>
-              { rootStore.l10n.components.file_browser.upload_instructions_click }
+              {rootStore.l10n.components.file_browser.upload_instructions_click}
             </Text>
           </Group>
         </Dropzone>
         {
           selectedFiles.length === 0 ? null :
             <Container mt={50}>
-              <UploadStatus path={path} selectedFiles={selectedFiles} fileStatus={fileStatus} />
+              <UploadStatus path={path} selectedFiles={selectedFiles} fileStatus={fileStatus}/>
             </Container>
         }
-        <Group justify="end" mt={50}>
-          <AsyncButton w={200} disabled={uploading} loading={uploading} onClick={Close}>
-            { uploading ? "" : rootStore.l10n.components.actions.done }
+        <input
+          hidden={true}
+          ref={setDirectoryUploadInput}
+          name="directory-upload"
+          type="file"
+          multiple
+          onChange={async event => await Upload(Array.from(event.target.files))}
+          {
+            ...({
+              webkitdirectory: "true",
+              mozdirectory: "true",
+              msdirectory: "true",
+              odirectory: "true",
+              directory: "true"
+            })
+          }
+        />
+
+        <Group justify="space-between" mt={50}>
+          <AsyncButton w={200} disabled={uploading} loading={uploading} onClick={() => directoryUploadInput.click()}>
+            Upload Directory
+          </AsyncButton>
+          <AsyncButton color="gray.4" autoContrast w={200} disabled={uploading} loading={uploading} onClick={Close}>
+            {uploading ? "" : rootStore.l10n.components.actions.done}
           </AsyncButton>
         </Group>
       </Container>
@@ -240,7 +285,7 @@ const CreateDirectoryForm = ({Create}) => {
   const [renaming, setRenaming] = useState(false);
 
   const form = useForm({
-    initialValues: { filename: "" },
+    initialValues: {filename: ""},
     validate: {
       filename: value => value ? null : rootStore.l10n.components.file_browser.validation.filename_must_be_specified
     }
@@ -600,7 +645,7 @@ const FileBrowserTable = observer(({
   );
 });
 
-const FileBrowser = observer(({store, objectId, multiple, title, extensions=[], opened=true, Close, Submit}) => {
+const FileBrowser = observer(({objectId, multiple, title, extensions=[], opened=true, Close, Submit}) => {
   const [path, setPath] = useState("/");
   const [filter, setFilter] = useState("");
   const [debouncedFilter] = useDebouncedValue(filter, 200);
@@ -727,7 +772,7 @@ const FileBrowser = observer(({store, objectId, multiple, title, extensions=[], 
               onClick={async () => {
                 try {
                   setSaving("cancel");
-                  await fileBrowserStore.Save({store, objectId, selectedObjectId});
+                  await fileBrowserStore.Save({objectId, selectedObjectId});
 
                   Close();
                 } catch(error) {
@@ -747,7 +792,7 @@ const FileBrowser = observer(({store, objectId, multiple, title, extensions=[], 
                 try {
                   setSaving("submit");
 
-                  await fileBrowserStore.Save({store, objectId, selectedObjectId});
+                  await fileBrowserStore.Save({objectId, selectedObjectId});
 
                   await rootStore.VersionHash({objectId: selectedObjectId});
 
