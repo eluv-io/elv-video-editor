@@ -59,7 +59,7 @@ const PoolDetails = observer(() => {
         </div>
         {
           !pool.description ? null :
-            <div className={S("details__text")}>
+            <div className={S("details__text", "details__description")}>
               {pool.description}
             </div>
         }
@@ -79,7 +79,7 @@ const PoolDetails = observer(() => {
               </div>
               {
                 pool.attributes.map(attribute =>
-                  <div key={attribute.key} className={S("details__text", "details__indent")}>
+                  <div key={attribute.key} className={S("details__text")}>
                     {attribute.key}
                   </div>
                 )

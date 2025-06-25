@@ -50,7 +50,8 @@ class FileBrowserStore {
             objectId,
             type: "directory",
             filename,
-            fullPath: UrlJoin(path, filename)
+            fullPath: UrlJoin(path, filename),
+            size: Object.keys(file).filter(key => key !== ".").length
           };
         } else if(file?.["."]) {
           const ext = filename.includes(".") ? filename.split(".").slice(-1)[0].toLowerCase() : "";

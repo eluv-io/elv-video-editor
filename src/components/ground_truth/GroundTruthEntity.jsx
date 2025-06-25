@@ -11,16 +11,18 @@ import {SearchBar} from "@/components/nav/Browser.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import UrlJoin from "url-join";
 import {Tooltip} from "@mantine/core";
+import {
+  GroundTruthAssetFileBrowser,
+  GroundTruthAssetForm,
+  GroundTruthEntityForm,
+} from "@/components/ground_truth/GroundTruthForms.jsx";
 
 import ImageIcon from "@/assets/icons/v2/asset.svg";
 import MenuIcon from "@/assets/icons/v2/dots-vertical.svg";
 import BackIcon from "@/assets/icons/v2/back.svg";
-import {
-  GroundTruthAssetForm,
-  GroundTruthEntityForm,
-} from "@/components/ground_truth/GroundTruthForms.jsx";
 import EditIcon from "@/assets/icons/Edit.svg";
 import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
+import AnchorIcon from "@/assets/icons/v2/anchor.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles, GroundTruthStyles);
 
@@ -60,7 +62,7 @@ const EntityDetails = observer(() => {
         </div>
         {
           !entity.description ? null :
-            <div className={S("details__text")}>
+            <div className={S("details__text", "details__description")}>
               {entity.description}
             </div>
         }
@@ -104,12 +106,24 @@ const Assets = observer(({filter}) => {
   filter = filter.toLowerCase();
 
   useEffect(() => {
+    let assets = (entity?.sample_files || []).map((asset, index) => ({
+      ...asset,
+      index,
+      filename: asset.link?.["/"]?.split("/")?.slice(-1)[0]
+    }));
+
+    // Show anchor image first
+    const anchorImageIndex = assets.findIndex(file => file.anchor);
+
+    if(anchorImageIndex >= 0) {
+      assets = [
+        assets[anchorImageIndex],
+        ...assets.filter((_, index) => index !== anchorImageIndex)
+      ];
+    }
+
     setAssets(
-      (entity?.sample_files || [])
-        .map(asset => ({
-          ...asset,
-          filename: asset.link?.["/"]?.split("/")?.slice(-1)[0]
-        }))
+      assets
         .filter(asset =>
           !filter ||
           asset.label?.toLowerCase()?.includes(filter) ||
@@ -142,7 +156,7 @@ const Assets = observer(({filter}) => {
         assets.map((asset, index) =>
           <Linkish
             to={UrlJoin("/", poolId, "entities", entityId, "assets", asset.id || index.toString())}
-            key={`asset-${asset.filename || index}`}
+            key={`asset-${asset.id || index}`}
             className={S("entity-card")}
           >
             <div className={S("entity-card__image-container")}>
@@ -157,6 +171,10 @@ const Assets = observer(({filter}) => {
                     loaderAspectRatio={1}
                     className={S("entity-card__image", "entity-card__image--contain")}
                   />
+              }
+              {
+                !asset.anchor ? null :
+                  <Icon icon={AnchorIcon} className={S("entity-card__image-badge")} />
               }
             </div>
             <div className={S("entity-card__text")}>
@@ -239,15 +257,19 @@ const GroundTruthEntity = observer(() => {
                 <Loader/>
               </div> :
               <div className={S("list-page")}>
-                <Assets filter={filter}/>
-                <EntityDetails/>
+                <Assets key={`assets-${showAssetModal}`} filter={filter}/>
+                <EntityDetails key={`details-${showAssetModal}`} />
               </div>
           }
         </div>
       </div>
       {
         !showAssetModal ? null :
-          <GroundTruthAssetForm poolId={poolId} entityId={entityId} Close={() => setShowAssetModal(false)} />
+          <GroundTruthAssetFileBrowser
+            poolId={poolId}
+            entityId={entityId}
+            Close={() => setShowAssetModal(false)}
+          />
       }
     </>
   );

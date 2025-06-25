@@ -8,7 +8,8 @@ import {
   FormTextInput,
   Icon,
   IconButton,
-  Modal, ProgressModal, StyledButton
+  Modal,
+  ProgressModal
 } from "@/components/common/Common.jsx";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, CSVtoList} from "@/utils/Utils.js";
@@ -24,8 +25,6 @@ import ListIcon from "@/assets/icons/v2/list.svg";
 import FileBrowser from "@/components/common/FileBrowser.jsx";
 
 const S = CreateModuleClassMatcher(GroundTruthStyles);
-
-
 
 const AttributeForm = observer(({
   attribute,
@@ -341,6 +340,8 @@ export const GroundTruthPoolForm = observer(({pool, Close}) => {
                       await groundTruthStore.UpdateGroundTruthPool(formData);
                   Close(poolId);
                 } catch (error) {
+                  // eslint-disable-next-line no-console
+                  console.error(error);
                   setError("Failed to create ground truth pool. Please try again");
                 } finally {
                   setSubmitting(false);
@@ -422,8 +423,8 @@ export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
     >
       <div className={S("ground-truth-form")}>
         <FormTextInput
-          label="Name"
-          placeholder="Enter a name"
+          label="Label"
+          placeholder="Enter a label"
           required
           value={formData.label}
           onChange={event => setFormData({...formData, label: event.target.value})}
@@ -492,7 +493,9 @@ export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
                     await groundTruthStore.ModifyEntity({poolId, entityId: entity.id, ...formData});
                 Close(entityId);
               } catch (error) {
-                setError("Failed to create ground truth pool. Please try again");
+                // eslint-disable-next-line no-console
+                console.error(error);
+                setError("Failed to create ground truth entity. Please try again");
               } finally {
                 setSubmitting(false);
               }
@@ -506,90 +509,111 @@ export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
   );
 });
 
-export const GroundTruthAssetForm = observer(({poolId, entityId, Close}) => {
-  const [showFileBrowser, setShowFileBrowser] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+export const GroundTruthAssetForm = observer(({poolId, entityId, assetIndexOrId, Close}) => {
   const [error, setError] = useState("");
 
   const pool = groundTruthStore.pools[poolId] || {};
-  const entity = pool?.metadata?.entities?.[entityId] || {};
+  const entity = entityId && pool.metadata?.entities?.[entityId];
+  const asset = groundTruthStore.GetGroundTruthAsset(entity, assetIndexOrId);
 
-  const [files, setFiles] = useState(entity?.sample_files || []);
+  const [formData, setFormData] = useState({
+    label: asset.label || "",
+    description: asset.description || "",
+  });
 
   return (
-    <>
-      <Modal
-        title={
-          <div className={S("ground-truth-form__header")}>
-            <Icon icon={GroundTruthIcon} />
-            <span>Ground Truth Assets</span>
-          </div>
-        }
-        alwaysOpened
-        centered
-        onClose={() => submitting ? null : Close()}
-        withCloseButton={false}
-        size={650}
-      >
-        <div className={S("ground-truth-form")}>
-          <StyledButton
-            onClick={() => setShowFileBrowser(true)}
-          >
-            Add Assets
-          </StyledButton>
-
-          {
-            !error ? null :
-              <div className={S("ground-truth-form__error")}>
-                { error }
-              </div>
-          }
-
-          <div className={S("ground-truth-form__actions")}>
-            <Button
-              disabled={submitting}
-              w={150}
-              variant="subtle"
-              color="gray.5"
-              onClick={() => Close()}
-            >
-              Cancel
-            </Button>
-            <AsyncButton
-              color="gray.5"
-              autoContrast
-              w={150}
-              onClick={async () => {
-                setSubmitting(true);
-
-                try {
-                  const entityId =
-                    isNew ?
-                      await groundTruthStore.AddEntity({poolId, ...formData}) :
-                      await groundTruthStore.ModifyEntity({poolId, entityId: entity.id, });
-                  Close(entityId);
-                } catch (error) {
-                  setError("Failed to create ground truth pool. Please try again");
-                } finally {
-                  setSubmitting(false);
-                }
-              }}
-            >
-              Done
-            </AsyncButton>
-          </div>
+    <Modal
+      title={
+        <div className={S("ground-truth-form__header")}>
+          <Icon icon={GroundTruthIcon} />
+          <span>Update Ground Truth Asset</span>
         </div>
-      </Modal>
-      {
-        !showFileBrowser ? null :
-          <FileBrowser
-            title="Select Ground Truth Assets"
-            objectId={poolId}
-            multiple
-            Submit={console.log}
-            Close={() => setShowFileBrowser(false)}
-          />
       }
-    </>
+      alwaysOpened
+      centered
+      onClose={Close}
+      withCloseButton={false}
+      size={650}
+    >
+      <div className={S("ground-truth-form")}>
+        <FormTextInput
+          label="Label"
+          placeholder={asset.filename}
+          value={formData.label}
+          onChange={event => setFormData({...formData, label: event.target.value})}
+        />
+        <FormTextArea
+          label="Description"
+          placeholder="Enter a description"
+          value={formData.description}
+          onChange={event => setFormData({...formData, description: event.target.value})}
+        />
+
+        {
+          !error ? null :
+            <div className={S("ground-truth-form__error")}>
+              { error }
+            </div>
+        }
+
+        <div className={S("ground-truth-form__actions")}>
+          <Button
+            w={150}
+            variant="subtle"
+            color="gray.5"
+            onClick={() => Close()}
+          >
+            Cancel
+          </Button>
+          <AsyncButton
+            color="gray.5"
+            autoContrast
+            w={150}
+            onClick={async () => {
+              try {
+                await groundTruthStore.ModifyAsset({poolId, entityId: entity.id, assetIndexOrId, ...formData});
+                Close(entityId);
+              } catch (error) {
+                // eslint-disable-next-line no-console
+                console.error(error);
+                setError("Failed to edit ground truth asset. Please try again");
+              }
+            }}
+          >
+            Update
+          </AsyncButton>
+        </div>
+      </div>
+    </Modal>
+  );
+});
+
+export const GroundTruthAssetFileBrowser = observer(({poolId, entityId, assetIndexOrId, Close}) => {
+  const pool = groundTruthStore.pools[poolId] || {};
+  const entity = pool?.metadata?.entities?.[entityId] || {};
+  const asset = typeof assetIndexOrId !== "undefined" && groundTruthStore.GetGroundTruthAsset(entity, assetIndexOrId);
+
+  return (
+    <FileBrowser
+      alwaysOpened
+      title={
+        asset ?
+          "Replace Ground Truth Asset" :
+          "Select Ground Truth Assets"
+      }
+      objectId={poolId}
+      multiple={!asset}
+      extensions="image"
+      Submit={files => {
+        if(asset) {
+          // Updating single existing asset image
+          groundTruthStore.ModifyAsset({poolId, entityId, assetIndexOrId, file: files});
+        } else {
+          // Adding multiple assets
+          groundTruthStore.AddAssets({poolId, entityId, files});
+        }
+      }}
+      Close={Close}
+    />
   );
 });

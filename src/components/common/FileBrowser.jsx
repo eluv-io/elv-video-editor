@@ -5,9 +5,8 @@ import {
   Container,
   Group,
   HoverCard,
-  Modal,
   Progress,
-  RingProgress,
+  RingProgress, ScrollArea,
   Text,
   TextInput,
   UnstyledButton
@@ -25,7 +24,7 @@ import {
   LocalizeString,
   AsyncButton,
   LoaderImage,
-  Confirm
+  Confirm, Modal
 } from "@/components/common/Common.jsx";
 import UrlJoin from "url-join";
 import {useDebouncedValue} from "@mantine/hooks";
@@ -503,6 +502,10 @@ const FileBrowserTable = observer(({
   const isRecordSelectable = ({encrypted, type, ext}) =>
     !encrypted && type !== "directory" && (!extensions || extensions.length === 0 || extensions.includes(ext?.toLowerCase()));
 
+  // Determine records for this path and for other paths
+  const thisPathSelectedRecords = selectedRecords.filter(record => record.fullPath.startsWith(path));
+  const otherPathSelectedRecords = selectedRecords.filter(record => !record.fullPath.startsWith(path));
+
   return (
     <>
       <DataTable
@@ -525,10 +528,10 @@ const FileBrowserTable = observer(({
         sortStatus={sortStatus}
         onSortStatusChange={setSortStatus}
         records={directory}
-        selectedRecords={selectedRecords}
+        selectedRecords={thisPathSelectedRecords}
         onSelectedRecordsChange={newSelectedRecords => {
           if(multiple) {
-            setSelectedRecords(newSelectedRecords);
+            setSelectedRecords([...otherPathSelectedRecords, ...newSelectedRecords]);
           } else {
             // Only allow one selection
             setSelectedRecords(newSelectedRecords.filter(newRecord => !selectedRecords.find(record => record.filename === newRecord.filename)));
@@ -573,7 +576,13 @@ const FileBrowserTable = observer(({
             }
           },
           { accessor: "filename", title: rootStore.l10n.components.file_browser.columns.filename, sortable: true, render: ({filename}) => <Text style={{wordWrap: "anywhere"}}>{filename}</Text> },
-          { accessor: "size", width: 100, title: rootStore.l10n.components.file_browser.columns.size, sortable: true, render: ({size}) => typeof size === "number" ? PrettyBytes(size) : "" },
+          {
+            accessor: "size",
+            width: 120,
+            title: rootStore.l10n.components.file_browser.columns.size,
+            sortable: true,
+            render: ({type, size}) => type !== "directory" && typeof size === "number" ? PrettyBytes(size) : `${size} Items`
+          },
           {
             accessor: "actions",
             title: rootStore.l10n.components.file_browser.columns.actions,
@@ -645,7 +654,7 @@ const FileBrowserTable = observer(({
   );
 });
 
-const FileBrowser = observer(({objectId, multiple, title, extensions=[], opened=true, Close, Submit}) => {
+const FileBrowser = observer(({objectId, multiple, title, extensions=[], Close, Submit, ...modalProps}) => {
   const [path, setPath] = useState("/");
   const [filter, setFilter] = useState("");
   const [debouncedFilter] = useDebouncedValue(filter, 200);
@@ -663,7 +672,7 @@ const FileBrowser = observer(({objectId, multiple, title, extensions=[], opened=
   const pathTokens = path.replace(/^\//, "").split("/");
 
   return (
-    <Modal opened={opened} withCloseButton={false} onClose={() => {}} centered size={1000} title={title} padding="xl">
+    <Modal withCloseButton={false} onClose={() => {}} centered size={1000} title={title} padding="xl" {...modalProps}>
       { showUploadForm ? <UploadForm objectId={objectId} path={path} Close={() => setShowUploadForm(false)} /> : null }
       <Container px={0}>
         <Group mb="xs" align="center" gap="xs">
@@ -718,8 +727,8 @@ const FileBrowser = observer(({objectId, multiple, title, extensions=[], opened=
         {
           !multiple || selectedRecords.length === 0 ? null :
             <Container my="xs" p={0}>
-              <Text mb="sm">Selected Files:</Text>
-              <Container p={0}>
+              <Text mb="sm">Selected Files ({selectedRecords.length}):</Text>
+              <ScrollArea p={0} h={100} bg="gray.8">
                 {
                   selectedRecords.map(({fullPath}) =>
                     <Group key={`selected-file-${fullPath}`} gap="xs">
@@ -734,7 +743,7 @@ const FileBrowser = observer(({objectId, multiple, title, extensions=[], opened=
                     </Group>
                   )
                 }
-              </Container>
+              </ScrollArea>
             </Container>
         }
         <Group mt="xl" justify="space-between">

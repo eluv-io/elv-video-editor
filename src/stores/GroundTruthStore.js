@@ -1,5 +1,6 @@
 import {flow, makeAutoObservable} from "mobx";
 import {CSVtoList, Unproxy} from "@/utils/Utils.js";
+import UrlJoin from "url-join";
 
 class GroundTruthStore {
   pools = {};
@@ -210,6 +211,7 @@ class GroundTruthStore {
     return objectId;
   });
 
+  // TODO: No full fabric update
   UpdateGroundTruthPool = flow(function * ({objectId, name, description, model, attributes}) {
     const libraryId = yield this.client.ContentObjectLibraryId({objectId});
     const {writeToken} = yield this.client.EditContentObject({
@@ -335,6 +337,7 @@ class GroundTruthStore {
   }
 
   /* Entities */
+
   AddEntity({poolId, ...entity}) {
     const pool = this.pools[poolId];
 
@@ -412,6 +415,165 @@ class GroundTruthStore {
     });
 
     return entityId;
+  }
+
+  /* Assets */
+
+  AddAssets({poolId, entityId, files}) {
+    const pool = this.pools[poolId];
+
+    if(!pool) { throw Error("Unable to find pool " + poolId); }
+
+    const entity = pool.metadata.entities[entityId];
+
+    if(!entity) { throw Error("Unable to find entity " + poolId); }
+
+    const originalFiles = entity.sample_files || [];
+
+    this.rootStore.editStore.PerformAction({
+      label: `Add Assets to ${entity?.label}`,
+      type: "assets",
+      action: "add",
+      modifiedItem: originalFiles,
+      Action: () => {
+        this.pools[poolId].metadata.entities[entityId].sample_files = [
+          ...originalFiles,
+          ...files.map(file => ({
+            id: this.rootStore.NextId(true),
+            link: {
+              "/": UrlJoin("./", file.fullPath),
+              url: file.url
+            },
+            label: file.filename
+          }))
+        ];
+      },
+      Undo: () => {
+        this.pools[poolId].metadata.entities[entityId].sample_files = originalFiles;
+      }
+    });
+  }
+
+  ModifyAsset({poolId, entityId, assetIndexOrId, file, label, description}) {
+    const pool = this.pools[poolId];
+
+    if(!pool) { throw Error("Unable to find pool " + poolId); }
+
+    const entity = pool.metadata.entities[entityId];
+
+    if(!entity) { throw Error("Unable to find entity " + poolId); }
+
+    const originalAsset = this.GetGroundTruthAsset(entity, assetIndexOrId);
+
+    this.rootStore.editStore.PerformAction({
+      label: `Modify asset ${originalAsset.label} in ${entity?.label}`,
+      type: "assets",
+      action: "modify",
+      modifiedItem: originalAsset,
+      Action: () => {
+        this.pools[poolId].metadata.entities[entityId].sample_files[originalAsset.index] = {
+          ...originalAsset,
+          id: originalAsset.id || this.rootStore.NextId(true),
+          link:
+            !file ? originalAsset.link :
+              {
+                "/": UrlJoin("./", file.fullPath),
+                url: file.url
+              },
+          // If previous name was just filename of the asset, update name to new filename
+          label: label || (originalAsset.label === originalAsset.filename ? file?.filename || originalAsset.label : originalAsset.label),
+          description: description || originalAsset.description
+        };
+      },
+      Undo: () => {
+        this.pools[poolId].metadata.entities[entityId].sample_files[originalAsset.index] = originalAsset;
+      }
+    });
+  }
+
+  DeleteAsset({poolId, entityId, assetIndexOrId}) {
+    const pool = this.pools[poolId];
+
+    if(!pool) { throw Error("Unable to find pool " + poolId); }
+
+    const entity = pool.metadata.entities[entityId];
+
+    if(!entity) { throw Error("Unable to find entity " + poolId); }
+
+    const originalFiles = entity.sample_files || [];
+
+    const asset = this.GetGroundTruthAsset(entity, assetIndexOrId);
+
+    this.rootStore.editStore.PerformAction({
+      label: `Delete Asset ${asset.label} from ${entity.label}`,
+      type: "asset",
+      action: "delete",
+      modifiedItem: asset,
+      Action: () => {
+        this.pools[poolId].metadata.entities[entityId].sample_files =
+          originalFiles.filter((_, index) => index !== asset.index);
+      },
+      Undo: () => {
+        this.pools[poolId].metadata.entities[entityId].sample_files = originalFiles;
+      }
+    });
+  }
+
+  SetAnchorAsset({poolId, entityId, assetIndexOrId}) {
+    const pool = this.pools[poolId];
+
+    if(!pool) { throw Error("Unable to find pool " + poolId); }
+
+    const entity = pool.metadata.entities[entityId];
+
+    if(!entity) { throw Error("Unable to find entity " + poolId); }
+
+    const originalFiles = entity.sample_files || [];
+
+    const originalAsset = this.GetGroundTruthAsset(entity, assetIndexOrId);
+
+    this.rootStore.editStore.PerformAction({
+      label: `Set Asset Anchor ${originalAsset.label} for ${entity.label}`,
+      type: "asset",
+      action: "anchor",
+      modifiedItem: originalAsset,
+      Action: () => {
+        this.pools[poolId].metadata.entities[entityId].sample_files =
+          originalFiles.map((asset, index) => {
+            asset = {...asset};
+
+            if(index === originalAsset.index) {
+              asset.anchor = true;
+            } else {
+              delete asset.anchor;
+            }
+
+            return asset;
+          });
+      },
+      Undo: () => {
+        this.pools[poolId].metadata.entities[entityId].sample_files = originalFiles;
+      }
+    });
+  }
+
+  // Assets may or may not have ids
+  GetGroundTruthAsset(entity, assetIndexOrId) {
+    let assetIndex = (entity?.sample_files || []).findIndex(asset => asset.id && asset.id === assetIndexOrId);
+
+    if(assetIndex < 0) {
+      assetIndex = assetIndexOrId;
+    }
+
+    const asset = entity?.sample_files[assetIndex];
+
+    if(asset) {
+      asset.index = assetIndex;
+      asset.filename = asset.link?.["/"]?.split("/")?.slice(-1)[0];
+      asset.label = asset.label || asset.filename;
+    }
+
+    return asset;
   }
 }
 

@@ -16,7 +16,7 @@
   margin-top: 20px;
   max-height: 100%;
   overflow-y: auto;
-  padding-bottom: 100px;
+  padding-bottom: 50px;
   padding-right: 20px;
 
   &--empty {
@@ -36,6 +36,7 @@
   &__image-container {
     aspect-ratio: 1;
     overflow: hidden;
+    position: relative;
     width: 100%;
   }
 
@@ -64,6 +65,15 @@
         width: 50px;
       }
     }
+  }
+
+  &__image-badge {
+    bottom: 15px;
+    height: 25px;
+    left: 15px;
+    position: absolute;
+    width: 25px;
+    z-index: 1;
   }
 
   &__text {
@@ -105,6 +115,8 @@
   color: var(--text-tertiary);
   height: max-content;
   margin-top: 20px;
+  max-height: calc(100% - 20px);
+  overflow-y: auto;
   padding: 20px 30px;
   position: relative;
 
@@ -136,6 +148,10 @@
 
   &__text {
     font-size: 14px;
+  }
+
+  &__description {
+    white-space: pre-wrap;
   }
 
   &__indent {
@@ -177,11 +193,45 @@
     display: flex;
     height: calc(100% - 150px);
     justify-content: center;
-
   }
 
   &__image {
-    height: 100%;
+    max-height: 100%;
+    max-width: 100%;
+    object-fit: contain;
+  }
+
+  &__details {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+  }
+
+  &__title {
+    align-items: center;
+    display: flex;
+    font-size: 20px;
+    font-weight: 600;
+    gap: 10px;
+  }
+
+  &__actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+  }
+
+  &__description {
+    background-color: var(--background-toolbar);
+    border-radius: 10px;
+    font-size: 16px;
+    margin-top: 10px;
+    max-height: 150px;
+    min-height: 150px;
+    overflow-y: auto;
+    padding: 20px 50px 20px 20px;
+    white-space: pre-wrap;
   }
 }
 
