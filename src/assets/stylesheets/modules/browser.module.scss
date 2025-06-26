@@ -51,6 +51,12 @@
     display: flex;
     gap: 10px;
     margin-top: 10px;
+    position: relative;
+  }
+
+  &__save {
+    position: absolute;
+    right: 0;
   }
 }
 
@@ -94,7 +100,7 @@
 
   &--ground-truth {
     .browser-table__row {
-      grid-template-columns: 1fr 200px 50px;
+      grid-template-columns: 1fr 200px 100px;
     }
   }
 

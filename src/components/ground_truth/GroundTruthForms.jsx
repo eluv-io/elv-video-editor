@@ -9,20 +9,21 @@ import {
   Icon,
   IconButton,
   Modal,
-  ProgressModal
+  ProgressModal, StyledButton
 } from "@/components/common/Common.jsx";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, CSVtoList} from "@/utils/Utils.js";
 import {Button} from "@mantine/core";
 import {LibraryBrowser} from "@/components/nav/Browser.jsx";
-import {browserStore, groundTruthStore} from "@/stores/index.js";
+import {browserStore, editStore, groundTruthStore} from "@/stores/index.js";
+import FileBrowser from "@/components/common/FileBrowser.jsx";
 
 import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
 import DeleteIcon from "@/assets/icons/trash.svg";
 import AddIcon from "@/assets/icons/v2/add.svg";
 import DragIcon from "@/assets/icons/drag.svg";
 import ListIcon from "@/assets/icons/v2/list.svg";
-import FileBrowser from "@/components/common/FileBrowser.jsx";
+import SaveIcon from "@/assets/icons/v2/save.svg";
 
 const S = CreateModuleClassMatcher(GroundTruthStyles);
 
@@ -233,17 +234,6 @@ export const GroundTruthPoolForm = observer(({pool, Close}) => {
             onChange={() => {}}
             onClick={() => setShowLibraryBrowser(true)}
           />
-          <FormSelect
-            label="Model"
-            options={
-              Object.keys(groundTruthStore.domains).map(key => ({
-                label: groundTruthStore.domains[key],
-                value: key
-              }))
-            }
-            value={formData.model}
-            onChange={UpdateField("model")}
-          />
           <FormTextInput
             label="Name"
             placeholder="Enter a name"
@@ -257,7 +247,17 @@ export const GroundTruthPoolForm = observer(({pool, Close}) => {
             value={formData.description}
             onChange={UpdateField("description")}
           />
-
+          <FormSelect
+            label="Model"
+            options={
+              Object.keys(groundTruthStore.domains).map(key => ({
+                label: groundTruthStore.domains[key],
+                value: key
+              }))
+            }
+            value={formData.model}
+            onChange={UpdateField("model")}
+          />
           <div
             ref={setAttributesRef}
             className={S("ground-truth-form__attributes")}
@@ -337,7 +337,7 @@ export const GroundTruthPoolForm = observer(({pool, Close}) => {
                   const poolId =
                     isNew ?
                       await groundTruthStore.CreateGroundTruthPool(formData) :
-                      await groundTruthStore.UpdateGroundTruthPool(formData);
+                      await groundTruthStore.ModifyGroundTruthPool(formData);
                   Close(poolId);
                 } catch (error) {
                   // eslint-disable-next-line no-console
@@ -615,5 +615,68 @@ export const GroundTruthAssetFileBrowser = observer(({poolId, entityId, assetInd
       }}
       Close={Close}
     />
+  );
+});
+
+export const GroundTruthPoolSaveButton = observer(({icon, poolId, ...props}) => {
+  const [saving, setSaving] = useState(false);
+
+  const pool = groundTruthStore.pools[poolId] || {};
+
+  if(!pool) { return null; }
+
+  const Save = async event => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    await Confirm({
+      title: "Save Ground Truth Pool",
+      text: "Are you sure you want to save your changes to this ground truth pool?",
+      onConfirm: async () => {
+        setSaving(true);
+
+        await groundTruthStore.SaveGroundTruthPool({poolId});
+
+        setSaving(false);
+      }
+    });
+  };
+
+  const active = editStore.HasUnsavedChanges("groundTruth", poolId);
+
+  return (
+    <>
+      {
+        icon ?
+          <IconButton
+            {...props}
+            icon={SaveIcon}
+            disabled={!active}
+            highlight={active}
+            label="Save Ground Truth Pool"
+            onClick={Save}
+          /> :
+          <StyledButton
+            {...props}
+            disabled={!active}
+            icon={SaveIcon}
+            onClick={Save}
+          >
+            Save Changes
+          </StyledButton>
+      }
+      {
+        !saving && !groundTruthStore.saveError ? null :
+          <ProgressModal
+            title="Saving Ground Truth Pool"
+            progress={groundTruthStore.saveProgress}
+            error={groundTruthStore.saveError}
+            Close={() => {
+              groundTruthStore.ClearSaveError();
+              setSaving(false);
+            }}
+          />
+      }
+    </>
   );
 });

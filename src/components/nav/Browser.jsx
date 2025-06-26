@@ -31,7 +31,7 @@ import DeleteIcon from "@/assets/icons/trash.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
 import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
 import CreateIcon from "@/assets/icons/v2/add2.svg";
-import {GroundTruthPoolForm} from "@/components/ground_truth/GroundTruthForms.jsx";
+import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -144,6 +144,7 @@ export const BrowserTable = observer(({
   videoOnly,
   frameRate,
   noDuration,
+  Actions,
   Delete
 }) => {
   const [loading, setLoading] = useState(false);
@@ -317,24 +318,28 @@ export const BrowserTable = observer(({
                     </>
                 }
                 {
-                  !Delete || !item.id ? null :
+                  (!Delete || !item.id) && !Actions ? null :
                     <div className={S("browser-table__cell", "browser-table__cell--centered")}>
-                      <IconButton
-                        label="Remove Item"
-                        icon={contentType === "my-library" ? XIcon : DeleteIcon}
-                        faded
-                        disabled={deleting}
-                        onClick={async event => {
-                          event.stopPropagation();
-                          setDeleting(true);
+                      { Actions?.(item) }
+                      {
+                        !Delete || !item.id ? null :
+                          <IconButton
+                            label="Remove Item"
+                            icon={contentType === "my-library" ? XIcon : DeleteIcon}
+                            faded
+                            disabled={deleting}
+                            onClick={async event => {
+                              event.stopPropagation();
+                              setDeleting(true);
 
-                          try {
-                            await Delete(item);
-                          } finally {
-                            setDeleting(false);
-                          }
-                        }}
-                      />
+                              try {
+                                await Delete(item);
+                              } finally {
+                                setDeleting(false);
+                              }
+                            }}
+                          />
+                      }
                     </div>
                 }
               </Linkish>
@@ -637,6 +642,7 @@ export const GroundTruthPoolBrowser = observer(() => {
           contentType="ground-truth"
           noDuration
           Select={Select}
+          Actions={({id}) => <GroundTruthPoolSaveButton poolId={id} icon /> }
           Delete={async ({id, name}) => await Confirm({
             title: "Delete Ground Truth Pool",
             text: `Are you sure you want to delete the ground truth pool '${name}'? This action cannot be undone.`,

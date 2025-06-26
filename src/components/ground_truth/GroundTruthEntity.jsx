@@ -14,7 +14,7 @@ import {Tooltip} from "@mantine/core";
 import {
   GroundTruthAssetFileBrowser,
   GroundTruthAssetForm,
-  GroundTruthEntityForm,
+  GroundTruthEntityForm, GroundTruthPoolSaveButton,
 } from "@/components/ground_truth/GroundTruthForms.jsx";
 
 import ImageIcon from "@/assets/icons/v2/asset.svg";
@@ -179,7 +179,7 @@ const Assets = observer(({filter}) => {
             </div>
             <div className={S("entity-card__text")}>
               <Tooltip openDelay={500} label={asset.label || asset.filename}>
-                <div className={S("entity-card__title", "ellipsis")}>
+                <div className={S("entity-card__title-text", "ellipsis")}>
                   { asset.label || asset.filename }
                 </div>
               </Tooltip>
@@ -214,6 +214,10 @@ const GroundTruthEntity = observer(() => {
 
     groundTruthStore.LoadGroundTruthPool({poolId});
   }, [poolId]);
+
+  if(!pool?.metadata) {
+    return <Loader />;
+  }
 
   if(!entity) {
     return <Redirect to={UrlJoin("/", poolId)} />;
@@ -250,6 +254,10 @@ const GroundTruthEntity = observer(() => {
             >
               Add New Ground Truth Assets
             </StyledButton>
+            <GroundTruthPoolSaveButton
+              poolId={poolId}
+              className={S("browser__save")}
+            />
           </div>
           {
             !entity ?

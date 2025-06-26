@@ -5,7 +5,7 @@ import {observer} from "mobx-react-lite";
 import {Redirect, useLocation, useParams} from "wouter";
 import React, {useEffect, useState} from "react";
 import {groundTruthStore} from "@/stores/index.js";
-import {Confirm, IconButton, Linkish, LoaderImage, StyledButton} from "@/components/common/Common.jsx";
+import {Confirm, IconButton, Linkish, Loader, LoaderImage, StyledButton} from "@/components/common/Common.jsx";
 import BackIcon from "@/assets/icons/v2/back.svg";
 import UrlJoin from "url-join";
 import {GroundTruthAssetFileBrowser, GroundTruthAssetForm} from "@/components/ground_truth/GroundTruthForms.jsx";
@@ -38,6 +38,10 @@ const GroundTruthAsset = observer(() => {
 
     groundTruthStore.LoadGroundTruthPool({poolId});
   }, [poolId]);
+
+  if(!pool?.metadata) {
+    return <Loader />;
+  }
 
   if(!asset) {
     return <Redirect to={UrlJoin("/", poolId, "entities", entityId)} />;

@@ -59,8 +59,14 @@ class EditStore {
     return this.redoStack?.slice(-1)[0];
   }
 
-  HasUnsavedChanges(type) {
-    return this.editInfo[type]?.position > 0;
+  HasUnsavedChanges(type, subpage) {
+    if(!subpage) {
+      return this.editInfo[type]?.position > 0;
+    }
+
+    return this.editInfo[type]?.actionStack
+      ?.filter(action => action.subpage === subpage)
+      ?.length > 0;
   }
 
   Reset() {
@@ -80,8 +86,21 @@ class EditStore {
     };
   }
 
+  ResetSubpage(page, subpage) {
+    const actionStack = this.editInfo[page].actionStack
+      .filter(action => action.subpage !== subpage);
+    const redoStack = this.editInfo[page].redoStack
+      .filter(action => action.subpage !== subpage);
+
+    this.editInfo[page] = {
+      position: actionStack.length,
+      actionStack,
+      redoStack
+    };
+  }
+
   PerformAction({label, Action, Undo, ...attrs}, fromRedo=false) {
-    const result = Action();
+    const result = runInAction(() => Action());
 
     this.editInfo[this.page].actionStack.push({
       id: this.rootStore.NextId(),

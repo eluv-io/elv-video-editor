@@ -32,6 +32,7 @@
   gap: 10px;
   height: max-content;
   position: relative;
+  width: 100%;
 
   &__image-container {
     aspect-ratio: 1;
@@ -80,7 +81,10 @@
     align-items: center;
     display: flex;
     justify-content: space-between;
+    max-width: 100%;
+    overflow: hidden;
     position: relative;
+    width: 100%;
   }
 
   &__title {
@@ -89,7 +93,12 @@
     font-weight: 700;
     gap: 5px;
     max-width: calc(100% - 30px);
-    word-break: break-all;
+    width: 100%;
+  }
+
+  &__title-text {
+    font-weight: 700;
+    max-width: calc(100% - 30px);
   }
 
   &__count {

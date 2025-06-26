@@ -2,7 +2,7 @@ import NavStyles from "@/assets/stylesheets/modules/nav.module.scss";
 
 import React from "react";
 import {observer} from "mobx-react-lite";
-import {compositionStore, editStore, groundTruthStore, rootStore, videoStore} from "@/stores";
+import {compositionStore, editStore, rootStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {IconButton} from "@/components/common/Common";
 import UrlJoin from "url-join";
@@ -70,7 +70,7 @@ const Nav = observer(() => {
       to: "/ground-truth",
       icon: GroundTruthIcon,
       active: rootStore.page === "groundTruth",
-      hasChanges: groundTruthStore.hasUnsavedChanges
+      hasChanges: editStore.HasUnsavedChanges("groundTruth")
     }
   ];
 

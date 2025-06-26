@@ -410,7 +410,7 @@ export const StyledButton = observer(({icon, variant="primary", color="--color-h
         ...(props.style || {}),
         "--button-color": `var(${color})`
       }}
-      className={S("styled-button", `styled-button--${variant}`)}
+      className={JoinClassNames(S("styled-button", `styled-button--${variant}`), props.className)}
     >
       {
         !icon ? null :
@@ -733,8 +733,7 @@ export const Confirm = async ({title, text, labels={}, onConfirm, onCancel}) => 
   await onConfirm();
 };
 
-export const ProgressModal = observer(({progress, title}) => {
-  // Last 5% is reserved for finalizing
+export const ProgressModal = observer(({title, progress, error, Close}) => {
   return (
     <Modal
       title={title}
@@ -743,14 +742,34 @@ export const ProgressModal = observer(({progress, title}) => {
       onClose={() => {}}
       withCloseButton={false}
     >
-      <div className={S("progress")}>
-        <Progress
-          value={progress}
-          max={100}
-          transitionDuration={1000}
-          mb="md"
-        />
-      </div>
+      {
+        error ?
+          <div className={S("progress__error")}>
+            <div className={S("progress__error-message")}>
+              Something went wrong, please try again.
+            </div>
+            <div className={S("progress__actions")}>
+              <StyledButton
+                color="--background-active"
+                icon={CopyIcon}
+                onClick={() => Copy(JSON.stringify(error, null, 2))}
+              >
+                Copy Error Details
+              </StyledButton>
+              <StyledButton onClick={Close}>
+                Close
+              </StyledButton>
+            </div>
+          </div> :
+          <div className={S("progress")}>
+            <Progress
+              value={progress}
+              max={100}
+              transitionDuration={1000}
+              mb="md"
+            />
+          </div>
+      }
     </Modal>
   );
 });

@@ -593,3 +593,17 @@
     margin-bottom: 30px;
   }
 }
+
+.progress {
+  &__error-message {
+    margin-bottom: 30px;
+  }
+
+  &__actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+  }
+}

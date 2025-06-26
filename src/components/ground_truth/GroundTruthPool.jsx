@@ -17,7 +17,11 @@ import MenuIcon from "@/assets/icons/v2/dots-vertical.svg";
 import BackIcon from "@/assets/icons/v2/back.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
 import CreateIcon from "@/assets/icons/v2/add2.svg";
-import {GroundTruthEntityForm, GroundTruthPoolForm} from "@/components/ground_truth/GroundTruthForms.jsx";
+import {
+  GroundTruthEntityForm,
+  GroundTruthPoolForm,
+  GroundTruthPoolSaveButton
+} from "@/components/ground_truth/GroundTruthForms.jsx";
 
 const S = CreateModuleClassMatcher(BrowserStyles, GroundTruthStyles);
 
@@ -232,6 +236,10 @@ const GroundTruthPool = observer(() => {
             >
               New Entity
             </StyledButton>
+            <GroundTruthPoolSaveButton
+              poolId={poolId}
+              className={S("browser__save")}
+            />
           </div>
           {
             !pool?.metadata ?

@@ -1,4 +1,4 @@
-import {flow, makeAutoObservable} from "mobx";
+import {flow, makeAutoObservable, runInAction} from "mobx";
 import {CSVtoList, Unproxy} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 
@@ -61,6 +61,19 @@ class GroundTruthStore {
     });
   });
 
+  FormatPoolAttributes(metadata) {
+    const attributes = metadata?.entity_data_schema?.properties || {};
+
+    return Object.keys(attributes)
+      .sort((a, b) => attributes[a].order < attributes[b].order ? -1 : 1)
+      .map(attributeKey => ({
+        id: Math.random(),
+        key: attributeKey,
+        options: (attributes[attributeKey]?.options || [])
+          .join(",")
+      }));
+  }
+
   LoadGroundTruthPool = flow(function * ({poolId, force}) {
     yield this.LoadGroundTruthPools();
 
@@ -84,8 +97,6 @@ class GroundTruthStore {
           ]
         }));
 
-        const attributes = metadata?.ground_truth?.entity_data_schema?.properties || {};
-
         this.pools[poolId] = {
           libraryId,
           objectId: poolId,
@@ -93,14 +104,7 @@ class GroundTruthStore {
           name: metadata?.public?.name || metadata?.ground_truth?.model_domain || poolId,
           description: metadata?.public?.description,
           metadata: metadata.ground_truth || {},
-          attributes: Object.keys(attributes)
-            .sort((a, b) => attributes[a].order < attributes[b].order ? -1 : 1)
-            .map(attributeKey => ({
-              id: Math.random(),
-              key: attributeKey,
-              options: (attributes[attributeKey]?.options || [])
-                .join(",")
-            }))
+          attributes: this.FormatPoolAttributes(metadata.ground_truth || {})
         };
 
         this.rootStore.SetAuthToken({versionHash});
@@ -109,117 +113,125 @@ class GroundTruthStore {
   });
 
   CreateGroundTruthPool = flow(function * ({libraryId, name, description, model, attributes}) {
-    this.saveProgress = 0;
+    try {
+      yield this.client.ContentObjectMetadata({});
+      this.saveError = undefined;
+      this.saveProgress = 0;
 
-    const types = yield rootStore.client.ContentTypes();
-    const type =
-      Object.values(types).find(type => type.name?.toLowerCase()?.endsWith("title")) ||
-      Object.values(types).find(type => type.name?.toLowerCase()?.includes("title")) ||
-      Object.values(types)[0];
+      const types = yield rootStore.client.ContentTypes();
+      const type =
+        Object.values(types).find(type => type.name?.toLowerCase()?.endsWith("title")) ||
+        Object.values(types).find(type => type.name?.toLowerCase()?.includes("title")) ||
+        Object.values(types)[0];
 
-    const response = yield this.client.CreateAndFinalizeContentObject({
-      libraryId,
-      options: {
-        type: type?.id,
-      },
-      callback: async ({objectId, writeToken}) => {
-        this.saveProgress = 10;
+      const response = yield this.client.CreateAndFinalizeContentObject({
+        libraryId,
+        options: {
+          type: type?.id,
+        },
+        callback: async ({objectId, writeToken}) => {
+          this.saveProgress = 10;
 
-        await this.client.ReplaceMetadata({
-          libraryId,
-          objectId,
-          writeToken,
-          metadataSubtree: "/public",
-          metadata: {
-            name,
-            description,
-            asset_metadata: {}
-          }
-        });
-
-        let schema = {};
-
-        attributes.map(attribute => {
-          schema[attribute.key] = {
-            type: "string"
-          };
-
-          const options = CSVtoList(attribute.options);
-
-          if(options.length > 0) {
-            schema[attribute.key].options = options;
-          }
-        });
-
-        await this.client.ReplaceMetadata({
-          libraryId,
-          objectId,
-          writeToken,
-          metadataSubtree: "/ground_truth",
-          metadata: {
-            entities: [],
-            model_domain: model,
-            entity_data_schema: {
-              type: "object",
-              properties: schema
+          await this.client.ReplaceMetadata({
+            libraryId,
+            objectId,
+            writeToken,
+            metadataSubtree: "/public",
+            metadata: {
+              name,
+              description,
+              asset_metadata: {}
             }
-          }
-        });
-      }
-    });
+          });
 
-    this.saveProgress = 40;
+          let schema = {};
 
-    const objectId = response.id;
+          attributes.map(attribute => {
+            schema[attribute.key] = {
+              type: "string"
+            };
 
-    yield this.client.SetPermission({
-      libraryId,
-      objectId,
-      permission: "editable"
-    });
+            const options = CSVtoList(attribute.options);
 
-    this.saveProgress = 70;
+            if(options.length > 0) {
+              schema[attribute.key].options = options;
+            }
+          });
 
-    const infoLibraryId = yield this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId});
-    const infoId = this.rootStore.tenantInfoObjectId;
-    yield this.client.EditAndFinalizeContentObject({
-      libraryId: infoLibraryId,
-      objectId: infoId,
-      commitMessage: `EVIE: Add ground truth pool '${name}'`,
-      callback: async ({writeToken}) => {
-        const pools = (await this.client.ContentObjectMetadata({
-          libraryId: infoLibraryId,
-          objectId: infoId,
-          writeToken,
-          metadataSubtree: "/public/tagging/ground_truth/pools"
-        })) || [];
+          await this.client.ReplaceMetadata({
+            libraryId,
+            objectId,
+            writeToken,
+            metadataSubtree: "/ground_truth",
+            metadata: {
+              entities: [],
+              model_domain: model,
+              entity_data_schema: {
+                type: "object",
+                properties: schema
+              }
+            }
+          });
+        }
+      });
 
-        await this.client.ReplaceMetadata({
-          libraryId: infoLibraryId,
-          objectId: infoId,
-          writeToken,
-          metadataSubtree: "/public/tagging/ground_truth/pools",
-          metadata: [...pools, objectId]
-        });
+      this.saveProgress = 40;
 
-        this.saveProgress = 90;
-      }
-    });
+      const objectId = response.id;
 
-    yield this.LoadGroundTruthPools({force: true});
+      yield this.client.SetPermission({
+        libraryId,
+        objectId,
+        permission: "editable"
+      });
 
-    return objectId;
+      this.saveProgress = 70;
+
+      const infoLibraryId = yield this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId});
+      const infoId = this.rootStore.tenantInfoObjectId;
+      yield this.client.EditAndFinalizeContentObject({
+        libraryId: infoLibraryId,
+        objectId: infoId,
+        commitMessage: `EVIE: Add ground truth pool '${name}'`,
+        callback: async ({writeToken}) => {
+          const pools = (await this.client.ContentObjectMetadata({
+            libraryId: infoLibraryId,
+            objectId: infoId,
+            writeToken,
+            metadataSubtree: "/public/tagging/ground_truth/pools"
+          })) || [];
+
+          await this.client.ReplaceMetadata({
+            libraryId: infoLibraryId,
+            objectId: infoId,
+            writeToken,
+            metadataSubtree: "/public/tagging/ground_truth/pools",
+            metadata: [...pools, objectId]
+          });
+
+          this.saveProgress = 90;
+        }
+      });
+
+      yield this.LoadGroundTruthPools({force: true});
+
+      return objectId;
+    } catch(error) {
+      this.saveError = error;
+    }
   });
 
-  // TODO: No full fabric update
-  UpdateGroundTruthPool = flow(function * ({objectId, name, description, model, attributes}) {
-    const libraryId = yield this.client.ContentObjectLibraryId({objectId});
-    const {writeToken} = yield this.client.EditContentObject({
-      libraryId,
-      objectId,
-    });
+  ModifyGroundTruthPool({objectId, name, description, model, attributes}) {
+    if(!this.pools[objectId]) { throw Error("Unable to find pool " + objectId); }
 
-    this.saveProgress = 30;
+    const originalPool = {
+      ...this.pools[objectId],
+      metadata: {
+        ...this.pools[objectId].metadata,
+        // Entities can be large, don't keep it around in action stack
+        entities: []
+      }
+    };
 
     let schema = {};
     attributes.map((attribute, index) => {
@@ -235,54 +247,66 @@ class GroundTruthStore {
       }
     });
 
-    yield this.client.ReplaceMetadata({
-      libraryId,
-      objectId,
-      writeToken,
-      metadataSubtree: "/public/name",
-      metadata: name
+    schema = {
+      type: "object",
+      properties: schema
+    };
+
+    this.rootStore.editStore.PerformAction({
+      label: `Modify Pool ${name || originalPool.name}`,
+      type: "pool",
+      action: "modify",
+      modifiedItem: originalPool,
+      Action: () => {
+        const metadata = this.pools[objectId].metadata;
+        this.pools[objectId] = {
+          ...this.pools[objectId],
+          name,
+          description,
+          model,
+          attributes: this.FormatPoolAttributes({entity_data_schema: schema}),
+          metadata: {
+            ...metadata,
+            model_domain: model,
+            entity_data_schema: schema
+          }
+        };
+      },
+      Undo: () => {
+        const metadata = this.pools[poolId].metadata;
+        this.pools[objectId] = {
+          ...this.pools[objectId],
+          ...originalPool,
+          metadata: {
+            ...metadata,
+            ...originalPool.metadata
+          }
+        };
+      },
+      Write: async (writeParams) => {
+        await this.client.MergeMetadata({
+          ...writeParams,
+          metadataSubtree: "/public",
+          metadata: {
+            name: name || "",
+            description: description || ""
+          }
+        });
+
+        await this.client.ReplaceMetadata({
+          ...writeParams,
+          metadataSubtree: "/ground_truth/model_domain",
+          metadata: model
+        });
+
+        await this.client.ReplaceMetadata({
+          ...writeParams,
+          metadataSubtree: "/ground_truth/entity_data_schema",
+          metadata: schema
+        });
+      }
     });
-
-    this.saveProgress = 40;
-
-    yield this.client.ReplaceMetadata({
-      libraryId,
-      objectId,
-      writeToken,
-      metadataSubtree: "/public/description",
-      metadata: description
-    });
-
-    this.saveProgress = 50;
-
-    yield this.client.ReplaceMetadata({
-      libraryId,
-      objectId,
-      writeToken,
-      metadataSubtree: "/ground_truth/model_domain",
-      metadata: model
-    });
-
-    this.saveProgress = 60;
-
-    yield this.client.ReplaceMetadata({
-      libraryId,
-      objectId,
-      writeToken,
-      metadataSubtree: "/ground_truth/entity_data_schema/properties",
-      metadata: Unproxy(schema)
-    });
-
-    this.saveProgress = 80;
-
-    yield this.client.FinalizeContentObject({
-      libraryId,
-      objectId,
-      writeToken
-    });
-
-    yield this.LoadGroundTruthPool({poolId: objectId, force: true});
-  });
+  }
 
   DeleteGroundTruthPool = flow(function * ({objectId}) {
     const name = yield this.client.ContentObjectMetadata({
@@ -360,6 +384,13 @@ class GroundTruthStore {
       },
       Undo: () => {
         delete this.pools[poolId].metadata.entities[entityId];
+      },
+      Write: async writeParams => {
+        await this.client.ReplaceMetadata({
+          ...writeParams,
+          metadataSubtree: UrlJoin("/ground_truth", "entities", entityId),
+          metadata: Unproxy(StripFabricLinkUrls(entity))
+        });
       }
     });
 
@@ -388,6 +419,13 @@ class GroundTruthStore {
       },
       Undo: () => {
         this.pools[poolId].metadata.entities[entityId] = originalEntity;
+      },
+      Write: async writeParams => {
+        await this.client.ReplaceMetadata({
+          ...writeParams,
+          metadataSubtree: UrlJoin("/ground_truth", "entities", entityId),
+          metadata: Unproxy(StripFabricLinkUrls(entity))
+        });
       }
     });
 
@@ -411,6 +449,12 @@ class GroundTruthStore {
       },
       Undo: () => {
         this.pools[poolId].metadata.entities[entityId] = originalEntity;
+      },
+      Write: async writeParams => {
+        await this.client.DeleteMetadata({
+          ...writeParams,
+          metadataSubtree: UrlJoin("/ground_truth", "entities", entityId)
+        });
       }
     });
 
@@ -430,26 +474,35 @@ class GroundTruthStore {
 
     const originalFiles = entity.sample_files || [];
 
+    const newFiles = [
+      ...originalFiles,
+      ...files.map(file => ({
+        id: this.rootStore.NextId(true),
+        link: {
+          "/": UrlJoin("./", "files", file.fullPath),
+          url: file.url
+        },
+        label: file.filename
+      }))
+    ];
+
     this.rootStore.editStore.PerformAction({
       label: `Add Assets to ${entity?.label}`,
       type: "assets",
       action: "add",
       modifiedItem: originalFiles,
       Action: () => {
-        this.pools[poolId].metadata.entities[entityId].sample_files = [
-          ...originalFiles,
-          ...files.map(file => ({
-            id: this.rootStore.NextId(true),
-            link: {
-              "/": UrlJoin("./", file.fullPath),
-              url: file.url
-            },
-            label: file.filename
-          }))
-        ];
+        this.pools[poolId].metadata.entities[entityId].sample_files = newFiles;
       },
       Undo: () => {
         this.pools[poolId].metadata.entities[entityId].sample_files = originalFiles;
+      },
+      Write: async writeParams => {
+        await this.client.ReplaceMetadata({
+          ...writeParams,
+          metadataSubtree: UrlJoin("/ground_truth", "entities", entityId, "sample_files"),
+          metadata: Unproxy(StripFabricLinkUrls(newFiles))
+        });
       }
     });
   }
@@ -465,28 +518,37 @@ class GroundTruthStore {
 
     const originalAsset = this.GetGroundTruthAsset(entity, assetIndexOrId);
 
+    const updatedAsset = {
+      ...originalAsset,
+      id: originalAsset.id || this.rootStore.NextId(true),
+      link:
+        !file ? originalAsset.link :
+          {
+            "/": UrlJoin("./", "files", file.fullPath),
+            url: file.url
+          },
+      // If previous name was just filename of the asset, update name to new filename
+      label: label || (originalAsset.label === originalAsset.filename ? file?.filename || originalAsset.label : originalAsset.label),
+      description: description || originalAsset.description
+    };
+
     this.rootStore.editStore.PerformAction({
       label: `Modify asset ${originalAsset.label} in ${entity?.label}`,
       type: "assets",
       action: "modify",
       modifiedItem: originalAsset,
       Action: () => {
-        this.pools[poolId].metadata.entities[entityId].sample_files[originalAsset.index] = {
-          ...originalAsset,
-          id: originalAsset.id || this.rootStore.NextId(true),
-          link:
-            !file ? originalAsset.link :
-              {
-                "/": UrlJoin("./", file.fullPath),
-                url: file.url
-              },
-          // If previous name was just filename of the asset, update name to new filename
-          label: label || (originalAsset.label === originalAsset.filename ? file?.filename || originalAsset.label : originalAsset.label),
-          description: description || originalAsset.description
-        };
+        this.pools[poolId].metadata.entities[entityId].sample_files[originalAsset.index] = updatedAsset;
       },
       Undo: () => {
         this.pools[poolId].metadata.entities[entityId].sample_files[originalAsset.index] = originalAsset;
+      },
+      Write: async writeParams => {
+        await this.client.ReplaceMetadata({
+          ...writeParams,
+          metadataSubtree: UrlJoin("/ground_truth", "entities", entityId, "sample_files", originalAsset.index.toString()),
+          metadata: Unproxy(StripFabricLinkUrls(updatedAsset))
+        });
       }
     });
   }
@@ -515,6 +577,18 @@ class GroundTruthStore {
       },
       Undo: () => {
         this.pools[poolId].metadata.entities[entityId].sample_files = originalFiles;
+      },
+      Write: async writeParams => {
+        const files = await this.client.ContentObjectMetadata({
+          ...writeParams,
+          metadataSubtree: UrlJoin("/ground_truth", "entities", entityId, "sample_files")
+        });
+
+        await this.client.ReplaceMetadata({
+          ...writeParams,
+          metadataSubtree: UrlJoin("/ground_truth", "entities", entityId, "sample_files"),
+          metadata: files.filter((_, index) => index !== asset.index)
+        });
       }
     });
   }
@@ -528,7 +602,7 @@ class GroundTruthStore {
 
     if(!entity) { throw Error("Unable to find entity " + poolId); }
 
-    const originalFiles = entity.sample_files || [];
+    const originalAnchorIndex = (entity.sample_files || []).findIndex(file => file.anchor);
 
     const originalAsset = this.GetGroundTruthAsset(entity, assetIndexOrId);
 
@@ -538,23 +612,70 @@ class GroundTruthStore {
       action: "anchor",
       modifiedItem: originalAsset,
       Action: () => {
-        this.pools[poolId].metadata.entities[entityId].sample_files =
-          originalFiles.map((asset, index) => {
-            asset = {...asset};
+        this.pools[poolId].metadata.entities[entityId].sample_files[originalAsset.index].anchor = true;
 
-            if(index === originalAsset.index) {
-              asset.anchor = true;
-            } else {
-              delete asset.anchor;
-            }
-
-            return asset;
-          });
+        if(originalAnchorIndex >= 0) {
+          delete this.pools[poolId].metadata.entities[entityId].sample_files[originalAnchorIndex].anchor;
+        }
       },
       Undo: () => {
-        this.pools[poolId].metadata.entities[entityId].sample_files = originalFiles;
+        delete this.pools[poolId].metadata.entities[entityId].sample_files[originalAsset.index].anchor;
+
+        if(originalAnchorIndex >= 0) {
+          this.pools[poolId].metadata.entities[entityId].sample_files[originalAnchorIndex].anchor = true;
+        }
+      },
+      Write: async writeParams => {
+        await this.client.ReplaceMetadata({
+          ...writeParams,
+          metadataSubtree: UrlJoin("/ground_truth", "entities", entityId, "sample_files", originalAsset.index.toString(), "anchor"),
+          metadata: true
+        });
+
+        if(originalAnchorIndex >= 0) {
+          await this.client.DeleteMetadata({
+            ...writeParams,
+            metadataSubtree: UrlJoin("/ground_truth", "entities", entityId, "sample_files", originalAnchorIndex.toString(), "anchor"),
+          });
+        }
       }
     });
+  }
+
+  SaveGroundTruthPool = flow(function * ({poolId}) {
+    try {
+      this.saveProgress = 0;
+      const objectId = poolId;
+      const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
+      const writeToken = yield this.rootStore.editStore.InitializeWrite({objectId});
+
+      this.saveProgress = 20;
+
+      const actions = this.rootStore.editStore.editInfo.groundTruth.actionStack
+        .filter(action => action.subpage === poolId);
+
+      const progressPerAction = 50 / actions.length;
+      for(const action of actions) {
+        yield action.Write({libraryId, objectId, writeToken});
+        this.saveProgress += progressPerAction;
+      }
+
+      this.saveProgress = 80;
+
+      yield this.rootStore.editStore.Finalize({objectId, commitMessage: "EVIE: Update ground truth pool"});
+
+      this.rootStore.editStore.ResetSubpage("groundTruth", poolId);
+
+      this.LoadGroundTruthPool({poolId, force: true});
+    } catch(error) {
+      this.rootStore.editStore.DiscardWriteToken({objectId: poolId});
+
+      this.saveError = error;
+    }
+  });
+
+  ClearSaveError() {
+    this.saveError = undefined;
   }
 
   // Assets may or may not have ids
@@ -562,15 +683,17 @@ class GroundTruthStore {
     let assetIndex = (entity?.sample_files || []).findIndex(asset => asset.id && asset.id === assetIndexOrId);
 
     if(assetIndex < 0) {
-      assetIndex = assetIndexOrId;
+      assetIndex = parseInt(assetIndexOrId);
     }
 
     const asset = entity?.sample_files[assetIndex];
 
     if(asset) {
-      asset.index = assetIndex;
-      asset.filename = asset.link?.["/"]?.split("/")?.slice(-1)[0];
-      asset.label = asset.label || asset.filename;
+      runInAction(() => {
+        asset.index = assetIndex;
+        asset.filename = asset.link?.["/"]?.split("/")?.slice(-1)[0];
+        asset.label = asset.label || asset.filename;
+      });
     }
 
     return asset;

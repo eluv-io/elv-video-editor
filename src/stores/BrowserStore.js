@@ -381,9 +381,11 @@ class BrowserStore {
     return {
       content: yield Promise.all(
         pools.slice(start, start + limit)
-          .map(async pool =>
-            await this.ObjectDetails({objectId: pool.objectId})
-          )
+          .map(async pool => {
+            let details = await this.ObjectDetails({objectId: pool.objectId});
+            details.name = this.rootStore.groundTruthStore.pools[pool.objectId]?.name || details.name;
+            return details;
+          })
       ),
       paging: {
         page,

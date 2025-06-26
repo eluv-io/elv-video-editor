@@ -298,3 +298,30 @@ export const useIsVisible = (ref, unloadDelay=0) => {
 export const CSVtoList = (v="") => {
   return v.trim().split(",").map(i => i.trim()).filter(i => i);
 };
+
+export const StripFabricLinkUrls = (metadata, depth=1) => {
+  if(depth > 10) {
+    return {};
+  }
+
+  if(Array.isArray(metadata)) {
+    return metadata.map(item => StripFabricLinkUrls(item, depth + 1));
+  } else if(typeof metadata === "object") {
+    if(metadata["/"]) {
+      return {
+        "/": metadata["/"]
+      };
+    }
+
+    let newMetadata = {};
+    Object.keys(metadata).forEach(key =>
+      newMetadata[key] = StripFabricLinkUrls(metadata[key], depth + 1)
+    );
+
+    return newMetadata;
+  }
+
+  return metadata;
+};
+
+window.StripFabricLinkUrls = StripFabricLinkUrls;
