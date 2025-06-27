@@ -53,8 +53,14 @@ button {
   user-select: none;
 
   &:focus-visible {
-    box-shadow: 0 0 5px var(--focus-color)!important;
-    outline:0;
+    position: relative;
+
+    &::after {
+      border: 2px solid var(--focus-color);
+      content: "";
+      inset: 0;
+      position: absolute;
+    }
   }
 }
 

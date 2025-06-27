@@ -12,12 +12,11 @@
 .entity-grid {
   display: grid;
   gap: 40px 20px;
-  grid-template-columns: repeat(auto-fill, minmax(265px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   margin-top: 20px;
   max-height: 100%;
   overflow-y: auto;
-  padding-bottom: 50px;
-  padding-right: 20px;
+  padding-right: 10px;
   scrollbar-gutter: stable;
 
   &--empty {
@@ -26,6 +25,17 @@
     justify-content: center;
     padding-top: 100px;
   }
+}
+
+.entity-list {
+  display: grid;
+  gap: 3px;
+  height: max-content;
+  margin-top: 20px;
+  max-height: 100%;
+  overflow-y: auto;
+  padding-right: 10px;
+  scrollbar-gutter: stable;
 }
 
 .entity-card {
@@ -40,10 +50,24 @@
     aspect-ratio: 1;
     overflow: hidden;
     position: relative;
+    transition: opacity 0.1s ease;
     width: 100%;
 
     &:focus-visible {
-      border: 1px solid var(--color-highlight);
+      box-shadow: none!important;
+
+      &::after {
+        border: 2px solid var(--color-highlight);
+        border-radius: 10px;
+        content: "";
+        inset: 0;
+        position: absolute;
+      }
+    }
+
+    &:hover {
+      opacity: 0.9;
+      transition: opacity 0.25s ease;
     }
   }
 
@@ -117,12 +141,65 @@
   }
 
   &__actions {
+    align-items: center;
+    display: flex;
     position: absolute;
     right: 0;
 
     * {
       color: var(--text-tertiary);
     }
+  }
+
+  &__action {
+    border-radius: 5px;
+    height: 25px;
+    padding: 3px;
+    width: 25px;
+
+    svg {
+      height: 100%;
+      width: 100%;
+    }
+
+    &--active {
+      background-color: var(--background-toolbar);
+    }
+  }
+}
+
+.entity-list-item {
+  align-items: center;
+  background-color: var(--background-secondary);
+  display: grid;
+  gap: 15px;
+  grid-template-columns: 80px 1fr 50px;
+  height: 80px;
+  overflow: hidden;
+  transition: background-color 0.1s ease;
+  width: 100%;
+
+  &:hover {
+    background-color: var(--background-toolbar--active);
+    transition: background-color 0.25s ease;
+  }
+
+  .entity-card__image-container {
+    border-radius: 0;
+    height: 100%;
+    width: auto;
+  }
+
+  .entity-card__image {
+    border-radius: 0;
+  }
+
+  .entity-card__text {
+    font-size: 20px;
+  }
+
+  .entity-card__count {
+    font-size: 16px;
   }
 }
 

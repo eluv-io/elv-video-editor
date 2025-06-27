@@ -185,30 +185,38 @@ export const Linkish = forwardRef(function Linkish({
   disabled,
   styled=false,
   divButton=false,
+  label,
   ...props
 }, ref) {
   if(styled) {
     props.className = JoinClassNames("button", props.className || "");
   }
 
-  if(!disabled) {
+  let element;
+  if(!disabled && (href || to)) {
     // a tags don't have :disabled
     if(href) {
-      return <a href={href} target={target} rel={rel} onClick={onClick} ref={ref} {...props} />;
+      element = <a href={href} target={target} rel={rel} onClick={onClick} ref={ref} {...props} />;
     } else if(to) {
-      return <Link href={to} onClick={onClick} ref={ref} {...props} />;
+      element = <Link href={to} onClick={onClick} ref={ref} {...props} />;
     }
-  }
-
-  if(onClick || props.type === "submit") {
+  } else if(onClick || props.type === "submit") {
     if(divButton) {
-      return <div role="button" tabIndex={0} aria-disabled={disabled} onClick={!disabled ? onClick : undefined} ref={ref} {...props} />;
+      element = <div role="button" tabIndex={0} aria-disabled={disabled} onClick={!disabled ? onClick : undefined} ref={ref} {...props} />;
     } else {
-      return <button disabled={disabled} onClick={onClick} ref={ref} {...props} />;
+      element = <button disabled={disabled} onClick={onClick} ref={ref} {...props} />;
     }
+  } else {
+    element = <div ref={ref} {...props} />;
   }
 
-  return <div ref={ref} {...props} />;
+  if(!label || !element) { return element; }
+
+  return (
+    <Tooltip label={label} openDelay={500}>
+      { element }
+    </Tooltip>
+  );
 });
 
 export const Icon = ({

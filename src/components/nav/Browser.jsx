@@ -8,7 +8,7 @@ import {
   AsyncButton,
   Confirm, CopyableField,
   FormSelect,
-  FormTextInput,
+  FormTextInput, Icon,
   IconButton,
   Linkish,
   Loader, StyledButton
@@ -32,6 +32,8 @@ import XIcon from "@/assets/icons/v2/x.svg";
 import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
 import CreateIcon from "@/assets/icons/v2/add2.svg";
 import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
+import ListIcon from "@/assets/icons/v2/list.svg";
+import GridIcon from "@/assets/icons/v2/source.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -805,6 +807,27 @@ const LiveToVodForm = observer(() => {
           }
         </div>
       </div>
+    </div>
+  );
+});
+
+export const CardDisplaySwitch = observer(({showList, setShowList}) => {
+  return (
+    <div className={S("display-switch", "browser__action--right")}>
+      <Linkish
+        label="List View"
+        className={S("display-switch__button", showList ? "display-switch__button--active" : "")}
+        onClick={() => setShowList(true)}
+      >
+        <Icon icon={ListIcon} />
+      </Linkish>
+      <Linkish
+        label="Grid View"
+        className={S("display-switch__button", !showList ? "display-switch__button--active" : "")}
+        onClick={() => setShowList(false)}
+      >
+        <Icon icon={GridIcon} />
+      </Linkish>
     </div>
   );
 });

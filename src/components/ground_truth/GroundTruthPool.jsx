@@ -5,18 +5,17 @@ import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {Redirect, useLocation, useParams} from "wouter";
 import {groundTruthStore} from "@/stores/index.js";
-import {Icon, IconButton, Linkish, Loader, LoaderImage, StyledButton} from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-import {SearchBar} from "@/components/nav/Browser.jsx";
+import {IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
+import {CreateModuleClassMatcher, StorageHandler} from "@/utils/Utils.js";
+import {CardDisplaySwitch, SearchBar} from "@/components/nav/Browser.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import UrlJoin from "url-join";
-import {Tooltip} from "@mantine/core";
 
-import ImageIcon from "@/assets/icons/v2/asset.svg";
 import BackIcon from "@/assets/icons/v2/back.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
 import CreateIcon from "@/assets/icons/v2/add2.svg";
 import {
+  EntityCard, EntityListItem,
   GroundTruthEntityForm, GroundTruthEntityMenu,
   GroundTruthPoolForm,
   GroundTruthPoolSaveButton
@@ -95,7 +94,7 @@ const PoolDetails = observer(() => {
 });
 
 let batchSize = 24;
-const Entities = observer(({filter}) => {
+const Entities = observer(({showList, filter}) => {
   const {poolId} = useParams();
   const [entities, setEntities] = useState([]);
   const [limit, setLimit] = useState(batchSize);
@@ -144,56 +143,32 @@ const Entities = observer(({filter}) => {
     );
   }
 
+  const Component = showList ? EntityListItem : EntityCard;
   return (
     <InfiniteScroll
-      scrollPreservationKey={`pool-${poolId}`}
+      key={`scroll-${showList}`}
+      scrollPreservationKey={`pool-${poolId}-${showList}`}
       watchList={[filter]}
       batchSize={batchSize}
       Update={newLimit => setLimit(Math.max(limit, newLimit))}
-      className={S("entity-grid")}
+      className={S(showList ? "entity-list" : "entity-grid")}
     >
       {
         entities.map(entity =>
-          <div
+          <Component
             key={`entity-${entity.id}`}
-            className={S("entity-card")}
-          >
-            <Linkish
-              to={UrlJoin("/", poolId, "entities", entity.id)}
-              className={S("entity-card__image-container")}
-            >
-              {
-                !entity.image?.url ?
-                  <div className={S("entity-card__image", "entity-card__image--blank")}>
-                    <Icon icon={ImageIcon} />
-                  </div>:
-                  <LoaderImage
-                    width={360}
-                    src={entity.image?.url}
-                    loaderDelay={25}
-                    loaderAspectRatio={1}
-                    className={S("entity-card__image")}
-                  />
-              }
-            </Linkish>
-            <div className={S("entity-card__text")}>
-              <Tooltip openDelay={500} label={entity.label}>
-                <div className={S("entity-card__title")}>
-                  <div className={S("ellipsis")}>
-                    {entity.label}
-                  </div>
-                  <div className={S("entity-card__count")}>({entity.assetCount || 0})</div>
-                </div>
-              </Tooltip>
-              <div className={S("entity-card__actions")}>
-                <GroundTruthEntityMenu
-                  poolId={poolId}
-                  entityId={entity.id}
-                  Update={() => setUpdateIndex(updateIndex + 1)}
-                />
-              </div>
-            </div>
-          </div>
+            link={UrlJoin("/", poolId, "entities", entity.id)}
+            label={entity.label}
+            count={entity.assetCount || 0}
+            image={entity.image?.url}
+            actions={
+              <GroundTruthEntityMenu
+                poolId={poolId}
+                entityId={entity.id}
+                Update={() => setUpdateIndex(updateIndex + 1)}
+              />
+            }
+          />
         )
       }
     </InfiniteScroll>
@@ -204,6 +179,7 @@ const GroundTruthPool = observer(() => {
   const {poolId} = useParams();
   const [filter, setFilter] = useState("");
   const [showEntityModal, setShowEntityModal] = useState(false);
+  const [showList, setShowList] = useState(StorageHandler.get({type: "session", key: "pool-display"}) || false);
   const pool = groundTruthStore.pools[poolId] || {};
   const [, navigate] = useLocation();
 
@@ -212,6 +188,12 @@ const GroundTruthPool = observer(() => {
 
     groundTruthStore.LoadGroundTruthPool({poolId});
   }, [poolId]);
+
+  useEffect(() => {
+    showList ?
+      StorageHandler.set({type: "session", key: "pool-display", value: "true"}) :
+      StorageHandler.remove({type: "session", key: "pool-display"});
+  }, [showList]);
 
   if(!pool) {
     return <Redirect to="/" />;
@@ -236,6 +218,10 @@ const GroundTruthPool = observer(() => {
             <span>
               {pool.name || pool.objectId}
             </span>
+            <GroundTruthPoolSaveButton
+              poolId={poolId}
+              className={S("browser__save", "browser__action--right")}
+            />
           </h1>
           <div className={S("browser__actions")}>
             <StyledButton
@@ -244,10 +230,7 @@ const GroundTruthPool = observer(() => {
             >
               New Entity
             </StyledButton>
-            <GroundTruthPoolSaveButton
-              poolId={poolId}
-              className={S("browser__save")}
-            />
+            <CardDisplaySwitch showList={showList} setShowList={setShowList} />
           </div>
           {
             !pool?.metadata ?
@@ -255,7 +238,7 @@ const GroundTruthPool = observer(() => {
                 <Loader/>
               </div> :
               <div className={S("list-page")}>
-                <Entities filter={filter}/>
+                <Entities showList={showList} filter={filter}/>
                 <PoolDetails/>
               </div>
           }

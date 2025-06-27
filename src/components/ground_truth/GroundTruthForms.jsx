@@ -7,12 +7,12 @@ import {
   FormTextArea,
   FormTextInput,
   Icon,
-  IconButton, Linkish,
+  IconButton, Linkish, LoaderImage,
   Modal,
   ProgressModal, StyledButton
 } from "@/components/common/Common.jsx";
 import React, {useEffect, useState} from "react";
-import {CreateModuleClassMatcher, CSVtoList} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, CSVtoList, SP} from "@/utils/Utils.js";
 import {Button, Menu, Tooltip} from "@mantine/core";
 import {LibraryBrowser} from "@/components/nav/Browser.jsx";
 import {browserStore, editStore, groundTruthStore} from "@/stores/index.js";
@@ -698,12 +698,11 @@ const GroundTruthCardMenu = observer(({label, children}) => {
       opened={showMenu}
       onChange={setShowMenu}
       shadow="md"
-      offset={15}
       position="top-start"
       zIndex={200}
     >
       <Menu.Target>
-        <Tooltip label={label} openDelay={500}>
+        <Tooltip label={label} disabled={showMenu} openDelay={500}>
           <button
             onClick={event => {
               event.stopPropagation();
@@ -711,6 +710,7 @@ const GroundTruthCardMenu = observer(({label, children}) => {
 
               setShowMenu(!showMenu);
             }}
+            className={S("entity-card__action", showMenu ? "entity-card__action--active" : "")}
           >
             <Icon icon={MenuIcon} />
           </button>
@@ -870,3 +870,81 @@ export const GroundTruthAssetMenu = observer(({poolId, entityId, assetIndexOrId,
     </>
   );
 });
+
+export const EntityListItem = observer(({link, image, label, count, actions}) =>
+  <Linkish to={link} className={S("entity-card", "entity-list-item")}>
+    <div className={S("entity-card__image-container")}>
+      {
+        !image ?
+          <div className={S("entity-card__image", "entity-card__image--blank")}>
+            <Icon icon={ImageIcon}/>
+          </div> :
+          <LoaderImage
+            width={100}
+            src={image}
+            loaderDelay={25}
+            loaderAspectRatio={1}
+            className={S("entity-card__image")}
+          />
+      }
+    </div>
+    <div className={S("entity-card__text")}>
+      <Tooltip openDelay={500} label={label}>
+        <div className={S("entity-card__title")}>
+          <div className={S("ellipsis")}>
+            {label}
+          </div>
+          {
+            typeof count === "undefined" ? null :
+              <div className={S("entity-card__count")}>({count})</div>
+          }
+        </div>
+      </Tooltip>
+    </div>
+    <div onClick={SP()} className={S("entity-list-item__actions")}>
+      { actions }
+    </div>
+  </Linkish>
+);
+
+export const EntityCard = observer(({link, image, label, count, actions}) =>
+  <div className={S("entity-card")}>
+    <Linkish
+      to={link}
+      className={S("entity-card__image-container")}
+    >
+      {
+        !image ?
+          <div className={S("entity-card__image", "entity-card__image--blank")}>
+            <Icon icon={ImageIcon}/>
+          </div> :
+          <LoaderImage
+            width={320}
+            src={image}
+            loaderDelay={25}
+            loaderAspectRatio={1}
+            className={S("entity-card__image")}
+          />
+      }
+    </Linkish>
+    <div className={S("entity-card__text")}>
+      <Tooltip openDelay={500} label={label}>
+        <div className={S("entity-card__title")}>
+          <div className={S("ellipsis")}>
+            {label}
+          </div>
+          {
+            typeof count === "undefined" ? null :
+              <div className={S("entity-card__count")}>({count})</div>
+          }
+        </div>
+      </Tooltip>
+      {
+        !actions ? null :
+          <div onClick={SP()} className={S("entity-card__actions")}>
+            { actions }
+          </div>
+      }
+    </div>
+  </div>
+);
