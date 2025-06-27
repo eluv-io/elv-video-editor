@@ -13,12 +13,11 @@ import UrlJoin from "url-join";
 import {Tooltip} from "@mantine/core";
 
 import ImageIcon from "@/assets/icons/v2/asset.svg";
-import MenuIcon from "@/assets/icons/v2/dots-vertical.svg";
 import BackIcon from "@/assets/icons/v2/back.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
 import CreateIcon from "@/assets/icons/v2/add2.svg";
 import {
-  GroundTruthEntityForm,
+  GroundTruthEntityForm, GroundTruthEntityMenu,
   GroundTruthPoolForm,
   GroundTruthPoolSaveButton
 } from "@/components/ground_truth/GroundTruthForms.jsx";
@@ -100,6 +99,8 @@ const Entities = observer(({filter}) => {
   const {poolId} = useParams();
   const [entities, setEntities] = useState([]);
   const [limit, setLimit] = useState(batchSize);
+  const [updateIndex, setUpdateIndex] = useState(0);
+
   const pool = groundTruthStore.pools[poolId];
 
   filter = filter.toLowerCase();
@@ -121,12 +122,15 @@ const Entities = observer(({filter}) => {
         })
         .filter(entity =>
           !filter ||
-          entity.label?.toLowerCase()?.includes(filter) ||
-          entity.attrs.find(attr => attr?.toLowerCase()?.includes(filter))
+          filter.trim().split(/\s+/).every(token =>
+            entity.label?.toLowerCase()?.includes(token) ||
+            entity.description?.toLowerCase()?.includes(token) ||
+            entity.attrs.find(attr => attr?.toLowerCase()?.includes(token))
+          )
         )
         .slice(0, limit)
     );
-  }, [limit, filter]);
+  }, [limit, filter, updateIndex]);
 
   if(!pool) {
     return null;
@@ -150,22 +154,28 @@ const Entities = observer(({filter}) => {
     >
       {
         entities.map(entity =>
-          <Linkish to={UrlJoin("/", poolId, "entities", entity.id)} key={`entity-${entity.id}`} className={S("entity-card")}>
-            <div className={S("entity-card__image-container")}>
+          <div
+            key={`entity-${entity.id}`}
+            className={S("entity-card")}
+          >
+            <Linkish
+              to={UrlJoin("/", poolId, "entities", entity.id)}
+              className={S("entity-card__image-container")}
+            >
               {
                 !entity.image?.url ?
                   <div className={S("entity-card__image", "entity-card__image--blank")}>
                     <Icon icon={ImageIcon} />
                   </div>:
                   <LoaderImage
-                    width={300}
+                    width={360}
                     src={entity.image?.url}
                     loaderDelay={25}
                     loaderAspectRatio={1}
                     className={S("entity-card__image")}
                   />
               }
-            </div>
+            </Linkish>
             <div className={S("entity-card__text")}>
               <Tooltip openDelay={500} label={entity.label}>
                 <div className={S("entity-card__title")}>
@@ -176,16 +186,14 @@ const Entities = observer(({filter}) => {
                 </div>
               </Tooltip>
               <div className={S("entity-card__actions")}>
-                <IconButton
-                  icon={MenuIcon}
-                  onClick={event => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
+                <GroundTruthEntityMenu
+                  poolId={poolId}
+                  entityId={entity.id}
+                  Update={() => setUpdateIndex(updateIndex + 1)}
                 />
               </div>
             </div>
-          </Linkish>
+          </div>
         )
       }
     </InfiniteScroll>

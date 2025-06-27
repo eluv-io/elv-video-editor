@@ -7,13 +7,13 @@ import {
   FormTextArea,
   FormTextInput,
   Icon,
-  IconButton,
+  IconButton, Linkish,
   Modal,
   ProgressModal, StyledButton
 } from "@/components/common/Common.jsx";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, CSVtoList} from "@/utils/Utils.js";
-import {Button} from "@mantine/core";
+import {Button, Menu, Tooltip} from "@mantine/core";
 import {LibraryBrowser} from "@/components/nav/Browser.jsx";
 import {browserStore, editStore, groundTruthStore} from "@/stores/index.js";
 import FileBrowser from "@/components/common/FileBrowser.jsx";
@@ -24,6 +24,10 @@ import AddIcon from "@/assets/icons/v2/add.svg";
 import DragIcon from "@/assets/icons/drag.svg";
 import ListIcon from "@/assets/icons/v2/list.svg";
 import SaveIcon from "@/assets/icons/v2/save.svg";
+import MenuIcon from "@/assets/icons/v2/dots-vertical.svg";
+import EditIcon from "@/assets/icons/Edit.svg";
+import ImageIcon from "@/assets/icons/picture.svg";
+import AnchorIcon from "@/assets/icons/v2/anchor.svg";
 
 const S = CreateModuleClassMatcher(GroundTruthStyles);
 
@@ -403,8 +407,13 @@ export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
   );
 
   let errorMessages = [];
+  const matchingLabelEntity = Object.values(pool?.metadata?.entities || {})
+    .find((e, index) => (!entity || entity.index !== index) && e.label?.toLowerCase() === formData.label?.toLowerCase());
+
   if(!formData.label) {
     errorMessages.push("Label must be specified");
+  } else if(matchingLabelEntity) {
+    errorMessages.push("An entity with this label already exists");
   }
 
   return (
@@ -487,11 +496,11 @@ export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
               setSubmitting(true);
 
               try {
-                const entityId =
+                const id =
                   isNew ?
                     await groundTruthStore.AddEntity({poolId, ...formData}) :
-                    await groundTruthStore.ModifyEntity({poolId, entityId: entity.id, ...formData});
-                Close(entityId);
+                    await groundTruthStore.ModifyEntity({poolId, entityId, ...formData});
+                Close(id);
               } catch (error) {
                 // eslint-disable-next-line no-console
                 console.error(error);
@@ -571,7 +580,7 @@ export const GroundTruthAssetForm = observer(({poolId, entityId, assetIndexOrId,
             w={150}
             onClick={async () => {
               try {
-                await groundTruthStore.ModifyAsset({poolId, entityId: entity.id, assetIndexOrId, ...formData});
+                await groundTruthStore.ModifyAsset({poolId, entityId, assetIndexOrId, ...formData});
                 Close(entityId);
               } catch (error) {
                 // eslint-disable-next-line no-console
@@ -674,6 +683,187 @@ export const GroundTruthPoolSaveButton = observer(({icon, poolId, ...props}) => 
             Close={() => {
               groundTruthStore.ClearSaveError();
               setSaving(false);
+            }}
+          />
+      }
+    </>
+  );
+});
+
+const GroundTruthCardMenu = observer(({label, children}) => {
+  const [showMenu, setShowMenu] = useState(false);
+
+  return (
+    <Menu
+      opened={showMenu}
+      onChange={setShowMenu}
+      shadow="md"
+      offset={15}
+      position="top-start"
+      zIndex={200}
+    >
+      <Menu.Target>
+        <Tooltip label={label} openDelay={500}>
+          <button
+            onClick={event => {
+              event.stopPropagation();
+              event.preventDefault();
+
+              setShowMenu(!showMenu);
+            }}
+          >
+            <Icon icon={MenuIcon} />
+          </button>
+        </Tooltip>
+      </Menu.Target>
+      <Menu.Dropdown p={0} w={200} bg="var(--background-toolbar)">
+        <div className={S("card-menu")}>
+          { children }
+        </div>
+      </Menu.Dropdown>
+    </Menu>
+  );
+});
+
+export const GroundTruthEntityMenu = observer(({poolId, entityId, Update}) => {
+  const [showEdit, setShowEdit] = useState(false);
+  const [showBrowser, setShowBrowser] = useState(false);
+
+  const pool = groundTruthStore.pools[poolId] || {};
+  const entity = pool?.metadata?.entities?.[entityId] || {};
+
+  if(!entity) {
+    return null;
+  }
+
+  return (
+    <>
+      <GroundTruthCardMenu label="Manage Entity">
+        <Linkish onClick={() => setShowEdit(true)} className={S("card-menu__item")}>
+          <Icon icon={EditIcon} /><span>Edit</span>
+        </Linkish>
+        <Linkish onClick={() => setShowBrowser(true)} className={S("card-menu__item")}>
+          <Icon icon={ImageIcon} /><span>Add Assets</span>
+        </Linkish>
+        <div className={S("card-menu__separator")}/>
+        <Linkish
+          onClick={async () => {
+            await Confirm({
+              title: "Remove Entity",
+              text: "Are you sure you want to remove this entity?",
+              onConfirm: () => {
+                groundTruthStore.DeleteEntity({poolId, entityId});
+                Update();
+              }
+            });
+          }}
+          className={S("card-menu__item")}
+        >
+          <Icon icon={DeleteIcon} /><span>Remove</span>
+        </Linkish>
+      </GroundTruthCardMenu>
+      {
+        !showEdit ? null :
+          <GroundTruthEntityForm
+            poolId={poolId}
+            entityId={entityId}
+            Close={() => {
+              setShowEdit(false);
+              Update();
+            }}
+          />
+      }
+      {
+        !showBrowser ? null :
+          <GroundTruthAssetFileBrowser
+            poolId={poolId}
+            entityId={entityId}
+            Close={() => {
+              setShowBrowser(false);
+              Update();
+            }}
+          />
+      }
+    </>
+  );
+});
+
+
+export const GroundTruthAssetMenu = observer(({poolId, entityId, assetIndexOrId, Update}) => {
+  const [showEdit, setShowEdit] = useState(false);
+  const [showReplace, setShowReplace] = useState(false);
+
+  const pool = groundTruthStore.pools[poolId] || {};
+  const entity = pool?.metadata?.entities?.[entityId] || {};
+  const asset = groundTruthStore.GetGroundTruthAsset(entity, assetIndexOrId);
+
+  if(!asset) {
+    return null;
+  }
+
+  return (
+    <>
+      <GroundTruthCardMenu label="Manage Asset">
+        <Linkish onClick={() => setShowEdit(true)} className={S("card-menu__item")}>
+          <Icon icon={EditIcon} /><span>Rename</span>
+        </Linkish>
+        <Linkish onClick={() => setShowReplace(true)} className={S("card-menu__item")}>
+          <Icon icon={ImageIcon} /><span>Replace Image</span>
+        </Linkish>
+        <Linkish
+          disabled={asset.anchor}
+          onClick={async () => {
+            await Confirm({
+              title: "Set Entity Anchor Image",
+              text: "Are you sure you want to use this asset as the anchor image for this entity?",
+              onConfirm: () => {
+                groundTruthStore.SetAnchorAsset({poolId, entityId, assetIndexOrId});
+                Update();
+              }
+            });
+          }}
+          className={S("card-menu__item")}
+        >
+          <Icon icon={AnchorIcon} /><span>Make Anchor</span>
+        </Linkish>
+        <div className={S("card-menu__separator")}/>
+        <Linkish
+          onClick={async () => {
+            await Confirm({
+              title: "Remove Asset",
+              text: "Are you sure you want to remove this asset?",
+              onConfirm: () => {
+                groundTruthStore.DeleteAsset({poolId, entityId, assetIndexOrId});
+                Update();
+              }
+            });
+          }}
+          className={S("card-menu__item")}
+        >
+          <Icon icon={DeleteIcon} /><span>Remove</span>
+        </Linkish>
+      </GroundTruthCardMenu>
+      {
+        !showEdit ? null :
+          <GroundTruthAssetForm
+            poolId={poolId}
+            entityId={entityId}
+            assetIndexOrId={assetIndexOrId}
+            Close={() => {
+              setShowEdit(false);
+              Update();
+            }}
+          />
+      }
+      {
+        !showReplace ? null :
+          <GroundTruthAssetFileBrowser
+            poolId={poolId}
+            entityId={entityId}
+            assetIndexOrId={assetIndexOrId}
+            Close={() => {
+              setShowReplace(false);
+              Update();
             }}
           />
       }

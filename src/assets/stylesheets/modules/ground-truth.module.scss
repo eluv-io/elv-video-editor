@@ -18,6 +18,7 @@
   overflow-y: auto;
   padding-bottom: 50px;
   padding-right: 20px;
+  scrollbar-gutter: stable;
 
   &--empty {
     display: flex;
@@ -28,6 +29,7 @@
 }
 
 .entity-card {
+  animation: 0.5s ease var(--animation-fadein);
   display: grid;
   gap: 10px;
   height: max-content;
@@ -39,6 +41,10 @@
     overflow: hidden;
     position: relative;
     width: 100%;
+
+    &:focus-visible {
+      border: 1px solid var(--color-highlight);
+    }
   }
 
   &__image {
@@ -70,6 +76,8 @@
 
   &__image-badge {
     bottom: 15px;
+    color: var(--text-primary);
+    filter: drop-shadow(0 0 2px black);
     height: 25px;
     left: 15px;
     position: absolute;
@@ -115,6 +123,41 @@
     * {
       color: var(--text-tertiary);
     }
+  }
+}
+
+.card-menu {
+  display: grid;
+  padding: 5px 0;
+
+  &__item {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    padding: 10px 12px;
+    transition: background-color 0.25s ease;
+    width: 100%;
+
+    &:hover {
+      background-color: var(--background-toolbar--active);
+    }
+
+    &:disabled {
+      background-color: transparent;
+      opacity: 0.5;
+    }
+
+    svg {
+      height: 20px;
+      width: 20px;
+    }
+  }
+
+  &__separator {
+    background-color: var(--color-border);
+    height: 1px;
+    margin: 5px 0;
+    width: 100%;
   }
 }
 

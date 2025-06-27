@@ -324,4 +324,16 @@ export const StripFabricLinkUrls = (metadata, depth=1) => {
   return metadata;
 };
 
-window.StripFabricLinkUrls = StripFabricLinkUrls;
+// Stop propegation - useful in submenus of links
+export const SP = fn =>
+  fn?.constructor?.name === "AsyncFunction" ?
+    async event => {
+      event.stopPropagation();
+      event.preventDefault();
+      return fn?.(event);
+    } :
+    event => {
+      event.stopPropagation();
+      event.preventDefault();
+      return fn?.(event);
+    };

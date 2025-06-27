@@ -74,7 +74,7 @@ export const LoaderImage = observer(({
 
   if(error) {
     return (
-      <object
+      <div
         {...props}
         style={{
           ...(props.style || {}),
