@@ -172,7 +172,7 @@ class ThumbnailStore {
         }
       });
 
-      const nodeUrl = yield client.WriteTokenNodeUrl({writeToken});
+      const nodeUrl = yield client.WriteTokenNodeUrlNetwork({writeToken});
 
       yield client.walletClient.SetProfileMetadata({
         type: "app",
