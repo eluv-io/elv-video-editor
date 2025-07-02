@@ -3,7 +3,7 @@ import GroundTruthStyles from "@/assets/stylesheets/modules/ground-truth.module.
 import {observer} from "mobx-react-lite";
 import {
   AsyncButton,
-  Confirm, FormSelect,
+  Confirm, FormMultiSelect, FormSelect,
   FormTextArea,
   FormTextInput,
   Icon,
@@ -28,8 +28,95 @@ import MenuIcon from "@/assets/icons/v2/dots-vertical.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
 import ImageIcon from "@/assets/icons/picture.svg";
 import AnchorIcon from "@/assets/icons/v2/anchor.svg";
+import XIcon from "@/assets/icons/v2/x.svg";
 
 const S = CreateModuleClassMatcher(GroundTruthStyles);
+
+export const EntityListItem = observer(({link, image, label, count, contain, anchor, small, actions, tooltip}) =>
+  <Linkish to={link} className={S("entity-card", "entity-list-item", small ? "entity-list-item--small" : "")}>
+    <div className={S("entity-card__image-container")}>
+      {
+        !image ?
+          <div className={S("entity-card__image", "entity-card__image--blank")}>
+            <Icon icon={ImageIcon}/>
+          </div> :
+          <LoaderImage
+            width={100}
+            src={image}
+            loaderDelay={25}
+            loaderAspectRatio={1}
+            className={S("entity-card__image", contain ? "entity-card__image--contain" : "")}
+          />
+      }
+      {
+        !anchor ? null :
+          <Icon icon={AnchorIcon} className={S("entity-card__image-badge")} />
+      }
+    </div>
+    <div className={S("entity-card__text")}>
+      <Tooltip position="top-start" openDelay={500} label={tooltip || label}>
+        <div className={S("entity-card__title")}>
+          <div className={S("ellipsis")}>
+            {label}
+          </div>
+          {
+            typeof count === "undefined" ? null :
+              <div className={S("entity-card__count")}>({count})</div>
+          }
+        </div>
+      </Tooltip>
+    </div>
+    <div onClick={SP()} className={S("entity-list-item__actions")}>
+      { actions }
+    </div>
+  </Linkish>
+);
+
+export const EntityCard = observer(({link, image, label, count, contain, anchor, actions, tooltip}) =>
+  <div className={S("entity-card")}>
+    <Linkish
+      to={link}
+      className={S("entity-card__image-container")}
+    >
+      {
+        !image ?
+          <div className={S("entity-card__image", "entity-card__image--blank")}>
+            <Icon icon={ImageIcon}/>
+          </div> :
+          <LoaderImage
+            width={320}
+            src={image}
+            loaderDelay={25}
+            loaderAspectRatio={1}
+            className={S("entity-card__image", contain ? "entity-card__image--contain" : "")}
+          />
+      }
+      {
+        !anchor ? null :
+          <Icon icon={AnchorIcon} className={S("entity-card__image-badge")} />
+      }
+    </Linkish>
+    <div className={S("entity-card__text")}>
+      <Tooltip openDelay={500} label={tooltip || label}>
+        <div className={S("entity-card__title")}>
+          <div className={S("ellipsis")}>
+            {label}
+          </div>
+          {
+            typeof count === "undefined" ? null :
+              <div className={S("entity-card__count")}>({count})</div>
+          }
+        </div>
+      </Tooltip>
+      {
+        !actions ? null :
+          <div onClick={SP()} className={S("entity-card__actions")}>
+            { actions }
+          </div>
+      }
+    </div>
+  </div>
+);
 
 const AttributeForm = observer(({
   attribute,
@@ -238,6 +325,17 @@ export const GroundTruthPoolForm = observer(({pool, Close}) => {
             onChange={() => {}}
             onClick={() => setShowLibraryBrowser(true)}
           />
+          <FormSelect
+            label="Model"
+            options={
+              Object.keys(groundTruthStore.domains).map(key => ({
+                label: groundTruthStore.domains[key],
+                value: key
+              }))
+            }
+            value={formData.model}
+            onChange={UpdateField("model")}
+          />
           <FormTextInput
             label="Name"
             placeholder="Enter a name"
@@ -250,17 +348,6 @@ export const GroundTruthPoolForm = observer(({pool, Close}) => {
             placeholder="Enter a description"
             value={formData.description}
             onChange={UpdateField("description")}
-          />
-          <FormSelect
-            label="Model"
-            options={
-              Object.keys(groundTruthStore.domains).map(key => ({
-                label: groundTruthStore.domains[key],
-                value: key
-              }))
-            }
-            value={formData.model}
-            onChange={UpdateField("model")}
           />
           <div
             ref={setAttributesRef}
@@ -384,6 +471,8 @@ export const GroundTruthPoolForm = observer(({pool, Close}) => {
 export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [assetFiles, setAssetFiles] = useState([]);
+  const [showAssetFileBrowser, setShowAssetFileBrowser] = useState(false);
 
   const pool = groundTruthStore.pools[poolId] || {};
   const entity = entityId && pool.metadata?.entities?.[entityId];
@@ -417,104 +506,172 @@ export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
   }
 
   return (
-    <Modal
-      title={
-        <div className={S("ground-truth-form__header")}>
-          <Icon icon={GroundTruthIcon} />
-          <span>{isNew ? "New" : "Update"} Ground Truth Entity</span>
-        </div>
-      }
-      alwaysOpened
-      centered
-      onClose={() => submitting ? null : Close()}
-      withCloseButton={false}
-      size={650}
-    >
-      <div className={S("ground-truth-form")}>
-        <FormTextInput
-          label="Label"
-          placeholder="Enter a label"
-          required
-          value={formData.label}
-          onChange={event => setFormData({...formData, label: event.target.value})}
-        />
-        <FormTextArea
-          label="Description"
-          placeholder="Enter a description"
-          value={formData.description}
-          onChange={event => setFormData({...formData, description: event.target.value})}
-        />
-
-        {
-          Object.keys(attributeConfig).map(attributeKey =>
-            attributeConfig[attributeKey]?.options?.length > 0 ?
-              <FormSelect
-                key={`attr-${attributeKey}`}
-                label={attributeKey}
-                value={formData.meta[attributeKey]}
-                options={attributeConfig[attributeKey].options}
-                onChange={value => setFormData({...formData, meta: {...formData.meta, [attributeKey]: value}})}
-              /> :
-              <FormTextInput
-                key={`attr-${attributeKey}`}
-                label={attributeKey}
-                value={formData.meta[attributeKey]}
-                onChange={event => setFormData({...formData, meta: {...formData.meta, [attributeKey]: event.target.value}})}
-              />
-          )
+    <>
+      <Modal
+        title={
+          <div className={S("ground-truth-form__header")}>
+            <Icon icon={GroundTruthIcon} />
+            <span>{isNew ? "New" : "Update"} Ground Truth Entity</span>
+          </div>
         }
+        alwaysOpened
+        centered
+        onClose={() => submitting ? null : Close()}
+        withCloseButton={false}
+        size={650}
+      >
+        <div className={S("ground-truth-form")}>
+          <FormTextInput
+            label="Label"
+            placeholder="Enter a label"
+            required
+            value={formData.label}
+            onChange={event => setFormData({...formData, label: event.target.value})}
+          />
+          <FormTextArea
+            label="Description"
+            placeholder="Enter a description"
+            value={formData.description}
+            onChange={event => setFormData({...formData, description: event.target.value})}
+          />
 
-        {
-          !error ? null :
-            <div className={S("ground-truth-form__error")}>
-              { error }
-            </div>
-        }
+          {
+            Object.keys(attributeConfig).map(attributeKey =>
+              attributeConfig[attributeKey]?.options?.length > 0 ?
+                <FormMultiSelect
+                  key={`attr-${attributeKey}`}
+                  label={attributeKey}
+                  value={(formData.meta[attributeKey] || "").split(",").map(s => s.trim()).filter(s => s)}
+                  options={attributeConfig[attributeKey].options}
+                  onChange={values => setFormData({
+                    ...formData,
+                    meta: {
+                      ...formData.meta,
+                      [attributeKey]: values.join(",")
+                    }}
+                  )}
+                /> :
+                <FormTextInput
+                  key={`attr-${attributeKey}`}
+                  label={attributeKey}
+                  value={formData.meta[attributeKey]}
+                  onChange={event => setFormData({...formData, meta: {...formData.meta, [attributeKey]: event.target.value}})}
+                />
+            )
+          }
 
-        <div className={S("ground-truth-form__actions")}>
-          <Button
-            disabled={submitting}
-            w={150}
-            variant="subtle"
-            color="gray.5"
-            onClick={() => Close()}
-          >
-            Cancel
-          </Button>
-          <AsyncButton
-            color="gray.5"
-            autoContrast
-            w={150}
-            disabled={errorMessages.length > 0}
-            tooltip={
-              errorMessages.length === 0 ? null :
-                errorMessages
-                  .filter((x, i, a) => a.indexOf(x) == i)
-                  .map(message => <div key={message}>{message}</div>)
-            }
-            onClick={async () => {
-              setSubmitting(true);
+          {
+            !isNew ? null :
+              <AsyncButton
+                color="gray.1"
+                autoContrast
+                onClick={() => setShowAssetFileBrowser(true)}
+              >
+                Select Assets
+              </AsyncButton>
+          }
 
-              try {
-                const id =
-                  isNew ?
-                    await groundTruthStore.AddEntity({poolId, ...formData}) :
-                    await groundTruthStore.ModifyEntity({poolId, entityId, ...formData});
-                Close(id);
-              } catch (error) {
-                // eslint-disable-next-line no-console
-                console.error(error);
-                setError("Failed to create ground truth entity. Please try again");
-              } finally {
-                setSubmitting(false);
+          {
+            assetFiles.length === 0 ? null :
+              <div className={S("entity-list", "entity-list--small")}>
+                {
+                  assetFiles.map((assetFile, index) =>
+                    <EntityListItem
+                      key={`asset-${index}-${assetFile.fullPath}`}
+                      image={assetFile.publicUrl || assetFile.url}
+                      label={assetFile.filename}
+                      contain
+                      small
+                      anchor={assetFile.anchor}
+                      actions={
+                        <>
+                          <IconButton
+                            icon={AnchorIcon}
+                            disabled={assetFile.anchor}
+                            faded
+                            label="Set as Entity Anchor Image"
+                            onClick={() => setAssetFiles(
+                              assetFiles.map((assetFile, i) => ({...assetFile, anchor: i === index}))
+                            )}
+                          />
+                          <IconButton
+                            icon={XIcon}
+                            faded
+                            label="Remove Asset"
+                            onClick={() => setAssetFiles(assetFiles.filter((_, i) => i !== index))}
+                          />
+                        </>
+                      }
+                    />
+                  )
+                }
+              </div>
+          }
+
+          {
+            !error ? null :
+              <div className={S("ground-truth-form__error")}>
+                { error }
+              </div>
+          }
+
+          <div className={S("ground-truth-form__actions")}>
+            <Button
+              disabled={submitting}
+              w={150}
+              variant="subtle"
+              color="gray.5"
+              onClick={() => Close()}
+            >
+              Cancel
+            </Button>
+            <AsyncButton
+              color="gray.5"
+              autoContrast
+              w={150}
+              disabled={errorMessages.length > 0}
+              tooltip={
+                errorMessages.length === 0 ? null :
+                  errorMessages
+                    .filter((x, i, a) => a.indexOf(x) == i)
+                    .map(message => <div key={message}>{message}</div>)
               }
-            }}
-          >
-            { isNew ? "Create" : "Update" }
-          </AsyncButton>
+              onClick={async () => {
+                setSubmitting(true);
+
+                try {
+                  const id =
+                    isNew ?
+                      await groundTruthStore.AddEntity({poolId, assetFiles, ...formData}) :
+                      await groundTruthStore.ModifyEntity({poolId, entityId, ...formData});
+                  Close(id);
+                } catch (error) {
+                  // eslint-disable-next-line no-console
+                  console.error(error);
+                  setError("Failed to create ground truth entity. Please try again");
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+            >
+              { isNew ? "Create" : "Update" }
+            </AsyncButton>
+          </div>
         </div>
-      </div>
-    </Modal>
+      </Modal>
+      {
+        !showAssetFileBrowser ? null :
+          <FileBrowser
+            alwaysOpened
+            title="Select Ground Truth Assets"
+            objectId={poolId}
+            multiple
+            extensions="image"
+            Submit={files => setAssetFiles([...assetFiles, ...files])}
+            Close={() => setShowAssetFileBrowser(false)}
+          />
+      }
+    </>
   );
 });
 
@@ -870,81 +1027,3 @@ export const GroundTruthAssetMenu = observer(({poolId, entityId, assetIndexOrId,
     </>
   );
 });
-
-export const EntityListItem = observer(({link, image, label, count, actions}) =>
-  <Linkish to={link} className={S("entity-card", "entity-list-item")}>
-    <div className={S("entity-card__image-container")}>
-      {
-        !image ?
-          <div className={S("entity-card__image", "entity-card__image--blank")}>
-            <Icon icon={ImageIcon}/>
-          </div> :
-          <LoaderImage
-            width={100}
-            src={image}
-            loaderDelay={25}
-            loaderAspectRatio={1}
-            className={S("entity-card__image")}
-          />
-      }
-    </div>
-    <div className={S("entity-card__text")}>
-      <Tooltip openDelay={500} label={label}>
-        <div className={S("entity-card__title")}>
-          <div className={S("ellipsis")}>
-            {label}
-          </div>
-          {
-            typeof count === "undefined" ? null :
-              <div className={S("entity-card__count")}>({count})</div>
-          }
-        </div>
-      </Tooltip>
-    </div>
-    <div onClick={SP()} className={S("entity-list-item__actions")}>
-      { actions }
-    </div>
-  </Linkish>
-);
-
-export const EntityCard = observer(({link, image, label, count, actions}) =>
-  <div className={S("entity-card")}>
-    <Linkish
-      to={link}
-      className={S("entity-card__image-container")}
-    >
-      {
-        !image ?
-          <div className={S("entity-card__image", "entity-card__image--blank")}>
-            <Icon icon={ImageIcon}/>
-          </div> :
-          <LoaderImage
-            width={320}
-            src={image}
-            loaderDelay={25}
-            loaderAspectRatio={1}
-            className={S("entity-card__image")}
-          />
-      }
-    </Linkish>
-    <div className={S("entity-card__text")}>
-      <Tooltip openDelay={500} label={label}>
-        <div className={S("entity-card__title")}>
-          <div className={S("ellipsis")}>
-            {label}
-          </div>
-          {
-            typeof count === "undefined" ? null :
-              <div className={S("entity-card__count")}>({count})</div>
-          }
-        </div>
-      </Tooltip>
-      {
-        !actions ? null :
-          <div onClick={SP()} className={S("entity-card__actions")}>
-            { actions }
-          </div>
-      }
-    </div>
-  </div>
-);

@@ -16,6 +16,7 @@ import TrashIcon from "@/assets/icons/trash.svg";
 import AnchorIcon from "@/assets/icons/v2/anchor.svg";
 import ImageIcon from "@/assets/icons/picture.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
+import LinkIcon from "@/assets/icons/v2/external-link.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles, GroundTruthStyles);
 
@@ -82,6 +83,17 @@ const GroundTruthAsset = observer(() => {
                 loaderAspectRatio={1}
                 className={S("asset-page__image")}
               />
+              {
+                !asset?.link?.url ? null :
+                  <IconButton
+                    href={asset?.link?.url}
+                    target="_blank"
+                    faded
+                    icon={LinkIcon}
+                    label="View Asset"
+                    className={S("asset-page__image-link")}
+                  />
+              }
             </div>
             <div className={S("asset-page__details")}>
               <div className={S("asset-page__title")}>

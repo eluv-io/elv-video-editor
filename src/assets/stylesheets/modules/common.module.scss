@@ -328,7 +328,39 @@
   }
 
   &__multiselect {
+    font-size: 16px;
     height: max-content;
+    min-height: 57px;
+  }
+
+  &__multiselect-list {
+    height: max-content;
+    margin-top: 10px;
+  }
+
+  &__multiselect-item {
+    align-items: center;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    display: flex;
+    font-size: 14px;
+    height: 30px;
+    justify-content: center;
+
+    span,
+    button {
+      align-items: center;
+      display: flex;
+      justify-content: center;
+    }
+
+    span {
+      padding-bottom: 3px;
+    }
+
+    button {
+      color: var(--text-tertiary);
+    }
   }
 
   &__color-section {

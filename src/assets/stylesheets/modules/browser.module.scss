@@ -85,6 +85,17 @@
   }
 }
 
+.search-bar-container {
+  align-items: center;
+  display: flex;
+  position: relative;
+
+  &__clear {
+    position: absolute;
+    right: 20px;
+  }
+}
+
 .search-bar {
   border: 0;
   border-radius: 30px;

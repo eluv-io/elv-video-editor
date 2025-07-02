@@ -125,6 +125,7 @@ const Assets = observer(({filter, showList, updateIndex, setUpdateIndex}) => {
         .filter(asset =>
           !filter ||
           asset.label?.toLowerCase()?.includes(filter) ||
+          asset.description?.toLowerCase()?.includes(filter) ||
           asset.filename?.toLowerCase()?.includes(filter)
         )
         .slice(0, limit)
@@ -160,6 +161,8 @@ const Assets = observer(({filter, showList, updateIndex, setUpdateIndex}) => {
             link={UrlJoin("/", poolId, "entities", entityId, "assets", asset.id || asset.index.toString())}
             label={asset.label || asset.filename}
             image={asset.link?.url}
+            contain
+            anchor={asset.anchor}
             actions={
               <GroundTruthAssetMenu
                 poolId={poolId}
@@ -217,7 +220,13 @@ const GroundTruthEntity = observer(() => {
     <>
       <div className={S("browser-page")}>
         <div className={S("browser")}>
-          <SearchBar placeholder="Filter Assets" filter={filter} setFilter={setFilter}/>
+          <SearchBar
+            filterKey="entity"
+            filterId={`${poolId}-${entityId}`}
+            placeholder="Label, Description, Filename"
+            filter={filter}
+            setFilter={setFilter}
+          />
           <h1 className={S("browser__header")}>
             <IconButton
               icon={BackIcon}

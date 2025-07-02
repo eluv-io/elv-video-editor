@@ -593,7 +593,9 @@ export const FormMultiSelect = observer(props =>
     classNames={{
       root: S("form-input"),
       label: S("form-input__label"),
-      input: S("form-input__input", "form-input__multiselect")
+      input: S("form-input__input", "form-input__multiselect"),
+      pillsList: S("form-input__multiselect-list"),
+      pill: S("form-input__multiselect-item"),
     }}
   />
 );

@@ -115,7 +115,8 @@ const Entities = observer(({showList, filter}) => {
             id: entityId,
             label: entity.label,
             image: anchorImage,
-            attrs: Object.values(entity.meta || {}),
+            meta: entity.meta,
+            __filterAttrs: Object.values(entity.meta || {}),
             assetCount: entity.sample_files?.length || 0
           };
         })
@@ -124,7 +125,7 @@ const Entities = observer(({showList, filter}) => {
           filter.trim().split(/\s+/).every(token =>
             entity.label?.toLowerCase()?.includes(token) ||
             entity.description?.toLowerCase()?.includes(token) ||
-            entity.attrs.find(attr => attr?.toLowerCase()?.includes(token))
+            entity.__filterAttrs.find(attr => attr?.toLowerCase()?.includes(token))
           )
         )
         .slice(0, limit)
@@ -161,6 +162,19 @@ const Entities = observer(({showList, filter}) => {
             label={entity.label}
             count={entity.assetCount || 0}
             image={entity.image?.url}
+            tooltip={
+              <div className={S("tooltip", "entity-card__tooltip")}>
+                <div className={S("entity-card__tooltip-label")}>{entity.label}</div>
+                {
+                  pool.attributes.map(attribute =>
+                    <div key={attribute.key} className={S("entity-card__tooltip-attribute")}>
+                      <label>{attribute.key}:</label>
+                      <div>{entity?.meta?.[attribute.key] || ""}</div>
+                    </div>
+                  )
+                }
+              </div>
+            }
             actions={
               <GroundTruthEntityMenu
                 poolId={poolId}
@@ -203,7 +217,13 @@ const GroundTruthPool = observer(() => {
     <>
       <div className={S("browser-page")}>
         <div className={S("browser")}>
-          <SearchBar placeholder="Filter Entities" filter={filter} setFilter={setFilter}/>
+          <SearchBar
+            filterKey="pool"
+            filterId={`${poolId}`}
+            placeholder="Label, Description, Attributes"
+            filter={filter}
+            setFilter={setFilter}
+          />
           <h1 className={S("browser__header")}>
             <IconButton
               icon={BackIcon}

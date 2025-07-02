@@ -108,32 +108,82 @@ const PageControls = observer(({currentPage, pages, maxSpread=15, SetPage}) => {
   );
 });
 
-export const SearchBar = observer(({filter, setFilter, delay=500, placeholder, Select}) => {
-  const [updateTimeout, setUpdateTimeout] = useState(undefined);
+let filterPreservationInfo = {};
+export const SearchBar = observer(({
+  filter,
+  setFilter,
+  delay=500,
+  placeholder,
+  filterKey,
+  filterId,
+  Select
+}) => {
   const [input, setInput] = useState(filter);
+  const [updateTimeout, setUpdateTimeout] = useState(undefined);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    if(!filterKey) { return; }
+
+    if(filterPreservationInfo[filterKey]?.id === filterId) {
+      setInput(filterPreservationInfo[filterKey].value);
+      setFilter(filterPreservationInfo[filterKey].value);
+    } else {
+      delete filterPreservationInfo[filterKey];
+    }
+
+    setLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if(!loaded) { return; }
+
     clearTimeout(updateTimeout);
 
-    setUpdateTimeout(setTimeout(() => setFilter(input), delay));
-  }, [input]);
+    setUpdateTimeout(
+      setTimeout(() => {
+        setFilter(input);
+      }, delay)
+    );
+
+    if(filterKey) {
+      filterPreservationInfo[filterKey] = {
+        id: filterId,
+        value: input
+      };
+    }
+  }, [input, loaded]);
 
   return (
-    <input
-      value={input}
-      placeholder={placeholder || "Title, Content ID, Version Hash"}
-      onChange={event => setInput(event.target.value)}
-      onKeyDown={async event => {
-        if(!Select || event.key !== "Enter") { return; }
+    <div className={S("search-bar-container")}>
+      <input
+        value={input}
+        placeholder={placeholder || "Title, Content ID, Version Hash"}
+        onChange={event => setInput(event.target.value)}
+        onKeyDown={async event => {
+          if(!Select || event.key !== "Enter") { return; }
 
-        if(["ilib", "iq__", "hq__", "0x"].find(prefix => event.target.value.trim().startsWith(prefix))) {
-          const result = await browserStore.LookupContent(event.target.value);
+          if(["ilib", "iq__", "hq__", "0x"].find(prefix => event.target.value.trim().startsWith(prefix))) {
+            const result = await browserStore.LookupContent(event.target.value);
 
-          Select(result);
-        }
-      }}
-      className={S("search-bar")}
-    />
+            Select(result);
+          }
+        }}
+        className={S("search-bar")}
+      />
+      {
+        !filter ? null :
+          <IconButton
+            label="Clear Filter"
+            icon={XIcon}
+            onClick={() => {
+              setInput("");
+              setFilter("");
+            }}
+            className={S("search-bar-container__clear")}
+          />
+      }
+    </div>
   );
 });
 
