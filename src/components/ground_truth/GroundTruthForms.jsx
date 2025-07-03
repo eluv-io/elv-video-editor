@@ -837,10 +837,10 @@ export const GroundTruthPoolSaveButton = observer(({icon, poolId, ...props}) => 
             title="Saving Ground Truth Pool"
             progress={groundTruthStore.saveProgress}
             error={groundTruthStore.saveError}
-            Close={() => {
+            Close={SP(() => {
               groundTruthStore.ClearSaveError();
               setSaving(false);
-            }}
+            })}
           />
       }
     </>

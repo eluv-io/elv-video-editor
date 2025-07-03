@@ -1,11 +1,12 @@
 import {flow, makeAutoObservable, runInAction} from "mobx";
-import {CSVtoList, Unproxy} from "@/utils/Utils.js";
+import {CSVtoList, StripFabricLinkUrls, Unproxy} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 
 class GroundTruthStore {
   pools = {};
   domains = {};
   saveProgress = 0;
+  saveError = undefined;
 
   constructor(rootStore) {
     makeAutoObservable(this);
@@ -164,7 +165,7 @@ class GroundTruthStore {
           metadata: {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            entities: [],
+            entities: {},
             model_domain: model,
             entity_data_schema: {
               type: "object",
@@ -226,7 +227,7 @@ class GroundTruthStore {
       metadata: {
         ...this.pools[objectId].metadata,
         // Entities can be large, don't keep it around in action stack
-        entities: []
+        entities: {}
       }
     };
 
@@ -689,8 +690,18 @@ class GroundTruthStore {
 
       const progressPerAction = 50 / actions.length;
       for(const action of actions) {
-        yield action.Write({libraryId, objectId, writeToken});
-        this.saveProgress += progressPerAction;
+        try {
+          yield action.Write({libraryId, objectId, writeToken});
+          this.saveProgress += progressPerAction;
+        } catch(error) {
+          // eslint-disable-next-line no-console
+          console.error("Save action failed:");
+          // eslint-disable-next-line no-console
+          console.error(action);
+          // eslint-disable-next-line no-console
+          console.log(error);
+          throw error;
+        }
       }
 
       this.saveProgress = 80;
