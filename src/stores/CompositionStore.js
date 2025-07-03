@@ -841,7 +841,7 @@ class CompositionStore {
       yield Promise.all(
         this.clipList
           .map(clip => clip.objectId)
-          .filter((x, i, a) => a.findIndex(other => x.id === other.id) === i)
+          .filter((objectId, index, list) => list.findIndex(otherId => objectId === otherId) === index)
           .map(async objectId =>
             sourceHashes[objectId] = await this.client.LatestVersionHash({objectId})
           )
