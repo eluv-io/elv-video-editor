@@ -323,6 +323,7 @@ class TrackStore {
       label,
       key: key || `track-${label}`,
       trackType: type,
+      requiresSave: true,
       ...additional
     });
 

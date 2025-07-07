@@ -123,7 +123,10 @@ export const SearchBar = observer(({
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if(!filterKey) { return; }
+    if(!filterKey) {
+      setLoaded(true);
+      return;
+    }
 
     if(filterPreservationInfo[filterKey]?.id === filterId) {
       setInput(filterPreservationInfo[filterKey].value);

@@ -3,7 +3,15 @@ import React, {useEffect, useState} from "react";
 import {ClipSidePanel, TagSidePanel} from "@/components/side_panel/SidePanel.jsx";
 import VideoSection from "@/components/video/VideoSection.jsx";
 import {ClipTimeline, TagTimeline} from "@/components/timeline/Timeline.jsx";
-import {editStore, keyboardControlsStore, rootStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
+import {
+  editStore,
+  groundTruthStore,
+  keyboardControlsStore,
+  rootStore,
+  tagStore,
+  trackStore,
+  videoStore
+} from "@/stores/index.js";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {ProgressModal} from "@/components/common/Common.jsx";
 
@@ -14,6 +22,7 @@ const TagsAndClipsView = observer(({mode}) => {
   useEffect(() => {
     rootStore.SetPage(mode);
     keyboardControlsStore.SetActiveStore(videoStore);
+    groundTruthStore.LoadGroundTruthPools();
 
     if(videoStore.ready) {
       const clipPoints = videoStore.ParseClipParams();

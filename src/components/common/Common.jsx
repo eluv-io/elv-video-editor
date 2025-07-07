@@ -97,7 +97,7 @@ export const LoaderImage = observer(({
     );
   }
 
-  if(width) {
+  if(width && src?.startsWith("http")) {
     try {
       const url = new URL(src);
       url.searchParams.set("width", width);
@@ -120,7 +120,7 @@ export const LoaderImage = observer(({
             loading={lazy ? "lazy" : "eager"}
             src={(useAlternateSrc && alternateSrc) || src}
             onLoad={() => setTimeout(() => setLoaded(true), delay)}
-            onError={() => {
+            onError={error => {
               if(alternateSrc && !useAlternateSrc) {
                 setUseAlternateSrc(true);
               } else {
@@ -132,7 +132,7 @@ export const LoaderImage = observer(({
       }
       {
         loaded ? null :
-          <object
+          <div
             {...props}
             style={{
               ...(props.style || {}),
@@ -410,7 +410,7 @@ export const AsyncButton = observer(({onClick, tooltip, ...props}) => {
   );
 });
 
-export const StyledButton = observer(({icon, variant="primary", color="--color-highlight", children, ...props}) => {
+export const StyledButton = observer(({icon, variant="primary", small, color="--color-highlight", children, ...props}) => {
   return (
     <Linkish
       {...props}
@@ -418,7 +418,16 @@ export const StyledButton = observer(({icon, variant="primary", color="--color-h
         ...(props.style || {}),
         "--button-color": `var(${color})`
       }}
-      className={JoinClassNames(S("styled-button", `styled-button--${variant}`), props.className)}
+      className={
+        JoinClassNames(
+          S(
+            "styled-button",
+            `styled-button--${variant}`,
+            small ? "styled-button--small" : ""
+          ),
+          props.className
+        )
+      }
     >
       {
         !icon ? null :
@@ -581,7 +590,8 @@ export const FormSelect = observer(props =>
     classNames={{
       root: S("form-input"),
       label: S("form-input__label"),
-      input: S("form-input__input")
+      input: S("form-input__input"),
+      ...(props.classNames || {})
     }}
   />
 );

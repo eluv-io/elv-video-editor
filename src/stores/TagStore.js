@@ -587,7 +587,7 @@ class TagStore {
       label: "Add Category",
       type: "track",
       action: "create",
-      modifiedItem: { trackId, trackType, key, label, description, color},
+      modifiedItem: { trackId, trackType, key, label, description, color, requiresSave: true },
       Action: () => this.rootStore.trackStore.AddTrack({
         trackId,
         key,

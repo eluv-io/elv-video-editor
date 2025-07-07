@@ -540,6 +540,69 @@ class GroundTruthStore {
     });
   }
 
+  AddAssetFromUrl({poolId, entityId, image, label="", description="", source}) {
+    const pool = this.pools[poolId];
+
+    if(!pool) { throw Error("Unable to find pool " + poolId); }
+
+    const entity = pool.metadata.entities[entityId];
+
+    if(!entity) { throw Error("Unable to find entity " + poolId); }
+
+    const originalFiles = entity.sample_files || [];
+
+    const newFiles = [
+      ...originalFiles,
+      {
+        id: this.rootStore.NextId(true),
+        link: {
+          "/": UrlJoin("./", "files", "frames", image.filename),
+          url: image.url
+        },
+        source,
+        label: label || image.filename,
+        description: description,
+        added_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ];
+
+    this.rootStore.editStore.PerformAction({
+      label: `Add Asset from URL to ${entity?.label}`,
+      type: "assets",
+      action: "add-url",
+      modifiedItem: originalFiles,
+      page: "groundTruth",
+      subpage: poolId,
+      Action: () => {
+        this.pools[poolId].metadata.entities[entityId].sample_files = newFiles;
+      },
+      Undo: () => {
+        this.pools[poolId].metadata.entities[entityId].sample_files = originalFiles;
+      },
+      Write: async writeParams => {
+        const data = await image.blob.arrayBuffer();
+
+        await this.client.UploadFiles({
+          ...writeParams,
+          fileInfo: [{
+            path: UrlJoin("frames", image.filename),
+            type: "file",
+            mime_type: "image/png",
+            size: data.byteLength,
+            data
+          }]
+        });
+
+        await this.client.ReplaceMetadata({
+          ...writeParams,
+          metadataSubtree: UrlJoin("/ground_truth", "entities", entityId, "sample_files"),
+          metadata: Unproxy(StripFabricLinkUrls(newFiles))
+        });
+      }
+    });
+  }
+
   ModifyAsset({poolId, entityId, assetIndexOrId, file, label, description}) {
     const pool = this.pools[poolId];
 

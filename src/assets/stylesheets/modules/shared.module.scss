@@ -122,6 +122,13 @@
   display: grid;
   gap: 10px;
 
+  &--transparent {
+    background-color: transparent;
+    border: 0;
+    box-shadow: none;
+    outline: 0;
+  }
+
   &__item {
     font-size: 14px;
     font-weight: 500;
@@ -260,6 +267,16 @@
     object {
       width: 100%;
     }
+  }
+
+  &__image {
+    margin: 0 auto 10px;
+    max-height: 200px;
+    max-width: 200px;
+  }
+
+  &__loader {
+    padding: 20px 0;
   }
 }
 

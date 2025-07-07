@@ -72,51 +72,54 @@ export const EntityListItem = observer(({link, image, label, count, contain, anc
   </Linkish>
 );
 
-export const EntityCard = observer(({link, image, label, count, contain, anchor, actions, tooltip}) =>
-  <div className={S("entity-card")}>
-    <Linkish
-      to={link}
-      className={S("entity-card__image-container")}
-    >
-      {
-        !image ?
-          <div className={S("entity-card__image", "entity-card__image--blank")}>
-            <Icon icon={ImageIcon}/>
-          </div> :
-          <LoaderImage
-            width={320}
-            src={image}
-            loaderDelay={25}
-            loaderAspectRatio={1}
-            className={S("entity-card__image", contain ? "entity-card__image--contain" : "")}
-          />
-      }
-      {
-        !anchor ? null :
-          <Icon icon={AnchorIcon} className={S("entity-card__image-badge")} />
-      }
-    </Linkish>
-    <div className={S("entity-card__text")}>
-      <Tooltip openDelay={500} label={tooltip || label}>
-        <div className={S("entity-card__title")}>
-          <div className={S("ellipsis")}>
-            {label}
+export const EntityCard = observer(({link, image, label, count, contain, anchor, actions, tooltip}) => {
+  return (
+
+    <div className={S("entity-card")}>
+      <Linkish
+        to={link}
+        className={S("entity-card__image-container")}
+      >
+        {
+          !image ?
+            <div className={S("entity-card__image", "entity-card__image--blank")}>
+              <Icon icon={ImageIcon}/>
+            </div> :
+            <LoaderImage
+              width={320}
+              src={image}
+              loaderDelay={25}
+              loaderAspectRatio={1}
+              className={S("entity-card__image", contain ? "entity-card__image--contain" : "")}
+            />
+        }
+        {
+          !anchor ? null :
+            <Icon icon={AnchorIcon} className={S("entity-card__image-badge")}/>
+        }
+      </Linkish>
+      <div className={S("entity-card__text")}>
+        <Tooltip openDelay={500} label={tooltip || label}>
+          <div className={S("entity-card__title")}>
+            <div className={S("ellipsis")}>
+              {label}
+            </div>
+            {
+              typeof count === "undefined" ? null :
+                <div className={S("entity-card__count")}>({count})</div>
+            }
           </div>
-          {
-            typeof count === "undefined" ? null :
-              <div className={S("entity-card__count")}>({count})</div>
-          }
-        </div>
-      </Tooltip>
-      {
-        !actions ? null :
-          <div onClick={SP()} className={S("entity-card__actions")}>
-            { actions }
-          </div>
-      }
+        </Tooltip>
+        {
+          !actions ? null :
+            <div onClick={SP()} className={S("entity-card__actions")}>
+              {actions}
+            </div>
+        }
+      </div>
     </div>
-  </div>
-);
+  );
+});
 
 const AttributeForm = observer(({
   attribute,

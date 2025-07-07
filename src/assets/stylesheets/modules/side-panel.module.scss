@@ -665,6 +665,13 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  &__image {
+    box-shadow: 0 0 5px black;
+    margin-top: 20px;
+    max-height: 210px;
+    max-width: 210px;
+  }
 }
 
 .add-asset {
@@ -911,5 +918,53 @@
 
   &__loader {
     margin-top: 20px;
+  }
+}
+
+.entity-option-wrapper {
+  padding: 0;
+
+  &:not(:last-child) {
+    margin-bottom: 5px;
+  }
+}
+
+// Ground truth
+.entity-option {
+  border-radius: 10px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 50px 1fr;
+  width: 100%;
+
+  &--selected {
+    background-color: var(--background-toolbar--highlight);
+  }
+
+  &__image-container {
+    height: 50px;
+    overflow: hidden;
+    position: relative;
+    width: 50px;
+  }
+
+  &__image {
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    width: 100%;
+  }
+
+  &__tooltip-image {
+    box-shadow: 0 0 10px black;
+    max-height: 300px;
+    max-width: 300px;
+    object-fit: contain;
+  }
+
+  &__text {
+    align-items: center;
+    display: flex;
+    font-weight: 600;
   }
 }

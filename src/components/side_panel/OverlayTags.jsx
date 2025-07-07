@@ -1,17 +1,21 @@
 import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss";
 
-import React, {useEffect} from "react";
+import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
-import {rootStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
-import {FocusTrap, Tooltip} from "@mantine/core";
+import {groundTruthStore, rootStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
+import {Button, FocusTrap, Tooltip} from "@mantine/core";
 import {
   Confirm,
   FormNumberInput,
   FormSelect,
-  FormTextArea,
+  FormTextArea, FormTextInput,
   IconButton,
+  Loader,
+  LoaderImage,
+  Modal,
+  StyledButton
 } from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher, FormatConfidence, Round} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, FormatConfidence, Round, ScaleImage} from "@/utils/Utils.js";
 import {BoxToPolygon, BoxToRectangle} from "@/utils/Geometry.js";
 
 import EditIcon from "@/assets/icons/Edit.svg";
@@ -19,8 +23,182 @@ import BackIcon from "@/assets/icons/v2/back.svg";
 import XIcon from "@/assets/icons/X.svg";
 import TrashIcon from "@/assets/icons/trash.svg";
 import CheckmarkIcon from "@/assets/icons/check-circle.svg";
+import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
+
+const EntityOption = ({option, checked}) => {
+  const entity = groundTruthStore.pools[option.poolId]?.metadata?.entities?.[option.value];
+
+  if(!entity) {
+    return null;
+  }
+
+  const image = (entity.sample_files || []).find(image => image.anchor) || (entity.sample_files || [])[0];
+  const imageUrl = ScaleImage(image?.link?.url, 300);
+
+  return (
+    <div className={S("entity-option", checked ? "entity-option--selected" : "")}>
+      <Tooltip
+        label={
+          <LoaderImage lazy src={imageUrl} className={S("entity-option__tooltip-image")} showWithoutSource />
+        }
+        openDelay={500}
+        classNames={{
+          tooltip: S("tooltip--transparent")
+        }}
+      >
+        <div className={S("entity-option__image-container")}>
+          <LoaderImage lazy src={imageUrl} className={S("entity-option__image")} showWithoutSource />
+        </div>
+      </Tooltip>
+      <div className={S("entity-option__text")}>
+        { entity.label || entityId }
+      </div>
+    </div>
+  );
+};
+
+const EntitySelect = ({poolId, entityId, setEntityId}) => {
+  const [component, setComponent] = useState(null);
+
+  const pool = groundTruthStore.pools[poolId];
+
+  useEffect(() => {
+    setComponent(
+      <div className={S("form__input-container")}>
+        <FormSelect
+          searchable
+          limit={100}
+          label="Entity"
+          onChange={value => setEntityId(value)}
+          options={
+            Object.keys(pool?.metadata?.entities || {})
+              .map(entityId =>
+                ({
+                  label: pool?.metadata?.entities[entityId].label || entityId,
+                  value: entityId,
+                  poolId
+                })
+              )
+          }
+          renderOption={EntityOption}
+          classNames={{
+            option: S("entity-option-wrapper")
+          }}
+        />
+      </div>
+    );
+  }, [poolId, pool?.metadata, entityId]);
+
+  return component;
+};
+
+const GroundTruthAssetModal = observer(({image, Close}) => {
+  const [poolId, setPoolId] = useState(undefined);
+  const [entityId, setEntityId] = useState(undefined);
+  const [label, setLabel] = useState("");
+  const [description, setDescription] = useState("");
+
+  useEffect(() => {
+    setEntityId(undefined);
+
+    if(!poolId) {
+      return;
+    }
+
+    groundTruthStore.LoadGroundTruthPool({poolId});
+  }, [poolId]);
+
+  const pool = groundTruthStore.pools[poolId];
+
+  return (
+    <Modal
+      title="Add to Ground Truth Pool"
+      onClose={Close}
+      alwaysOpened
+      centered
+    >
+      <div className={S("form__inputs")}>
+        {
+          !image?.url ? null :
+            <img src={image?.url} className={S("form__image")}/>
+        }
+        <div className={S("form__input-container")}>
+          <FormSelect
+            label="Ground Truth Pool"
+            onChange={value => setPoolId(value)}
+            options={
+              Object.keys(groundTruthStore.pools).map(poolId =>
+                ({label: groundTruthStore.pools[poolId].name, value: poolId})
+              )}
+          />
+        </div>
+        {
+          !poolId ? null :
+            !pool?.metadata ? <Loader className={S("form__loader")} /> :
+              <>
+                <EntitySelect
+                  key={`entity-select-${poolId}`}
+                  poolId={poolId}
+                  entityId={entityId}
+                  setEntityId={setEntityId}
+                />
+                <div className={S("form__input-container")}>
+                  <FormTextInput
+                    label="Label"
+                    value={label}
+                    placeholder={image.filename}
+                    onChange={event => setLabel(event.target.value)}
+                  />
+                </div>
+                <div className={S("form__input-container")}>
+                  <FormTextArea
+                    label="Description"
+                    value={description}
+                    onChange={event => setDescription(event.target.value)}
+                  />
+                </div>
+              </>
+        }
+      </div>
+      <div className={S("form__actions")}>
+         <Button
+            w={150}
+            variant="subtle"
+            color="gray.5"
+            onClick={() => Close()}
+          >
+            Cancel
+          </Button>
+          <Button
+            disabled={!poolId || !entityId}
+            color="gray.5"
+            autoContrast
+            w={150}
+            onClick={() => {
+              groundTruthStore.AddAssetFromUrl({
+                poolId,
+                entityId,
+                label,
+                description,
+                image,
+                source: {
+                  objectId: videoStore.videoObject.objectId,
+                  smpte: videoStore.smpte,
+                  frame: videoStore.frame
+                }
+              });
+
+              Close();
+            }}
+          >
+            Update
+          </Button>
+      </div>
+    </Modal>
+  );
+});
 
 const OverlayTagActions = observer(({tag, track}) => {
   return (
@@ -165,12 +343,23 @@ const OverlayTagForm = observer(() => {
 export const OverlayTagDetails = observer(() => {
   const tag = tagStore.editedOverlayTag || tagStore.selectedOverlayTag;
   const track = trackStore.Track(tag?.trackId);
+  const [image, setImage] = useState({});
+  const [showGroundTruthModal, setShowGroundTruthModal] = useState(false);
 
   useEffect(() => {
     if(!tag || !track) {
       tagStore.ClearEditing();
       tagStore.ClearSelectedOverlayTag();
     }
+
+    if(tagStore.editing || !tag) { return; }
+
+    videoStore.GetFrame({bounds: tag.box, maxWidth: 300, maxHeight: 300})
+      .then(blob => setImage({
+        filename: `${videoStore.videoObject.objectId}-${videoStore.smpte.replaceAll(":", "_")}`,
+        blob,
+        url: window.URL.createObjectURL(blob)
+      }));
   }, [tag, track]);
 
   if(!tag || !track) {
@@ -192,6 +381,14 @@ export const OverlayTagDetails = observer(() => {
                 <span>{FormatConfidence(tag.confidence)}</span>
               </div>
           }
+          <img alt="Image" src={image?.url} className={S("tag-details__image")} />
+          <StyledButton
+            small
+            icon={GroundTruthIcon}
+            onClick={() => setShowGroundTruthModal(true)}
+          >
+            Add to Ground Truth Pool
+          </StyledButton>
         </div>
       </div>
       {
@@ -199,6 +396,13 @@ export const OverlayTagDetails = observer(() => {
           <div className={S("side-panel-modal")}>
             <OverlayTagForm/>
           </div>
+      }
+      {
+        !showGroundTruthModal ? null :
+          <GroundTruthAssetModal
+            image={image}
+            Close={() => setShowGroundTruthModal(false)}
+          />
       }
     </>
   );

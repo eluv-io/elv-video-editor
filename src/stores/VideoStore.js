@@ -1062,18 +1062,56 @@ class VideoStore {
     }
   }
 
-  SaveFrame() {
+  async GetFrame({maxHeight, maxWidth, bounds}={}) {
     if(!this.video) { return; }
 
+    let width = this.video.videoWidth;
+    let height = this.video.videoHeight;
+
+    let minX=0, maxX=width;
+    let minY=0, maxY=height;
+
+    if(bounds) {
+      minX = Math.min(bounds.x1, bounds.x2, bounds.x3 || 1, bounds.x4 || 1) * width;
+      maxX = Math.max(bounds.x1, bounds.x2, bounds.x3 || 0, bounds.x4 || 0) * width;
+      minY = Math.min(bounds.y1, bounds.y2, bounds.y3 || 1, bounds.y4 || 1) * height;
+      maxY = Math.max(bounds.y1, bounds.y2, bounds.y3 || 0, bounds.y4 || 0) * height;
+
+      width = maxX - minX;
+      height = maxY - minY;
+    }
+
+    if(maxWidth && width > maxWidth) {
+      const scale = maxWidth / width;
+      width = width * scale;
+      height = height * scale;
+    }
+
+    if(maxHeight && height > maxHeight) {
+      const scale = maxHeight / height;
+      width = width * scale;
+      height = height * scale;
+    }
+
     const canvas = document.createElement("canvas");
-    canvas.width = this.video.videoWidth;
-    canvas.height = this.video.videoHeight;
-    canvas.getContext("2d").drawImage(this.video, 0, 0, this.video.videoWidth, this.video.videoHeight);
-    canvas.toBlob(blob => {
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const filename = `${this.name}_${this.smpte.replace(":", "-")}.png`;
-      DownloadFromUrl(downloadUrl, filename);
-    });
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext("2d").drawImage(this.video, minX, minY, maxX - minX, maxY - minY, 0, 0, width, height);
+
+    return await new Promise(resolve =>
+      canvas.toBlob(blob => resolve(blob))
+    );
+  }
+
+  SaveFrame({maxHeight, maxWidth, bounds}={}) {
+    if(!this.video) { return; }
+
+    this.GetFrame({maxHeight, maxWidth, bounds})
+      .then(blob => {
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const filename = `${this.name}_${this.smpte.replace(":", "-")}.png`;
+        DownloadFromUrl(downloadUrl, filename);
+      });
   }
 
   async SaveVideo() {
