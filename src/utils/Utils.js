@@ -72,11 +72,16 @@ export const StopScroll = ({element, shift=false, control=false, meta=false}={})
 };
 
 export const DownloadFromUrl = (url, filename, options={}) => {
-  url = new URL(url);
-  url.searchParams.set("header-x_set_content_disposition", `attachment; filename="${filename}"`);
+  if(!window.downloadUrl.startsWith("data")) {
+    // Fabric URLs need their content disposition header set
+    url = new URL(url);
+    url.searchParams.set("header-x_set_content_disposition", `attachment; filename="${filename}"`);
+  }
 
   let element = document.createElement("a");
-  element.href = url;
+
+  element.target = "_blank";
+  element.href = url.toString();
   element.download = filename;
 
   Object.keys(options).forEach(key => element[key] = options[key]);
