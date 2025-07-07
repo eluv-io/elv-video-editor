@@ -72,7 +72,7 @@ export const StopScroll = ({element, shift=false, control=false, meta=false}={})
 };
 
 export const DownloadFromUrl = (url, filename, options={}) => {
-  if(!window.downloadUrl.startsWith("data")) {
+  if(!url?.startsWith("data") && !url?.startsWith("blob")) {
     // Fabric URLs need their content disposition header set
     url = new URL(url);
     url.searchParams.set("header-x_set_content_disposition", `attachment; filename="${filename}"`);
