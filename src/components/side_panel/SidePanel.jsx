@@ -72,7 +72,7 @@ const SearchIndexBrowseModal = observer(({Select, Cancel}) => {
   );
 });
 
-export const SearchIndexSelection = observer(({icon, className=""}) => {
+export const SearchIndexSelection = observer(({position="bottom-middle", icon, className=""}) => {
   const [updatingIndexes, setUpdatingIndexes] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
   const [showBrowser, setShowBrowser] = useState(false);
@@ -109,7 +109,7 @@ export const SearchIndexSelection = observer(({icon, className=""}) => {
         shadow="md"
         width={250}
         offset={15}
-        position="bottom-middle"
+        position={position}
         zIndex={200}
       >
         <Menu.Target>

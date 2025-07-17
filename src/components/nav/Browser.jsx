@@ -889,13 +889,14 @@ export const CardDisplaySwitch = observer(({showList, setShowList}) => {
   );
 });
 
-const AISearchBar = observer(() => {
-  const [input, setInput] = useState("");
+export const AISearchBar = observer(({initialQuery=""}) => {
+  const [input, setInput] = useState(initialQuery);
   const [,navigate] = useLocation();
 
   return (
     <div className={S("search-bar-container", "search-bar-container--ai")}>
       <SearchIndexSelection
+        position="bottom-start"
         className={S("search-bar-container__button-left")}
         icon={
           <div style={{display: "flex", alignItems: "center", gap: 5}}>
@@ -909,7 +910,7 @@ const AISearchBar = observer(() => {
         placeholder="Search within content by phrase or keyword"
         onChange={event => setInput(event.target.value)}
         onKeyDown={async event => {
-          if(event.key !== "Enter") { return; }
+          if(!input || event.key !== "Enter") { return; }
 
           navigate(`/search/${rootStore.client.utils.B58(input)}`);
         }}
@@ -919,9 +920,7 @@ const AISearchBar = observer(() => {
         label="Search"
         icon={SearchArrowIcon}
         noHover
-        onClick={() => {
-          navigate(`/search/${rootStore.client.utils.B58(input)}`);
-        }}
+        onClick={() => input && navigate(`/search/${rootStore.client.utils.B58(input)}`)}
         className={S("search-bar-container__button-right")}
       />
     </div>

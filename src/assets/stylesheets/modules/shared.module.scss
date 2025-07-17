@@ -318,3 +318,55 @@
     max-width: 30%;
   }
 }
+
+
+/* Entity lists */
+
+.list-page {
+  border-top: 1px solid var(--color-border);
+  display: grid;
+  gap: 20px;
+  height: 100%;
+  margin-top: 20px;
+  max-height: calc(100vh - 250px);
+  overflow: hidden;
+  padding-top: 20px;
+
+  &--with-sidebar {
+    grid-template-columns: 1fr 400px;
+  }
+}
+
+.entity-grid {
+  display: grid;
+  gap: 40px 20px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  max-height: 100%;
+  overflow-y: auto;
+  padding-right: 10px;
+  scrollbar-gutter: stable;
+
+  &--empty {
+    display: flex;
+    font-size: 20px;
+    justify-content: center;
+    padding-top: 100px;
+  }
+}
+
+.entity-list {
+  display: grid;
+  gap: 3px;
+  height: max-content;
+  max-height: 100%;
+  overflow-y: auto;
+  padding-right: 10px;
+  scrollbar-gutter: stable;
+
+  &--small {
+    margin: 0;
+    max-height: 200px;
+    overflow-y: scroll;
+    padding: 0;
+  }
+}

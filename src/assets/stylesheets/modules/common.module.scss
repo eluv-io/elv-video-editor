@@ -645,3 +645,9 @@
     margin-bottom: 10px;
   }
 }
+
+.infinite-scroll {
+  &__loader {
+    min-height: 120px;
+  }
+}

@@ -1,6 +1,7 @@
 import {flow, makeAutoObservable, runInAction} from "mobx";
 import UrlJoin from "url-join";
 import {Unproxy} from "@/utils/Utils.js";
+import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 
 class AIStore {
   searchIndexes = [];
@@ -302,12 +303,9 @@ class AIStore {
 
   Search = flow(function * ({query, limit=10}) {
     let start = 0;
+    const resultsKey = `${this.searchIndex.versionHash}-${this.client.utils.B58(query)}`;
 
-    if(
-      typeof this.searchResults.pagination !== "undefined" &&
-      this.searchResults.query === query &&
-      this.searchResults.indexHash === this.searchIndex.versionHash
-    ) {
+    if(this.searchResults.key === resultsKey) {
       // Continuation of same query
       if((this.searchResults.pagination.start + this.searchResults.pagination.limit) >= this.searchResults.pagination.total) {
         // Exhausted results
@@ -316,6 +314,9 @@ class AIStore {
 
       // Set start + limit to fetch next batch
       start = this.searchResults.pagination.start + this.searchResults.pagination.limit;
+    } else {
+      // New query - reset
+      this.ClearSearchResults();
     }
 
     const isAssetSearch = this.searchIndex.type.includes("assets");
@@ -343,6 +344,7 @@ class AIStore {
     const baseUrl = yield this.client.FabricUrl({versionHash: this.searchIndex.versionHash});
 
     this.searchResults = {
+      key: resultsKey,
       query,
       indexHash: this.searchIndex.versionHash,
       pagination: pagination || {},
@@ -363,15 +365,32 @@ class AIStore {
             }
           }
 
+          let startTime, endTime, subtitle;
+          if(!isAssetSearch) {
+            startTime = (result.start_time || 0) / 1000;
+            endTime = result.end_time ? result.end_time / 1000 : undefined;
+
+            if(startTime || endTime) {
+              subtitle = FrameAccurateVideo.TimeToString({time: startTime, format: "smpte", includeFractionalSeconds: true});
+
+              if(endTime) {
+                subtitle += " - " + FrameAccurateVideo.TimeToString({time: endTime, format: "smpte", includeFractionalSeconds: true});
+                subtitle = `${subtitle} (${FrameAccurateVideo.TimeToString({time: endTime - startTime})})`;
+              }
+            }
+          }
+
           return {
             libraryId: result.qlib_id,
             objectId: result.id,
             versionHash: result.hash,
             imageUrl: imageUrl?.toString(),
-            startTime: (result.start_time || 0) / 1000,
-            endTime: result.end_time ? result.end_time / 1000 : undefined,
-            name: result.meta?.public?.asset_metadata?.title || result.meta?.public?.name,
+            startTime,
+            endTime,
             sources: result.sources,
+            name: result.meta?.public?.asset_metadata?.title || result.meta?.public?.name,
+            subtitle,
+            isAssetSearch,
             result
           };
         })
@@ -380,6 +399,10 @@ class AIStore {
 
     return this.searchResults;
   });
+
+  ClearSearchResults() {
+    this.searchResults = {};
+  }
 
   /* Updates */
 

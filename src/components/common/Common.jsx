@@ -120,7 +120,7 @@ export const LoaderImage = observer(({
             loading={lazy ? "lazy" : "eager"}
             src={(useAlternateSrc && alternateSrc) || src}
             onLoad={() => setTimeout(() => setLoaded(true), delay)}
-            onError={error => {
+            onError={() => {
               if(alternateSrc && !useAlternateSrc) {
                 setUseAlternateSrc(true);
               } else {

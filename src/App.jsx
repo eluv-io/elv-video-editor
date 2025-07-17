@@ -134,10 +134,10 @@ const App = observer(() => {
               <Route path="/compositions/:objectId/:compositionKey">
                 <CompositionsView key="selected" />
               </Route>
-              <Route path="/search/:query/:resultIndex">
+              <Route path="/search/:queryB58/:resultIndex">
                 <SearchView />
               </Route>
-              <Route path="/search/:query">
+              <Route path="/search/:queryB58">
                 <SearchView />
               </Route>
               <Route path="/">

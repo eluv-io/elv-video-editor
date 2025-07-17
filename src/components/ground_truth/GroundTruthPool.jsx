@@ -15,11 +15,11 @@ import BackIcon from "@/assets/icons/v2/back.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
 import CreateIcon from "@/assets/icons/v2/add2.svg";
 import {
-  EntityCard, EntityListItem,
   GroundTruthEntityForm, GroundTruthEntityMenu,
   GroundTruthPoolForm,
   GroundTruthPoolSaveButton
 } from "@/components/ground_truth/GroundTruthForms.jsx";
+import {EntityCard, EntityListItem} from "@/components/common/EntityLists.jsx";
 
 const S = CreateModuleClassMatcher(BrowserStyles, GroundTruthStyles);
 
@@ -257,7 +257,7 @@ const GroundTruthPool = observer(() => {
               <div className={S("browser-table", "browser-table--loading")}>
                 <Loader/>
               </div> :
-              <div className={S("list-page")}>
+              <div className={S("list-page", "list-page--with-sidebar")}>
                 <Entities showList={showList} filter={filter}/>
                 <PoolDetails/>
               </div>

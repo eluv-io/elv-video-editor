@@ -11,7 +11,6 @@ import {CardDisplaySwitch, SearchBar} from "@/components/nav/Browser.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import UrlJoin from "url-join";
 import {
-  EntityCard, EntityListItem,
   GroundTruthAssetFileBrowser,
   GroundTruthAssetMenu,
   GroundTruthEntityForm,
@@ -21,6 +20,7 @@ import {
 import BackIcon from "@/assets/icons/v2/back.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
 import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
+import {EntityCard, EntityListItem} from "@/components/common/EntityLists.jsx";
 
 const S = CreateModuleClassMatcher(BrowserStyles, GroundTruthStyles);
 
@@ -267,7 +267,7 @@ const GroundTruthEntity = observer(() => {
               <div className={S("browser-table", "browser-table--loading")}>
                 <Loader/>
               </div> :
-              <div className={S("list-page")}>
+              <div className={S("list-page", "list-page--with-sidebar")}>
                 <Assets
                   filter={filter}
                   showList={showList}
