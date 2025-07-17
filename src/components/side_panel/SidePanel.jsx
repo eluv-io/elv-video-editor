@@ -2,7 +2,7 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {Confirm, CopyableField, Icon, IconButton, Input, Modal} from "@/components/common/Common.jsx";
 import {rootStore, assetStore, compositionStore, tagStore, trackStore, aiStore} from "@/stores/index.js";
 import {TagDetails, TagsList} from "@/components/side_panel/Tags.jsx";
@@ -72,7 +72,7 @@ const SearchIndexBrowseModal = observer(({Select, Cancel}) => {
   );
 });
 
-const SearchIndexSelection = observer(() => {
+export const SearchIndexSelection = observer(({icon, className=""}) => {
   const [updatingIndexes, setUpdatingIndexes] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
   const [showBrowser, setShowBrowser] = useState(false);
@@ -113,14 +113,14 @@ const SearchIndexSelection = observer(() => {
         zIndex={200}
       >
         <Menu.Target>
-          <Tooltip label="Select Search Index" openDelay={500}>
+          <Tooltip disabled={showMenu} label="Select Search Index" openDelay={500}>
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className={S("search__button")}
+              className={JoinClassNames(S("search__button"), className)}
             >
               {
                 typeof indexUpdateProgress === "undefined" ?
-                  <Icon icon={SettingsIcon} /> :
+                  icon || <Icon icon={icon || SettingsIcon} /> :
                   <RingProgress
                     size={25}
                     thickness={3}

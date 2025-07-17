@@ -6,6 +6,14 @@
       color: var(--text-tertiary);
     }
   }
+
+  &__top-search {
+    align-items: center;
+    display: flex;
+    gap: 30px;
+    margin-bottom: 10px;
+    padding-right: 5px;
+  }
 }
 
 .browser {
@@ -90,9 +98,21 @@
   display: flex;
   position: relative;
 
-  &__clear {
+  &__button-left {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    left: 20px;
+    position: absolute;
+  }
+
+  &__button-right {
     position: absolute;
     right: 20px;
+  }
+
+  &--ai {
+    flex-grow: 1;
   }
 }
 
@@ -102,6 +122,10 @@
   height: 45px;
   padding-inline: 25px;
   width: 100%;
+
+  &--ai {
+    padding-left: 60px;
+  }
 }
 
 .browser-table {

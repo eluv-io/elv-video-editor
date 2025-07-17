@@ -15,6 +15,7 @@ import AssetsView from "@/components/views/AssetsView.jsx";
 import CompositionsView from "@/components/views/CompositionsView.jsx";
 import SimpleView from "@/components/views/SimpleView.jsx";
 import GroundTruthView from "@/components/views/GroundTruthView.jsx";
+import SearchView from "@/components/views/SearchView.jsx";
 
 // Keep track of the current page
 const SetView = observer(() => {
@@ -132,6 +133,12 @@ const App = observer(() => {
               </Route>
               <Route path="/compositions/:objectId/:compositionKey">
                 <CompositionsView key="selected" />
+              </Route>
+              <Route path="/search/:query/:resultIndex">
+                <SearchView />
+              </Route>
+              <Route path="/search/:query">
+                <SearchView />
               </Route>
               <Route path="/">
                 <Browser />

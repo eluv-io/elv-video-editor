@@ -9,6 +9,8 @@ class AIStore {
   searchIndexUpdateProgress = {};
   tagAggregationProgress = 0;
 
+  searchResults = {};
+
   _authTokens = {};
 
   constructor(rootStore) {
@@ -137,6 +139,59 @@ class AIStore {
   });
 
   // Search indexes
+  GetSearchFields = flow(function * ({id}) {
+    if(!id) { return; }
+
+    try {
+      const versionHash = yield this.client.LatestVersionHash({objectId: id});
+
+      const indexerInfo = yield this.client.ContentObjectMetadata({
+        versionHash,
+        metadataSubtree: "indexer/config/indexer/arguments",
+        select: [
+          "fields",
+          "document/prefix"
+        ]
+      });
+
+      if(!indexerInfo) { return; }
+
+      const indexerFields = indexerInfo.fields;
+      const fuzzySearchFields = {};
+      const excludedFields = ["music", "action", "segment", "title_type", "asset_type"];
+      Object.keys(indexerFields || {})
+        .filter(field => {
+          const isTextType = indexerFields[field].type === "text";
+          const isNotExcluded = !excludedFields.some(exclusion => field.includes(exclusion));
+          return isTextType && isNotExcluded;
+        })
+        .forEach(field => {
+          fuzzySearchFields[`f_${field}`] = {
+            label: field,
+            value: true
+          };
+        });
+
+      // Fields for all tenants that are not configured in the meta
+      ["movie_characters"].forEach(field => {
+        fuzzySearchFields[`f_${field}`] = {
+          label: field,
+          value: true
+        };
+      });
+
+      return {
+        fields: fuzzySearchFields,
+        type: indexerInfo.document?.prefix,
+        versionHash
+      };
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error("Unable to load search fields", error);
+    }
+
+    return {};
+  });
 
   LoadSearchIndexes = flow(function * () {
     let searchIndexes = yield this.client.ContentObjectMetadata({
@@ -243,53 +298,90 @@ class AIStore {
     }
   });
 
-  GetSearchFields = flow(function * ({id}) {
-    if(!id) { return; }
+  /* Search */
 
-    try {
-      const versionHash = yield this.client.LatestVersionHash({objectId: id});
+  Search = flow(function * ({query, limit=10}) {
+    let start = 0;
 
-      const indexerFields = yield this.client.ContentObjectMetadata({
-        versionHash,
-        metadataSubtree: "indexer/config/indexer/arguments/fields"
-      });
+    if(
+      typeof this.searchResults.pagination !== "undefined" &&
+      this.searchResults.query === query &&
+      this.searchResults.indexHash === this.searchIndex.versionHash
+    ) {
+      // Continuation of same query
+      if((this.searchResults.pagination.start + this.searchResults.pagination.limit) >= this.searchResults.pagination.total) {
+        // Exhausted results
+        return this.searchResults;
+      }
 
-      if(!indexerFields) { return; }
-
-      const fuzzySearchFields = {};
-      const excludedFields = ["music", "action", "segment", "title_type", "asset_type"];
-      Object.keys(indexerFields || {})
-        .filter(field => {
-          const isTextType = indexerFields[field].type === "text";
-          const isNotExcluded = !excludedFields.some(exclusion => field.includes(exclusion));
-          return isTextType && isNotExcluded;
-        })
-        .forEach(field => {
-          fuzzySearchFields[`f_${field}`] = {
-            label: field,
-            value: true
-          };
-        });
-
-      // Fields for all tenants that are not configured in the meta
-      ["movie_characters"].forEach(field => {
-        fuzzySearchFields[`f_${field}`] = {
-          label: field,
-          value: true
-        };
-      });
-
-      return {
-        fields: fuzzySearchFields,
-        versionHash
-      };
-    } catch(error) {
-      // eslint-disable-next-line no-console
-      console.error("Unable to load search fields", error);
+      // Set start + limit to fetch next batch
+      start = this.searchResults.pagination.start + this.searchResults.pagination.limit;
     }
 
-    return {};
+    const isAssetSearch = this.searchIndex.type.includes("assets");
+
+    let {results, contents, pagination} = (yield this.QueryAIAPI({
+      update: true,
+      objectId: this.searchIndex.id,
+      path: UrlJoin("search", "q", this.searchIndex.versionHash, "rep", "search"),
+      queryParams: {
+        terms: query,
+        searchFields: Object.keys(this.searchIndex.fields).join(","),
+        start,
+        limit,
+        display_fields: "all",
+        clips: !isAssetSearch,
+        clip_include_source_tags: true,
+        debug: true,
+        max_total: 100,
+        select: "/public/asset_metadata/title,/public/name,public/asset_metadata/display_title"
+      }
+    })) || {};
+
+    results = results || contents;
+
+    const baseUrl = yield this.client.FabricUrl({versionHash: this.searchIndex.versionHash});
+
+    this.searchResults = {
+      query,
+      indexHash: this.searchIndex.versionHash,
+      pagination: pagination || {},
+      results: [
+        ...(this.searchResults.results || []),
+        ...(results || []).map(result => {
+          let imageUrl;
+          if(result.image_url || result.prefix) {
+            imageUrl = new URL(baseUrl);
+
+            if(isAssetSearch) {
+              imageUrl.pathname = UrlJoin("q", result.hash, "files", result.prefix);
+            } else {
+              imageUrl.pathname = result.image_url.split("?")[0];
+
+              const params = new URLSearchParams(result.image_url.split("?")[1]);
+              params.keys().forEach((key, value) => imageUrl.searchParams.set(key, value));
+            }
+          }
+
+          return {
+            libraryId: result.qlib_id,
+            objectId: result.id,
+            versionHash: result.hash,
+            imageUrl: imageUrl?.toString(),
+            startTime: (result.start_time || 0) / 1000,
+            endTime: result.end_time ? result.end_time / 1000 : undefined,
+            name: result.meta?.public?.asset_metadata?.title || result.meta?.public?.name,
+            sources: result.sources,
+            result
+          };
+        })
+      ]
+    };
+
+    return this.searchResults;
   });
+
+  /* Updates */
 
   AggregateUserTags = flow(function * ({objectId}) {
     this.searchIndexUpdateProgress = {};

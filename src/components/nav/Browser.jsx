@@ -14,9 +14,11 @@ import {
   Loader, StyledButton
 } from "@/components/common/Common";
 import SVG from "react-inlinesvg";
-import {Redirect} from "wouter";
+import {Redirect, useLocation} from "wouter";
 import UrlJoin from "url-join";
 import {Tabs, Tooltip} from "@mantine/core";
+import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
+import {SearchIndexSelection} from "@/components/side_panel/SidePanel.jsx";
 
 import LibraryIcon from "@/assets/icons/v2/library.svg";
 import ObjectIcon from "@/assets/icons/file.svg";
@@ -31,9 +33,11 @@ import DeleteIcon from "@/assets/icons/trash.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
 import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
 import CreateIcon from "@/assets/icons/v2/add2.svg";
-import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
 import ListIcon from "@/assets/icons/v2/list.svg";
 import GridIcon from "@/assets/icons/v2/source.svg";
+import SearchArrowIcon from "@/assets/icons/v2/search-arrow.svg";
+import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
+import CaretDownIcon from "@/assets/icons/v2/caret-down.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -183,7 +187,7 @@ export const SearchBar = observer(({
               setInput("");
               setFilter("");
             }}
-            className={S("search-bar-container__clear")}
+            className={S("search-bar-container__button-right")}
           />
       }
     </div>
@@ -885,6 +889,45 @@ export const CardDisplaySwitch = observer(({showList, setShowList}) => {
   );
 });
 
+const AISearchBar = observer(() => {
+  const [input, setInput] = useState("");
+  const [,navigate] = useLocation();
+
+  return (
+    <div className={S("search-bar-container", "search-bar-container--ai")}>
+      <SearchIndexSelection
+        className={S("search-bar-container__button-left")}
+        icon={
+          <div style={{display: "flex", alignItems: "center", gap: 5}}>
+            <Icon icon={AIIcon} />
+            <Icon icon={CaretDownIcon} />
+          </div>
+        }
+      />
+      <input
+        value={input}
+        placeholder="Search within content by phrase or keyword"
+        onChange={event => setInput(event.target.value)}
+        onKeyDown={async event => {
+          if(event.key !== "Enter") { return; }
+
+          navigate(`/search/${rootStore.client.utils.B58(input)}`);
+        }}
+        className={S("search-bar", "search-bar--ai")}
+      />
+      <IconButton
+        label="Search"
+        icon={SearchArrowIcon}
+        noHover
+        onClick={() => {
+          navigate(`/search/${rootStore.client.utils.B58(input)}`);
+        }}
+        className={S("search-bar-container__button-right")}
+      />
+    </div>
+  );
+});
+
 const BrowserPage = observer(() => {
   const [tab, setTab] = useState("content");
 
@@ -894,21 +937,24 @@ const BrowserPage = observer(() => {
 
   return (
     <div className={S("browser-page")}>
-      <Tabs value={tab} onChange={setTab} color="var(--text-secondary)">
-        <Tabs.List mb={20} fz={24} fw={800}>
-          <Tabs.Tab px="xl" value="content" className={tab !== "content" ? S("tab--inactive") : ""}>
-            Content Libraries
-          </Tabs.Tab>
-          <Tabs.Tab px="xl" value="my-library" className={tab !== "my-library" ? S("tab--inactive") : ""}>
-            My Library
-          </Tabs.Tab>
-        </Tabs.List>
-        {
-          tab === "content" ?
-            <Browser/> :
-            <MyLibraryBrowser/>
-        }
-      </Tabs>
+      <div className={S("browser-page__top-search")}>
+        <Tabs value={tab} onChange={setTab} color="var(--text-secondary)">
+          <Tabs.List fz={24} fw={800}>
+            <Tabs.Tab px="xs" mr="sm" value="content" className={tab !== "content" ? S("tab--inactive") : ""}>
+              Content Libraries
+            </Tabs.Tab>
+            <Tabs.Tab px="xs" value="my-library" className={tab !== "my-library" ? S("tab--inactive") : ""}>
+              My Library
+            </Tabs.Tab>
+          </Tabs.List>
+        </Tabs>
+        <AISearchBar />
+      </div>
+      {
+        tab === "content" ?
+          <Browser/> :
+          <MyLibraryBrowser/>
+      }
     </div>
   );
 });
