@@ -184,6 +184,12 @@
     color: var(--button-color);
   }
 
+  &--subtle {
+    background: var(--background-modal);
+    border: 1px solid var(--background-modal);
+    color: var(--text-secondary);
+  }
+
   &__icon-container,
   &__icon {
     max-height: 20px;

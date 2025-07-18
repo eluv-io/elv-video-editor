@@ -69,14 +69,13 @@ const InfiniteScroll = observer(({
       return;
     }
 
-    const updateTimeout = setTimeout(() => {
+    const updateTimeout = setTimeout(async () => {
       setLoading(true);
 
-      Update(limit)
-        .finally(() => {
-          setLoading(false);
-          setLoaded(true);
-        });
+      await Update(limit);
+
+      setLoading(false);
+      setLoaded(true);
     }, 500);
 
     return () => clearTimeout(updateTimeout);

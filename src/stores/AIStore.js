@@ -90,6 +90,44 @@ class AIStore {
       yield this.client.utils.ResponseToFormat(format, response);
   });
 
+  GenerateImageSummary = flow(function * ({objectId, filePath, regenerate=false}) {
+    return yield this.rootStore.LoadResource({
+      key: "imageSummary",
+      id: `${objectId}-${filePath}`,
+      bind: this,
+      force: regenerate,
+      Load: flow(function * () {
+        return yield this.rootStore.aiStore.QueryAIAPI({
+          server: "ai-02",
+          method: "GET",
+          path: UrlJoin("ml", "summary", "q", objectId, "rep", "image_summarize"),
+          objectId,
+          channelAuth: true,
+          queryParams: { path: filePath, engine: "caption", regenerate }
+        });
+      })
+    });
+  });
+
+  GenerateClipSummary = flow(function * ({objectId, startTime, endTime, regenerate=false}) {
+    return yield this.rootStore.LoadResource({
+      key: "clipSummary",
+      id: `${objectId}-${startTime}-${endTime}`,
+      bind: this,
+      force: regenerate,
+      Load: flow(function * () {
+        return yield this.rootStore.aiStore.QueryAIAPI({
+          server: "ai-02",
+          method: "GET",
+          path: UrlJoin("mlcache", "summary", "q", objectId, "rep", "summarize"),
+          objectId,
+          channelAuth: true,
+          queryParams: { start_time: parseInt(startTime * 1000), end_time: parseInt(endTime * 1000), regenerate }
+        });
+      })
+    });
+  });
+
   GenerateAIHighlights = flow(function * ({objectId, prompt, maxDuration, regenerate=false, wait=true, StatusCallback}) {
     let options = {};
     if(prompt) { options.customization = prompt; }
@@ -319,7 +357,7 @@ class AIStore {
       this.ClearSearchResults();
     }
 
-    const isAssetSearch = this.searchIndex.type.includes("assets");
+    const type = this.searchIndex.type.includes("assets") ? "image" : "video";
 
     let {results, contents, pagination} = (yield this.QueryAIAPI({
       update: true,
@@ -331,7 +369,7 @@ class AIStore {
         start,
         limit,
         display_fields: "all",
-        clips: !isAssetSearch,
+        clips: type === "video",
         clip_include_source_tags: true,
         debug: true,
         max_total: 100,
@@ -348,6 +386,7 @@ class AIStore {
       query,
       indexHash: this.searchIndex.versionHash,
       pagination: pagination || {},
+      type,
       results: [
         ...(this.searchResults.results || []),
         ...(results || []).map(result => {
@@ -355,7 +394,7 @@ class AIStore {
           if(result.image_url || result.prefix) {
             imageUrl = new URL(baseUrl);
 
-            if(isAssetSearch) {
+            if(type === "image") {
               imageUrl.pathname = UrlJoin("q", result.hash, "files", result.prefix);
             } else {
               imageUrl.pathname = result.image_url.split("?")[0];
@@ -366,7 +405,7 @@ class AIStore {
           }
 
           let startTime, endTime, subtitle;
-          if(!isAssetSearch) {
+          if(type === "video") {
             startTime = (result.start_time || 0) / 1000;
             endTime = result.end_time ? result.end_time / 1000 : undefined;
 
@@ -385,12 +424,13 @@ class AIStore {
             objectId: result.id,
             versionHash: result.hash,
             imageUrl: imageUrl?.toString(),
+            filePath: type === "image" ? result.prefix : undefined,
             startTime,
             endTime,
             sources: result.sources,
             name: result.meta?.public?.asset_metadata?.title || result.meta?.public?.name,
             subtitle,
-            isAssetSearch,
+            type,
             result
           };
         })

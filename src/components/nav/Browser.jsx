@@ -889,7 +889,7 @@ export const CardDisplaySwitch = observer(({showList, setShowList}) => {
   );
 });
 
-export const AISearchBar = observer(({initialQuery=""}) => {
+export const AISearchBar = observer(({basePath="/search", initialQuery=""}) => {
   const [input, setInput] = useState(initialQuery);
   const [,navigate] = useLocation();
 
@@ -912,7 +912,7 @@ export const AISearchBar = observer(({initialQuery=""}) => {
         onKeyDown={async event => {
           if(!input || event.key !== "Enter") { return; }
 
-          navigate(`/search/${rootStore.client.utils.B58(input)}`);
+          navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
         }}
         className={S("search-bar", "search-bar--ai")}
       />
@@ -920,7 +920,7 @@ export const AISearchBar = observer(({initialQuery=""}) => {
         label="Search"
         icon={SearchArrowIcon}
         noHover
-        onClick={() => input && navigate(`/search/${rootStore.client.utils.B58(input)}`)}
+        onClick={() => input && navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)))}
         className={S("search-bar-container__button-right")}
       />
     </div>

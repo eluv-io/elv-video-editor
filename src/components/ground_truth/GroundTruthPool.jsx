@@ -93,7 +93,7 @@ const PoolDetails = observer(() => {
   );
 });
 
-let batchSize = 24;
+let batchSize = 25;
 const Entities = observer(({showList, filter}) => {
   const {poolId} = useParams();
   const [entities, setEntities] = useState([]);

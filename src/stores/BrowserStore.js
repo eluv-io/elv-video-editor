@@ -138,7 +138,7 @@ class BrowserStore {
     objectId = this.rootStore.client.utils.DecodeVersionHash(versionHash).objectId;
 
     return yield this.rootStore.LoadResource({
-      key: "object-details",
+      key: "objectDetails",
       id: objectId,
       force,
       ttl: 60,
@@ -401,8 +401,8 @@ class BrowserStore {
   // My library
   LoadMyLibrary = flow(function * () {
     yield this.rootStore.LoadResource({
-      key: "my-library",
-      id: "my-library",
+      key: "myLibrary",
+      id: "myLibrary",
       bind: this,
       ttl: 10,
       Load: flow(function * () {

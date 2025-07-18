@@ -897,7 +897,7 @@ const ShareModalButton = observer(({store, ...props}) => {
     <>
       <IconButton
         icon={ShareIcon}
-        label="Share Current Clip"
+        label={props.label || "Share Current Clip"}
         onClick={() => setShowModal(true)}
         {...props}
       />
@@ -907,6 +907,7 @@ const ShareModalButton = observer(({store, ...props}) => {
             store={store}
             opened={showModal}
             onClose={() => setShowModal(false)}
+            alwaysOpened
           />
       }
     </>

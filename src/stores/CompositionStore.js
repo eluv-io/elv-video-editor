@@ -582,7 +582,7 @@ class CompositionStore {
   InitializeVideoStore = flow(function * ({objectId, offering="default"}) {
     const storeId = `${objectId}-${offering}`;
     return yield this.rootStore.LoadResource({
-      key: "composition-video-store",
+      key: "compositionVideoStore",
       id: storeId,
       bind: this,
       Load: flow(function * () {
@@ -1426,8 +1426,8 @@ class CompositionStore {
 
   LoadMyCompositions = flow(function * () {
     yield this.rootStore.LoadResource({
-      key: "my-compositions",
-      id: "my-compositions",
+      key: "myCompositions",
+      id: "myCompositions",
       bind: this,
       Load: flow(function * () {
         const compositions = yield this.client.walletClient.ProfileMetadata({

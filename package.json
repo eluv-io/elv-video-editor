@@ -17,7 +17,8 @@
   },
   "dependencies": {
     "@babel/polyfill": "^7.4.3",
-    "@eluvio/elv-client-js": "^4.0.141",
+    "@eluvio/elv-client-js": "^4.0.147",
+    "@eluvio/elv-player-js": "^2.0.49",
     "@mantine/core": "^7.17.2",
     "@mantine/dates": "^7.17.2",
     "@mantine/dropzone": "^7.17.2",
@@ -29,7 +30,7 @@
     "dayjs": "^1.11.13",
     "deep-object-diff": "^1.1.0",
     "fraction.js": "^4.0.12",
-    "hls.js": "^1.6.2",
+    "hls.js": "1.6.0",
     "m3u8-parser": "^4.7.0",
     "mantine-datatable": "^7.15.1",
     "mime-types": "^2.1.35",

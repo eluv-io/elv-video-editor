@@ -19,7 +19,7 @@ class GroundTruthStore {
 
   LoadGroundTruthPools = flow(function * ({force}={}) {
     return yield this.rootStore.LoadResource({
-      key: "ground-truth-pools",
+      key: "groundTruthPools",
       id: "load",
       force,
       bind: this,
@@ -79,7 +79,7 @@ class GroundTruthStore {
     yield this.LoadGroundTruthPools();
 
     return yield this.rootStore.LoadResource({
-      key: "ground-truth",
+      key: "groundTruth",
       id: poolId,
       force,
       bind: this,

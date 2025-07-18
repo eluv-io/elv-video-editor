@@ -109,7 +109,7 @@ const GroundTruthAsset = observer(() => {
               </div>
               <div className={S("asset-page__actions")}>
                 <StyledButton
-                  color="--background-active"
+                  variant="subtle"
                   disabled={asset.anchor}
                   icon={AnchorIcon}
                   onClick={async () => {
@@ -126,14 +126,14 @@ const GroundTruthAsset = observer(() => {
                   Make Anchor
                 </StyledButton>
                 <StyledButton
-                  color="--background-active"
+                  variant="subtle"
                   icon={ImageIcon}
                   onClick={() => setShowFileBrowser(true)}
                 >
                   Select Asset File
                 </StyledButton>
                 <StyledButton
-                  color="--background-active"
+                  variant="subtle"
                   icon={TrashIcon}
                   onClick={async () => {
                     await Confirm({

@@ -33,12 +33,20 @@
     font-weight: 600;
     gap: 15px;
     margin: 15px 0 5px;
+    max-width: 100%;
+    overflow: hidden;
     position: relative;
+    width: 100%;
 
     * {
+      min-width: max-content;
       overflow: hidden;
-      text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    :last-child {
+      min-width: unset;
+      text-overflow: ellipsis;
     }
   }
 

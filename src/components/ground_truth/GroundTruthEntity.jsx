@@ -92,7 +92,7 @@ const EntityDetails = observer(() => {
 });
 
 
-let batchSize = 24;
+let batchSize = 25;
 const Assets = observer(({filter, showList, updateIndex, setUpdateIndex}) => {
   const {poolId, entityId} = useParams();
 
