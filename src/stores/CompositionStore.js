@@ -1207,7 +1207,8 @@ class CompositionStore {
       highlightClipIds: yield this.LoadHighlights({
         store,
         objectId,
-        prompt: primary ? this.compositionObject?.initialPrompt : ""
+        prompt: primary ? this.compositionObject?.initialPrompt : "",
+        wait: false
       })
     };
 
@@ -1236,12 +1237,12 @@ class CompositionStore {
     this.selectedSourceId = objectId;
   }
 
-  LoadHighlights = flow(function * ({store, objectId, prompt}) {
+  LoadHighlights = flow(function * ({store, objectId, prompt, wait=true}) {
     try {
       const highlights = (yield this.rootStore.aiStore.GenerateAIHighlights({
         objectId,
         prompt,
-        wait: true
+        wait
       }))?.clips || [];
 
       let aiClipIds = [];
