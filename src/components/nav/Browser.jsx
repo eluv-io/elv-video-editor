@@ -692,7 +692,7 @@ export const GroundTruthPoolBrowser = observer(() => {
             icon={CreateIcon}
             onClick={() => setShowCreateModal(true)}
           >
-            New
+            New Ground Truth Pool
           </StyledButton>
         </div>
         <BrowserTable

@@ -1099,7 +1099,7 @@ class VideoStore {
     canvas.getContext("2d").drawImage(this.video, minX, minY, maxX - minX, maxY - minY, 0, 0, width, height);
 
     return await new Promise(resolve =>
-      canvas.toBlob(blob => resolve(blob))
+      canvas.toBlob(blob => resolve(blob), "image/jpg", 1)
     );
   }
 

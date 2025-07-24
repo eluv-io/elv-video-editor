@@ -1,7 +1,7 @@
 import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
 import React, {forwardRef, useEffect, useState} from "react";
-import {ConvertColor, Copy, CreateModuleClassMatcher, JoinClassNames, TextWidth} from "@/utils/Utils.js";
+import {ConvertColor, Copy, CreateModuleClassMatcher, JoinClassNames, SP, TextWidth} from "@/utils/Utils.js";
 import {
   Button,
   ColorInput,
@@ -756,6 +756,7 @@ export const Confirm = async ({title, text, labels={}, onConfirm, onCancel}) => 
 export const ProgressModal = observer(({title, progress, error, Close}) => {
   return (
     <Modal
+      onClick={SP()}
       title={title}
       alwaysOpened
       centered

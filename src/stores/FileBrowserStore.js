@@ -21,6 +21,10 @@ class FileBrowserStore {
     this.uploadStatus = {};
   }
 
+  ClearCachedFiles(objectId) {
+    delete this.files[objectId];
+  }
+
   WriteToken({objectId}) {
     return this.writeInfo[objectId]?.write_token;
   }

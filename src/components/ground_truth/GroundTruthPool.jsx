@@ -240,6 +240,7 @@ const GroundTruthPool = observer(() => {
             </span>
             <GroundTruthPoolSaveButton
               poolId={poolId}
+              small
               className={S("browser__save", "browser__action--right")}
             />
           </h1>

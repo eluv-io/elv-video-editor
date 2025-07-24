@@ -21,7 +21,7 @@ import RetryIcon from "@/assets/icons/rotate-ccw.svg";
 
 const S = CreateModuleClassMatcher(DownloadStyles);
 
-const JobActions = observer(({job, setConfirming, Reload}) => {
+const JobActions = observer(({store, job, setConfirming, Reload}) => {
   const jobStatus = downloadStore.downloadJobStatus[job.jobId];
 
   if(!jobStatus) {
@@ -42,7 +42,7 @@ const JobActions = observer(({job, setConfirming, Reload}) => {
               onConfirm: async () => {
                 const jobInfo = downloadStore.downloadJobInfo[job.jobId];
                 await downloadStore.RemoveDownloadJob({jobId: job.jobId});
-                await downloadStore.StartDownloadJob({...jobInfo});
+                await downloadStore.StartDownloadJob({...jobInfo, store});
                 Reload();
 
                 setConfirming(false);
@@ -212,7 +212,7 @@ const JobStatusTable = observer(({store, jobs, setConfirming, Reload}) => (
               }
             </div>
             <div className={S("history-row__cell", "center")}>
-              <JobActions job={job} setConfirming={setConfirming} Reload={Reload}/>
+              <JobActions store={store} job={job} setConfirming={setConfirming} Reload={Reload}/>
             </div>
           </div>
         );
@@ -312,6 +312,7 @@ const DownloadModalContent = observer(({store, tab, setTab, setConfirming, Close
     try {
       setJobId(
         (await downloadStore.StartDownloadJob({
+          store,
           composition: store.channel,
           format,
           offering,

@@ -354,9 +354,9 @@ export const OverlayTagDetails = observer(() => {
 
     if(tagStore.editing || !tag) { return; }
 
-    videoStore.GetFrame({bounds: tag.box, maxWidth: 300, maxHeight: 300})
+    videoStore.GetFrame({bounds: tag.box, maxWidth: 500, maxHeight: 500})
       .then(blob => setImage({
-        filename: `${videoStore.videoObject.objectId}-${videoStore.smpte.replaceAll(":", "_")}`,
+        filename: `${videoStore.videoObject.objectId}-${videoStore.smpte.replaceAll(":", "_")}.jpg`,
         blob,
         url: window.URL.createObjectURL(blob)
       }));

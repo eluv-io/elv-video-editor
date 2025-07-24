@@ -4,11 +4,59 @@ import {observer} from "mobx-react-lite";
 import {Icon, Linkish, LoaderImage} from "@/components/common/Common.jsx";
 import ImageIcon from "@/assets/icons/picture.svg";
 import AnchorIcon from "@/assets/icons/v2/anchor.svg";
-import {Tooltip} from "@mantine/core";
+import {Menu, Tooltip} from "@mantine/core";
 import {CreateModuleClassMatcher, SP} from "@/utils/Utils.js";
-import React from "react";
+import React, {useState} from "react";
+import MenuIcon from "@/assets/icons/v2/dots-vertical.svg";
 
 const S = CreateModuleClassMatcher(ListStyles);
+
+export const EntityCardMenu = observer(({label, actions}) => {
+  const [showMenu, setShowMenu] = useState(false);
+
+  return (
+    <Menu
+      opened={showMenu}
+      onChange={setShowMenu}
+      shadow="md"
+      position="top-start"
+      zIndex={200}
+    >
+      <Menu.Target>
+        <Tooltip label={label} disabled={showMenu} openDelay={500}>
+          <button
+            onClick={event => {
+              event.stopPropagation();
+              event.preventDefault();
+
+              setShowMenu(!showMenu);
+            }}
+            className={S("entity-card__action", showMenu ? "entity-card__action--active" : "")}
+          >
+            <Icon icon={MenuIcon} />
+          </button>
+        </Tooltip>
+      </Menu.Target>
+      <Menu.Dropdown p={0} w={200} bg="var(--background-toolbar)">
+        <div className={S("card-menu")}>
+          {
+            actions.map(({label, icon, separator, ...action}, index) =>
+              separator ?
+                <div key={`separator-${index}`} className={S("card-menu__separator")} /> :
+                <Linkish key={`action-${index}`} {...action} className={S("card-menu__item")}>
+                  {
+                    !icon ? null :
+                      <Icon icon={icon} />
+                  }
+                  <span>{label}</span>
+                </Linkish>
+            )
+          }
+        </div>
+      </Menu.Dropdown>
+    </Menu>
+  );
+});
 
 export const EntityListItem = observer(({
   link,

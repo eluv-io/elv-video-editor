@@ -31,7 +31,7 @@ class DownloadStore {
 
     let filename = store.channel ?
       this.rootStore.compositionStore.compositionObject?.name :
-      this.rootStore.videoStore.name;
+      store.name;
 
     if(offering && offering !== "default") {
       filename = `${filename || ""} (${offering})`;
@@ -95,6 +95,7 @@ class DownloadStore {
   });
 
   StartDownloadJob = flow(function * ({
+    store,
     composition,
     filename,
     format="mp4",
@@ -114,9 +115,9 @@ class DownloadStore {
         versionHash = this.rootStore.compositionStore.videoStore.videoObject.versionHash;
         offering = this.rootStore.compositionStore.compositionObject.compositionKey;
       } else {
-        totalFrames = this.rootStore.videoStore.totalFrames;
-        frameRate = this.rootStore.videoStore.frameRate;
-        versionHash = this.rootStore.videoStore.videoObject.versionHash;
+        totalFrames = store.totalFrames;
+        frameRate = store.frameRate;
+        versionHash = store.videoObject.versionHash;
       }
 
       clipInFrame = clipInFrame || 0;
@@ -361,6 +362,7 @@ class DownloadStore {
       attributes.downloadJobId = [
         (yield this.StartDownloadJob({
           ...downloadOptions,
+          store,
           composition: store.channel,
           isShareDownload: true
         })).jobId

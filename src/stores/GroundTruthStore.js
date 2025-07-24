@@ -7,6 +7,7 @@ class GroundTruthStore {
   domains = {};
   saveProgress = 0;
   saveError = undefined;
+  contentAdminsGroupAddress;
 
   constructor(rootStore) {
     makeAutoObservable(this);
@@ -213,6 +214,28 @@ class GroundTruthStore {
         this.saveProgress = 90;
       }
     });
+
+    if(!this.contentAdminsGroupAddress) {
+      try {
+        this.contentAdminsGroupAddress = yield this.client.CallContractMethod({
+          contractAddress: this.client.utils.HashToAddress(this.rootStore.tenantContractId),
+          methodName: "groupsMapping",
+          methodArgs: ["content_admin", 0],
+          formatArguments: true,
+        });
+      } catch(error) {
+        this.Log("Failed to load tenant admin group", true);
+        this.Log(error, true);
+      }
+    }
+
+    if(this.contentAdminsGroupAddress) {
+      yield this.client.AddContentObjectGroupPermission({
+        objectId,
+        groupAddress: this.contentAdminsGroupAddress,
+        permission: "manage"
+      });
+    }
 
     yield this.LoadGroundTruthPools({force: true});
 
@@ -583,12 +606,17 @@ class GroundTruthStore {
       Write: async writeParams => {
         const data = await image.blob.arrayBuffer();
 
+        let filename = image.filename || "";
+        if(!filename.toLowerCase().endsWith(".jpg") && !filename.toLowerCase().endsWith(".jpeg")) {
+          filename = `${filename}.jpg`;
+        }
+
         await this.client.UploadFiles({
           ...writeParams,
           fileInfo: [{
-            path: UrlJoin("frames", image.filename),
+            path: UrlJoin("frames", filename),
             type: "file",
-            mime_type: "image/png",
+            mime_type: "image/jpg",
             size: data.byteLength,
             data
           }]
@@ -772,6 +800,7 @@ class GroundTruthStore {
       yield this.rootStore.editStore.Finalize({objectId, commitMessage: "EVIE: Update ground truth pool"});
 
       this.rootStore.editStore.ResetSubpage("groundTruth", poolId);
+      this.rootStore.fileBrowserStore.ClearCachedFiles(poolId);
 
       this.LoadGroundTruthPool({poolId, force: true});
     } catch(error) {

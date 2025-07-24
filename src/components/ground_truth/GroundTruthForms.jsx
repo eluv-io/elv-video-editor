@@ -13,10 +13,11 @@ import {
 } from "@/components/common/Common.jsx";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, CSVtoList, SP} from "@/utils/Utils.js";
-import {Button, Menu, Tooltip} from "@mantine/core";
+import {Button} from "@mantine/core";
 import {LibraryBrowser} from "@/components/nav/Browser.jsx";
 import {browserStore, editStore, groundTruthStore} from "@/stores/index.js";
 import FileBrowser from "@/components/common/FileBrowser.jsx";
+import {EntityCardMenu, EntityListItem} from "@/components/common/EntityLists.jsx";
 
 import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
 import DeleteIcon from "@/assets/icons/trash.svg";
@@ -24,12 +25,10 @@ import AddIcon from "@/assets/icons/v2/add.svg";
 import DragIcon from "@/assets/icons/drag.svg";
 import ListIcon from "@/assets/icons/v2/list.svg";
 import SaveIcon from "@/assets/icons/v2/save.svg";
-import MenuIcon from "@/assets/icons/v2/dots-vertical.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
 import ImageIcon from "@/assets/icons/picture.svg";
 import AnchorIcon from "@/assets/icons/v2/anchor.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
-import {EntityListItem} from "@/components/common/EntityLists.jsx";
 
 const S = CreateModuleClassMatcher(GroundTruthStyles);
 
@@ -749,7 +748,7 @@ export const GroundTruthPoolSaveButton = observer(({icon, poolId, ...props}) => 
       {
         !saving && !groundTruthStore.saveError ? null :
           <ProgressModal
-            title="Saving Ground Truth Pool"
+            title="Saving Ground Truth Pool..."
             progress={groundTruthStore.saveProgress}
             error={groundTruthStore.saveError}
             Close={SP(() => {
@@ -759,41 +758,6 @@ export const GroundTruthPoolSaveButton = observer(({icon, poolId, ...props}) => 
           />
       }
     </>
-  );
-});
-
-const GroundTruthCardMenu = observer(({label, children}) => {
-  const [showMenu, setShowMenu] = useState(false);
-
-  return (
-    <Menu
-      opened={showMenu}
-      onChange={setShowMenu}
-      shadow="md"
-      position="top-start"
-      zIndex={200}
-    >
-      <Menu.Target>
-        <Tooltip label={label} disabled={showMenu} openDelay={500}>
-          <button
-            onClick={event => {
-              event.stopPropagation();
-              event.preventDefault();
-
-              setShowMenu(!showMenu);
-            }}
-            className={S("entity-card__action", showMenu ? "entity-card__action--active" : "")}
-          >
-            <Icon icon={MenuIcon} />
-          </button>
-        </Tooltip>
-      </Menu.Target>
-      <Menu.Dropdown p={0} w={200} bg="var(--background-toolbar)">
-        <div className={S("card-menu")}>
-          { children }
-        </div>
-      </Menu.Dropdown>
-    </Menu>
   );
 });
 
@@ -810,7 +774,27 @@ export const GroundTruthEntityMenu = observer(({poolId, entityId, Update}) => {
 
   return (
     <>
-      <GroundTruthCardMenu label="Manage Entity">
+      <EntityCardMenu
+        label="Manage Entity"
+        actions={[
+          { label: "Edit", icon: EditIcon, onClick: () => setShowEdit(true) },
+          { label: "Add Assets", icon: ImageIcon, onClick: () => setShowBrowser(true) },
+          {
+            label: "Remove",
+            icon: DeleteIcon,
+            onClick: async () => {
+              await Confirm({
+                title: "Remove Entity",
+                text: "Are you sure you want to remove this entity?",
+                onConfirm: () => {
+                  groundTruthStore.DeleteEntity({poolId, entityId});
+                  Update();
+                }
+              });
+            }
+          },
+        ]}
+      >
         <Linkish onClick={() => setShowEdit(true)} className={S("card-menu__item")}>
           <Icon icon={EditIcon} /><span>Edit</span>
         </Linkish>
@@ -833,7 +817,7 @@ export const GroundTruthEntityMenu = observer(({poolId, entityId, Update}) => {
         >
           <Icon icon={DeleteIcon} /><span>Remove</span>
         </Linkish>
-      </GroundTruthCardMenu>
+      </EntityCardMenu>
       {
         !showEdit ? null :
           <GroundTruthEntityForm
@@ -875,46 +859,43 @@ export const GroundTruthAssetMenu = observer(({poolId, entityId, assetIndexOrId,
 
   return (
     <>
-      <GroundTruthCardMenu label="Manage Asset">
-        <Linkish onClick={() => setShowEdit(true)} className={S("card-menu__item")}>
-          <Icon icon={EditIcon} /><span>Rename</span>
-        </Linkish>
-        <Linkish onClick={() => setShowReplace(true)} className={S("card-menu__item")}>
-          <Icon icon={ImageIcon} /><span>Replace Image</span>
-        </Linkish>
-        <Linkish
-          disabled={asset.anchor}
-          onClick={async () => {
-            await Confirm({
-              title: "Set Entity Anchor Image",
-              text: "Are you sure you want to use this asset as the anchor image for this entity?",
-              onConfirm: () => {
-                groundTruthStore.SetAnchorAsset({poolId, entityId, assetIndexOrId});
-                Update();
-              }
-            });
-          }}
-          className={S("card-menu__item")}
-        >
-          <Icon icon={AnchorIcon} /><span>Make Anchor</span>
-        </Linkish>
-        <div className={S("card-menu__separator")}/>
-        <Linkish
-          onClick={async () => {
-            await Confirm({
-              title: "Remove Asset",
-              text: "Are you sure you want to remove this asset?",
-              onConfirm: () => {
-                groundTruthStore.DeleteAsset({poolId, entityId, assetIndexOrId});
-                Update();
-              }
-            });
-          }}
-          className={S("card-menu__item")}
-        >
-          <Icon icon={DeleteIcon} /><span>Remove</span>
-        </Linkish>
-      </GroundTruthCardMenu>
+      <EntityCardMenu
+        label="Manage Asset"
+        actions={[
+          { label: "Rename", icon: EditIcon, onClick: () => setShowEdit(true) },
+          { label: "Replace Image", icon: ImageIcon, onClick: () => setShowReplace(true) },
+          {
+            label: "Make Anchor",
+            icon: AnchorIcon,
+            onClick: async () => {
+              await Confirm({
+                title: "Set Entity Anchor Image",
+                text: "Are you sure you want to use this asset as the anchor image for this entity?",
+                onConfirm: () => {
+                  groundTruthStore.SetAnchorAsset({poolId, entityId, assetIndexOrId});
+                  groundTruthStore.DeleteAsset({poolId, entityId, assetIndexOrId});
+                  Update();
+                }
+              });
+            }
+          },
+          { separator: true },
+          {
+            label: "Remove",
+            icon: DeleteIcon,
+            onClick: async () => {
+              await Confirm({
+                title: "Remove Asset",
+                text: "Are you sure you want to remove this asset?",
+                onConfirm: () => {
+                  groundTruthStore.DeleteAsset({poolId, entityId, assetIndexOrId});
+                  Update();
+                }
+              });
+            }
+          },
+        ]}
+      />
       {
         !showEdit ? null :
           <GroundTruthAssetForm

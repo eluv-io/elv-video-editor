@@ -8,9 +8,11 @@ import {rootStore, aiStore} from "@/stores/index.js";
 import {IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
-import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import Player from "@/components/common/Player.jsx";
 import {ShareModal} from "@/components/download/Share.jsx";
+import {DownloadModal} from "@/components/download/Download.jsx";
+import {Tabs} from "@mantine/core";
+import {AISearchBar} from "@/components/nav/Browser.jsx";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 import PlayIcon from "@/assets/icons/Play.svg";
@@ -19,17 +21,15 @@ import ShareIcon from "@/assets/icons/v2/share.svg";
 import PinIcon from "@/assets/icons/v2/pin.svg";
 import RegenerateIcon from "@/assets/icons/rotate-ccw.svg";
 import LinkIcon from "@/assets/icons/v2/external-link.svg";
-import {Tabs} from "@mantine/core";
+import DownloadIcon from "@/assets/icons/v2/download.svg";
+
 
 const S = CreateModuleClassMatcher(BrowserStyles, SearchStyles);
-
-const SidePanel = observer(() => {
-  return <div>Side</div>;
-});
 
 const ClipResultPanel = observer(({result}) => {
   const [showFull, setShowFull] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [summary, setSummary] = useState(false);
 
   useEffect(() => {
@@ -89,7 +89,15 @@ const ClipResultPanel = observer(({result}) => {
               icon={PinIcon}
               to={UrlJoin("~/", result.objectId, "tags", `?st=${result.startTime}&et=${result.endTime}&isolate=`)}
             >
-              Open
+              Open in Tag Editor
+            </StyledButton>
+            <StyledButton
+              small
+              variant="subtle"
+              icon={DownloadIcon}
+              onClick={() => setShowDownloadModal(true)}
+            >
+              Download
             </StyledButton>
             <StyledButton
               small
@@ -136,6 +144,14 @@ const ClipResultPanel = observer(({result}) => {
             alwaysOpened
             store={rootStore.searchVideoStore}
             onClose={() => setShowShareModal(false)}
+          />
+      }
+      {
+        !showDownloadModal ? null :
+          <DownloadModal
+            alwaysOpened
+            store={rootStore.searchVideoStore}
+            onClose={() => setShowDownloadModal(false)}
           />
       }
     </>
@@ -258,7 +274,6 @@ const ImageResultPanel = observer(({result}) => {
 });
 
 const SearchResult = observer(() => {
-  const [highlights, setHighlights] = useState(undefined);
   let {queryB58, resultIndex} = useParams();
   const query = aiStore.client.utils.FromB58ToStr(queryB58);
   const result = aiStore.searchResults?.results?.[parseInt(resultIndex)];
@@ -266,21 +281,11 @@ const SearchResult = observer(() => {
   useEffect(() => {
     if(!result) { return; }
 
-    const highlightsTimeout = setTimeout(async () =>
-      setHighlights(await aiStore.GenerateAIHighlights({objectId: result.objectId, wait: true})),
-      500
-    );
-
     if(aiStore.searchResults.type === "video") {
       rootStore.searchVideoStore.SetVideo({objectId: result.objectId})
         .then(() => rootStore.searchVideoStore.SetClipMark({inTime: result.startTime, outTime: result.endTime}));
     }
-
-    return () => clearTimeout(highlightsTimeout);
   }, [result]);
-
-  console.log(result);
-  console.log(highlights);
 
   if(!result) {
     return <Redirect to={`/${queryB58}`} />;
@@ -289,6 +294,7 @@ const SearchResult = observer(() => {
   return (
     <div className={S("browser-page")}>
       <div className={S("browser")}>
+        <AISearchBar basePath="/" initialQuery={query} />
         <h1 className={S("browser__header")}>
           <IconButton
             icon={BackIcon}
@@ -309,6 +315,14 @@ const SearchResult = observer(() => {
           </div>
         </h1>
         <div className={S("result-page")}>
+          {
+            result.type === "video" ?
+              <ClipResultPanel result={result} /> :
+              <ImageResultPanel result={result} />
+          }
+          {
+
+          /*
           <PanelGroup direction="horizontal" className="panel-group">
             <Panel collapsible id="side-panel" order={1} minSize={30} defaultSize={40} >
               <SidePanel />
@@ -322,6 +336,9 @@ const SearchResult = observer(() => {
               }
             </Panel>
           </PanelGroup>
+
+           */
+          }
         </div>
       </div>
     </div>

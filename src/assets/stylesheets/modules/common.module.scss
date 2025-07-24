@@ -184,6 +184,7 @@
     color: var(--button-color);
   }
 
+  &:disabled,
   &--subtle {
     background: var(--background-modal);
     border: 1px solid var(--background-modal);
