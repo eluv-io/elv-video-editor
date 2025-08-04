@@ -103,7 +103,7 @@ class AIStore {
           path: UrlJoin("ml", "summary", "q", objectId, "rep", "image_summarize"),
           objectId,
           channelAuth: true,
-          queryParams: { path: filePath, engine: "caption", regenerate }
+          queryParams: { path: filePath, engine: "summary", regenerate }
         });
       })
     });
@@ -379,7 +379,11 @@ class AIStore {
 
     results = results || contents;
 
-    const baseUrl = yield this.client.FabricUrl({versionHash: this.searchIndex.versionHash});
+    const baseUrl = yield this.client.Rep({
+      versionHash: this.searchIndex.versionHash,
+      rep: "frame",
+      channelAuth: true
+    });
 
     this.searchResults = {
       key: resultsKey,
@@ -416,6 +420,8 @@ class AIStore {
                 subtitle += " - " + FrameAccurateVideo.TimeToString({time: endTime, format: "smpte", includeFractionalSeconds: true});
                 subtitle = `${subtitle} (${FrameAccurateVideo.TimeToString({time: endTime - startTime})})`;
               }
+
+              imageUrl.searchParams.set("t", startTime.toFixed(2));
             }
           }
 

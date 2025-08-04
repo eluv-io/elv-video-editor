@@ -5,8 +5,8 @@
 .result {
   &__video {
     height: 100%;
-    height: calc(100vh - 350px);
     max-height: calc(100vh - 350px);
+    width: 100%;
   }
 
   &__video-container,
