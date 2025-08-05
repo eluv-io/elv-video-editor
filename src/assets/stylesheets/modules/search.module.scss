@@ -65,6 +65,12 @@
     }
   }
 
+  &__error {
+    font-weight: 600;
+    margin-top: 10px;
+    text-align: center;
+  }
+
   &__text {
     background-color: var(--background-modal);
     border-radius: 7px;

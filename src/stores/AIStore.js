@@ -98,7 +98,7 @@ class AIStore {
       force: regenerate,
       Load: flow(function * () {
         return yield this.rootStore.aiStore.QueryAIAPI({
-          server: "ai-02",
+          server: "ai",
           method: "GET",
           path: UrlJoin("ml", "summary", "q", objectId, "rep", "image_summarize"),
           objectId,
@@ -117,7 +117,7 @@ class AIStore {
       force: regenerate,
       Load: flow(function * () {
         return yield this.rootStore.aiStore.QueryAIAPI({
-          server: "ai-02",
+          server: "ai",
           method: "GET",
           path: UrlJoin("mlcache", "summary", "q", objectId, "rep", "summarize"),
           objectId,
