@@ -25,6 +25,7 @@ class TagStore {
   editedOverlayTag;
   editedAsset;
   editedAssetTag;
+  editedGroundTruthAsset;
 
   isolatedTag;
 
@@ -395,6 +396,21 @@ class TagStore {
       let tag = Unproxy(item || this.rootStore.assetStore.selectedTag);
       tag.mode = typeof tag.box?.x3 === "undefined" ? "rectangle" : "polygon";
       this.editedAssetTag = tag;
+    } else if(type === "groundTruthAsset") {
+      this.editedGroundTruthAsset = {
+        poolId: undefined,
+        entityId: undefined,
+        label: item?.label || "",
+        description: "",
+        frame,
+        box: item?.box ||
+          {
+            x1: 0.25,
+            y1: 0.25,
+            x2: 0.75,
+            y2: 0.75
+          }
+      };
     } else {
       // eslint-disable-next-line no-console
       console.error("Unknown editing type: " + type);
@@ -570,6 +586,21 @@ class TagStore {
             });
           }
         }
+      } else if(this.editedGroundTruthAsset) {
+        const tag = this.editedGroundTruthAsset;
+        this.rootStore.groundTruthStore.AddAssetFromUrl({
+          poolId: tag.poolId,
+          entityId: tag.entityId,
+          label: tag.label,
+          description: tag.description,
+          image: tag.image,
+          source: {
+            objectId: this.rootStore.videoStore.videoObject.objectId,
+            smpte: this.rootStore.videoStore.smpte,
+            frame: this.rootStore.videoStore.frame,
+            box: tag.box
+          }
+        });
       }
     }
 
@@ -578,6 +609,7 @@ class TagStore {
     this.ClearEditedOverlayTag();
     this.ClearEditedAsset();
     this.ClearEditedAssetTag();
+    this.ClearEditedGroundTruthAsset();
     this.editing = false;
   }
 
@@ -802,6 +834,18 @@ class TagStore {
     });
   }
 
+  AddGroundTruthAsset({label, box}={}) {
+    this.SetEditing({
+      id: this.rootStore.NextId(true),
+      frame: this.rootStore.videoStore.frame,
+      type: "groundTruthAsset",
+      item: {
+        label,
+        box
+      }
+    });
+  }
+
   UpdateEditedTrack(track) {
     this.editedTrack = track;
   }
@@ -840,6 +884,14 @@ class TagStore {
 
   ClearEditedAssetTag() {
     this.editedAssetTag = undefined;
+  }
+
+  ClearEditedGroundTruthAsset() {
+    this.editedGroundTruthAsset = undefined;
+  }
+
+  UpdateEditedGroundTruthAsset(asset) {
+    this.editedGroundTruthAsset = asset;
   }
 }
 

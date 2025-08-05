@@ -7,7 +7,8 @@ import {
   FormTextArea,
   FormTextInput,
   Icon,
-  IconButton, Linkish,
+  IconButton,
+  Linkish,
   Modal,
   ProgressModal, StyledButton
 } from "@/components/common/Common.jsx";
@@ -843,7 +844,6 @@ export const GroundTruthEntityMenu = observer(({poolId, entityId, Update}) => {
     </>
   );
 });
-
 
 export const GroundTruthAssetMenu = observer(({poolId, entityId, assetIndexOrId, Update}) => {
   const [showEdit, setShowEdit] = useState(false);

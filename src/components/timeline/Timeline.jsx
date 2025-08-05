@@ -26,6 +26,12 @@ import Download from "@/components/download/Download.jsx";
 import Share from "@/components/download/Share.jsx";
 import Track from "@/components/timeline/Track.jsx";
 import {CreateTrackButton} from "@/components/forms/CreateTrack.jsx";
+import {
+  AggregateTagsButton,
+  ClipModalButton,
+  LiveToVodButton,
+  MyClipsButton
+} from "@/components/timeline/Controls.jsx";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
@@ -40,7 +46,7 @@ import ReloadIcon from "@/assets/icons/v2/reload.svg";
 import CheckmarkIcon from "@/assets/icons/check-circle.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
 import XIcon from "@/assets/icons/X.svg";
-import {AggregateTagsButton, ClipModalButton, LiveToVodButton, MyClipsButton} from "@/components/timeline/Controls.jsx";
+import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -87,12 +93,20 @@ const TimelineTopBar = observer(({simple}) => {
                   icon={AddOverlayIcon}
                   disabled={trackStore.viewTracks.length === 0}
                   label="Add New Overlay Tag"
-                  onClick={() =>
+                  onClick={() => {
+                    tagStore.ClearEditing(false);
+                    tagStore.ClearSelectedTags();
+                    tagStore.ClearSelectedOverlayTags();
                     tagStore.AddOverlayTag({
                       trackId: tagStore.selectedTrackId,
-                    text: "<New Tag>"
-                    })
-                  }
+                      text: "<New Tag>"
+                    });
+                  }}
+                />
+                <IconButton
+                  icon={GroundTruthIcon}
+                  label="Add New Ground Truth Asset"
+                  onClick={() => tagStore.AddGroundTruthAsset()}
                 />
               </div>
               <div className={S("toolbar__separator")}/>

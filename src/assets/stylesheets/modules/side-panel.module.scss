@@ -369,8 +369,9 @@
   height: 100%;
   max-width: 100%;
   min-height: 0;
-  overflow: hidden scroll;
+  overflow: hidden auto;
   padding: 0 10px 10px;
+  scrollbar-gutter: stable;
   width: 100%;
 }
 
@@ -602,7 +603,7 @@
   &__text {
     font-size: 14px;
     font-weight: 500;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     padding-right: 20px;
     text-align: left;
     white-space: pre-wrap;

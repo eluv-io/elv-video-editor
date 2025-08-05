@@ -9,7 +9,11 @@ import {TagDetails, TagsList} from "@/components/side_panel/Tags.jsx";
 import Assets from "@/components/side_panel/Assets.jsx";
 import {TrackDetails} from "@/components/side_panel/Tracks.jsx";
 
-import {OverlayTagDetails, OverlayTagsList} from "@/components/side_panel/OverlayTags.jsx";
+import {
+  GroundTruthAssetFromOverlayForm,
+  OverlayTagDetails,
+  OverlayTagsList
+} from "@/components/side_panel/OverlayTags.jsx";
 import {CompositionBrowser, CompositionClips} from "@/components/side_panel/Compositions.jsx";
 import {Combobox, Menu, PillsInput, RingProgress, Switch, Tooltip, useCombobox} from "@mantine/core";
 import {useLocation} from "wouter";
@@ -571,11 +575,17 @@ export const TagSidePanel = observer(({setElement}) => {
             <div className={S("side-panel-modal")}>
               {
                 tagStore.selectedOverlayTagId ?
-                  <OverlayTagDetails /> :
+                  <OverlayTagDetails/> :
                   tagStore.selectedTrackId ?
-                    <TrackDetails /> :
-                    <TagDetails />
+                    <TrackDetails/> :
+                    <TagDetails/>
               }
+            </div>
+        }
+        {
+          !tagStore.editedGroundTruthAsset ? null :
+            <div className={S("side-panel-modal")}>
+              <GroundTruthAssetFromOverlayForm Close={() => tagStore.ClearEditing()} />
             </div>
         }
       </div>
