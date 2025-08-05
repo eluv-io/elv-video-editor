@@ -2,7 +2,7 @@ import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
 
 import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react-lite";
-import {editStore, rootStore, tagStore, trackStore, videoStore} from "@/stores";
+import {editStore, groundTruthStore, rootStore, tagStore, trackStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
 import {
   Confirm,
@@ -103,11 +103,14 @@ const TimelineTopBar = observer(({simple}) => {
                     });
                   }}
                 />
-                <IconButton
-                  icon={GroundTruthIcon}
-                  label="Add New Ground Truth Asset"
-                  onClick={() => tagStore.AddGroundTruthAsset()}
-                />
+                {
+                  Object.keys(groundTruthStore.pools).length === 0 ? null :
+                    <IconButton
+                      icon={GroundTruthIcon}
+                      label="Add New Ground Truth Asset"
+                      onClick={() => tagStore.AddGroundTruthAsset()}
+                    />
+                }
               </div>
               <div className={S("toolbar__separator")}/>
             </>
