@@ -581,33 +581,29 @@ class CompositionStore {
 
   InitializeVideoStore = flow(function * ({objectId, offering="default"}) {
     const storeId = `${objectId}-${offering}`;
-    return yield this.rootStore.LoadResource({
-      key: "compositionVideoStore",
-      id: storeId,
-      bind: this,
-      Load: flow(function * () {
-        const videoStore = new VideoStore(
-          this.rootStore,
-          {
-            tags: false
-          }
-        );
 
-        videoStore.id = storeId;
-        videoStore.sliderMarks = 20;
-        videoStore.majorMarksEvery = 5;
-
-        yield videoStore.SetVideo({objectId, preferredOfferingKey: offering, noTags: true});
-        this.clipStores[storeId] = videoStore;
-
-        if(offering !== videoStore.offeringKey){
-          // Selected offering is different from requested offering - ensure expected key is set
-          this.clipStores[`${objectId}-${this.clipStores[storeId].offeringKey}`] = videoStore;
+    if(!this.clipStores[storeId]) {
+      const videoStore = new VideoStore(
+        this.rootStore,
+        {
+          tags: false
         }
+      );
 
-        return storeId;
-      })
-    });
+      videoStore.id = storeId;
+      videoStore.sliderMarks = 20;
+      videoStore.majorMarksEvery = 5;
+
+      yield videoStore.SetVideo({objectId, preferredOfferingKey: offering, noTags: true});
+      this.clipStores[storeId] = videoStore;
+
+      if(offering !== videoStore.offeringKey) {
+        // Selected offering is different from requested offering - ensure expected key is set
+        this.clipStores[`${objectId}-${this.clipStores[storeId].offeringKey}`] = videoStore;
+      }
+    }
+
+    return storeId;
   });
 
   InitializeClip = flow(function * ({
