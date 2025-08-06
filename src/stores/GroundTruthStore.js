@@ -30,14 +30,14 @@ class GroundTruthStore {
           metadataSubtree: "/public/tagging/ground_truth"
         });
 
+        this.domains = {
+          "celebrity_detection": "Celebrity Detection",
+          ...(poolInfo?.domains || {}),
+        };
+
         if(!poolInfo) {
           return;
         }
-
-        this.domains = {
-          "celebrity_detection": "Celebrity Detection",
-          ...(poolInfo.domains || {}),
-        };
 
         let pools = {};
         yield Promise.all(
