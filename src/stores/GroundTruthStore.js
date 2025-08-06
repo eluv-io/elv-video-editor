@@ -34,7 +34,10 @@ class GroundTruthStore {
           return;
         }
 
-        this.domains = poolInfo.domains || {};
+        this.domains = {
+          "celebrity_detection": "Celebrity Detection",
+          ...(poolInfo.domains || {}),
+        };
 
         let pools = {};
         yield Promise.all(
