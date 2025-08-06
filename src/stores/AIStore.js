@@ -100,7 +100,7 @@ class AIStore {
         return yield this.rootStore.aiStore.QueryAIAPI({
           server: "ai",
           method: "GET",
-          path: UrlJoin("ml", "summary", "q", objectId, "rep", "image_summarize"),
+          path: UrlJoin("mlcache", "summary", "q", objectId, "rep", "image_summarize"),
           objectId,
           channelAuth: true,
           queryParams: { path: filePath, engine: "summary", regenerate }
