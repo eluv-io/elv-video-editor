@@ -277,11 +277,17 @@ class AIStore {
       }
     }
 
-    this.SetSelectedSearchIndex(this.searchIndexes[0]?.id);
+    const savedIndexId = localStorage.getItem(`search-index-${this.rootStore.tenantContractId}`);
+    this.SetSelectedSearchIndex(
+      savedIndexId && this.searchIndexes?.find(index => index.id === savedIndexId) ?
+        savedIndexId :
+        this.searchIndexes[0]?.id
+    );
   });
 
   SetSelectedSearchIndex(id) {
     this.selectedSearchIndexId = id;
+    localStorage.setItem(`search-index-${this.rootStore.tenantContractId}`, id);
   }
 
   AddSearchIndex = flow(function * ({objectId, add=true}) {

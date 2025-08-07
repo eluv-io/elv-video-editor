@@ -54,6 +54,7 @@ const SearchIndexBrowseModal = observer(({Select, Cancel}) => {
       {
         libraryId ?
           <ObjectBrowser
+            withFilterBar
             libraryId={libraryId}
             noDuration
             Back={() => setLibraryId(undefined)}
@@ -61,6 +62,7 @@ const SearchIndexBrowseModal = observer(({Select, Cancel}) => {
             className={S("search__index-browser")}
           /> :
           <LibraryBrowser
+            withFilterBar
             title="Select search index"
             Select={({libraryId, objectId, name}) => {
               if(objectId) {
@@ -249,6 +251,7 @@ const SourceSelectionModal = observer(({Select, Cancel}) => {
       {
         libraryId ?
           <ObjectBrowser
+            withFilterBar
             libraryId={libraryId}
             videoOnly
             Back={() => setLibraryId(undefined)}
@@ -256,6 +259,7 @@ const SourceSelectionModal = observer(({Select, Cancel}) => {
             className={S("search__source-browser")}
           /> :
           <LibraryBrowser
+            withFilterBar
             title="Select source content for your composition"
             Select={({libraryId, objectId, name}) => {
               if(objectId) {
@@ -364,7 +368,7 @@ const SourceSelection = observer(() => {
 });
 
 let filterTimeout;
-const SidebarFilter = observer(({store, label, sideContent, afterContent, delay = 100}) => {
+const SidebarFilter = observer(({store, label, sideContent, afterContent, delay=100}) => {
   const [filter, setFilter] = useState(store.filter);
 
   useEffect(() => {
@@ -560,7 +564,7 @@ export const TagSidePanel = observer(({setElement}) => {
   return (
     <div ref={setElement} className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
-        <SidebarFilter sideContent={<TagSwitch />} store={tagStore} label="Search within tags" />
+        <SidebarFilter delay={1000} sideContent={<TagSwitch />} store={tagStore} label="Search within tags" />
         <TrackSelection mode="tags" />
         <TagsList mode="tags" />
 

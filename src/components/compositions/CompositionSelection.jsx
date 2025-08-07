@@ -31,6 +31,7 @@ const SourceSelectionModal = observer(({Select, Cancel}) => {
       {
         libraryId ?
           <ObjectBrowser
+            withFilterBar
             libraryId={libraryId}
             videoOnly
             Back={() => setLibraryId(undefined)}
@@ -38,6 +39,7 @@ const SourceSelectionModal = observer(({Select, Cancel}) => {
             className={S("composition-selection__browser")}
           /> :
           <LibraryBrowser
+            withFilterBar
             title="Select source content for your composition"
             Select={({libraryId, objectId, name}) => {
               if(objectId) {
@@ -81,7 +83,7 @@ const CompositionSelection = observer(() => {
   }, []);
 
   useEffect(() => {
-    compositionStore.__SetCompositionFormOptions(options);
+    compositionStore.SetCompositionFormOptions({...options});
   }, [options]);
 
   // TODO: Select source offering
@@ -98,7 +100,7 @@ const CompositionSelection = observer(() => {
 
   // Generation complete - redirect to composition view
   if(options.creating && compositionStore.compositionGenerationStatus?.created) {
-    compositionStore.__SetCompositionFormOptions(undefined);
+    compositionStore.SetCompositionFormOptions({});
     return <Redirect to={UrlJoin("/compositions", options.sourceId, key)} />;
   }
 

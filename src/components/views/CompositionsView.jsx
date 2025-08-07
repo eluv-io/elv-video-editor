@@ -18,7 +18,7 @@ const CompositionsView = observer(() => {
     keyboardControlsStore.SetActiveStore(compositionStore.videoStore);
 
     if(objectId) {
-      compositionStore.__SetCompositionFormOptions(undefined);
+      compositionStore.SetCompositionFormOptions(undefined);
 
       if(objectId !== compositionStore.compositionObject?.objectId) {
         compositionStore.LoadMyClips({objectId});

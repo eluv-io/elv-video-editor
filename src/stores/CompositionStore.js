@@ -160,6 +160,9 @@ class CompositionStore {
     return this.clipIdList
       .map((clipId, index) => {
         const clip = this.clips[clipId];
+
+        if(!clip) { return; }
+
         const clipStartFrame = startFrame;
         const clipEndFrame = clipStartFrame + (clip.clipOutFrame - clip.clipInFrame);
 
@@ -171,7 +174,8 @@ class CompositionStore {
           startFrame: clipStartFrame,
           endFrame: clipEndFrame
         };
-      });
+      })
+      .filter(clip => clip);
   }
 
   get selectedSource() {
@@ -820,7 +824,7 @@ class CompositionStore {
 
     this.SaveMyCompositions();
 
-    this.compositionGenerationStatus.created = true;
+    this.SetCompositionGenerationStatus({...(this.compositionGenerationStatus || {}), created: true});
   });
 
   UpdateComposition = flow(function * ({updatePlayoutUrl=true}={}) {
@@ -1628,6 +1632,18 @@ class CompositionStore {
     };
   });
 
+  SetCompositionFormOptions(options) {
+    this.compositionFormOptions = options;
+
+    if(!options) {
+      this.SetCompositionGenerationStatus({});
+    }
+  }
+
+  SetCompositionGenerationStatus(status) {
+    this.compositionGenerationStatus = status;
+  }
+
   OpenFabricBrowserLink() {
     this.client.SendMessage({
       options: {
@@ -1640,14 +1656,6 @@ class CompositionStore {
         }
       }
     });
-  }
-
-  __SetCompositionFormOptions(options) {
-    this.compositionFormOptions = options;
-
-    if(!options) {
-      this.compositionGenerationStatus = undefined;
-    }
   }
 
   __UpdateVideoSettings(type, video) {

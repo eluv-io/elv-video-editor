@@ -2,7 +2,7 @@ import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 
 import React, {useState, useEffect} from "react";
 import {observer} from "mobx-react-lite";
-import {rootStore, browserStore, compositionStore, editStore, groundTruthStore} from "@/stores";
+import {rootStore, browserStore, compositionStore, editStore, groundTruthStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {
   AsyncButton,
@@ -38,6 +38,9 @@ import GridIcon from "@/assets/icons/v2/source.svg";
 import SearchArrowIcon from "@/assets/icons/v2/search-arrow.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import CaretDownIcon from "@/assets/icons/v2/caret-down.svg";
+import SearchIcon from "@/assets/icons/v2/search.svg";
+import AssetIcon from "@/assets/icons/v2/asset.svg";
+import PinIcon from "@/assets/icons/v2/pin.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -120,7 +123,8 @@ export const SearchBar = observer(({
   placeholder,
   filterKey,
   filterId,
-  Select
+  Select,
+  className=""
 }) => {
   const [input, setInput] = useState(filter);
   const [updateTimeout, setUpdateTimeout] = useState(undefined);
@@ -162,7 +166,7 @@ export const SearchBar = observer(({
   }, [input, loaded]);
 
   return (
-    <div className={S("search-bar-container")}>
+    <div className={JoinClassNames(S("search-bar-container"), className)}>
       <input
         value={input}
         placeholder={placeholder || "Title, Content ID, Version Hash"}
@@ -194,6 +198,181 @@ export const SearchBar = observer(({
   );
 });
 
+const LiveToVodForm = observer(() => {
+  const [libraries, setLibraries] = useState([]);
+  const [streamDetails, setStreamDetails] = useState(undefined);
+  const [submitting, setSubmitting] = useState(false);
+  const [redirect, setRedirect] = useState(undefined);
+
+  useEffect(() => {
+    if(!browserStore.liveToVodFormFields?.liveStreamId) { return; }
+
+    Promise.all([
+      browserStore.ObjectDetails({
+        objectId: browserStore.liveToVodFormFields?.liveStreamId
+      }),
+      browserStore.ListLibraries({page: 1, perPage: 1000})
+    ])
+      .then(([info, libraries]) => {
+        libraries = libraries.content || [];
+        browserStore.SetLiveToVodFormFields({
+          title: `${info.name} - VoD`,
+          libraryId: libraries.find(library =>
+            library?.name?.toLowerCase()?.includes("mezzanines")
+          )?.id || browserStore.liveToVodFormFields.liveStreamLibraryId
+        });
+
+        setLibraries(libraries);
+        setStreamDetails(info);
+      });
+  }, [browserStore.liveToVodFormFields?.liveStreamId]);
+
+  if(redirect) {
+    return <Redirect to={redirect} />;
+  }
+
+  if(!streamDetails) {
+    return <Loader />;
+  }
+
+  return (
+    <div className={S("ltv-form-container")}>
+      <div className={S("ltv-form")}>
+        <h1 className={S("ltv-form__header")}>
+          <IconButton
+            disabled={submitting}
+            icon={BackIcon}
+            label="Back"
+            onClick={() => {
+              browserStore.ClearLiveToVodFormFields();
+            }}
+          />
+          <span>
+            Create VoD from Live Stream
+          </span>
+        </h1>
+        <div className={S("ltv-form__fields")}>
+          <FormSelect
+            disabled={submitting}
+            label="Library"
+            value={browserStore.liveToVodFormFields.libraryId}
+            onChange={value => browserStore.SetLiveToVodFormFields({libraryId: value})}
+            options={libraries.map((library) => ({
+              value: library.id,
+              label: library.name
+            }))}
+          />
+          <FormTextInput
+            disabled={submitting}
+            label="Title"
+            value={browserStore.liveToVodFormFields.title}
+            onChange={event => browserStore.SetLiveToVodFormFields({title: event.target.value})}
+          />
+        </div>
+        <div className={S("ltv-form__actions")}>
+          {
+            submitting ?
+              <progress
+                value={editStore.liveToVodProgress[browserStore.liveToVodFormFields.liveStreamId]}
+                max={100}
+                className={S("ltv-form__progress")}
+              /> :
+              <AsyncButton
+                w={150}
+                h={40}
+                onClick={async () => {
+                  setSubmitting(true);
+
+                  try {
+                    const vodObjectId = await editStore.RegenerateLiveToVOD({
+                      liveObjectId: browserStore.liveToVodFormFields.liveStreamId,
+                      title: browserStore.liveToVodFormFields.title,
+                      vodObjectLibraryId: browserStore.liveToVodFormFields.libraryId
+                    });
+
+                    if(vodObjectId) {
+                      setRedirect(UrlJoin("/", vodObjectId));
+                    } else {
+                      setSubmitting(false);
+                    }
+                  } catch(error) {
+                    // eslint-disable-next-line no-console
+                    console.error(error);
+                    setSubmitting(false);
+                  }
+                }}
+              >
+                Create VoD
+              </AsyncButton>
+          }
+        </div>
+      </div>
+    </div>
+  );
+});
+
+export const CardDisplaySwitch = observer(({showList, setShowList}) => {
+  return (
+    <div className={S("display-switch", "browser__action--right")}>
+      <Linkish
+        label="List View"
+        className={S("display-switch__button", showList ? "display-switch__button--active" : "")}
+        onClick={() => setShowList(true)}
+      >
+        <Icon icon={ListIcon} />
+      </Linkish>
+      <Linkish
+        label="Grid View"
+        className={S("display-switch__button", !showList ? "display-switch__button--active" : "")}
+        onClick={() => setShowList(false)}
+      >
+        <Icon icon={GridIcon} />
+      </Linkish>
+    </div>
+  );
+});
+
+export const AISearchBar = observer(({basePath="/search", initialQuery=""}) => {
+  const [input, setInput] = useState(initialQuery);
+  const [,navigate] = useLocation();
+
+  return (
+    <div className={S("search-bar-container", "search-bar-container--ai")}>
+      <div className={S("search-bar-container__search-icon")}>
+        <Icon icon={SearchIcon} />
+      </div>
+      <SearchIndexSelection
+        position="bottom-start"
+        className={S("search-bar-container__button-left")}
+        icon={
+          <div style={{display: "flex", alignItems: "center", gap: 5}}>
+            <Icon icon={AIIcon} />
+            <Icon icon={CaretDownIcon} />
+          </div>
+        }
+      />
+      <input
+        value={input}
+        placeholder="Search within content by phrase or keyword"
+        onChange={event => setInput(event.target.value)}
+        onKeyDown={async event => {
+          if(!input || event.key !== "Enter") { return; }
+
+          navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
+        }}
+        className={S("search-bar", "search-bar--ai")}
+      />
+      <IconButton
+        label="Search"
+        icon={SearchArrowIcon}
+        noHover
+        onClick={() => input && navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)))}
+        className={S("search-bar-container__button-right")}
+      />
+    </div>
+  );
+});
+
 export const BrowserTable = observer(({
   filter,
   Load,
@@ -206,10 +385,15 @@ export const BrowserTable = observer(({
   Actions,
   Delete
 }) => {
+  const hasActiveItem = rootStore.selectedObjectId;
   const [loading, setLoading] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
   const [content, setContent] = useState(undefined);
-  const [paging, setPaging] = useState({page: 1, perPage: window.innerHeight < 900 ? 8 : 10});
+  const [paging, setPaging] = useState({
+    page: 1,
+    perPage:
+      (window.innerHeight < 900 ? 8 : 10) - (hasActiveItem ? 2 : 0)
+  });
   const [deleting, setDeleting] = useState(undefined);
 
   const LoadPage = page => {
@@ -241,13 +425,22 @@ export const BrowserTable = observer(({
   let table;
   if(showLoader) {
     table = (
-      <div className={S("browser-table", "browser-table--loading")}>
+      <div className={S("browser-table", "browser-table--loading", hasActiveItem ? "browser-table--with-active-item" : "")}>
         <Loader/>
       </div>
     );
   } else {
     table = (
-      <div className={S("browser-table", `browser-table--${contentType}`, noDuration ? `browser-table--${contentType}--no-duration` : "")}>
+      <div
+        className={
+          S(
+            "browser-table",
+            `browser-table--${contentType}`,
+            hasActiveItem ? "browser-table--with-active-item" : "",
+            noDuration ? `browser-table--${contentType}--no-duration` : ""
+          )
+        }
+      >
         <div className={S("browser-table__row", "browser-table__row--header")}>
           <div className={S("browser-table__cell", "browser-table__cell--header")}>
             Name
@@ -431,13 +624,27 @@ export const BrowserTable = observer(({
   );
 });
 
-const CompositionBrowser = observer(({selectedObject, Select, Back, className=""}) => {
+const CompositionBrowser = observer(({
+  selectedObject,
+  externalFilter="",
+  withFilterBar,
+  Select,
+  Back,
+  className=""
+}) => {
   const [filter, setFilter] = useState("");
   const [deletedChannels, setDeletedChannels] = useState([]);
 
+  useEffect(() => {
+    setFilter(externalFilter);
+  }, [externalFilter]);
+
   return (
     <div className={JoinClassNames(S("browser", "browser--channel"), className)}>
-      <SearchBar filter={filter} setFilter={setFilter} Select={Select} />
+      {
+        !withFilterBar ? null :
+          <SearchBar filter={filter} setFilter={setFilter} Select={Select} />
+      }
       <h1 className={S("browser__header")}>
         <IconButton
           icon={BackIcon}
@@ -504,6 +711,8 @@ const CompositionBrowser = observer(({selectedObject, Select, Back, className=""
 export const ObjectBrowser = observer(({
   libraryId,
   title,
+  externalFilter="",
+  withFilterBar,
   Select,
   Path,
   Back,
@@ -520,11 +729,18 @@ export const ObjectBrowser = observer(({
     browserStore.ListLibraries({});
   }, []);
 
+  useEffect(() => {
+    setFilter(externalFilter);
+  }, [externalFilter]);
+
   const library = browserStore.libraries?.[libraryId];
 
   return (
     <div className={JoinClassNames(S("browser", "browser--object"), className)}>
-      <SearchBar filter={filter} setFilter={setFilter} Select={Select} />
+      {
+        !withFilterBar ? null :
+          <SearchBar filter={filter} setFilter={setFilter} Select={Select} />
+      }
       <h1 className={S("browser__header")}>
         <IconButton
           icon={BackIcon}
@@ -552,12 +768,26 @@ export const ObjectBrowser = observer(({
   );
 });
 
-export const LibraryBrowser = observer(({title, Path, Select, className=""}) => {
+export const LibraryBrowser = observer(({
+  title,
+  externalFilter="",
+  withFilterBar="",
+  Path,
+  Select,
+  className=""
+}) => {
   const [filter, setFilter] = useState("");
+
+  useEffect(() => {
+    setFilter(externalFilter);
+  }, [externalFilter]);
 
   return (
     <div className={JoinClassNames(S("browser", "browser--library"), className)}>
-      <SearchBar filter={filter} setFilter={setFilter} Select={Select}/>
+      {
+        !withFilterBar ? null :
+          <SearchBar filter={filter} setFilter={setFilter} Select={Select}/>
+      }
       {
         !title ? null :
           <h1 className={S("browser__header")}>
@@ -576,13 +806,50 @@ export const LibraryBrowser = observer(({title, Path, Select, className=""}) => 
   );
 });
 
-const Browser = observer(() => {
+const ContentBrowserSelect = ({item, setSelectedLibraryId, setSelectedObject, setRedirect}) => {
+  if(item.libraryId) {
+    setSelectedLibraryId(item.libraryId);
+  }
+
+  if(!item.objectId) { return; }
+
+  if(item.isLiveStream) {
+    if(!item.vods || Object.keys(item.vods).length === 0) {
+      // No vods, must create new
+      browserStore.SetLiveToVodFormFields({
+        liveStreamLibraryId: item.libraryId,
+        liveStreamId: item.objectId
+      });
+      return;
+    }
+
+    setRedirect(UrlJoin("/", Object.keys(item.vods)[0]));
+    return;
+  }
+
+  if(!item.isVideo) {
+    setRedirect(UrlJoin("/", item.objectId, "assets"));
+    return;
+  }
+
+  if(item.hasChannels) {
+    setSelectedObject(item);
+  } else {
+    setRedirect(UrlJoin("/", item.objectId));
+  }
+};
+
+const ContentBrowser = observer(({filter, setSelect}) => {
   const [selectedLibraryId, setSelectedLibraryId] = useState(undefined);
   const [selectedObject, setSelectedObject] = useState(undefined);
   const [redirect, setRedirect] = useState(undefined);
 
+  const Select = item => ContentBrowserSelect({item, setSelectedLibraryId, setSelectedObject, setRedirect});
+
   useEffect(() => {
     rootStore.SetPage("source");
+
+    setSelect(() => Select);
   }, []);
 
   if(redirect) {
@@ -592,6 +859,7 @@ const Browser = observer(() => {
   if(selectedObject) {
     return (
       <CompositionBrowser
+        externalFilter={filter}
         selectedObject={selectedObject}
         Back={() => setSelectedObject(undefined)}
         Select={({objectId, compositionKey}) => {
@@ -606,42 +874,10 @@ const Browser = observer(() => {
     );
   }
 
-  const Select = (item) => {
-    if(item.libraryId) {
-      setSelectedLibraryId(item.libraryId);
-    }
-
-    if(!item.objectId) { return; }
-
-    if(item.isLiveStream) {
-      if(!item.vods || Object.keys(item.vods).length === 0) {
-        // No vods, must create new
-        browserStore.SetLiveToVodFormFields({
-          liveStreamLibraryId: item.libraryId,
-          liveStreamId: item.objectId
-        });
-        return;
-      }
-
-      setRedirect(UrlJoin("/", Object.keys(item.vods)[0]));
-      return;
-    }
-
-    if(!item.isVideo) {
-      setRedirect(UrlJoin("/", item.objectId, "assets"));
-      return;
-    }
-
-    if(item.hasChannels) {
-      setSelectedObject(item);
-    } else {
-      setRedirect(UrlJoin("/", item.objectId));
-    }
-  };
-
   if(selectedLibraryId) {
     return (
       <ObjectBrowser
+        externalFilter={filter}
         key={`browser-${selectedLibraryId}`}
         libraryId={selectedLibraryId}
         Back={() => setSelectedLibraryId(undefined)}
@@ -650,7 +886,138 @@ const Browser = observer(() => {
     );
   }
 
-  return <LibraryBrowser Select={Select} />;
+  return <LibraryBrowser externalFilter={filter} Select={Select} />;
+});
+
+const MyLibrarySelect = ({id, objectId, isVideo, setRedirect}) => {
+  const item = browserStore.myLibraryItems.find(item => item.id === id) || (objectId ? {objectId, isVideo} : undefined);
+
+  if(!item) { return; }
+
+  if(item.compositionKey) {
+    setRedirect(UrlJoin("/compositions", item.objectId, item.compositionKey));
+  } else if(!item.isVideo) {
+    setRedirect(UrlJoin("/", item.objectId, "assets"));
+  } else {
+    setRedirect(UrlJoin("/", item.objectId));
+  }
+};
+
+const MyLibraryBrowser = observer(({setSelect, externalFilter="", withFilterBar}) => {
+  const [filter, setFilter] = useState("");
+  const [redirect, setRedirect] = useState(undefined);
+
+  const Select = args => MyLibrarySelect({...args, setRedirect});
+
+  useEffect(() => {
+    setSelect(() => Select);
+  }, []);
+
+  useEffect(() => {
+    setFilter(externalFilter);
+  }, [externalFilter]);
+
+  if(redirect) {
+    return <Redirect to={redirect} />;
+  }
+
+  return (
+    <div className={S("browser", "browser--my-library")}>
+      {
+        !withFilterBar ? null :
+          <SearchBar filter={filter} setFilter={setFilter} Select={Select} />
+      }
+      <BrowserTable
+        filter={filter}
+        defaultIcon={ObjectIcon}
+        contentType="my-library"
+        Select={Select}
+        Delete={async args => browserStore.RemoveMyLibraryItem(args)}
+        Load={async args => await browserStore.ListMyLibrary(args)}
+      />
+    </div>
+  );
+});
+
+const ActiveItem = observer(() => {
+  if(!rootStore.selectedObjectId) { return null; }
+
+  return (
+    <div className={S("active-item")}>
+      <div className={S("active-item__header")}>
+        Active Item
+      </div>
+      <Linkish
+        to={
+          compositionStore.compositionObject ?
+            UrlJoin("/compositions", compositionStore.compositionObject.objectId, compositionStore.compositionObject.compositionKey) :
+            videoStore.videoObject?.isVideo ?
+              UrlJoin("/", rootStore.selectedObjectId) :
+              UrlJoin("/", rootStore.selectedObjectId, "assets")
+        }
+        className={S("active-item__content")}
+      >
+        <div className={S("active-item__icons")}>
+          <Icon icon={PinIcon} className={S("active-item__icon", "active-item__icon--pin")} />
+          <Icon
+            icon={
+              compositionStore.compositionObject ? CompositionIcon :
+                videoStore.videoObject?.isVideo ? VideoIcon : AssetIcon
+          }
+            className={S("active-item__icon")}
+          />
+        </div>
+        <div className={S("active-item__text")}>
+          <div className={S("active-item__title")}>
+            { rootStore.selectedObjectName || rootStore.selectedObjectId }
+          </div>
+          <CopyableField value={rootStore.selectedObjectId} showOnHover className={S("active-item__id")}>
+            {rootStore.selectedObjectId}
+          </CopyableField>
+        </div>
+      </Linkish>
+    </div>
+  );
+});
+
+const BrowserPage = observer(() => {
+  const [tab, setTab] = useState("content");
+  const [filter, setFilter] = useState("");
+  const [select, setSelect] = useState(undefined);
+
+  if(browserStore.liveToVodFormFields.liveStreamId) {
+    return <LiveToVodForm />;
+  }
+
+  return (
+    <div className={S("browser-page")}>
+      <AISearchBar />
+      <div className={S("browser-page__filters")}>
+        <Tabs value={tab} onChange={setTab} color="var(--text-secondary)">
+          <Tabs.List fz={24} fw={800}>
+            <Tabs.Tab px="xs" mr="sm" value="content" className={tab !== "content" ? S("tab--inactive") : ""}>
+              Content
+            </Tabs.Tab>
+            <Tabs.Tab px="xs" value="my-library" className={tab !== "my-library" ? S("tab--inactive") : ""}>
+              My Library
+            </Tabs.Tab>
+          </Tabs.List>
+        </Tabs>
+        <SearchBar
+          filter={filter}
+          setFilter={setFilter}
+          Select={select}
+          className={S("browser-page__filter-input")}
+        />
+      </div>
+      <ActiveItem />
+      {
+        tab === "content" ?
+          <ContentBrowser filter={filter} setSelect={setSelect} /> :
+          <MyLibraryBrowser filter={filter} setSelect={setSelect} />
+      }
+    </div>
+  );
 });
 
 export const GroundTruthPoolBrowser = observer(() => {
@@ -714,246 +1081,6 @@ export const GroundTruthPoolBrowser = observer(() => {
           Load={async args => await browserStore.ListGroundTruthPools(args)}
         />
       </div>
-    </div>
-  );
-});
-
-const MyLibraryBrowser = observer(() => {
-  const [filter, setFilter] = useState("");
-  const [redirect, setRedirect] = useState(undefined);
-
-  if(redirect) {
-    return <Redirect to={redirect} />;
-  }
-
-  const Select = ({id, objectId, isVideo}) => {
-    const item = browserStore.myLibraryItems.find(item => item.id === id) || (objectId ? {objectId, isVideo} : undefined);
-
-    if(!item) { return; }
-
-    if(item.compositionKey) {
-      setRedirect(UrlJoin("/compositions", item.objectId, item.compositionKey));
-    } else if(!item.isVideo) {
-      setRedirect(UrlJoin("/", item.objectId, "assets"));
-    } else {
-      setRedirect(UrlJoin("/", item.objectId));
-    }
-  };
-
-  return (
-    <div className={S("browser", "browser--my-library")}>
-      <SearchBar filter={filter} setFilter={setFilter} Select={Select} />
-      <BrowserTable
-        filter={filter}
-        defaultIcon={ObjectIcon}
-        contentType="my-library"
-        Select={Select}
-        Delete={async args => browserStore.RemoveMyLibraryItem(args)}
-        Load={async args => await browserStore.ListMyLibrary(args)}
-      />
-    </div>
-  );
-});
-
-const LiveToVodForm = observer(() => {
-  const [libraries, setLibraries] = useState([]);
-  const [streamDetails, setStreamDetails] = useState(undefined);
-  const [submitting, setSubmitting] = useState(false);
-  const [redirect, setRedirect] = useState(undefined);
-
-  useEffect(() => {
-    if(!browserStore.liveToVodFormFields?.liveStreamId) { return; }
-
-    Promise.all([
-      browserStore.ObjectDetails({
-        objectId: browserStore.liveToVodFormFields?.liveStreamId
-      }),
-      browserStore.ListLibraries({page: 1, perPage: 1000})
-    ])
-      .then(([info, libraries]) => {
-        libraries = libraries.content || [];
-        browserStore.SetLiveToVodFormFields({
-          title: `${info.name} - VoD`,
-          libraryId: libraries.find(library =>
-            library?.name?.toLowerCase()?.includes("mezzanines")
-          )?.id || browserStore.liveToVodFormFields.liveStreamLibraryId
-        });
-
-        setLibraries(libraries);
-        setStreamDetails(info);
-      });
-  }, [browserStore.liveToVodFormFields?.liveStreamId]);
-
-  if(redirect) {
-    return <Redirect to={redirect} />;
-  }
-
-  if(!streamDetails) {
-    return <Loader />;
-  }
-
-  return (
-    <div className={S("ltv-form-container")}>
-      <div className={S("ltv-form")}>
-        <h1 className={S("ltv-form__header")}>
-          <IconButton
-            disabled={submitting}
-            icon={BackIcon}
-            label="Back"
-            onClick={() => {
-              browserStore.ClearLiveToVodFormFields();
-            }}
-          />
-          <span>
-            Create VoD from Live Stream
-          </span>
-        </h1>
-        <div className={S("ltv-form__fields")}>
-          <FormSelect
-            disabled={submitting}
-            label="Library"
-            value={browserStore.liveToVodFormFields.libraryId}
-            onChange={value => browserStore.SetLiveToVodFormFields({libraryId: value})}
-            options={libraries.map((library) => ({
-              value: library.id,
-              label: library.name
-            }))}
-          />
-          <FormTextInput
-            disabled={submitting}
-            label="Title"
-            value={browserStore.liveToVodFormFields.title}
-            onChange={event => browserStore.SetLiveToVodFormFields({title: event.target.value})}
-          />
-        </div>
-        <div className={S("ltv-form__actions")}>
-          {
-            submitting ?
-              <progress
-                value={editStore.liveToVodProgress[browserStore.liveToVodFormFields.liveStreamId]}
-                max={100}
-                className={S("ltv-form__progress")}
-              /> :
-              <AsyncButton
-                w={150}
-                h={40}
-                onClick={async () => {
-                  setSubmitting(true);
-
-                  try {
-                    const vodObjectId = await editStore.RegenerateLiveToVOD({
-                      liveObjectId: browserStore.liveToVodFormFields.liveStreamId,
-                      title: browserStore.liveToVodFormFields.title,
-                      vodObjectLibraryId: browserStore.liveToVodFormFields.libraryId
-                    });
-
-                    if(vodObjectId) {
-                      setRedirect(UrlJoin("/", vodObjectId));
-                    } else {
-                      setSubmitting(false);
-                    }
-                  } catch(error) {
-                    // eslint-disable-next-line no-console
-                    console.error(error);
-                    setSubmitting(false);
-                  }
-                }}
-              >
-                Create VoD
-              </AsyncButton>
-          }
-        </div>
-      </div>
-    </div>
-  );
-});
-
-export const CardDisplaySwitch = observer(({showList, setShowList}) => {
-  return (
-    <div className={S("display-switch", "browser__action--right")}>
-      <Linkish
-        label="List View"
-        className={S("display-switch__button", showList ? "display-switch__button--active" : "")}
-        onClick={() => setShowList(true)}
-      >
-        <Icon icon={ListIcon} />
-      </Linkish>
-      <Linkish
-        label="Grid View"
-        className={S("display-switch__button", !showList ? "display-switch__button--active" : "")}
-        onClick={() => setShowList(false)}
-      >
-        <Icon icon={GridIcon} />
-      </Linkish>
-    </div>
-  );
-});
-
-export const AISearchBar = observer(({basePath="/search", initialQuery=""}) => {
-  const [input, setInput] = useState(initialQuery);
-  const [,navigate] = useLocation();
-
-  return (
-    <div className={S("search-bar-container", "search-bar-container--ai")}>
-      <SearchIndexSelection
-        position="bottom-start"
-        className={S("search-bar-container__button-left")}
-        icon={
-          <div style={{display: "flex", alignItems: "center", gap: 5}}>
-            <Icon icon={AIIcon} />
-            <Icon icon={CaretDownIcon} />
-          </div>
-        }
-      />
-      <input
-        value={input}
-        placeholder="Search within content by phrase or keyword"
-        onChange={event => setInput(event.target.value)}
-        onKeyDown={async event => {
-          if(!input || event.key !== "Enter") { return; }
-
-          navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
-        }}
-        className={S("search-bar", "search-bar--ai")}
-      />
-      <IconButton
-        label="Search"
-        icon={SearchArrowIcon}
-        noHover
-        onClick={() => input && navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)))}
-        className={S("search-bar-container__button-right")}
-      />
-    </div>
-  );
-});
-
-const BrowserPage = observer(() => {
-  const [tab, setTab] = useState("content");
-
-  if(browserStore.liveToVodFormFields.liveStreamId) {
-    return <LiveToVodForm />;
-  }
-
-  return (
-    <div className={S("browser-page")}>
-      <div className={S("browser-page__top-search")}>
-        <Tabs value={tab} onChange={setTab} color="var(--text-secondary)">
-          <Tabs.List fz={24} fw={800}>
-            <Tabs.Tab px="xs" mr="sm" value="content" className={tab !== "content" ? S("tab--inactive") : ""}>
-              Content Libraries
-            </Tabs.Tab>
-            <Tabs.Tab px="xs" value="my-library" className={tab !== "my-library" ? S("tab--inactive") : ""}>
-              My Library
-            </Tabs.Tab>
-          </Tabs.List>
-        </Tabs>
-        <AISearchBar />
-      </div>
-      {
-        tab === "content" ?
-          <Browser/> :
-          <MyLibraryBrowser/>
-      }
     </div>
   );
 });

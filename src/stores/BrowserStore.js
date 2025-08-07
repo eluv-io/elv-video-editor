@@ -88,7 +88,7 @@ class BrowserStore {
       .filter(({id, name}) =>
         !filter ||
         name.toLowerCase().includes(filter.toLowerCase()) ||
-        id.includes(filter.toLowerCase())
+        id.includes(filter)
       );
 
     return ({
