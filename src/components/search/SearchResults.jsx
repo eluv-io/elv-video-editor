@@ -93,7 +93,7 @@ const SearchResults = observer(() => {
             setShowList={setShowList}
           />
         </h1>
-        <div className={S("list-page")}>
+        <div className={S("list-page", "list-page--search")}>
           <Results key={`${aiStore.selectedSearchIndexId}-${queryB58}`} showList={showList} />
         </div>
       </div>
