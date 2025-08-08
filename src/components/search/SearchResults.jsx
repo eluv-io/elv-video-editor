@@ -16,7 +16,7 @@ import BackIcon from "@/assets/icons/v2/back.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles, SearchStyles);
 
-let batchSize = 24;
+let batchSize = 36;
 const Results = observer(({showList}) => {
   let {queryB58} = useParams();
   const query = aiStore.client.utils.FromB58ToStr(queryB58);
@@ -31,7 +31,7 @@ const Results = observer(({showList}) => {
       withLoader
       watchList={[query, aiStore.selectedSearchIndexId]}
       batchSize={batchSize}
-      Update={async () => await aiStore.Search({query, limit: !aiStore.searchResults.results ? batchSize - 1 : batchSize})}
+      Update={async () => await aiStore.Search({query, limit: batchSize})}
       className={S(showList ? "entity-list" : "entity-grid")}
     >
       {

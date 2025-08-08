@@ -874,7 +874,6 @@ export const GroundTruthAssetMenu = observer(({poolId, entityId, assetIndexOrId,
                 text: "Are you sure you want to use this asset as the anchor image for this entity?",
                 onConfirm: () => {
                   groundTruthStore.SetAnchorAsset({poolId, entityId, assetIndexOrId});
-                  groundTruthStore.DeleteAsset({poolId, entityId, assetIndexOrId});
                   Update();
                 }
               });

@@ -162,6 +162,7 @@ const Entities = observer(({showList, filter}) => {
             label={entity.label}
             count={entity.assetCount || 0}
             image={entity.image?.url}
+            contain
             tooltip={
               <div className={S("tooltip", "entity-card__tooltip")}>
                 <div className={S("entity-card__tooltip-label")}>{entity.label}</div>
