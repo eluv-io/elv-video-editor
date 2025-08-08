@@ -147,6 +147,10 @@ export const SearchBar = observer(({
   }, []);
 
   useEffect(() => {
+    setInput(filter);
+  }, [filter]);
+
+  useEffect(() => {
     if(!loaded) { return; }
 
     clearTimeout(updateTimeout);
@@ -881,7 +885,7 @@ const ContentBrowserSelect = ({item, setSelectedLibraryId, setSelectedObject, se
   }
 };
 
-const ContentBrowser = observer(({filter, setSelect}) => {
+const ContentBrowser = observer(({filter, setFilter, setSelect}) => {
   const [selectedLibraryId, setSelectedLibraryId] = useState(undefined);
   const [selectedObject, setSelectedObject] = useState(undefined);
   const [redirect, setRedirect] = useState(undefined);
@@ -893,6 +897,10 @@ const ContentBrowser = observer(({filter, setSelect}) => {
 
     setSelect(() => Select);
   }, []);
+
+  useEffect(() => {
+    setFilter?.("");
+  }, [selectedLibraryId, selectedObject?.objectId]);
 
   if(redirect) {
     return <Redirect to={redirect} />;
@@ -1055,7 +1063,7 @@ const BrowserPage = observer(() => {
       <ActiveItem />
       {
         tab === "content" ?
-          <ContentBrowser filter={filter} setSelect={setSelect} /> :
+          <ContentBrowser filter={filter} setFilter={setFilter} setSelect={setSelect} /> :
           <MyLibraryBrowser filter={filter} setSelect={setSelect} />
       }
     </div>

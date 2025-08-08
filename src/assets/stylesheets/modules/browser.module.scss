@@ -278,7 +278,6 @@
 
   &__row {
     border-bottom: 1px solid var(--table-border-color);
-    cursor: pointer;
     display: grid;
     height: var(--row-height);
     max-height: var(--row-height);
@@ -292,6 +291,8 @@
 
     &--content {
       &:not(:disabled) {
+        cursor: pointer;
+
         &:hover {
           background-color: var(--background-active);
           transition: color 0.25s ease, background-color 0.3s ease;

@@ -40,6 +40,8 @@ const DefaultContentRoutes = observer(() => {
       rootStore.Reset();
       videoStore.SetVideo({objectId, addToMyLibrary: true})
         .then(() => rootStore.SetSelectedObjectId(objectId, videoStore.name));
+    } else {
+      rootStore.SetSelectedObjectId(objectId, videoStore.name);
     }
   }, [objectId]);
 

@@ -1008,7 +1008,10 @@ class CompositionStore {
         metadataSubtree: UrlJoin("/channel", "offerings", compositionKey)
       })) || {};
     } catch(error) {
-      if(error.status === 404 && error.message === "Not Found") {
+      if(
+        (error.status === 404 && error.message === "Not Found") ||
+        (typeof error === "string" && (error.toLowerCase().includes("write token") && error.toLowerCase().includes("not found")))
+      ) {
         // eslint-disable-next-line no-console
         console.error(`Error: Dead write token for composition ${objectId}/${compositionKey}, discarding draft`);
         this.DiscardDraft({objectId, compositionKey});

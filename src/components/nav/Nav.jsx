@@ -4,7 +4,7 @@ import React from "react";
 import {observer} from "mobx-react-lite";
 import {compositionStore, editStore, rootStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-import {IconButton} from "@/components/common/Common";
+import {Confirm, IconButton} from "@/components/common/Common";
 import UrlJoin from "url-join";
 
 import SourceIcon from "@/assets/icons/v2/folder.svg";
@@ -13,6 +13,7 @@ import ClipIcon from "@/assets/icons/v2/clip.svg";
 import AssetIcon from "@/assets/icons/v2/asset.svg";
 import CompositionIcon from "@/assets/icons/v2/composition.svg";
 import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
+import PinIcon from "@/assets/icons/v2/pin.svg";
 
 const S = CreateModuleClassMatcher(NavStyles);
 
@@ -21,6 +22,22 @@ const Nav = observer(() => {
   const compositionObject = compositionStore.compositionObject;
 
   const pages = [
+    !objectId ? undefined :
+      {
+        label: `Active: ${rootStore.selectedObjectName || rootStore.selectedObjectId}`,
+        key: "pin",
+        icon: PinIcon,
+        onClick: async () => {
+          await Confirm({
+            title: "Clear Active Item",
+            text: "Would you like to clear the active item?",
+            onConfirm: () => {
+              rootStore.Navigate("/");
+              rootStore.SetSelectedObjectId(undefined, "");
+            }
+          });
+        }
+      },
     {
       label: "Source",
       key: "source",
@@ -72,12 +89,13 @@ const Nav = observer(() => {
       active: rootStore.page === "groundTruth",
       hasChanges: editStore.HasUnsavedChanges("groundTruth")
     }
-  ];
+  ]
+    .filter(item => item);
 
   return (
     <nav className={S("nav")}>
       {
-        pages.map(({label, key, icon, to, active, disabled, hasChanges}) =>
+        pages.map(({label, key, icon, to, active, disabled, hasChanges, onClick}) =>
           <IconButton
             key={`button-${key}`}
             label={
@@ -91,6 +109,7 @@ const Nav = observer(() => {
             }
             icon={icon}
             to={to}
+            onClick={onClick}
             disabled={disabled}
             active={active}
             className={S("nav__button")}
