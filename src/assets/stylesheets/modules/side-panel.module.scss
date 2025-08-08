@@ -879,6 +879,10 @@
     min-height: 35px;
     position: sticky;
     top: 0;
+
+    &:hover {
+      background-color: transparent;
+    }
   }
 
   &__item-icon {
@@ -907,9 +911,10 @@
       color: var(--text-tertiary);
     }
 
-
-    &:hover {
-      background-color: var(--background-active);
+    &:not(.composition-browser__header) {
+      &:hover {
+        background-color: var(--background-active);
+      }
     }
 
     &:not(:last-child) {

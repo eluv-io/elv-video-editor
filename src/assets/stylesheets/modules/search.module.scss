@@ -81,9 +81,17 @@
   }
 
   &__title {
+    align-items: center;
+    display: flex;
     font-size: 18px;
     font-weight: 600;
+    gap: 8px;
     padding-right: 20px;
+  }
+
+  &__icon {
+    height: 18px;
+    width: 18px;
   }
 
   &__summary {

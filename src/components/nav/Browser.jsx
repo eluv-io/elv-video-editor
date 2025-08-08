@@ -446,6 +446,12 @@ export const BrowserTable = observer(({
             Name
           </div>
           {
+            contentType !== "my-library" ? null :
+              <div className={S("browser-table__cell", "browser-table__cell--header", "browser-table__cell--padded")}>
+                Source Object
+              </div>
+          }
+          {
             !["object", "composition", "my-library", "ground-truth"].includes(contentType) ? null :
               <>
                 {
@@ -500,7 +506,13 @@ export const BrowserTable = observer(({
                 }}
                 key={`browser-row-${item.id || item.key || item.compositionKey}`}
                 disabled={disabled}
-                className={S("browser-table__row", "browser-table__row--content", disabled ? "browser-table__row--disabled" : "")}
+                className={
+                  S(
+                    "browser-table__row",
+                    "browser-table__row--content",
+                    disabled ? "browser-table__row--disabled" : ""
+                  )
+                }
               >
                 <div className={S("browser-table__cell")}>
                   {
@@ -518,15 +530,16 @@ export const BrowserTable = observer(({
                   }
                   <div className={S("browser-table__row-title")}>
                     <Tooltip
+                      position="top-start"
                       label={
                         <div className={S("tooltip")}>
                           <div className={S("tooltip__item")}>
-                            { item.name }
+                            {item.name}
                           </div>
                           {
                             !message ? null :
                               <div className={S("tooltip__item")}>
-                                { message }
+                                {message}
                               </div>
                           }
                         </div>
@@ -539,8 +552,9 @@ export const BrowserTable = observer(({
                         </span>
                         {
                           !item.isLiveStream ? "" :
-                            <span className={S("browser-table__live-tag", item.isLive ? "browser-table__live-tag--active" : "")}>
-                              { item.isLive ? "LIVE" : "Live Stream" }
+                            <span
+                              className={S("browser-table__live-tag", item.isLive ? "browser-table__live-tag--active" : "")}>
+                              {item.isLive ? "LIVE" : "Live Stream"}
                             </span>
                         }
                       </div>
@@ -555,6 +569,34 @@ export const BrowserTable = observer(({
                     </div>
                   </div>
                 </div>
+                {
+                  // Composition source info in My Library view
+                  contentType !== "my-library" ? null :
+                    !item.compositionKey ?
+                      <div className={S("browser-table__cell")} /> :
+                      <div className={S("browser-table__cell", "browser-table__cell--padded")}>
+                        <SVG src={VideoIcon} className={S("browser-table__cell-icon")} />
+                        <div className={S("browser-table__row-title")}>
+                          <Tooltip label={item.source?.name || ""} openDelay={500} position="top-start">
+                            <div className={S("browser-table__row-title-main")}>
+                              <span className={S("ellipsis")}>
+                                {item.source?.name || ""}
+                              </span>
+                              {
+                                !item?.source.isLiveStream ? "" :
+                                  <span
+                                    className={S("browser-table__live-tag", item.source?.isLive ? "browser-table__live-tag--active" : "")}>
+                                    {item.source?.isLive ? "LIVE" : "Live Stream"}
+                                  </span>
+                              }
+                            </div>
+                          </Tooltip>
+                          <div className={S("browser-table__row-title-id")}>
+                            <CopyableField value={item.source?.objectId} showOnHover>{item.source?.id}</CopyableField>
+                          </div>
+                        </div>
+                      </div>
+                }
                 {
                   !["object", "composition", "my-library", "ground-truth"].includes(contentType) ? null :
                     <>
@@ -572,7 +614,7 @@ export const BrowserTable = observer(({
                 {
                   (!Delete || !item.id) && !Actions ? null :
                     <div className={S("browser-table__cell", "browser-table__cell--centered")}>
-                      { Actions?.(item) }
+                      {Actions?.(item)}
                       {
                         !Delete || !item.id ? null :
                           <IconButton
@@ -626,11 +668,11 @@ export const BrowserTable = observer(({
 
 const CompositionBrowser = observer(({
   selectedObject,
-  externalFilter="",
+  externalFilter = "",
   withFilterBar,
   Select,
   Back,
-  className=""
+  className = ""
 }) => {
   const [filter, setFilter] = useState("");
   const [deletedChannels, setDeletedChannels] = useState([]);
@@ -643,7 +685,7 @@ const CompositionBrowser = observer(({
     <div className={JoinClassNames(S("browser", "browser--channel"), className)}>
       {
         !withFilterBar ? null :
-          <SearchBar filter={filter} setFilter={setFilter} Select={Select} />
+          <SearchBar filter={filter} setFilter={setFilter} Select={Select}/>
       }
       <h1 className={S("browser__header")}>
         <IconButton

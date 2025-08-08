@@ -59,7 +59,7 @@ const Player = forwardRef(function VideoComponent({
             ui: EluvioPlayerParameters.ui.WEB,
             appName: "video-editor",
             backgroundColor: "black",
-            autoplay: EluvioPlayerParameters.autoplay.ON,
+            autoplay: EluvioPlayerParameters.autoplay.OFF,
             watermark: EluvioPlayerParameters.watermark.OFF,
             verifyContent: EluvioPlayerParameters.verifyContent.ON,
             errorCallback,

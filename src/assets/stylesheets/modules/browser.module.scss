@@ -261,7 +261,7 @@
 
   &--my-library {
     .browser-table__row {
-      grid-template-columns: 1fr 100px 200px 100px;
+      grid-template-columns: 1fr 1fr 100px 200px 100px;
     }
   }
 
@@ -331,7 +331,7 @@
     align-items: center;
     display: flex;
     font-size: 14px;
-    gap: 15px;
+    gap: 10px;
     height: var(--row-height);
     justify-content: flex-start;
     max-width: 100%;
@@ -346,6 +346,10 @@
 
     &--centered {
       justify-content: center;
+    }
+
+    &--padded {
+      padding-inline: 20px;
     }
   }
 

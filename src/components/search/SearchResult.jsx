@@ -5,7 +5,7 @@ import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {Redirect, useParams} from "wouter";
 import {rootStore, aiStore} from "@/stores/index.js";
-import {IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
+import {Icon, IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 import Player from "@/components/common/Player.jsx";
@@ -22,7 +22,7 @@ import PinIcon from "@/assets/icons/v2/pin.svg";
 import RegenerateIcon from "@/assets/icons/rotate-ccw.svg";
 import LinkIcon from "@/assets/icons/v2/external-link.svg";
 import DownloadIcon from "@/assets/icons/v2/download.svg";
-
+import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles, SearchStyles);
 
@@ -120,7 +120,10 @@ const ClipResultPanel = observer(({result}) => {
               !summary ? <Loader className={S("result__loader")} /> :
                 <>
                   <div className={S("result__title")}>
-                    {summary.title}
+                    <Icon icon={AIIcon} className={S("result__icon")} />
+                    <span>
+                      {summary.title}
+                    </span>
                   </div>
                   <div className={S("result__summary")}>
                     { summary.summary }

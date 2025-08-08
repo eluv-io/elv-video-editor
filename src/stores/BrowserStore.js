@@ -501,6 +501,7 @@ class BrowserStore {
 
           return {
             ...item,
+            source: objectDetails[item.objectId],
             duration: this.FormatDuration(item.duration),
             lastModified: this.FormatDate(item.accessedAt)
           };
