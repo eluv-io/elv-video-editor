@@ -112,7 +112,7 @@ class VideoStore {
     }
   }
 
-  constructor(rootStore, options={clipKey: "", tags: true, channel: false}) {
+  constructor(rootStore, options={clipKey: "", tags: true, thumbnails: true, channel: false}) {
     makeAutoObservable(
       this,
       {
@@ -124,6 +124,7 @@ class VideoStore {
     this.rootStore = rootStore;
     this.thumbnailStore = new ThumbnailStore(this);
     this.tags = typeof options.tags !== "undefined" ? options.tags : true;
+    this.tags = typeof options.thumbnails !== "undefined" ? options.thumbnails : true;
     this.initialClipPoints = options.initialClipPoints;
     this.channel = options.channel || false;
 
@@ -321,7 +322,9 @@ class VideoStore {
         });
       }
 
-      this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl);
+      if(!this.thumbnails) {
+        this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl);
+      }
 
       if(addToMyLibrary) {
         this.rootStore.browserStore.AddMyLibraryItem({

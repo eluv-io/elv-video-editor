@@ -86,16 +86,20 @@ class AIStore {
       throw response;
     }
 
+    if(response.status === 204) {
+      return;
+    }
+
     return !format ? response :
       yield this.client.utils.ResponseToFormat(format, response);
   });
 
-  GenerateImageSummary = flow(function * ({objectId, filePath, regenerate=false}) {
+  GenerateImageSummary = flow(function * ({objectId, filePath, regenerate=false, cacheOnly=false}) {
     return yield this.rootStore.LoadResource({
       key: "imageSummary",
       id: `${objectId}-${filePath}`,
       bind: this,
-      force: regenerate,
+      force: !cacheOnly || regenerate,
       Load: flow(function * () {
         return yield this.rootStore.aiStore.QueryAIAPI({
           server: "ai",
@@ -103,18 +107,23 @@ class AIStore {
           path: UrlJoin("mlcache", "summary", "q", objectId, "rep", "image_summarize"),
           objectId,
           channelAuth: true,
-          queryParams: { path: filePath, engine: "summary", regenerate }
+          queryParams: {
+            path: filePath,
+            engine: "summary",
+            regenerate,
+            cache: cacheOnly ? "only" : undefined
+          }
         });
       })
     });
   });
 
-  GenerateClipSummary = flow(function * ({objectId, startTime, endTime, regenerate=false}) {
+  GenerateClipSummary = flow(function * ({objectId, startTime, endTime, regenerate=false, cacheOnly=false}) {
     return yield this.rootStore.LoadResource({
       key: "clipSummary",
       id: `${objectId}-${startTime}-${endTime}`,
       bind: this,
-      force: regenerate,
+      force: !cacheOnly || regenerate,
       Load: flow(function * () {
         return yield this.rootStore.aiStore.QueryAIAPI({
           server: "ai",
@@ -122,7 +131,12 @@ class AIStore {
           path: UrlJoin("mlcache", "summary", "q", objectId, "rep", "summarize"),
           objectId,
           channelAuth: true,
-          queryParams: { start_time: parseInt(startTime * 1000), end_time: parseInt(endTime * 1000), regenerate }
+          queryParams: {
+            start_time: parseInt(startTime * 1000),
+            end_time: parseInt(endTime * 1000),
+            regenerate,
+            cache: cacheOnly ? "only" : undefined
+          }
         });
       })
     });

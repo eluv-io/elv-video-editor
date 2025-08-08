@@ -24,26 +24,123 @@ import LinkIcon from "@/assets/icons/v2/external-link.svg";
 import DownloadIcon from "@/assets/icons/v2/download.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 
+import AIImageGray from "@/assets/images/composition-manual.svg";
+import AIImageColor from "@/assets/images/composition-ai.svg";
+
 const S = CreateModuleClassMatcher(BrowserStyles, SearchStyles);
+
+const Summary = observer(({result}) => {
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [summary, setSummary] = useState(false);
+  const [summaryError, setSummaryError] = useState(false);
+
+  const Generate = async ({cacheOnly, regenerate}={}) => {
+    try {
+      if(result.type === "video") {
+        const summ = await aiStore.GenerateClipSummary({
+            objectId: result.objectId,
+            startTime: result.startTime,
+            endTime: result.endTime,
+            cacheOnly,
+            regenerate
+          });
+        setSummary(
+          summ
+        );
+      } else {
+        setSummary(
+          await aiStore.GenerateImageSummary({
+            objectId: result.objectId,
+            filePath: result.filePath,
+            cacheOnly,
+            regenerate
+          })
+        );
+      }
+    } catch(error) {
+      setSummaryError(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if(!result?.objectId) { return; }
+
+    Generate({cacheOnly: true});
+  }, []);
+
+  if(loading) { return null; }
+
+  if(summaryError) {
+    return (
+      <div className={S("result__error")}>
+        Summary could not be generated
+      </div>
+    );
+  }
+
+  if(!summary) {
+    return (
+      <button
+        key={generating}
+        onClick={() => {
+          setGenerating(!generating);
+          Generate();
+        }}
+        className={S("summary-box")}
+      >
+        <img
+          alt="Summary Icon"
+          src={generating ? AIImageGray : AIImageColor}
+          className={S("summary-box__image", generating ? "summary-box__image--generating" : "")}
+        />
+
+        {
+          !generating ?
+            <div className={S("summary-box__text")}>
+              <div className={S("summary-box__title")}>
+                Create Summary with AI
+              </div>
+              <div className={S("summary-box__description")}>
+                Let AI suggest a summary of this result. This may take a few seconds.
+              </div>
+            </div> :
+            <div className={S("summary-box__text")}>
+              <div className={S("summary-box__title")}>
+                Generating...
+              </div>
+              <Loader className={S("summary-box__loader")} />
+            </div>
+        }
+      </button>
+    );
+  }
+
+  return (
+    <div className={S("result__text")}>
+      <div className={S("result__title")}>
+        <Icon icon={AIIcon} className={S("result__icon")} />
+        <span>{summary.title}</span>
+      </div>
+      <div className={S("result__summary")}>
+        { summary.summary }
+      </div>
+      <IconButton
+        disabled={!summary}
+        icon={RegenerateIcon}
+        onClick={async () => Generate({regenerate: true})}
+        className={S("result__regenerate-summary")}
+      />
+    </div>
+  );
+});
 
 const ClipResultPanel = observer(({result}) => {
   const [showFull, setShowFull] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
-  const [summary, setSummary] = useState(false);
-  const [summaryError, setSummaryError] = useState(false);
-
-  useEffect(() => {
-    if(!result?.objectId) { return; }
-
-    aiStore.GenerateClipSummary({
-      objectId: result.objectId,
-      startTime: result.startTime,
-      endTime: result.endTime
-    })
-      .then(summary => setSummary(summary))
-      .catch(error => setSummaryError(error));
-  }, []);
 
   return (
     <>
@@ -111,41 +208,7 @@ const ClipResultPanel = observer(({result}) => {
             </StyledButton>
           </div>
         </div>
-        <div className={S("result__text")}>
-          {
-            summaryError ?
-              <div className={S("result__error")}>
-                Summary could not be generated
-              </div> :
-              !summary ? <Loader className={S("result__loader")} /> :
-                <>
-                  <div className={S("result__title")}>
-                    <Icon icon={AIIcon} className={S("result__icon")} />
-                    <span>
-                      {summary.title}
-                    </span>
-                  </div>
-                  <div className={S("result__summary")}>
-                    { summary.summary }
-                  </div>
-                  <IconButton
-                    disabled={!summary}
-                    icon={RegenerateIcon}
-                    onClick={async () =>
-                      setSummary(
-                        await aiStore.GenerateClipSummary({
-                          objectId: result.objectId,
-                          startTime: result.startTime,
-                          endTime: result.endTime,
-                          regenerate: true
-                        })
-                      )
-                    }
-                    className={S("result__regenerate-summary")}
-                  />
-                </>
-          }
-        </div>
+        <Summary result={result} />
       </div>
       {
         !showShareModal ? null :
@@ -168,8 +231,6 @@ const ClipResultPanel = observer(({result}) => {
 });
 
 const ImageResultPanel = observer(({result}) => {
-  const [summary, setSummary] = useState(false);
-  const [summaryError, setSummaryError] = useState(false);
   const [metadata, setMetadata] = useState(undefined);
   const [tab, setTab] = useState("summary");
 
@@ -230,60 +291,33 @@ const ImageResultPanel = observer(({result}) => {
           </StyledButton>
         </div>
       </div>
-      <div className={S("result__text")}>
-        {
-          tab !== "summary" ? null :
-            summaryError ?
-              <div className={S("result__error")}>
-                Summary could not be generated
-              </div> :
-              !summary ? <Loader className={S("result__loader")} /> :
+      {
+        tab === "summary" ?
+          <Summary result={result} /> :
+          <div className={S("result__text")}>
+            {
+              !metadata ? <Loader className={S("result__loader")} /> :
                 <>
-                  <div className={S("result__title")}>
-                    {summary.title}
-                  </div>
-                  <div className={S("result__summary")}>
-                    { summary.summary }
-                  </div>
-                  <IconButton
-                    disabled={!summary}
-                    icon={RegenerateIcon}
-                    onClick={async () =>
-                      setSummary(
-                        await aiStore.GenerateImageSummary({
-                          objectId: result.objectId,
-                          filePath: result.filePath,
-                          regenerate: true
-                        })
-                    )
-                    }
-                    className={S("result__regenerate-summary")}
-                  />
-                </>
-        }
-        {
-          tab !== "metadata" ? null :
-            !metadata ? <Loader className={S("result__loader")} /> :
-              <>
-                {
-                  !title ? null :
-                    <div className={S("result__title")}>
-                      {title}
-                    </div>
-                }
-                <div className={S("result__display-metadata")}>
                   {
-                    Object.keys(metadata.display_metadata || {}).map(key =>
-                      <div key={`metadata-${key}`} className={S("result__metadata-field")}>
-                        <label htmlFor={key}>{key}</label>
-                        <div name={key}>{metadata.display_metadata[key]}</div>
+                    !title ? null :
+                      <div className={S("result__title")}>
+                        {title}
                       </div>
-                    )
                   }
-                </div>
-              </>
-        }
-      </div>
+                  <div className={S("result__display-metadata")}>
+                    {
+                      Object.keys(metadata.display_metadata || {}).map(key =>
+                        <div key={`metadata-${key}`} className={S("result__metadata-field")}>
+                          <label htmlFor={key}>{key}</label>
+                          <div name={key}>{metadata.display_metadata[key]}</div>
+                        </div>
+                      )
+                    }
+                  </div>
+                </>
+            }
+          </div>
+      }
     </div>
   );
 });

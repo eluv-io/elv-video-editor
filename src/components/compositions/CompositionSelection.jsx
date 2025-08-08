@@ -15,11 +15,11 @@ import {LibraryBrowser, ObjectBrowser} from "@/components/nav/Browser.jsx";
 import {Redirect} from "wouter";
 import {rootStore, compositionStore} from "@/stores/index.js";
 import {Button, Checkbox, Group} from "@mantine/core";
+import UrlJoin from "url-join";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 import ManualCompositionSelectionImage from "@/assets/images/composition-manual.svg";
 import AICompositionSelectionImage from "@/assets/images/composition-ai.svg";
-import UrlJoin from "url-join";
 
 const S = CreateModuleClassMatcher(CompositionStyles);
 

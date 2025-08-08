@@ -5,7 +5,7 @@
 .result {
   &__video {
     height: 100%;
-    max-height: calc(100vh - 350px);
+    max-height: calc(100vh - 375px);
     width: 100%;
   }
 
@@ -72,6 +72,7 @@
   }
 
   &__text {
+    animation: var(--animation-fadein) 0.4s linear;
     background-color: var(--background-modal);
     border-radius: 7px;
     max-height: 250px;
@@ -139,5 +140,47 @@
     position: absolute;
     right: 10px;
     top: 10px;
+  }
+}
+
+.summary-box {
+  animation: var(--animation-fadein) 0.4s linear;
+  background-color: var(--background-modal);
+  border-radius: 4px;
+  display: flex;
+  gap: 20px;
+  height: 135px;
+  margin-top: 15px;
+  max-width: 400px;
+  padding: 20px;
+  text-align: left;
+  width: 400px;
+
+  &__image {
+    width: 140px;
+
+    &--generating {
+      opacity: 0.5;
+    }
+  }
+
+  &__text {
+    max-width: 200px;
+  }
+
+  &__title {
+    font-weight: 500;
+    margin-bottom: 5px;
+  }
+
+  &__description {
+    color: var(--text-tertiary);
+    font-size: 14px;
+  }
+
+  &__loader {
+    height: 20px;
+    margin-top: 30px;
+    width: 75px;
   }
 }

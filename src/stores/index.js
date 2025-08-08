@@ -76,7 +76,7 @@ class RootStore {
     this.tagStore = new TagStore(this);
     this.trackStore = new TrackStore(this);
     this.videoStore = new VideoStore(this);
-    this.searchVideoStore = new VideoStore(this, {tags: false});
+    this.searchVideoStore = new VideoStore(this, {tags: false, thumbnails: false});
 
     this.InitializeClient();
 
