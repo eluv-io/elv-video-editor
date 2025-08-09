@@ -378,18 +378,6 @@ class GroundTruthStore {
     delete this.pools[objectId];
   });
 
-  NextEntityId(poolId) {
-    const key = Object.keys(this.pools[poolId]?.metadata?.entities || {}).sort().reverse()[0];
-    const prefix = key?.replace(/\d+/, "");
-    const count = key?.replace(/\D+/, "");
-
-    if(!key || isNaN(parseInt(count))) {
-      return "asset0000001";
-    }
-
-    return `${prefix}${(parseInt(count) + 1).toString().padStart(count.length, "0")}`;
-  }
-
   /* Entities */
 
   AddEntity({poolId, assetFiles=[], ...entity}) {
@@ -397,7 +385,7 @@ class GroundTruthStore {
 
     if(!pool) { throw Error("Unable to find pool " + poolId); }
 
-    const entityId = this.NextEntityId(poolId);
+    const entityId = this.rootStore.NextId(true);
 
     entity = {
       ...entity,
