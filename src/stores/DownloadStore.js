@@ -558,7 +558,7 @@ class DownloadStore {
   });
 
   SendShareEmail = flow(function * ({share}) {
-    const tenantId = yield this.rootStore.client.ContentObjectTenantId({objectId: share.object_id});
+    const tenantId = yield this.rootStore.client.ContentObjectTenantId({objectId: share.object_id || share.object_ids?.[0]});
 
     let options = {
       tenant: tenantId,

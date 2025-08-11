@@ -42,7 +42,7 @@ const ShareDownloadJobStatusChecker = observer(({share}) => {
       return;
     }
 
-    const CheckStatus = async () => downloadStore.ShareDownloadJobStatus({jobId, objectId: share.object_id});
+    const CheckStatus = async () => downloadStore.ShareDownloadJobStatus({jobId, objectId: share.object_id || share.object_ids?.[0]});
 
     const statusInterval = setInterval(CheckStatus, 5000);
 
@@ -436,7 +436,6 @@ const Share = observer(({share, setEditingShare, setSelectedShare, Reload}) => {
                   onConfirm: async () => {
                     await downloadStore.RevokeShare({shareId: share.share_id});
                       Reload();
-                      resolve();
                   }
                 });
               }}
