@@ -380,20 +380,22 @@ export const CopyableField = observer(({value, children, buttonProps={}, showOnH
   );
 });
 
-export const AsyncButton = observer(({onClick, tooltip, ...props}) => {
-  const [loading, setLoading] = useState(false);
+export const AsyncButton = observer(({onClick, tooltip, loading, ...props}) => {
+  const [submitting, setSubmitting] = useState(false);
 
   let button = (
     <Button
       {...props}
-      loading={loading}
+      loading={loading || submitting}
       onClick={async event => {
-        setLoading(true);
+        if(loading || submitting) { return; }
+
+        setSubmitting(true);
 
         try {
           await onClick?.(event);
         } finally {
-          setLoading(false);
+          setSubmitting(false);
         }
       }}
     />

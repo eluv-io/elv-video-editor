@@ -711,6 +711,7 @@ class CompositionStore {
     key,
     prompt,
     maxDuration,
+    offeringKey,
     regenerate=false
   }) {
     this.compositionGenerationStatus = {};
@@ -727,13 +728,17 @@ class CompositionStore {
       resolveIgnoreErrors: true
     });
 
-    const offerings = Object.keys(sourceMetadata.offerings)
-      .filter(offeringKey =>
-        !!Object.keys(sourceMetadata.offerings[offeringKey]?.playout?.playout_formats || {})
-          .find(playoutFormat => ["hls-clear", "hls-aes128"].includes(playoutFormat))
-      );
+    if(!offeringKey) {
+      const offerings = Object.keys(sourceMetadata.offerings)
+        .filter(offeringKey =>
+          !!Object.keys(sourceMetadata.offerings[offeringKey]?.playout?.playout_formats || {})
+            .find(playoutFormat => ["hls-clear", "hls-aes128"].includes(playoutFormat))
+        );
 
-    const offeringKey = offerings.includes("default") ? "default" : offerings[0];
+      offeringKey = offerings.includes("default") ? "default" :
+        offerings.find(offering => offering.includes("default")) || offerings[0];
+    }
+
     const playoutMetadata = sourceMetadata.offerings[offeringKey].playout;
     const offeringOptions = sourceMetadata.offerings?.[offeringKey]?.media_struct?.streams || {};
 
@@ -752,6 +757,7 @@ class CompositionStore {
     this.myCompositions[sourceObjectId][key] = {
       objectId: sourceObjectId,
       key,
+      offeringKey,
       compositionKey: key,
       label: name,
       saved: false,
@@ -797,6 +803,7 @@ class CompositionStore {
       items,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      offeringKey,
       source_info: {
         libraryId: sourceLibraryId,
         objectId: sourceObjectId,

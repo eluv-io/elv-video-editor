@@ -405,7 +405,7 @@ export const CompositionBrowser = observer(() => {
           {compositions.map(({name, objectId, compositionKey, lastModified}) =>
             <Linkish
               disabled={deleting}
-              key={compositionKey}
+              key={`${objectId}-${compositionKey}`}
               onClick={() => compositionStore.SetFilter("")}
               to={
                 !compositionKey ?

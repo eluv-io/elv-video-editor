@@ -278,7 +278,7 @@ class TrackStore {
 
   SubtitleTracksFromHLSPlaylist = flow(function * () {
     const playlist = yield this.ParsedHLSPlaylist();
-    const subtitleInfo = playlist.mediaGroups.SUBTITLES.subs;
+    const subtitleInfo = playlist.mediaGroups?.SUBTITLES?.subs;
 
     if(!subtitleInfo) { return []; }
 

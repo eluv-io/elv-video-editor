@@ -38,6 +38,7 @@ export const LoadVideo = async ({
         "offerings/*/media_struct/streams/*/label",
         "offerings/*/media_struct/streams/*/default_for_media_type",
         "offerings/*/playout/streams/*/representations",
+        "offerings/*/playout/playout_formats",
         "channel",
         "clips",
         "video_tags",
@@ -135,7 +136,11 @@ export const LoadVideo = async ({
           if(!(hlsPlayoutMethods["aes-128"] || hlsPlayoutMethods["clear"])) {
             videoObject.availableOfferings[offering].disabled = true;
           } else {
-            if(!offeringKey || offering === preferredOfferingKey) {
+            if(
+              !offeringKey ||
+              offering === preferredOfferingKey ||
+              (offering.includes("default") && !offeringKey?.includes("default"))
+            ) {
               offeringKey = offering;
             }
           }

@@ -6,6 +6,7 @@ import {CreateModuleClassMatcher, Slugify} from "@/utils/Utils.js";
 import {
   AsyncButton,
   FormNumberInput,
+  FormSelect,
   FormTextInput,
   IconButton,
   Loader,
@@ -16,6 +17,7 @@ import {Redirect} from "wouter";
 import {rootStore, compositionStore} from "@/stores/index.js";
 import {Button, Checkbox, Group} from "@mantine/core";
 import UrlJoin from "url-join";
+import {LoadVideo} from "@/stores/Helpers.js";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 import ManualCompositionSelectionImage from "@/assets/images/composition-manual.svg";
@@ -60,6 +62,8 @@ const CompositionSelection = observer(() => {
   const [showSourceModal, setShowSourceModal] = useState(false);
   const [keyExists, setKeyExists] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [sourceInfo, setSourceInfo] = useState(undefined);
+  const [offeringKey, setOfferingKey] = useState(undefined);
   const [options, setOptions] = useState({
     creating: false,
     created: false,
@@ -97,6 +101,27 @@ const CompositionSelection = observer(() => {
         .then(exists => setKeyExists(exists));
     }, 500);
   }, [options.sourceId, key]);
+
+  useEffect(() => {
+    if(!options.sourceId) { return; }
+
+    setErrorMessage(undefined);
+    setSourceInfo(undefined);
+    setOfferingKey(undefined);
+
+    LoadVideo({
+      objectId: options.sourceId
+    })
+      .then(sourceInfo => {
+        if(!sourceInfo.isVideo) {
+          setErrorMessage("This content is not a video");
+        } else {
+          setSourceInfo(sourceInfo);
+          setOfferingKey(sourceInfo.offeringKey);
+        }
+      })
+      .catch(error => setErrorMessage(error?.toString()));
+  }, [options.sourceId]);
 
   // Generation complete - redirect to composition view
   if(options.creating && compositionStore.compositionGenerationStatus?.created) {
@@ -230,6 +255,23 @@ const CompositionSelection = observer(() => {
           onChange={event => setOptions({...options, key: event.target.value})}
         />
         {
+          !sourceInfo || !sourceInfo.availableOfferings || Object.keys(sourceInfo.availableOfferings).length === 0 ? null :
+            <FormSelect
+              label="Source Offering"
+              value={offeringKey}
+              onChange={value => setOfferingKey(value)}
+              options={
+                Object.keys(sourceInfo.availableOfferings).map(key =>
+                  ({
+                    label: sourceInfo.availableOfferings[key].display_name || key,
+                    value: key,
+                    disabled: sourceInfo.availableOfferings[key].disabled || false
+                  })
+                )
+              }
+            />
+        }
+        {
           options.type !== "ai" ? null :
             <>
               <FormNumberInput
@@ -258,10 +300,11 @@ const CompositionSelection = observer(() => {
         <div className={S("composition-form__actions")}>
           <AsyncButton
             tooltip={error}
-            disabled={!!error}
+            disabled={!!error || !sourceInfo}
             color="gray.1"
             autoContrast
             w={150}
+            loading={!!options.sourceId && !sourceInfo && !error}
             onClick={async () => {
               setOptions({...options, creating: true});
 
@@ -273,7 +316,8 @@ const CompositionSelection = observer(() => {
                   key,
                   prompt: options.prompt,
                   maxDuration: options.maxDuration,
-                  regenerate: options.regenerate
+                  regenerate: options.regenerate,
+                  offeringKey
                 });
               } catch(error) {
                 // eslint-disable-next-line no-console
