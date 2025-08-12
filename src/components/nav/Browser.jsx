@@ -36,8 +36,6 @@ import CreateIcon from "@/assets/icons/v2/add2.svg";
 import ListIcon from "@/assets/icons/v2/list.svg";
 import GridIcon from "@/assets/icons/v2/source.svg";
 import SearchArrowIcon from "@/assets/icons/v2/search-arrow.svg";
-import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
-import CaretDownIcon from "@/assets/icons/v2/caret-down.svg";
 import SearchIcon from "@/assets/icons/v2/search.svg";
 import AssetIcon from "@/assets/icons/v2/asset.svg";
 import PinIcon from "@/assets/icons/v2/pin.svg";
@@ -345,16 +343,7 @@ export const AISearchBar = observer(({basePath="/search", initialQuery=""}) => {
       <div className={S("search-bar-container__search-icon")}>
         <Icon icon={SearchIcon} />
       </div>
-      <SearchIndexSelection
-        position="bottom-start"
-        className={S("search-bar-container__button-left")}
-        icon={
-          <div style={{display: "flex", alignItems: "center", gap: 5}}>
-            <Icon icon={AIIcon} />
-            <Icon icon={CaretDownIcon} />
-          </div>
-        }
-      />
+      <SearchIndexSelection position="bottom-start" className={S("search-bar-container__button-left")} />
       <input
         value={input}
         placeholder="Search within content by phrase or keyword"
@@ -698,7 +687,7 @@ const CompositionBrowser = observer(({
           onClick={Back}
           className={S("browser__header-back")}
         />
-        <span>
+        <span className={S("browser__header-last")}>
           {selectedObject.name} / Select Content
         </span>
       </h1>
@@ -795,8 +784,8 @@ export const ObjectBrowser = observer(({
           onClick={Back}
           className={S("browser__header-back")}
         />
-        <span>
-          { title || `Content Libraries / ${library?.name || libraryId}` }
+        <span className={S("browser__header-last")}>
+          {title || `Content Libraries / ${library?.name || libraryId}`}
         </span>
       </h1>
       <BrowserTable

@@ -21,10 +21,10 @@ import {LibraryBrowser, ObjectBrowser} from "@/components/nav/Browser.jsx";
 
 import SelectArrowsIcon from "@/assets/icons/v2/select-arrows.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
-import SettingsIcon from "@/assets/icons/v2/settings.svg";
 import UpdateIndexIcon from "@/assets/icons/v2/reload.svg";
 import SourcesIcon from "@/assets/icons/v2/folder.svg";
-import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
+import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
+import CaretDownIcon from "@/assets/icons/v2/caret-down.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -78,7 +78,7 @@ const SearchIndexBrowseModal = observer(({Select, Cancel}) => {
   );
 });
 
-export const SearchIndexSelection = observer(({position="bottom-middle", icon, className=""}) => {
+export const SearchIndexSelection = observer(({position="bottom-middle", className=""}) => {
   const [updatingIndexes, setUpdatingIndexes] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
   const [showBrowser, setShowBrowser] = useState(false);
@@ -122,11 +122,14 @@ export const SearchIndexSelection = observer(({position="bottom-middle", icon, c
           <Tooltip disabled={showMenu} label="Select Search Index" openDelay={500}>
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className={JoinClassNames(S("search__button"), className)}
+              className={JoinClassNames(S("search__button", showMenu ? "search__button--active" : ""), className)}
             >
               {
                 typeof indexUpdateProgress === "undefined" ?
-                  icon || <Icon icon={icon || SettingsIcon} /> :
+                  <div style={{display: "flex", alignItems: "center", gap: 5}}>
+                    <Icon icon={AIIcon}/>
+                    <Icon icon={CaretDownIcon}/>
+                  </div> :
                   <RingProgress
                     size={25}
                     thickness={3}
@@ -294,7 +297,7 @@ const SourceSelection = observer(() => {
         position="bottom-middle"
       >
         <Menu.Target>
-          <Tooltip label="Select Source" openDelay={500}>
+          <Tooltip label="Select Source" disabled={showMenu} openDelay={500}>
             <button
               onClick={() => setShowMenu(!showMenu)}
               className={S("search__source-button", showMenu ? "search__source-button--active" : "")}
@@ -321,11 +324,6 @@ const SourceSelection = observer(() => {
                   }}
                   className={S("search__source-option", compositionStore.selectedSourceId === objectId ? "search__source-option--active" : "")}
                 >
-                  <PreviewThumbnail
-                    maxThumbnails={10}
-                    store={compositionStore.ClipStore({sourceId: objectId})}
-                    className={S("search__source-thumbnail")}
-                  />
                   <Tooltip label={name}>
                     <div className={S("search__source-text")}>
                       <div className={S("search__source-option-name", "ellipsis")}>
@@ -368,7 +366,7 @@ const SourceSelection = observer(() => {
 });
 
 let filterTimeout;
-const SidebarFilter = observer(({store, label, sideContent, afterContent, delay=100}) => {
+const SidebarFilter = observer(({store, label, sideContent, afterContent, delay=100, className=""}) => {
   const [filter, setFilter] = useState(store.filter);
 
   useEffect(() => {
@@ -378,32 +376,31 @@ const SidebarFilter = observer(({store, label, sideContent, afterContent, delay=
   }, [filter]);
 
   return (
-    <div className={S("search")}>
+    <div className={JoinClassNames(S("search"), className)}>
       <Input
         placeholder={label}
         h={35}
         value={filter}
         onChange={event => setFilter(event.currentTarget.value)}
         aria-label={label}
-        className={S("search__input")}
-        rightSection={
+        className={S("search__input", sideContent ? "search__input--with-side-content" : "")}
+        leftSection={
           <div className={S("search__buttons")}>
             {sideContent}
-            {
-              !filter ? null :
-                <IconButton
-                  noHover
-                  icon={XIcon}
-                  onClick={() => {
-                    setFilter("");
-                    store.SetFilter("");
-                  }}
-                  className={S("search__button")}
-                />
-            }
           </div>
-          }
-        rightSectionWidth="max-content"
+        }
+        rightSection={
+          !filter ? null :
+            <IconButton
+              noHover
+              icon={XIcon}
+              onClick={() => {
+                setFilter("");
+                store.SetFilter("");
+              }}
+              className={S("search__button")}
+            />
+        }
       />
       { afterContent }
     </div>
@@ -649,6 +646,7 @@ export const CompositionSidePanel = observer(() => {
           afterContent={<SourceSelection />}
           store={compositionStore}
           label="Search Clips"
+          className={S("search--ai")}
         />
         <CompositionClips />
       </div>

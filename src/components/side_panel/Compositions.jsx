@@ -46,6 +46,7 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
       <PreviewThumbnail
         useLoaderImage
         store={store}
+        baseImageUrl={clip.imageUrl}
         onDragEnd={() => compositionStore.EndDrag()}
         startFrame={clip.clipInFrame}
         endFrame={clip.clipOutFrame}
@@ -172,6 +173,7 @@ const ClipGroup = observer(({
         <Icon icon={hide ? ChevronDownIcon : ChevronUpIcon} className={S("clip-group__header-indicator")} />
       </button>
       {
+        hide ? null :
          hidden ? (showEmpty ? <div className={S("clip-group__empty")}>No Results</div> : null) :
           loading ? <Loader className={S("clip-group__loader")} /> :
             <div className={S("clip-group__clips")}>
@@ -214,6 +216,10 @@ const AIClips = observer(() => {
         setLoading(false);
       });
   }, [compositionStore.filter, aiStore.selectedSearchIndexId, compositionStore.selectedSourceId]);
+
+  if(!aiStore.highlightsAvailable) {
+    return null;
+  }
 
   return  (
     <ClipGroup

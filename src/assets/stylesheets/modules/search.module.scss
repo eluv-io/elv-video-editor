@@ -59,10 +59,18 @@
     position: relative;
 
     &--right {
+      align-items: center;
+      display: flex;
+      gap: 20px;
       position: absolute;
       right: 0;
       top: 0;
     }
+  }
+
+  &__id {
+    color: var(--text-tertiary);
+    font-size: 12px;
   }
 
   &__error {

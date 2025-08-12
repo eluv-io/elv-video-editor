@@ -1,7 +1,7 @@
 import ListStyles from "@/assets/stylesheets/modules/lists.module.scss";
 
 import {observer} from "mobx-react-lite";
-import {Icon, Linkish, LoaderImage} from "@/components/common/Common.jsx";
+import {CopyableField, Icon, Linkish, LoaderImage} from "@/components/common/Common.jsx";
 import ImageIcon from "@/assets/icons/picture.svg";
 import AnchorIcon from "@/assets/icons/v2/anchor.svg";
 import {Menu, Tooltip} from "@mantine/core";
@@ -63,6 +63,7 @@ export const EntityListItem = observer(({
   image,
   label,
   subtitle,
+  id,
   count,
   contain,
   anchor,
@@ -120,6 +121,12 @@ export const EntityListItem = observer(({
             { subtitle }
           </div>
       }
+      {
+        !id ? null :
+          <CopyableField value={id} showOnHover className={S("entity-card__id")}>
+            {id}
+          </CopyableField>
+      }
     </div>
     <div onClick={SP()} className={S("entity-list-item__actions")}>
       { actions }
@@ -132,6 +139,7 @@ export const EntityCard = observer(({
   image,
   label,
   subtitle,
+  id,
   count,
   contain,
   anchor,
@@ -187,6 +195,12 @@ export const EntityCard = observer(({
           <div className={S("entity-card__subtitle")}>
             {subtitle}
           </div>
+      }
+      {
+        !id ? null :
+          <CopyableField value={id} showOnHover className={S("entity-card__id")}>
+            {id}
+          </CopyableField>
       }
     </div>
   );

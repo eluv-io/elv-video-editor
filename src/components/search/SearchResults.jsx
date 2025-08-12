@@ -40,6 +40,7 @@ const Results = observer(({showList}) => {
             listItem={showList}
             key={`result-${index}`}
             link={UrlJoin("/", queryB58, index.toString())}
+            id={result.objectId}
             label={result.name}
             aspectRatio={aiStore.searchResults.type === "image" ? "square" : "landscape"}
             subtitle={result.subtitle}
@@ -81,13 +82,13 @@ const SearchResults = observer(() => {
             to="~/"
             className={S("browser__header-back")}
           />
-          <div>
+          <span>
             Search Results
-          </div>
+          </span>
           <span className={S("browser__header-chevron")}>▶</span>
-          <div>
-            { query }
-          </div>
+          <span className={S("browser__header-last")}>
+            {query}
+          </span>
           <CardDisplaySwitch
             showList={showList}
             setShowList={setShowList}

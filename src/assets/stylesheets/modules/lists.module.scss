@@ -3,7 +3,7 @@
 .entity-card {
   animation: 0.5s ease var(--animation-fadein);
   display: grid;
-  gap: 10px;
+  gap: 3px;
   height: max-content;
   position: relative;
   width: 100%;
@@ -82,6 +82,7 @@
     align-items: center;
     display: flex;
     justify-content: space-between;
+    margin-top: 5px;
     max-width: 100%;
     overflow: hidden;
     position: relative;
@@ -136,9 +137,14 @@
     }
   }
 
+  &__id,
   &__subtitle {
     color: var(--text-tertiary);
     font-size: 12px;
+  }
+
+  &__id {
+    font-size: 10px;
   }
 
   &__tooltip {
@@ -196,10 +202,16 @@
     align-items: flex-start;
     flex-direction: column;
     font-size: 18px;
+    gap: 2px;
   }
 
   .entity-card__title {
     font-weight: 600;
+    line-height: 1.2em;
+  }
+
+  .entity-card__subtitle {
+    font-size: 13px;
   }
 
   .entity-card__count {

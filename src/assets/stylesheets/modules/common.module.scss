@@ -229,19 +229,37 @@
     .copyable-field__button {
       opacity: 0;
       transition: opacity 0.25s ease;
+      transition-delay: 0.5s;
     }
 
     &:hover {
       .copyable-field__button {
         opacity: 1;
+        transition: opacity 0.25s ease;
       }
+    }
+  }
+
+  &--copied {
+    .copyable-field__button {
+      opacity: 1;
     }
   }
 
   &__button {
     color: inherit;
+    height: 1.5em;
+
+    /*
     height: 18px;
     min-height: 18px;
+    width: 18px;
+    min-width: 18px;
+
+     */
+    min-height: 1.5em;
+    min-width: 1.5em;
+    width: 1.5em;
   }
 }
 

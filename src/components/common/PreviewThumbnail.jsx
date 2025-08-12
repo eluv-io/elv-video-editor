@@ -12,6 +12,7 @@ const PreviewThumbnail = observer(({
   startFrame,
   endFrame,
   useLoaderImage,
+  baseImageUrl,
   showDuration=true,
   maxThumbnails=50,
   loadingClassName,
@@ -70,6 +71,16 @@ const PreviewThumbnail = observer(({
   }, [ref, clientX]);
 
   if(!store?.thumbnailStore.thumbnailStatus.available || !thumbnails) {
+    if(baseImageUrl) {
+      return (
+        <LoaderImage
+          {...props}
+          src={baseImageUrl}
+          className={JoinClassNames(S("preview-thumbnail"), props.className)}
+        />
+      );
+    }
+
     return !useLoaderImage ? null :
       <LoaderImage
         {...props}

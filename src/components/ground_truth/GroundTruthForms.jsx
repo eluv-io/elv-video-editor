@@ -675,8 +675,22 @@ export const GroundTruthAssetFileBrowser = observer(({poolId, entityId, assetInd
   const entity = pool?.metadata?.entities?.[entityId] || {};
   const asset = typeof assetIndexOrId !== "undefined" && groundTruthStore.GetGroundTruthAsset(entity, assetIndexOrId);
 
+  let exampleLink, initialPath;
+  if(asset) {
+    exampleLink = asset.link?.["/"];
+  } else if(entity) {
+    exampleLink = [...(entity.sample_files || [])]
+      ?.sort((a, b) => a.updated_at < b.updated_at ? 1 : -1)
+      ?.[0]?.link?.["/"];
+  }
+
+  if(exampleLink) {
+    initialPath = exampleLink.split("/files")[1].split("/").slice(0, -1).join("/");
+  }
+
   return (
     <FileBrowser
+      initialPath={initialPath}
       alwaysOpened
       title={
         asset ?

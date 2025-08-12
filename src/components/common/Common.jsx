@@ -338,8 +338,12 @@ export const IconButton = ({
 };
 
 let copyTimeout;
-export const CopyButton = observer(({value, ...props}) => {
+export const CopyButton = observer(({value, onCopyChange, ...props}) => {
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    onCopyChange?.(copied);
+  }, [copied]);
 
   return (
     <IconButton
@@ -366,13 +370,28 @@ export const CopyButton = observer(({value, ...props}) => {
 });
 
 export const CopyableField = observer(({value, children, buttonProps={}, showOnHover=false, className="", ...props}) => {
+  const [copied, setCopied] = useState(false);
+
   return (
-    <div {...props} className={JoinClassNames(S("copyable-field", showOnHover ? "copyable-field--show-hover" : ""), className)}>
+    <div
+      {...props}
+      className={
+        JoinClassNames(
+          S(
+            "copyable-field",
+            showOnHover ? "copyable-field--show-hover" : "",
+            copied ? "copyable-field--copied" : ""
+          ),
+          className
+        )
+      }
+    >
       <div className={S("copyable-field__value", "ellipsis")}>
         { children || value }
       </div>
       <CopyButton
         {...buttonProps}
+        onCopyChange={setCopied}
         value={value}
         className={JoinClassNames(S("copyable-field__button", "ellipsis"), buttonProps.className)}
       />

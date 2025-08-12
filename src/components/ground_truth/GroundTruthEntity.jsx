@@ -242,7 +242,7 @@ const GroundTruthEntity = observer(() => {
               {pool.name || pool.objectId}
             </Linkish>
             <span className={S("browser__header-chevron")}>▶</span>
-            <span>
+            <span className={S("browser__header-last")}>
               {entity.label || entityId}
             </span>
             <GroundTruthPoolSaveButton

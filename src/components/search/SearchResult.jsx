@@ -5,7 +5,7 @@ import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {Redirect, useParams} from "wouter";
 import {rootStore, aiStore} from "@/stores/index.js";
-import {Icon, IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
+import {CopyableField, Icon, IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 import Player from "@/components/common/Player.jsx";
@@ -182,6 +182,9 @@ const ClipResultPanel = observer(({result}) => {
             }
           </div>
           <div className={S("result__actions--right")}>
+            <CopyableField value={result.objectId} showOnHover className={S("result__id")}>
+              {result.objectId}
+            </CopyableField>
             <StyledButton
               small
               variant="subtle"
@@ -281,6 +284,9 @@ const ImageResultPanel = observer(({result}) => {
           </Tabs.List>
         </Tabs>
         <div className={S("result__tab-container--right")}>
+          <CopyableField value={result.objectId} showOnHover className={S("result__id")}>
+            {result.objectId}
+          </CopyableField>
           <StyledButton
             small
             variant="subtle"
@@ -351,16 +357,19 @@ const SearchResult = observer(() => {
             to={UrlJoin("/", queryB58)}
             className={S("browser__header-back")}
           />
-          <div>
-            Search Results
-          </div>
+          <span>Search Results</span>
           <span className={S("browser__header-chevron")}>▶</span>
           <Linkish to={UrlJoin("/", queryB58)}>
             {query}
           </Linkish>
           <span className={S("browser__header-chevron")}>▶</span>
-          <div>
-            { result.name }
+          <span className={S("browser__header-last")}>
+            {result.name}
+          </span>
+          <div className={S("browser__header-right", "browser__id")}>
+            <CopyableField value={result.objectId} className={S("browser__header-id")}>
+              {result.objectId}
+            </CopyableField>
           </div>
         </h1>
         <div className={S("result-page")}>

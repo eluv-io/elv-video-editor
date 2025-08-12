@@ -9,6 +9,7 @@ class AIStore {
   selectedSearchIndexId;
   searchIndexUpdateProgress = {};
   tagAggregationProgress = 0;
+  highlightsAvailable = true;
 
   searchResults = {};
 
@@ -143,9 +144,15 @@ class AIStore {
   });
 
   GenerateAIHighlights = flow(function * ({objectId, prompt, maxDuration, regenerate=false, wait=true, StatusCallback}) {
+    if(!this.highlightsAvailable) { return; }
+
     let options = {};
-    if(prompt) { options.customization = prompt; }
-    if(maxDuration) { options.max_length = maxDuration * 1000; }
+    if(prompt) {
+      options.customization = prompt;
+    }
+    if(maxDuration) {
+      options.max_length = maxDuration * 1000;
+    }
 
     if(regenerate) {
       yield this.QueryAIAPI({
@@ -172,6 +179,10 @@ class AIStore {
         queryParams: options,
         format: "none"
       });
+
+      if(!response) {
+        this.highlightsAvailable = false;
+      }
 
       if(response.status === 204 && !regenerate) {
         return this.GenerateAIHighlights({...arguments[0], regenerate: true});

@@ -1590,6 +1590,12 @@ class CompositionStore {
     const libraryId = yield this.client.ContentObjectLibraryId({objectId});
     const versionHash = yield this.client.LatestVersionHash({objectId});
 
+    const baseUrl = yield this.client.Rep({
+      versionHash,
+      rep: "frame",
+      channelAuth: true
+    });
+
     const clips = (yield this.rootStore.aiStore.QueryAIAPI({
       server: "ai",
       objectId: index.id,
@@ -1613,6 +1619,14 @@ class CompositionStore {
       const clipInFrame = store.TimeToFrame(clip.start_time / 1000);
       const clipOutFrame = store.TimeToFrame(clip.end_time / 1000);
       const clipId = this.rootStore.NextId();
+
+      const imageUrl = new URL(baseUrl);
+      imageUrl.pathname = clip.image_url.split("?")[0];
+
+      const params = new URLSearchParams(clip.image_url.split("?")[1]);
+      params.keys().forEach((key, value) => imageUrl.searchParams.set(key, value));
+      imageUrl.searchParams.set("t", (clip.start_time / 1000).toFixed(2));
+
       this.clips[clipId] = {
         clipId,
         name: clip.reason,
@@ -1622,6 +1636,7 @@ class CompositionStore {
         offering: "default",
         clipInFrame,
         clipOutFrame,
+        imageUrl,
         storeKey: `${objectId}-default`,
         clipKey: `${objectId}-default-${clipInFrame}-${clipOutFrame}`
       };

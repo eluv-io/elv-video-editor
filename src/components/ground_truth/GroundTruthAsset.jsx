@@ -71,7 +71,7 @@ const GroundTruthAsset = observer(() => {
               {entity?.label || entityId}
             </Linkish>
             <span className={S("browser__header-chevron")}>▶</span>
-            <span>
+            <span className={S("browser__header-last")}>
               {asset?.label || filename || assetIndexOrId}
             </span>
           </h1>

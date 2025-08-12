@@ -43,7 +43,7 @@ class FileBrowserStore {
     const writeToken = this.rootStore.editStore.WriteToken({objectId});
 
     // Transform from fabric file metadata
-    return Object.keys(directory)
+    return Object.keys(directory || {})
       .map(filename => {
         if(filename === ".") { return; }
 

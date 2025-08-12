@@ -236,7 +236,7 @@ const GroundTruthPool = observer(() => {
               All Ground Truth
             </Linkish>
             <span className={S("browser__header-chevron")}>▶</span>
-            <span>
+            <span className={S("browser__header-last")}>
               {pool.name || pool.objectId}
             </span>
             <GroundTruthPoolSaveButton
