@@ -399,8 +399,17 @@ class DownloadStore {
       options.offering = downloadOptions.offering;
     }
 
+    let objectIds = [];
+    if(shareOptions.compositionKey) {
+      // Composition
+      objectIds = this.rootStore.compositionStore.clipList
+        .map(c => c.objectId)
+        .filter((x, i, a) => a.indexOf(x) == i);
+    }
+
     const share = (yield this.rootStore.client.CreateShare({
       objectId,
+      objectIds,
       expiresAt: shareOptions.expiresAt,
       params: Unproxy(options)
     })).share;

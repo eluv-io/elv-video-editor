@@ -901,7 +901,7 @@ const ShareModalButton = observer(({store, ...props}) => {
         {...props}
       />
       {
-        !showModal || !store?.initialized ? null :
+        !showModal  ? null :
           <ShareModal
             store={store}
             opened={showModal}

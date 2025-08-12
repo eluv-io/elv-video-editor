@@ -73,7 +73,7 @@ class CompositionStore {
   });
 
   Reset() {
-    this.videoStore = new VideoStore(this.rootStore, {tags: false, channel: true});
+    this.videoStore = new VideoStore(this.rootStore, {tags: false, channel: true, thumbnails: true});
     this.videoStore.id = "Composition Store";
 
     this.clips = {};
@@ -590,7 +590,8 @@ class CompositionStore {
       const videoStore = new VideoStore(
         this.rootStore,
         {
-          tags: false
+          tags: false,
+          thumbnails: true
         }
       );
 

@@ -124,7 +124,7 @@ class VideoStore {
     this.rootStore = rootStore;
     this.thumbnailStore = new ThumbnailStore(this);
     this.tags = typeof options.tags !== "undefined" ? options.tags : true;
-    this.tags = typeof options.thumbnails !== "undefined" ? options.thumbnails : true;
+    this.thumbnails = typeof options.thumbnails !== "undefined" ? options.thumbnails : true;
     this.initialClipPoints = options.initialClipPoints;
     this.channel = options.channel || false;
 
@@ -322,7 +322,7 @@ class VideoStore {
         });
       }
 
-      if(!this.thumbnails) {
+      if(this.thumbnails) {
         this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl);
       }
 
@@ -333,7 +333,6 @@ class VideoStore {
           isVideo: videoObject.isVideo
         });
       }
-
 
       if(!this.tags) {
         this.initialized = true;

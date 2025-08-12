@@ -55,7 +55,7 @@ const Video = observer(({
   }, [video, contentId]);
 
   useEffect(() => {
-    if(!video || !playoutUrl || !store.isVideo || blank) {
+    if(!video || !playoutUrl || blank) {
       return;
     }
 
@@ -128,7 +128,6 @@ const Video = observer(({
 
     player.loadSource(playoutUrl);
     player.attachMedia(video);
-
     store.Initialize(video, player);
 
     // Ensure loading doesn't hang if the video doesn't want to preload
