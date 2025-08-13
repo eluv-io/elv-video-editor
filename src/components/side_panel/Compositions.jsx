@@ -73,7 +73,7 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
           />
       }
       {
-        clip.offering === "default" ? null :
+        clip.offering?.includes("default") ? null :
           <div className={S("clip__offering")}>
             Offering: {clip.offering}
           </div>
@@ -217,7 +217,7 @@ const AIClips = observer(() => {
       });
   }, [compositionStore.filter, aiStore.selectedSearchIndexId, compositionStore.selectedSourceId]);
 
-  if(!aiStore.highlightsAvailable) {
+  if(!aiStore.highlightsAvailable && !compositionStore.filter) {
     return null;
   }
 

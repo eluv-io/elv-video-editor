@@ -146,60 +146,69 @@ class AIStore {
   GenerateAIHighlights = flow(function * ({objectId, prompt, maxDuration, regenerate=false, wait=true, StatusCallback}) {
     if(!this.highlightsAvailable) { return; }
 
-    let options = {};
-    if(prompt) {
-      options.customization = prompt;
-    }
-    if(maxDuration) {
-      options.max_length = maxDuration * 1000;
-    }
-
-    if(regenerate) {
-      yield this.QueryAIAPI({
-        method: "POST",
-        path: UrlJoin("ml", "highlight_composition", "q", objectId),
-        objectId,
-        queryParams: {...options, regenerate: true}
-      });
-
-      yield new Promise(resolve => setTimeout(resolve, 1000));
-    }
-
-    let status;
-    do {
-      if(status) {
-        StatusCallback?.(status);
-        yield new Promise(resolve => setTimeout(resolve, 5000));
+    try {
+      let options = {};
+      if(prompt) {
+        options.customization = prompt;
+      }
+      if(maxDuration) {
+        options.max_length = maxDuration * 1000;
       }
 
-      const response = yield this.QueryAIAPI({
-        method: "GET",
-        path: UrlJoin("ml", "highlight_composition", "q", objectId),
-        objectId,
-        queryParams: options,
-        format: "none"
-      });
+      if(regenerate) {
+        yield this.QueryAIAPI({
+          method: "POST",
+          path: UrlJoin("ml", "highlight_composition", "q", objectId),
+          objectId,
+          queryParams: {...options, regenerate: true}
+        });
 
-      if(!response) {
+        yield new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      let status;
+      do {
+        if(status) {
+          StatusCallback?.(status);
+          yield new Promise(resolve => setTimeout(resolve, 5000));
+        }
+
+        const response = yield this.QueryAIAPI({
+          method: "GET",
+          path: UrlJoin("ml", "highlight_composition", "q", objectId),
+          objectId,
+          queryParams: options,
+          format: "none"
+        });
+
+        if(!response) {
+          this.highlightsAvailable = false;
+          return;
+        }
+
+        if(response.status === 204 && !regenerate) {
+          return this.GenerateAIHighlights({...arguments[0], regenerate: true});
+        }
+
+        status = yield response.json();
+
+        if(!wait) {
+          return status;
+        }
+
+        if(status?.status === "ERROR") {
+          throw status;
+        }
+      } while(status?.status !== "COMPLETE");
+
+      return status;
+    } catch(error) {
+      if(error?.status === "ERROR" && error?.display_error?.includes("not configured")) {
         this.highlightsAvailable = false;
       }
 
-      if(response.status === 204 && !regenerate) {
-        return this.GenerateAIHighlights({...arguments[0], regenerate: true});
-      }
-
-      status = yield response.json();
-
-      if(!wait) {
-        return status;
-      }
-
-      if(status?.status === "ERROR") {
-        throw status;
-      }
-    } while(status?.status !== "COMPLETE");
-
-    return status;
+      throw error;
+    }
   });
 
   // Search indexes
