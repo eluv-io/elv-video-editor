@@ -633,6 +633,12 @@ class CompositionStore {
       clipOutFrame = store.videoHandler.TimeToFrame(clipOutTime);
     }
 
+    const imageUrl = new URL(this.compositionObject.baseImageUrl);
+    imageUrl.searchParams.set(
+      "t",
+      store.videoHandler.FrameToTime(source ? Math.floor(((clipOutFrame || store.totalFrames) - (clipInFrame || 0)) / 2) : clipInFrame).toFixed(2)
+    );
+
     const clipId = this.rootStore.NextId();
     this.clips[clipId] = {
       clipId,
@@ -641,6 +647,7 @@ class CompositionStore {
       objectId: store.videoObject.objectId,
       versionHash: store.videoObject.versionHash,
       offering: store.offeringKey,
+      imageUrl,
       clipInFrame: clipInFrame || 0,
       clipOutFrame: clipOutFrame || store.totalFrames - 1,
       storeKey: `${store.videoObject.objectId}-${store.offeringKey}`,
@@ -1028,12 +1035,21 @@ class CompositionStore {
       }
     }
 
+    const sourceOfferingKey = metadata?.source_info?.offeringKey || "default";
+
+    const baseImageUrl = yield this.client.Rep({
+      versionHash,
+      rep: UrlJoin("frame", sourceOfferingKey, "video"),
+      channelAuth: true
+    });
+
     this.compositionObject = {
       libraryId,
       objectId,
       versionHash,
+      baseImageUrl,
       sourceObjectId: objectId,
-      sourceOfferingKey: metadata?.source_info?.offeringKey || "default",
+      sourceOfferingKey,
       initialPrompt: metadata?.source_info?.prompt,
       name: metadata?.display_name || metadata?.name,
       compositionKey,
@@ -1046,9 +1062,9 @@ class CompositionStore {
       primary: true
     });
 
-    this.primarySourceId = primarySource.objectId;
-
     this.compositionObject.sourceName = primarySource.name;
+
+    this.primarySourceId = primarySource.objectId;
 
     this.SetSelectedClip({clipId: primarySource.fullClipId, source: "source-content"});
 
@@ -1113,26 +1129,12 @@ class CompositionStore {
       )
     );
 
-    // TODO: Look at secondary sources and load stores
     this.secondarySourceIds = secondarySources;
     this.selectedSourceId = objectId;
 
     this.clips = {
       ...this.clips,
       ...updatedClipList
-    };
-
-    this.compositionObject = {
-      libraryId,
-      objectId,
-      versionHash,
-      sourceObjectId: objectId,
-      sourceOfferingKey: metadata?.source_info?.offeringKey || "default",
-      sourceName: primarySource.name,
-      initialPrompt: metadata?.source_info?.prompt,
-      name: metadata?.display_name || metadata?.name,
-      compositionKey,
-      metadata
     };
 
     this.videoStore.name = this.compositionObject.name;
@@ -1590,12 +1592,6 @@ class CompositionStore {
     const libraryId = yield this.client.ContentObjectLibraryId({objectId});
     const versionHash = yield this.client.LatestVersionHash({objectId});
 
-    const baseUrl = yield this.client.Rep({
-      versionHash,
-      rep: "frame",
-      channelAuth: true
-    });
-
     const clips = (yield this.rootStore.aiStore.QueryAIAPI({
       server: "ai",
       objectId: index.id,
@@ -1620,7 +1616,7 @@ class CompositionStore {
       const clipOutFrame = store.TimeToFrame(clip.end_time / 1000);
       const clipId = this.rootStore.NextId();
 
-      const imageUrl = new URL(baseUrl);
+      const imageUrl = new URL(this.compositionObject.baseImageUrl);
       imageUrl.pathname = clip.image_url.split("?")[0];
 
       const params = new URLSearchParams(clip.image_url.split("?")[1]);
