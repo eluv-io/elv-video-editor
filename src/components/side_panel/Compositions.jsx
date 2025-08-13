@@ -363,6 +363,30 @@ export const CompositionBrowser = observer(() => {
       );
   }
 
+  const LoadMyLibraryContent = async ({start=0, limit=10}) => {
+    setLoading(true);
+    
+    try {
+      const {content, paging} = await browserStore.ListMyLibrary({
+        start,
+        limit,
+        filter,
+        type: "composition"
+      });
+
+      setMyLibraryInfo({
+        content: start === 0 ? content : [...myLibraryInfo.content, ...content],
+        paging
+      });
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const limit = 10;
   return (
     <>
       <div className={S("composition-browser-header")}>
@@ -386,34 +410,14 @@ export const CompositionBrowser = observer(() => {
         <InfiniteScroll
           key={`scroll-${selectedObjectId}-${filter}`}
           watchList={[selectedObjectId]}
-          batchSize={5}
           className={S("composition-browser__content")}
-          Update={async limit => {
+          Update={async () => {
             if(
               selectedObjectId ||
               (myLibraryInfo.paging && myLibraryInfo.paging.start >= myLibraryInfo.content.length)
             ) { return; }
 
-            setLoading(true);
-
-            try {
-              const {content, paging} = await browserStore.ListMyLibrary({
-                start: myLibraryInfo.content.length,
-                limit,
-                filter,
-                type: "composition"
-              });
-
-              setMyLibraryInfo({
-                content: [...myLibraryInfo.content, ...content],
-                paging
-              });
-            } catch(error) {
-              // eslint-disable-next-line no-console
-              console.error(error);
-            } finally {
-              setLoading(false);
-            }
+            await LoadMyLibraryContent({start: myLibraryInfo.content.length, limit});
           }}
         >
           <div className={S("composition-browser__header", "composition-browser__item")}>
@@ -478,7 +482,10 @@ export const CompositionBrowser = observer(() => {
                                 compositionKey
                               });
 
-                              setMyLibraryInfo({content: []});
+                              await LoadMyLibraryContent({
+                                start: 0,
+                                limit: myLibraryInfo.content.length - 1,
+                              });
                             } finally {
                               setDeleting(false);
                             }

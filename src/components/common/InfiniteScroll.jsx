@@ -25,7 +25,7 @@ const InfiniteScroll = observer(({
   const [loaded, setLoaded] = useState(false);
   const [update, setUpdate] = useDebouncedState(0, 250);
   const [limit, setLimit] = useDebouncedState(
-    scrollPreservationInfo[scrollPreservationKey]?.limit || batchSize,
+    (scrollPreservationKey && scrollPreservationInfo[scrollPreservationKey]?.limit) || batchSize,
     250
   );
 
@@ -57,7 +57,7 @@ const InfiniteScroll = observer(({
   }, watchList);
 
   useEffect(() => {
-    if(!loaded && scrollPreservationInfo[scrollPreservationKey]?.scroll) {
+    if(!loaded && scrollPreservationKey && scrollPreservationInfo[scrollPreservationKey]?.scroll) {
       setTimeout(() =>
           ref.current.scrollTo(0, scrollPreservationInfo[scrollPreservationKey].scroll - 100),
         100

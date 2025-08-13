@@ -110,8 +110,12 @@
   &__buttons {
     align-items: center;
     display: flex;
-    gap: 10px;
+    gap: 5px;
     margin-right: 10px;
+
+    svg {
+      color: var(--text-tertiary);
+    }
   }
 
   &__button {
@@ -901,17 +905,6 @@
     width: 100%;
   }
 
-  &__header {
-    background-color: var(--background-primary);
-    min-height: 35px;
-    position: sticky;
-    top: 0;
-
-    &:hover {
-      background-color: transparent;
-    }
-  }
-
   &__item-icon {
     height: 20px;
     width: 20px;
@@ -924,7 +917,7 @@
 
   &__item {
     align-items: center;
-    border-bottom: 1px solid var(--table-border-color);
+    border-top: 1px solid var(--table-border-color);
     display: grid;
     font-size: 14px;
     gap: 10px;
@@ -944,10 +937,21 @@
       &:hover {
         background-color: var(--background-active);
       }
+    }
+  }
 
-      &:last-child {
-        border-bottom: 0;
-      }
+  &__header {
+    background-color: var(--background-primary);
+    border-bottom: 1px solid var(--table-border-color);
+    border-top: 0;
+    height: 35px;
+    min-height: 35px;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+
+    & + .composition-browser__item {
+      border-top: 0;
     }
   }
 

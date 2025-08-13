@@ -370,7 +370,7 @@ const SourceSelection = observer(() => {
 });
 
 let filterTimeout;
-const SidebarFilter = observer(({store, label, sideContent, afterContent, delay=100, className=""}) => {
+const SidebarFilter = observer(({store, label, sideContent, rightSideContent, afterContent, delay=100, className=""}) => {
   const [filter, setFilter] = useState(store.filter);
 
   useEffect(() => {
@@ -394,17 +394,23 @@ const SidebarFilter = observer(({store, label, sideContent, afterContent, delay=
           </div>
         }
         rightSection={
-          !filter ? null :
-            <IconButton
-              noHover
-              icon={XIcon}
-              onClick={() => {
-                setFilter("");
-                store.SetFilter("");
-              }}
-              className={S("search__button")}
-            />
+          <div className={S("search__buttons")}>
+            {
+              !filter ? null :
+                <IconButton
+                  noHover
+                  icon={XIcon}
+                  onClick={() => {
+                    setFilter("");
+                    store.SetFilter("");
+                  }}
+                />
+            }
+            {rightSideContent }
+          </div>
+
         }
+        rightSectionWidth={rightSideContent ? "max-content" : undefined}
       />
       { afterContent }
     </div>
@@ -565,7 +571,7 @@ export const TagSidePanel = observer(({setElement}) => {
   return (
     <div ref={setElement} className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
-        <SidebarFilter delay={1000} sideContent={<TagSwitch />} store={tagStore} label="Search within tags" />
+        <SidebarFilter delay={1000} rightSideContent={<TagSwitch />} store={tagStore} label="Search within tags" />
         <TrackSelection mode="tags" />
         <TagsList mode="tags" />
 
@@ -602,7 +608,7 @@ export const ClipSidePanel = observer(({setElement}) => {
   return (
     <div ref={setElement} className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
-        <SidebarFilter sideContent={<TagSwitch />} store={tagStore} label="Search clips" />
+        <SidebarFilter rightSideContent={<TagSwitch />} store={tagStore} label="Search clips" />
         <TrackSelection mode="clips" />
         <TagsList mode="clips" />
         {
@@ -665,8 +671,8 @@ export const CompositionBrowserPanel = observer(() => {
         <SidebarFilter
           key="composition-browser"
           store={compositionStore}
-          label="Search Compositions"
-          //sideContent={<SearchIndexSelection />}
+          label="Filter Compositions"
+          sideContent={<SearchIndexSelection />}
         />
         <CompositionBrowser />
       </div>
