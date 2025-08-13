@@ -3,7 +3,7 @@ import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
-import {Redirect, useLocation, useParams} from "wouter";
+import {Redirect, useLocation, useParams, useSearchParams} from "wouter";
 import {groundTruthStore} from "@/stores/index.js";
 import {IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher, StorageHandler} from "@/utils/Utils.js";
@@ -192,7 +192,8 @@ const Entities = observer(({showList, filter}) => {
 
 const GroundTruthPool = observer(() => {
   const {poolId} = useParams();
-  const [filter, setFilter] = useState("");
+  const [queryParams] = useSearchParams();
+  const filter = decodeURIComponent(queryParams.get("q") || "");
   const [showEntityModal, setShowEntityModal] = useState(false);
   const [showList, setShowList] = useState(StorageHandler.get({type: "session", key: "pool-display"}) || false);
   const pool = groundTruthStore.pools[poolId] || {};
@@ -219,11 +220,8 @@ const GroundTruthPool = observer(() => {
       <div className={S("browser-page")}>
         <div className={S("browser")}>
           <SearchBar
-            filterKey="pool"
-            filterId={`${poolId}`}
+            saveByLocation
             placeholder="Label, Description, Attributes"
-            filter={filter}
-            setFilter={setFilter}
           />
           <h1 className={S("browser__header")}>
             <IconButton

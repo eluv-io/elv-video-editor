@@ -364,6 +364,7 @@ export const GroundTruthPoolForm = observer(({pool, Close}) => {
           <Modal withCloseButton={false} opened centered size={1000} onClose={() => setShowLibraryBrowser(false)}>
             <LibraryBrowser
               withFilterBar
+              filterQueryParam="pool"
               title="Select a library for your new ground truth pool"
               Select={({libraryId}) => {
                 setFormData({...formData, libraryId});

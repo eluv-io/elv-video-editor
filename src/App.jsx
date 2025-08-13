@@ -139,14 +139,14 @@ const App = observer(() => {
               <Route path="/search" nest>
                 <SearchView />
               </Route>
-              <Route path="/">
+              <Route path="/browse" nest>
                 <Browser />
               </Route>
               <Route path="/:objectId" nest>
                 <DefaultContentRoutes />
               </Route>
               <Route>
-                <Redirect to="/" />
+                <Redirect to="/browse" />
               </Route>
             </Switch>
         }

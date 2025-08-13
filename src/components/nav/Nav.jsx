@@ -41,7 +41,7 @@ const Nav = observer(() => {
     {
       label: "Source",
       key: "source",
-      to: "/",
+      to: "/browse",
       icon: SourceIcon,
       active: !rootStore.page || rootStore.page === "source"
     },

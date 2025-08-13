@@ -293,12 +293,26 @@ export const CompositionClips = observer(() => {
   );
 });
 
+let filterTimeout;
 export const CompositionBrowser = observer(() => {
+  const [filter, setFilter] = useState(compositionStore.filter);
   const [selectedObjectInfo, setSelectedObjectInfo] = useState(undefined);
   const [myLibraryInfo, setMyLibraryInfo] = useState({content: []});
   const [deleting, setDeleting] = useState(false);
   const [selectedObjectId, setSelectedObjectId] = useState(rootStore.selectedObjectId);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    clearTimeout(filterTimeout);
+    filterTimeout = setTimeout(() => {
+      setMyLibraryInfo({content: []});
+      setFilter(compositionStore.filter);
+
+      if(!selectedObjectId) {
+        setLoading(true);
+      }
+    }, 500);
+  }, [compositionStore.filter]);
 
   useEffect(() => {
     if(deleting) { return; }
@@ -343,9 +357,9 @@ export const CompositionBrowser = observer(() => {
         i === s.findIndex(other => other.objectId === objectId && other.compositionKey === compositionKey)
       )
       .filter(({name, compositionKey}) =>
-        !compositionStore.filter ||
-        name.toLowerCase().includes(compositionStore.filter.toLowerCase()) ||
-        compositionKey.toLowerCase().includes(compositionStore.filter.toLowerCase())
+        !filter ||
+        name.toLowerCase().includes(filter.toLowerCase()) ||
+        compositionKey.toLowerCase().includes(filter.toLowerCase())
       );
   }
 
@@ -370,7 +384,7 @@ export const CompositionBrowser = observer(() => {
       </div>
       <div className={S("composition-browser")}>
         <InfiniteScroll
-          key={`scroll-${selectedObjectId}`}
+          key={`scroll-${selectedObjectId}-${filter}`}
           watchList={[selectedObjectId]}
           batchSize={5}
           className={S("composition-browser__content")}
@@ -386,6 +400,7 @@ export const CompositionBrowser = observer(() => {
               const {content, paging} = await browserStore.ListMyLibrary({
                 start: myLibraryInfo.content.length,
                 limit,
+                filter,
                 type: "composition"
               });
 

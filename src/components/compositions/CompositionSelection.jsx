@@ -34,6 +34,7 @@ const SourceSelectionModal = observer(({Select, Cancel}) => {
         libraryId ?
           <ObjectBrowser
             withFilterBar
+            filterQueryParam="source"
             libraryId={libraryId}
             videoOnly
             Back={() => setLibraryId(undefined)}
@@ -42,6 +43,7 @@ const SourceSelectionModal = observer(({Select, Cancel}) => {
           /> :
           <LibraryBrowser
             withFilterBar
+            filterQueryParam="source"
             title="Select source content for your composition"
             Select={({libraryId, objectId, name}) => {
               if(objectId) {

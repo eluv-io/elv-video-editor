@@ -14,9 +14,9 @@ import {
   Loader, StyledButton
 } from "@/components/common/Common";
 import SVG from "react-inlinesvg";
-import {Redirect, useLocation} from "wouter";
+import {Redirect, Route, Switch, useParams, useLocation, useSearchParams} from "wouter";
 import UrlJoin from "url-join";
-import {Tabs, Tooltip} from "@mantine/core";
+import {Select, Tabs, Tooltip} from "@mantine/core";
 import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
 import {SearchIndexSelection} from "@/components/side_panel/SidePanel.jsx";
 
@@ -113,59 +113,48 @@ const PageControls = observer(({currentPage, pages, maxSpread=15, SetPage}) => {
   );
 });
 
-let filterPreservationInfo = {};
+let savedFilters = {};
 export const SearchBar = observer(({
-  filter,
-  setFilter,
-  delay=500,
   placeholder,
-  filterKey,
-  filterId,
+  filterQueryParam="q",
+  saveByLocation=false,
   Select,
   className=""
 }) => {
-  const [input, setInput] = useState(filter);
-  const [updateTimeout, setUpdateTimeout] = useState(undefined);
-  const [loaded, setLoaded] = useState(false);
+  const [location] = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [input, setInput] = useState(decodeURIComponent(searchParams.get(filterQueryParam) || ""));
 
-  useEffect(() => {
-    if(!filterKey) {
-      setLoaded(true);
-      return;
-    }
+  const Submit = async (input) => {
+    if(Select && ["ilib", "iq__", "hq__", "0x"].find(prefix => input.trim().startsWith(prefix))) {
+      const result = await browserStore.LookupContent(input);
+      Select(result);
 
-    if(filterPreservationInfo[filterKey]?.id === filterId) {
-      setInput(filterPreservationInfo[filterKey].value);
-      setFilter(filterPreservationInfo[filterKey].value);
+      if(saveByLocation) {
+        delete savedFilters[location];
+      }
     } else {
-      delete filterPreservationInfo[filterKey];
-    }
+      setSearchParams(prev => {
+        if(input) {
+          prev.set(filterQueryParam, encodeURIComponent(input.trim()));
+        } else {
+          prev.delete(filterQueryParam);
+        }
 
-    setLoaded(true);
-  }, []);
+        if(saveByLocation) {
+          savedFilters[location] = input.trim();
+        }
+
+        return Object.fromEntries(prev);
+      });
+    }
+  };
 
   useEffect(() => {
-    setInput(filter);
-  }, [filter]);
-
-  useEffect(() => {
-    if(!loaded) { return; }
-
-    clearTimeout(updateTimeout);
-
-    setUpdateTimeout(
-      setTimeout(() => {
-        setFilter(input);
-      }, delay)
-    );
-
-    if(filterKey) {
-      filterPreservationInfo[filterKey] = {
-        id: filterId,
-        value: input
-      };
-    }
-  }, [input, loaded]);
+    const input = savedFilters[location] || "";
+    setInput(input);
+    Submit(input);
+  }, [location]);
 
   return (
     <div className={JoinClassNames(S("search-bar-container"), className)}>
@@ -174,28 +163,31 @@ export const SearchBar = observer(({
         placeholder={placeholder || "Title, Content ID, Version Hash"}
         onChange={event => setInput(event.target.value)}
         onKeyDown={async event => {
-          if(!Select || event.key !== "Enter") { return; }
+          if(event.key !== "Enter") { return; }
 
-          if(["ilib", "iq__", "hq__", "0x"].find(prefix => event.target.value.trim().startsWith(prefix))) {
-            const result = await browserStore.LookupContent(event.target.value);
-
-            Select(result);
-          }
+          Submit(input);
         }}
         className={S("search-bar")}
       />
-      {
-        !filter ? null :
-          <IconButton
-            label="Clear Filter"
-            icon={XIcon}
-            onClick={() => {
-              setInput("");
-              setFilter("");
-            }}
-            className={S("search-bar-container__button-right")}
-          />
-      }
+      <div className={S("search-bar-container__right-buttons")}>
+        <IconButton
+          label="Filter Results"
+          icon={SearchIcon}
+          onClick={() => Submit(input)}
+        />
+
+        {
+          !input ? null :
+            <IconButton
+              label="Clear Filter"
+              icon={XIcon}
+              onClick={() => {
+                setInput("");
+                Submit("");
+              }}
+            />
+        }
+      </div>
     </div>
   );
 });
@@ -334,9 +326,23 @@ export const CardDisplaySwitch = observer(({showList, setShowList}) => {
   );
 });
 
-export const AISearchBar = observer(({basePath="/search", initialQuery=""}) => {
+export const AISearchBar = observer(({basePath="~/search", initialQuery=""}) => {
   const [input, setInput] = useState(initialQuery);
   const [,navigate] = useLocation();
+
+  const Submit = async () => {
+    if(!input) { return; }
+
+    if(["ilib", "iq__", "hq__", "0x"].find(prefix => input.trim().startsWith(prefix))) {
+      const item = await browserStore.LookupContent(input);
+
+      if(item && Object.keys(item).length > 0) {
+        return ContentBrowserSelect({item, navigate});
+      }
+    }
+
+    navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
+  };
 
   return (
     <div className={S("search-bar-container", "search-bar-container--ai")}>
@@ -351,17 +357,20 @@ export const AISearchBar = observer(({basePath="/search", initialQuery=""}) => {
         onKeyDown={async event => {
           if(!input || event.key !== "Enter") { return; }
 
-          navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
+          Submit();
+          //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
         }}
         className={S("search-bar", "search-bar--ai")}
       />
-      <IconButton
-        label="Search"
-        icon={SearchArrowIcon}
-        noHover
-        onClick={() => input && navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)))}
-        className={S("search-bar-container__button-right")}
-      />
+      <div className={S("search-bar-container__right-buttons")}>
+        <IconButton
+          label="Search"
+          icon={SearchArrowIcon}
+          noHover
+          //onClick={() => input && navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)))}
+          onClick={Submit}
+        />
+      </div>
     </div>
   );
 });
@@ -661,24 +670,20 @@ export const BrowserTable = observer(({
 
 const CompositionBrowser = observer(({
   selectedObject,
-  externalFilter = "",
   withFilterBar,
   Select,
   Back,
   className = ""
 }) => {
-  const [filter, setFilter] = useState("");
+  const [queryParams] = useSearchParams();
+  const filter = decodeURIComponent(queryParams.get("q") || "");
   const [deletedChannels, setDeletedChannels] = useState([]);
-
-  useEffect(() => {
-    setFilter(externalFilter);
-  }, [externalFilter]);
 
   return (
     <div className={JoinClassNames(S("browser", "browser--channel"), className)}>
       {
         !withFilterBar ? null :
-          <SearchBar filter={filter} setFilter={setFilter} Select={Select}/>
+          <SearchBar Select={Select} />
       }
       <h1 className={S("browser__header")}>
         <IconButton
@@ -746,8 +751,8 @@ const CompositionBrowser = observer(({
 export const ObjectBrowser = observer(({
   libraryId,
   title,
-  externalFilter="",
   withFilterBar,
+  filterQueryParam="q",
   Select,
   Path,
   Back,
@@ -757,16 +762,13 @@ export const ObjectBrowser = observer(({
   noDuration,
   className=""
 }) => {
-  const [filter, setFilter] = useState("");
+  const [queryParams] = useSearchParams();
+  const filter = decodeURIComponent(queryParams.get(filterQueryParam) || "");
 
   useEffect(() => {
     // Ensure libraries are loaded
     browserStore.ListLibraries({});
   }, []);
-
-  useEffect(() => {
-    setFilter(externalFilter);
-  }, [externalFilter]);
 
   const library = browserStore.libraries?.[libraryId];
 
@@ -774,7 +776,7 @@ export const ObjectBrowser = observer(({
     <div className={JoinClassNames(S("browser", "browser--object"), className)}>
       {
         !withFilterBar ? null :
-          <SearchBar filter={filter} setFilter={setFilter} Select={Select} />
+          <SearchBar filterQueryParam={filterQueryParam} Select={Select} />
       }
       <h1 className={S("browser__header")}>
         <IconButton
@@ -805,23 +807,20 @@ export const ObjectBrowser = observer(({
 
 export const LibraryBrowser = observer(({
   title,
-  externalFilter="",
   withFilterBar="",
+  filterQueryParam="q",
   Path,
   Select,
   className=""
 }) => {
-  const [filter, setFilter] = useState("");
-
-  useEffect(() => {
-    setFilter(externalFilter);
-  }, [externalFilter]);
+  const [queryParams] = useSearchParams();
+  const filter = decodeURIComponent(queryParams.get(filterQueryParam) || "");
 
   return (
     <div className={JoinClassNames(S("browser", "browser--library"), className)}>
       {
         !withFilterBar ? null :
-          <SearchBar filter={filter} setFilter={setFilter} Select={Select}/>
+          <SearchBar filterQueryParam={filterQueryParam} Select={Select} />
       }
       {
         !title ? null :
@@ -841,45 +840,52 @@ export const LibraryBrowser = observer(({
   );
 });
 
-const ContentBrowserSelect = ({item, setSelectedLibraryId, setSelectedObject, setRedirect}) => {
+const ContentBrowserSelect = ({item, navigate}) => {
+  let path = "/";
   if(item.libraryId) {
-    setSelectedLibraryId(item.libraryId);
+    path = UrlJoin("/", item.libraryId);
   }
 
-  if(!item.objectId) { return; }
+  if(item.objectId) {
+    if(item.isLiveStream) {
+      if(!item.vods || Object.keys(item.vods).length === 0) {
+        // No vods, must create new
+        browserStore.SetLiveToVodFormFields({
+          liveStreamLibraryId: item.libraryId,
+          liveStreamId: item.objectId
+        });
+      }
 
-  if(item.isLiveStream) {
-    if(!item.vods || Object.keys(item.vods).length === 0) {
-      // No vods, must create new
-      browserStore.SetLiveToVodFormFields({
-        liveStreamLibraryId: item.libraryId,
-        liveStreamId: item.objectId
-      });
+      path = UrlJoin("~/", Object.keys(item.vods)[0]);
+    } else if(!item.isVideo) {
+      path = UrlJoin("~/", item.objectId, "assets");
+    } else if(item.hasChannels) {
+      path = UrlJoin(path, item.objectId);
+    } else {
+      path = UrlJoin("~/", item.objectId);
+    }
+  }
+
+  navigate(path);
+};
+
+const ContentBrowser = observer(({setSelect}) => {
+  const [, navigate] = useLocation();
+  const {libraryId, objectId} = useParams();
+
+  const [selectedObject, setSelectedObject] = useState(undefined);
+
+  useEffect(() => {
+    if(!objectId) {
+      setSelectedObject(undefined);
       return;
     }
 
-    setRedirect(UrlJoin("/", Object.keys(item.vods)[0]));
-    return;
-  }
+    browserStore.ObjectDetails({objectId})
+      .then(setSelectedObject);
+  }, [objectId]);
 
-  if(!item.isVideo) {
-    setRedirect(UrlJoin("/", item.objectId, "assets"));
-    return;
-  }
-
-  if(item.hasChannels) {
-    setSelectedObject(item);
-  } else {
-    setRedirect(UrlJoin("/", item.objectId));
-  }
-};
-
-const ContentBrowser = observer(({filter, setFilter, setSelect}) => {
-  const [selectedLibraryId, setSelectedLibraryId] = useState(undefined);
-  const [selectedObject, setSelectedObject] = useState(undefined);
-  const [redirect, setRedirect] = useState(undefined);
-
-  const Select = item => ContentBrowserSelect({item, setSelectedLibraryId, setSelectedObject, setRedirect});
+  const Select = item => ContentBrowserSelect({item, navigate});
 
   useEffect(() => {
     rootStore.SetPage("source");
@@ -887,45 +893,37 @@ const ContentBrowser = observer(({filter, setFilter, setSelect}) => {
     setSelect(() => Select);
   }, []);
 
-  useEffect(() => {
-    setFilter?.("");
-  }, [selectedLibraryId, selectedObject?.objectId]);
+  if(objectId) {
+    if(!selectedObject) { return null; }
 
-  if(redirect) {
-    return <Redirect to={redirect} />;
-  }
-
-  if(selectedObject) {
     return (
       <CompositionBrowser
-        externalFilter={filter}
         selectedObject={selectedObject}
-        Back={() => setSelectedObject(undefined)}
+        Back={() => navigate(UrlJoin("/", libraryId))}
         Select={({objectId, compositionKey}) => {
           compositionStore.Reset();
-          setRedirect(
+          navigate(
             compositionKey ?
-              UrlJoin("/compositions", objectId, compositionKey) :
-              UrlJoin("/", objectId)
+              UrlJoin("~/compositions", objectId, compositionKey) :
+              UrlJoin("~/", objectId)
           );
         }}
       />
     );
   }
 
-  if(selectedLibraryId) {
+  if(libraryId) {
     return (
       <ObjectBrowser
-        externalFilter={filter}
-        key={`browser-${selectedLibraryId}`}
-        libraryId={selectedLibraryId}
-        Back={() => setSelectedLibraryId(undefined)}
+        key={`browser-${libraryId}`}
+        libraryId={libraryId}
+        Back={() => navigate("/")}
         Select={Select}
       />
     );
   }
 
-  return <LibraryBrowser externalFilter={filter} Select={Select} />;
+  return <LibraryBrowser Select={Select} />;
 });
 
 const MyLibrarySelect = ({id, objectId, isVideo, setRedirect}) => {
@@ -934,16 +932,18 @@ const MyLibrarySelect = ({id, objectId, isVideo, setRedirect}) => {
   if(!item) { return; }
 
   if(item.compositionKey) {
-    setRedirect(UrlJoin("/compositions", item.objectId, item.compositionKey));
+    setRedirect(UrlJoin("~/compositions", item.objectId, item.compositionKey));
   } else if(!item.isVideo) {
-    setRedirect(UrlJoin("/", item.objectId, "assets"));
+    setRedirect(UrlJoin("~/", item.objectId, "assets"));
   } else {
-    setRedirect(UrlJoin("/", item.objectId));
+    setRedirect(UrlJoin("~/", item.objectId));
   }
 };
 
-const MyLibraryBrowser = observer(({setSelect, externalFilter="", withFilterBar}) => {
-  const [filter, setFilter] = useState("");
+const MyLibraryBrowser = observer(({setSelect, withFilterBar}) => {
+  const [queryParams] = useSearchParams();
+  const filter = decodeURIComponent(queryParams.get("q") || "");
+
   const [redirect, setRedirect] = useState(undefined);
 
   const Select = args => MyLibrarySelect({...args, setRedirect});
@@ -951,10 +951,6 @@ const MyLibraryBrowser = observer(({setSelect, externalFilter="", withFilterBar}
   useEffect(() => {
     setSelect(() => Select);
   }, []);
-
-  useEffect(() => {
-    setFilter(externalFilter);
-  }, [externalFilter]);
 
   if(redirect) {
     return <Redirect to={redirect} />;
@@ -964,7 +960,7 @@ const MyLibraryBrowser = observer(({setSelect, externalFilter="", withFilterBar}
     <div className={S("browser", "browser--my-library")}>
       {
         !withFilterBar ? null :
-          <SearchBar filter={filter} setFilter={setFilter} Select={Select} />
+          <SearchBar Select={Select} />
       }
       <BrowserTable
         filter={filter}
@@ -1019,10 +1015,10 @@ const ActiveItem = observer(() => {
   );
 });
 
-const BrowserPage = observer(() => {
-  const [tab, setTab] = useState("content");
+const BrowserPage = observer(({Component}) => {
   const [filter, setFilter] = useState("");
   const [select, setSelect] = useState(undefined);
+  const [location, navigate] = useLocation();
 
   if(browserStore.liveToVodFormFields.liveStreamId) {
     return <LiveToVodForm />;
@@ -1032,35 +1028,31 @@ const BrowserPage = observer(() => {
     <div className={S("browser-page")}>
       <AISearchBar />
       <div className={S("browser-page__filters")}>
-        <Tabs value={tab} onChange={setTab} color="var(--text-secondary)">
+        <Tabs value={location} onChange={navigate} color="var(--text-secondary)">
           <Tabs.List fz={24} fw={800}>
-            <Tabs.Tab px="xs" mr="sm" value="content" className={tab !== "content" ? S("tab--inactive") : ""}>
+            <Tabs.Tab px="xs" mr="sm" value="/" className={location.includes("my-library") ? S("tab--inactive") : ""}>
               Content
             </Tabs.Tab>
-            <Tabs.Tab px="xs" value="my-library" className={tab !== "my-library" ? S("tab--inactive") : ""}>
+            <Tabs.Tab px="xs" value="/my-library" className={!location.includes("my-library") ? S("tab--inactive") : ""}>
               My Library
             </Tabs.Tab>
           </Tabs.List>
         </Tabs>
         <SearchBar
-          filter={filter}
-          setFilter={setFilter}
+          saveByLocation
           Select={select}
           className={S("browser-page__filter-input")}
         />
       </div>
       <ActiveItem />
-      {
-        tab === "content" ?
-          <ContentBrowser filter={filter} setFilter={setFilter} setSelect={setSelect} /> :
-          <MyLibraryBrowser filter={filter} setSelect={setSelect} />
-      }
+      <Component filter={filter} setFilter={setFilter} setSelect={setSelect} Select={Select} />
     </div>
   );
 });
 
 export const GroundTruthPoolBrowser = observer(() => {
-  const [filter, setFilter] = useState("");
+  const [queryParams] = useSearchParams();
+  const filter = decodeURIComponent(queryParams.get("q") || "");
   const [redirect, setRedirect] = useState(undefined);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -1091,7 +1083,7 @@ export const GroundTruthPoolBrowser = observer(() => {
           />
       }
       <div className={S("browser", "browser--ground-truth")}>
-        <SearchBar filter={filter} setFilter={setFilter} Select={Select}/>
+        <SearchBar saveByLocation Select={Select}/>
         <h1 className={S("browser__header")}>All Ground Truth</h1>
         <div className={S("browser__actions")}>
           <StyledButton
@@ -1124,4 +1116,17 @@ export const GroundTruthPoolBrowser = observer(() => {
   );
 });
 
-export default BrowserPage;
+const BrowserRoutes = observer(() => {
+  return (
+    <Switch>
+      <Route exact path="/my-library">
+        <BrowserPage Component={MyLibraryBrowser} />
+      </Route>
+      <Route exact path="/:libraryId?/:objectId?">
+        <BrowserPage Component={ContentBrowser} />
+      </Route>
+    </Switch>
+  );
+});
+
+export default BrowserRoutes;

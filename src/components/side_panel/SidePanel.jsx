@@ -55,6 +55,7 @@ const SearchIndexBrowseModal = observer(({Select, Cancel}) => {
         libraryId ?
           <ObjectBrowser
             withFilterBar
+            filterQueryParam="index"
             libraryId={libraryId}
             noDuration
             Back={() => setLibraryId(undefined)}
@@ -63,6 +64,7 @@ const SearchIndexBrowseModal = observer(({Select, Cancel}) => {
           /> :
           <LibraryBrowser
             withFilterBar
+            filterQueryParam="index"
             title="Select search index"
             Select={({libraryId, objectId, name}) => {
               if(objectId) {
@@ -255,6 +257,7 @@ const SourceSelectionModal = observer(({Select, Cancel}) => {
         libraryId ?
           <ObjectBrowser
             withFilterBar
+            filterQueryParam="source"
             libraryId={libraryId}
             videoOnly
             Back={() => setLibraryId(undefined)}
@@ -263,6 +266,7 @@ const SourceSelectionModal = observer(({Select, Cancel}) => {
           /> :
           <LibraryBrowser
             withFilterBar
+            filterQueryParam="source"
             title="Select source content for your composition"
             Select={({libraryId, objectId, name}) => {
               if(objectId) {
@@ -662,7 +666,7 @@ export const CompositionBrowserPanel = observer(() => {
           key="composition-browser"
           store={compositionStore}
           label="Search Compositions"
-          sideContent={<SearchIndexSelection />}
+          //sideContent={<SearchIndexSelection />}
         />
         <CompositionBrowser />
       </div>

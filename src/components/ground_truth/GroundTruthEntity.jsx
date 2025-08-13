@@ -3,7 +3,7 @@ import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
-import {Redirect, useParams} from "wouter";
+import {Redirect, useParams, useSearchParams} from "wouter";
 import {groundTruthStore} from "@/stores/index.js";
 import {IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher, StorageHandler} from "@/utils/Utils.js";
@@ -180,8 +180,8 @@ const Assets = observer(({filter, showList, updateIndex, setUpdateIndex}) => {
 
 const GroundTruthEntity = observer(() => {
   const {poolId, entityId} = useParams();
-
-  const [filter, setFilter] = useState("");
+  const [queryParams] = useSearchParams();
+  const filter = decodeURIComponent(queryParams.get("q") || "");
   const [showList, setShowList] = useState(StorageHandler.get({type: "session", key: "entity-display"}) || false);
   const [updateIndex, setUpdateIndex] = useState(0);
 
@@ -221,11 +221,8 @@ const GroundTruthEntity = observer(() => {
       <div className={S("browser-page")}>
         <div className={S("browser")}>
           <SearchBar
-            filterKey="entity"
-            filterId={`${poolId}-${entityId}`}
             placeholder="Label, Description, Filename"
-            filter={filter}
-            setFilter={setFilter}
+            saveByLocation
           />
           <h1 className={S("browser__header")}>
             <IconButton

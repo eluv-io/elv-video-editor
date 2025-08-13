@@ -924,12 +924,14 @@
 
   &__item {
     align-items: center;
+    border-bottom: 1px solid var(--table-border-color);
     display: grid;
     font-size: 14px;
     gap: 10px;
     grid-template-columns: 20px 2fr 1fr 30px;
     height:  50px;
     justify-content: space-between;
+    min-height: 50px;
     padding: 5px 10px 5px 5px;
     text-align: left;
     transition: background-color 0.15s ease;
@@ -942,15 +944,16 @@
       &:hover {
         background-color: var(--background-active);
       }
-    }
 
-    &:not(:last-child) {
-      border-bottom: 1px solid var(--table-border-color);
+      &:last-child {
+        border-bottom: 0;
+      }
     }
   }
 
   &__loader {
-    margin-top: 20px;
+    height: 30px;
+    margin-top: 50px;
   }
 }
 
