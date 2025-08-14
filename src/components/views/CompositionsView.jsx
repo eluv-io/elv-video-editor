@@ -42,13 +42,13 @@ const CompositionsView = observer(() => {
     // Selection view
     return (
       <PanelGroup direction="vertical" className="panel-group">
-        <Panel id="top" order={1} minSize={30} defaultSize={30}>
+        <Panel id="top" order={1} minSize={30} defaultSize={45}>
           <PanelGroup direction="horizontal" className="panel-group">
             <Panel id="browser" order={1}>
               <CompositionBrowserPanel />
             </Panel>
             <PanelResizeHandle />
-            <Panel id="video" order={2} defaultSize={50}>
+            <Panel id="video" order={2} defaultSize={55}>
               <CompositionVideoSection store={compositionStore.videoStore} blank />
             </Panel>
           </PanelGroup>
@@ -70,7 +70,7 @@ const CompositionsView = observer(() => {
       <PanelGroup direction="vertical" className="panel-group">
         <Panel id="top" minSize={35} order={1} defaultSize={65}>
           <PanelGroup direction="horizontal" className="panel-group">
-            <Panel id="side-panel" order={1} defaultSize={25}>
+            <Panel id="side-panel" order={1} defaultSize={33}>
               <CompositionSidePanel />
             </Panel>
             <PanelResizeHandle />

@@ -13,6 +13,8 @@ import {ShareModal} from "@/components/download/Share.jsx";
 import {DownloadModal} from "@/components/download/Download.jsx";
 import {Tabs} from "@mantine/core";
 import {AISearchBar} from "@/components/nav/Browser.jsx";
+import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
+import {SearchResults} from "@/components/search/SearchResults.jsx";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 import PlayIcon from "@/assets/icons/Play.svg";
@@ -26,6 +28,7 @@ import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 
 import AIImageGray from "@/assets/images/composition-manual.svg";
 import AIImageColor from "@/assets/images/composition-ai.svg";
+
 
 const S = CreateModuleClassMatcher(BrowserStyles, SearchStyles);
 
@@ -182,9 +185,6 @@ const ClipResultPanel = observer(({result}) => {
             }
           </div>
           <div className={S("result__actions--right")}>
-            <CopyableField value={result.objectId} showOnHover className={S("result__id")}>
-              {result.objectId}
-            </CopyableField>
             <StyledButton
               small
               variant="subtle"
@@ -284,9 +284,6 @@ const ImageResultPanel = observer(({result}) => {
           </Tabs.List>
         </Tabs>
         <div className={S("result__tab-container--right")}>
-          <CopyableField value={result.objectId} showOnHover className={S("result__id")}>
-            {result.objectId}
-          </CopyableField>
           <StyledButton
             small
             variant="subtle"
@@ -340,14 +337,14 @@ const SearchResult = observer(() => {
       rootStore.searchVideoStore.SetVideo({objectId: result.objectId})
         .then(() => rootStore.searchVideoStore.SetClipMark({inTime: result.startTime, outTime: result.endTime}));
     }
-  }, [result]);
+  }, [result, queryB58, resultIndex]);
 
   if(!result) {
     return <Redirect to={`/${queryB58}`} />;
   }
 
   return (
-    <div className={S("browser-page")}>
+    <div key={`result-${queryB58}-${resultIndex}`} className={S("browser-page")}>
       <div className={S("browser")}>
         <AISearchBar basePath="/" initialQuery={query} />
         <h1 className={S("browser__header")}>
@@ -372,32 +369,19 @@ const SearchResult = observer(() => {
             </CopyableField>
           </div>
         </h1>
-        <div className={S("result-page")}>
-          {
-            result.type === "video" ?
-              <ClipResultPanel result={result} /> :
-              <ImageResultPanel result={result} />
-          }
-          {
-
-          /*
-          <PanelGroup direction="horizontal" className="panel-group">
-            <Panel collapsible id="side-panel" order={1} minSize={30} defaultSize={40} >
-              <SidePanel />
-            </Panel>
-            <PanelResizeHandle />
-            <Panel id="content" order={2} minSize={30}>
+        <PanelGroup direction="horizontal" className={S("result-page")}>
+          <Panel id="side-panel" order={1} minSize={25} defaultSize={35} >
+            <SearchResults className={S("result-page__side-panel")} />
+          </Panel>
+          <PanelResizeHandle />
+          <Panel id="content" order={2} minSize={30}>
               {
                 result.type === "video" ?
                   <ClipResultPanel result={result} /> :
                   <ImageResultPanel result={result} />
               }
-            </Panel>
-          </PanelGroup>
-
-           */
-          }
-        </div>
+          </Panel>
+        </PanelGroup>
       </div>
     </div>
   );

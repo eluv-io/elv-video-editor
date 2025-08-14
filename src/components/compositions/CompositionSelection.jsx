@@ -8,18 +8,16 @@ import {
   FormNumberInput,
   FormSelect,
   FormTextInput,
-  IconButton,
   Loader,
   Modal
 } from "@/components/common/Common.jsx";
 import {LibraryBrowser, ObjectBrowser} from "@/components/nav/Browser.jsx";
 import {Redirect} from "wouter";
-import {rootStore, compositionStore} from "@/stores/index.js";
+import {rootStore, compositionStore, aiStore} from "@/stores/index.js";
 import {Button, Checkbox, Group} from "@mantine/core";
 import UrlJoin from "url-join";
 import {LoadVideo} from "@/stores/Helpers.js";
 
-import BackIcon from "@/assets/icons/v2/back.svg";
 import ManualCompositionSelectionImage from "@/assets/images/composition-manual.svg";
 import AICompositionSelectionImage from "@/assets/images/composition-ai.svg";
 
@@ -59,8 +57,7 @@ const SourceSelectionModal = observer(({Select, Cancel}) => {
   );
 });
 
-let keyCheckTimeout;
-const CompositionSelection = observer(() => {
+const CompositionCreationModal = observer(({type, Cancel}) => {
   const [showSourceModal, setShowSourceModal] = useState(false);
   const [keyExists, setKeyExists] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -69,7 +66,6 @@ const CompositionSelection = observer(() => {
   const [options, setOptions] = useState({
     creating: false,
     created: false,
-    type: undefined,
     sourceId: rootStore.selectedObjectId,
     sourceName: rootStore.selectedObjectName,
     name: "",
@@ -92,7 +88,6 @@ const CompositionSelection = observer(() => {
     compositionStore.SetCompositionFormOptions({...options});
   }, [options]);
 
-  // TODO: Select source offering
   useEffect(() => {
     clearTimeout(keyCheckTimeout);
 
@@ -140,7 +135,7 @@ const CompositionSelection = observer(() => {
         <div className={S("composition-selection__creating")}>
           <div className={S("composition-selection__title")}>
             {
-              options.type === "ai" ?
+              type === "ai" ?
                 "Generating AI Highlights..." :
                 "Initializing Composition..."
             }
@@ -170,41 +165,11 @@ const CompositionSelection = observer(() => {
           <Button
             color="gray.5"
             autoContrast
-            onClick={() => setErrorMessage("")}
+            onClick={Cancel}
           >
             Back
           </Button>
         </div>
-      </div>
-    );
-  }
-
-  // Composition type selection
-  if(!options.type) {
-    return (
-      <div key="selection" className={S("composition-selection")}>
-        <button onClick={() => setOptions({...options, type: "manual"})} className={S("selection-block", "selection-block--manual")}>
-          <img src={ManualCompositionSelectionImage} className={S("selection-block__image")}/>
-          <div className={S("selection-block__text")}>
-            <div className={S("selection-block__title")}>
-              Choose a Source & Create
-            </div>
-            <div className={S("selection-block__subtitle")}>
-              Pick a source and build your composition your way.
-            </div>
-          </div>
-        </button>
-        <button onClick={() => setOptions({...options, type: "ai"})} className={S("selection-block", "selection-block--ai")}>
-          <img src={AICompositionSelectionImage} className={S("selection-block__image")}/>
-          <div className={S("selection-block__text")}>
-            <div className={S("selection-block__title")}>
-              Create Compositions with AI
-            </div>
-            <div className={S("selection-block__subtitle")}>
-              Let AI give you a head start on highlight compositions.
-            </div>
-          </div>
-        </button>
       </div>
     );
   }
@@ -223,11 +188,6 @@ const CompositionSelection = observer(() => {
     <div key="form" className={S("composition-selection")}>
       <form onSubmit={event => event.preventDefault()} className={S("composition-form")}>
         <div className={S("composition-form__title")}>
-          <IconButton
-            type="button"
-            icon={BackIcon}
-            onClick={() => setOptions({...options, type: undefined})}
-          />
           {
             options.type === "manual" ?
               "Create Composition" :
@@ -274,8 +234,18 @@ const CompositionSelection = observer(() => {
             />
         }
         {
-          options.type !== "ai" ? null :
+          type !== "ai" ? null :
             <>
+              <FormSelect
+                label="Search Index"
+                value={aiStore.selectedSearchIndexId}
+                onChange={value => aiStore.SetSelectedSearchIndex(value)}
+                options={
+                  aiStore.searchIndexes.map(searchIndex =>
+                    ({label: searchIndex.name || "", value: searchIndex.id})
+                  )
+                }
+              />
               <FormNumberInput
                 label="Maximum Duration (seconds)"
                 placeholder="Automatic"
@@ -300,6 +270,14 @@ const CompositionSelection = observer(() => {
             </>
         }
         <div className={S("composition-form__actions")}>
+          <Button
+            color="gray.6"
+            variant="subtle"
+            w={150}
+            onClick={Cancel}
+          >
+            Cancel
+          </Button>
           <AsyncButton
             tooltip={error}
             disabled={!!error || !sourceInfo}
@@ -312,7 +290,7 @@ const CompositionSelection = observer(() => {
 
               try {
                 await compositionStore.CreateComposition({
-                  type: options.type,
+                  type,
                   sourceObjectId: options.sourceId,
                   name: options.name,
                   key,
@@ -333,7 +311,7 @@ const CompositionSelection = observer(() => {
             }}
           >
             {
-              options.type === "manual" ?
+              type === "manual" ?
                 "Create" : "Generate"
             }
           </AsyncButton>
@@ -351,6 +329,56 @@ const CompositionSelection = observer(() => {
           />
       }
     </div>
+  );
+});
+
+let keyCheckTimeout;
+const CompositionSelection = observer(() => {
+  const [type, setType] = useState(undefined);
+
+  return (
+    <>
+      <div key="selection" className={S("composition-selection")}>
+        <button onClick={() => setType("manual")} className={S("selection-block", "selection-block--manual")}>
+          <img src={ManualCompositionSelectionImage} className={S("selection-block__image")}/>
+          <div className={S("selection-block__text")}>
+            <div className={S("selection-block__title")}>
+              Choose a Source & Create
+            </div>
+            <div className={S("selection-block__subtitle")}>
+              Pick a source and build your composition your way.
+            </div>
+          </div>
+        </button>
+        <button onClick={() => setType("ai")} className={S("selection-block", "selection-block--ai")}>
+          <img src={AICompositionSelectionImage} className={S("selection-block__image")}/>
+          <div className={S("selection-block__text")}>
+            <div className={S("selection-block__title")}>
+              Create Compositions with AI
+            </div>
+            <div className={S("selection-block__subtitle")}>
+              Let AI give you a head start on highlight compositions.
+            </div>
+          </div>
+        </button>
+      </div>
+      {
+        !type ? null :
+          <Modal
+            withCloseButton={false}
+            alwaysOpened
+            centered
+            size={600}
+            padding={0}
+            onClose={() => setType(undefined)}
+          >
+            <CompositionCreationModal
+              type={type}
+              Cancel={() => setType(undefined)}
+            />
+          </Modal>
+      }
+    </>
   );
 });
 

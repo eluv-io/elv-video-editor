@@ -655,7 +655,7 @@ export const CompositionSidePanel = observer(() => {
           sideContent={<SearchIndexSelection />}
           afterContent={<SourceSelection />}
           store={compositionStore}
-          label="Search Clips"
+          label="Search"
           className={S("search--ai")}
         />
         <CompositionClips />
@@ -672,7 +672,7 @@ export const CompositionBrowserPanel = observer(() => {
           key="composition-browser"
           store={compositionStore}
           label="Filter Compositions"
-          sideContent={<SearchIndexSelection />}
+          className={S("search__input--filter")}
         />
         <CompositionBrowser />
       </div>

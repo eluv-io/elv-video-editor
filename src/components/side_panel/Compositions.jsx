@@ -14,7 +14,6 @@ import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import ClipIcon from "@/assets/icons/v2/clip.svg";
 import VideoIcon from "@/assets/icons/v2/video.svg";
 import CompositionIcon from "@/assets/icons/v2/composition.svg";
-import AISparkleIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import XIcon from "@/assets/icons/X.svg";
 import TagIcon from "@/assets/icons/v2/tag.svg";
 import DeleteIcon from "@/assets/icons/trash.svg";
@@ -226,9 +225,8 @@ const AIClips = observer(() => {
       key={`ai-clips-${compositionStore.selectedSourceId}`}
       noFilter
       groupKey="ai"
-      icon={AISparkleIcon}
       showTagLinks
-      title={compositionStore.filter ? "Results" : "Suggestions"}
+      title={compositionStore.filter ? "Results" : "Selected Candidates"}
       subtitle={!compositionStore.filter ? "Prompt" : ""}
       clipIds={clipIds}
       loading={loading}

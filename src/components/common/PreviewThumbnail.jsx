@@ -14,7 +14,7 @@ const PreviewThumbnail = observer(({
   useLoaderImage,
   baseImageUrl,
   showDuration=true,
-  maxThumbnails=50,
+  maxThumbnails=20,
   loadingClassName,
   ...props
 }) => {

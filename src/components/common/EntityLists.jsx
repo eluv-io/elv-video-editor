@@ -5,7 +5,7 @@ import {CopyableField, Icon, Linkish, LoaderImage} from "@/components/common/Com
 import ImageIcon from "@/assets/icons/picture.svg";
 import AnchorIcon from "@/assets/icons/v2/anchor.svg";
 import {Menu, Tooltip} from "@mantine/core";
-import {CreateModuleClassMatcher, SP} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, JoinClassNames, SP} from "@/utils/Utils.js";
 import React, {useState} from "react";
 import MenuIcon from "@/assets/icons/v2/dots-vertical.svg";
 
@@ -145,10 +145,12 @@ export const EntityCard = observer(({
   anchor,
   actions,
   tooltip,
-  aspectRatio="square"
+  aspectRatio="square",
+  onRender,
+  className=""
 }) => {
   return (
-    <div className={S("entity-card", `entity-card--${aspectRatio}`)}>
+    <div ref={onRender} className={JoinClassNames(S("entity-card", `entity-card--${aspectRatio}`), className)}>
       <Linkish
         to={link}
         className={S("entity-card__image-container")}

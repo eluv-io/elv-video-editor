@@ -6,7 +6,7 @@ import React, {useEffect, useState} from "react";
 import {useParams} from "wouter";
 import {aiStore} from "@/stores/index.js";
 import {IconButton} from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher, ScaleImage, StorageHandler} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, JoinClassNames, ScaleImage, StorageHandler} from "@/utils/Utils.js";
 import {AISearchBar, CardDisplaySwitch} from "@/components/nav/Browser.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import UrlJoin from "url-join";
@@ -17,28 +17,41 @@ import BackIcon from "@/assets/icons/v2/back.svg";
 const S = CreateModuleClassMatcher(BrowserStyles, SearchStyles);
 
 let batchSize = 36;
-const Results = observer(({showList}) => {
-  let {queryB58} = useParams();
+export const SearchResults = observer(({showList, preserveScrollPosition, className=""}) => {
+  let {queryB58, resultIndex} = useParams();
   const query = aiStore.client.utils.FromB58ToStr(queryB58);
 
   if(!aiStore.searchIndex) { return null; }
+
+  resultIndex = typeof resultIndex === "undefined" ? undefined : parseInt(resultIndex);
 
   let Component = showList ? EntityListItem : EntityCard;
   return (
     <InfiniteScroll
       key={`scroll-${showList}-${aiStore.searchIndex?.versionHash}-${queryB58}`}
-      scrollPreservationKey={`search-${aiStore.searchIndex?.versionHash}-${queryB58}`}
+      scrollPreservationKey={preserveScrollPosition ? `search-${aiStore.searchIndex?.versionHash}-${queryB58}` : undefined}
       withLoader
       watchList={[query, aiStore.selectedSearchIndexId]}
-      batchSize={batchSize}
+      batchSize={
+        resultIndex ? Math.max(resultIndex + 10, batchSize) :
+          batchSize
+      }
       Update={async () => await aiStore.Search({query, limit: batchSize})}
-      className={S(showList ? "entity-list" : "entity-grid")}
+      className={JoinClassNames(S(showList ? "entity-list" : "entity-grid"), className)}
     >
       {
         (aiStore.searchResults.results || []).map((result, index) =>
           <Component
             listItem={showList}
             key={`result-${index}`}
+            onRender={
+              resultIndex !== index ? undefined :
+                element => setTimeout(() =>
+                  element.parentElement.scrollTo({
+                    top: element.getBoundingClientRect().top - 200
+                  })
+                , 100)
+            }
             link={UrlJoin("/", queryB58, index.toString())}
             id={result.objectId}
             label={result.name}
@@ -46,6 +59,10 @@ const Results = observer(({showList}) => {
             subtitle={result.subtitle}
             image={ScaleImage(result.imageUrl, 100)}
             contain
+            className={
+              index !== resultIndex ? null :
+                S("search-result--selected")
+            }
           />
         )
       }
@@ -53,7 +70,7 @@ const Results = observer(({showList}) => {
   );
 });
 
-const SearchResults = observer(() => {
+const SearchResultsPage = observer(() => {
   const [showList, setShowList] = useState(StorageHandler.get({type: "session", key: "search-display"}) || false);
 
   let {queryB58} = useParams();
@@ -95,11 +112,15 @@ const SearchResults = observer(() => {
           />
         </h1>
         <div className={S("list-page", "list-page--search")}>
-          <Results key={`${aiStore.selectedSearchIndexId}-${queryB58}`} showList={showList} />
+          <SearchResults
+            key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
+            preserveScrollPosition
+            showList={showList}
+          />
         </div>
       </div>
     </div>
   );
 });
 
-export default SearchResults;
+export default SearchResultsPage;

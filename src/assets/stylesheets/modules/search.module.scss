@@ -1,5 +1,22 @@
+.search-result {
+  &--selected {
+    border: 1px solid var(--color-highlight);
+    border-radius: 5px;
+    box-shadow: 0 0 6px var(--color-highlight);
+    padding: 5px;
+  }
+}
+
 .result-page {
+  max-height: calc(100vh - 125px);
+  overflow: hidden;
   padding-top: 10px;
+
+
+  &__side-panel {
+    margin-right: 10px;
+    padding: 0 5px 50px;
+  }
 }
 
 .result {
@@ -158,6 +175,7 @@
   display: flex;
   gap: 20px;
   height: 135px;
+  margin-inline: auto;
   margin-top: 15px;
   max-width: 400px;
   padding: 20px;
