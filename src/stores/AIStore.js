@@ -151,11 +151,20 @@ class AIStore {
       if(prompt) {
         options.customization = prompt;
       }
+      
       if(maxDuration) {
         options.max_length = maxDuration * 1000;
       }
 
-      if(regenerate) {
+      const initialStatus = yield this.QueryAIAPI({
+        method: "GET",
+        path: UrlJoin("ml", "highlight_composition", "q", objectId),
+        objectId,
+        queryParams: options,
+        format: "none"
+      });
+
+      if(!initialStatus || regenerate) {
         yield this.QueryAIAPI({
           method: "POST",
           path: UrlJoin("ml", "highlight_composition", "q", objectId),
