@@ -8,12 +8,12 @@ import {
   FormTextInput,
   Icon,
   IconButton,
-  Linkish,
+  Linkish, LoaderImage,
   Modal,
   ProgressModal, StyledButton
 } from "@/components/common/Common.jsx";
 import React, {useEffect, useState} from "react";
-import {CreateModuleClassMatcher, CSVtoList, SP} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, CSVtoList, ScaleImage, SP} from "@/utils/Utils.js";
 import {Button} from "@mantine/core";
 import {LibraryBrowser} from "@/components/nav/Browser.jsx";
 import {browserStore, editStore, groundTruthStore} from "@/stores/index.js";
@@ -422,6 +422,10 @@ export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
     errorMessages.push("An entity with this label already exists");
   }
 
+  const anchorImageUrl =
+    (assetFiles.find(assetFile => assetFile.anchor) || assetFiles[0])?.publicUrl ||
+    (entity?.sample_files.find(asset => asset.anchor) || entity?.sample_files?.[0])?.link?.url;
+
   return (
     <>
       <Modal
@@ -438,6 +442,19 @@ export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
         size={650}
       >
         <div className={S("ground-truth-form")}>
+          {
+            !anchorImageUrl ? null :
+              <div className={S("ground-truth-form__asset-image-container")}>
+                <LoaderImage
+                  loaderAspectRatio={1}
+                  loaderHeight="100%"
+                  src={ScaleImage(anchorImageUrl, 500)}
+                  alt={formData.label}
+                  className={S("ground-truth-form__asset-image", isNew ? "ground-truth-form__asset-image--small" : "")}
+                />
+              </div>
+          }
+
           <FormTextInput
             label="Label"
             placeholder="Enter a label"
@@ -461,18 +478,22 @@ export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
                   value={(formData.meta[attributeKey] || "").split(",").map(s => s.trim()).filter(s => s)}
                   options={attributeConfig[attributeKey].options}
                   onChange={values => setFormData({
-                    ...formData,
-                    meta: {
-                      ...formData.meta,
-                      [attributeKey]: values.join(",")
-                    }}
+                      ...formData,
+                      meta: {
+                        ...formData.meta,
+                        [attributeKey]: values.join(",")
+                      }
+                    }
                   )}
                 /> :
                 <FormTextInput
                   key={`attr-${attributeKey}`}
                   label={attributeKey}
                   value={formData.meta[attributeKey]}
-                  onChange={event => setFormData({...formData, meta: {...formData.meta, [attributeKey]: event.target.value}})}
+                  onChange={event => setFormData({
+                    ...formData,
+                    meta: {...formData.meta, [attributeKey]: event.target.value}
+                  })}
                 />
             )
           }
@@ -528,7 +549,7 @@ export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
           {
             !error ? null :
               <div className={S("ground-truth-form__error")}>
-                { error }
+                {error}
               </div>
           }
 
@@ -562,7 +583,7 @@ export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
                       await groundTruthStore.AddEntity({poolId, assetFiles, ...formData}) :
                       await groundTruthStore.ModifyEntity({poolId, entityId, ...formData});
                   Close(id);
-                } catch (error) {
+                } catch(error) {
                   // eslint-disable-next-line no-console
                   console.error(error);
                   setError("Failed to create ground truth entity. Please try again");
@@ -571,7 +592,7 @@ export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
                 }
               }}
             >
-              { isNew ? "Create" : "Update" }
+              {isNew ? "Create" : "Update"}
             </AsyncButton>
           </div>
         </div>
@@ -619,6 +640,11 @@ export const GroundTruthAssetForm = observer(({poolId, entityId, assetIndexOrId,
       size={650}
     >
       <div className={S("ground-truth-form")}>
+        <img
+          src={asset.link?.url}
+          alt={asset.label || asset.filename}
+          className={S("ground-truth-form__asset-image")}
+        />
         <FormTextInput
           label="Label"
           placeholder={asset.filename}

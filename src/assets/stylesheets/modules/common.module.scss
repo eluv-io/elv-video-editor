@@ -152,6 +152,7 @@
 
 .styled-button {
   align-items: center;
+  animation: var(--animation-fadein) 0.25s ease;
   border-radius: 5px;
   display: flex;
   font-weight: 600;
@@ -160,10 +161,15 @@
   justify-content: center;
   min-width: 120px;
   padding-inline: 25px;
+  position: relative;
   transition: opacity 0.1s ease;
 
-  * {
-    animation: var(--animation-fadein) 0.25s ease;
+
+  &--loading {
+    .styled-button__icon-container,
+    .styled-button__children {
+      opacity: 0;
+    }
   }
 
   &:hover,
@@ -191,6 +197,10 @@
     color: var(--text-secondary);
   }
 
+  &__children {
+    animation: var(--animation-fadein) 0.25s ease;
+  }
+
   &__icon-container,
   &__icon {
     max-height: 20px;
@@ -208,6 +218,26 @@
     font-size: 12px;
     height: 30px;
     padding-inline: 15px;
+  }
+
+  &__loader-container {
+    align-items: center;
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    position: absolute;
+    z-index: 1;
+  }
+
+  &__loader {
+    height: 80%;
+    width: 100%;
+
+    * {
+      --spinner-width: 3px;
+
+      min-height: 10px;
+    }
   }
 }
 

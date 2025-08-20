@@ -36,6 +36,8 @@ class AIStore {
     channelAuth=false,
     update=false,
     queryParams={},
+    body={},
+    headers={},
     format="json"
   }) {
     const url = new URL(`https://${server}.contentfabric.io/`);
@@ -81,7 +83,7 @@ class AIStore {
 
     url.searchParams.set("authorization", authToken);
 
-    const response = yield fetch(url, {method});
+    const response = yield fetch(url, {method, body: JSON.stringify(body), headers});
 
     if(response.status >= 400) {
       throw response;
@@ -151,7 +153,7 @@ class AIStore {
       if(prompt) {
         options.customization = prompt;
       }
-      
+
       if(maxDuration) {
         options.max_length = maxDuration * 1000;
       }

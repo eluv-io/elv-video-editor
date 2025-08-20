@@ -196,6 +196,26 @@
     margin-top: 20px;
     text-align: center;
   }
+
+  &__asset-image-container {
+    align-items: center;
+    background-color: var(--background-primary);
+    display: flex;
+    height: 350px;
+    justify-content: center;
+    max-width: 100%;
+    object-fit: contain;
+
+    &--small {
+      height: 200px;
+    }
+  }
+
+  &__asset-image {
+    max-height: 100%;
+    max-width: 100%;
+    object-fit: contain;
+  }
 }
 
 .attribute-form {

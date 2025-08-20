@@ -242,11 +242,12 @@ const GroundTruthEntity = observer(() => {
             <span className={S("browser__header-last")}>
               {entity.label || entityId}
             </span>
-            <GroundTruthPoolSaveButton
-              poolId={poolId}
-              small
-              className={S("browser__save", "browser__action--right")}
-            />
+            <div className={S("browser__header-actions")}>
+              <GroundTruthPoolSaveButton
+                poolId={poolId}
+                small
+              />
+            </div>
           </h1>
           <div className={S("browser__actions")}>
             <StyledButton

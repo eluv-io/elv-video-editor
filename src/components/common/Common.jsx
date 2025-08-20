@@ -431,10 +431,25 @@ export const AsyncButton = observer(({onClick, tooltip, loading, ...props}) => {
   );
 });
 
-export const StyledButton = observer(({icon, variant="primary", small, color="--color-highlight", children, ...props}) => {
+export const StyledButton = observer(({icon, variant="primary", small, color="--color-highlight", children, loading, ...props}) => {
+  const [submitting, setSubmitting] = useState(false);
   return (
     <Linkish
       {...props}
+      onClick={
+        !props.onClick ? null :
+          async event => {
+            if(loading || submitting) { return; }
+
+            setSubmitting(true);
+
+            try {
+              await props.onClick?.(event);
+            } finally {
+              setSubmitting(false);
+            }
+          }
+      }
       style={{
         ...(props.style || {}),
         "--button-color": `var(${color})`
@@ -444,7 +459,8 @@ export const StyledButton = observer(({icon, variant="primary", small, color="--
           S(
             "styled-button",
             `styled-button--${variant}`,
-            small ? "styled-button--small" : ""
+            small ? "styled-button--small" : "",
+            loading || submitting ? "styled-button--loading" : ""
           ),
           props.className
         )
@@ -457,8 +473,14 @@ export const StyledButton = observer(({icon, variant="primary", small, color="--
           </div>
       }
       <div className={S("styled-button__children")}>
-        { children }
+        {children}
       </div>
+      {
+        !submitting && !loading ? null :
+          <div className={S("styled-button__loader-container")}>
+            <Loader className={S("styled-button__loader")} />
+          </div>
+      }
     </Linkish>
   );
 });

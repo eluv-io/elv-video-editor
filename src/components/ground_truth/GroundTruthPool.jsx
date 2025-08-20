@@ -5,21 +5,22 @@ import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {Redirect, useLocation, useParams, useSearchParams} from "wouter";
 import {groundTruthStore} from "@/stores/index.js";
-import {IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
+import {Confirm, IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher, StorageHandler} from "@/utils/Utils.js";
 import {CardDisplaySwitch, SearchBar} from "@/components/nav/Browser.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import UrlJoin from "url-join";
-
-import BackIcon from "@/assets/icons/v2/back.svg";
-import EditIcon from "@/assets/icons/Edit.svg";
-import CreateIcon from "@/assets/icons/v2/add2.svg";
 import {
   GroundTruthEntityForm, GroundTruthEntityMenu,
   GroundTruthPoolForm,
   GroundTruthPoolSaveButton
 } from "@/components/ground_truth/GroundTruthForms.jsx";
 import {EntityCard, EntityListItem} from "@/components/common/EntityLists.jsx";
+
+import BackIcon from "@/assets/icons/v2/back.svg";
+import EditIcon from "@/assets/icons/Edit.svg";
+import CreateIcon from "@/assets/icons/v2/add2.svg";
+import RebuildModelIcon from "@/assets/icons/v2/rebuild-model.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles, GroundTruthStyles);
 
@@ -237,11 +238,30 @@ const GroundTruthPool = observer(() => {
             <span className={S("browser__header-last")}>
               {pool.name || pool.objectId}
             </span>
-            <GroundTruthPoolSaveButton
-              poolId={poolId}
-              small
-              className={S("browser__save", "browser__action--right")}
-            />
+            <div className={S("browser__header-actions")}>
+              {
+                !pool.lastModified ? null :
+                  <div style={{marginRight: 10}}>Last Modified {pool.lastModified.toLocaleString()}</div>
+              }
+              <StyledButton
+                icon={RebuildModelIcon}
+                small
+                disabled={pool.embeddingsBuilt}
+                onClick={async () =>
+                  await Confirm({
+                    title: "Rebuild Model",
+                    text: "Are you sure you want to rebuild the model for this ground truth pool? This may take several minutes.",
+                    onConfirm: async () => await groundTruthStore.RebuildGroundTruthPool({poolId})
+                  })
+                }
+              >
+                Rebuild Model
+              </StyledButton>
+              <GroundTruthPoolSaveButton
+                poolId={poolId}
+                small
+              />
+            </div>
           </h1>
           <div className={S("browser__actions")}>
             <StyledButton

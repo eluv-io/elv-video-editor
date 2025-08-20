@@ -102,14 +102,30 @@ class GroundTruthStore {
           ]
         }));
 
+
+        let lastModified;
+        try {
+          lastModified = new Date(
+            yield this.client.ContentObjectMetadata({
+              versionHash,
+              metadataSubtree: "/commit/timestamp"
+            })
+          );
+        } catch(error) {
+          // eslint-disable-next-line no-console
+          console.log("Failed to load last modified time for ground truth pool");
+        }
+
         this.pools[poolId] = {
           libraryId,
           objectId: poolId,
           versionHash,
+          embeddingsBuilt: false,
           name: metadata?.public?.name || metadata?.ground_truth?.model_domain || poolId,
           description: metadata?.public?.description,
           metadata: metadata.ground_truth || {},
-          attributes: this.FormatPoolAttributes(metadata.ground_truth || {})
+          attributes: this.FormatPoolAttributes(metadata.ground_truth || {}),
+          lastModified
         };
 
         this.rootStore.SetAuthToken({versionHash});
@@ -804,6 +820,27 @@ class GroundTruthStore {
   ClearSaveError() {
     this.saveError = undefined;
   }
+
+  RebuildGroundTruthPool = flow(function * ({poolId, model="vgg"}) {
+    const response = yield this.rootStore.aiStore.QueryAIAPI({
+      method: "POST",
+      path: UrlJoin("/ground-truth", "q", poolId, "rep", "generate_embed_entities"),
+      objectId: poolId,
+      channelAuth: true,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: {
+        "gt_url": "",
+        "gt_label": "",
+        "embedding_model": model
+      }
+    });
+
+    this.pools[poolId].embeddingsBuilt = true;
+
+    return response;
+  });
 
   // Assets may or may not have ids
   GetGroundTruthAsset(entity, assetIndexOrId) {
