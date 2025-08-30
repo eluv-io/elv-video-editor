@@ -236,16 +236,20 @@ const CompositionCreationModal = observer(({type, Cancel}) => {
         {
           type !== "ai" ? null :
             <>
-              <FormSelect
-                label="Search Index"
-                value={aiStore.selectedSearchIndexId}
-                onChange={value => aiStore.SetSelectedSearchIndex(value)}
-                options={
-                  aiStore.searchIndexes.map(searchIndex =>
-                    ({label: searchIndex.name || "", value: searchIndex.id})
-                  )
-                }
-              />
+              {
+                /*
+                  <FormSelect
+                    label="Search Index"
+                    value={aiStore.selectedSearchIndexId}
+                    onChange={value => aiStore.SetSelectedSearchIndex(value)}
+                    options={
+                      aiStore.searchIndexes.map(searchIndex =>
+                        ({label: searchIndex.name || "", value: searchIndex.id})
+                      )
+                    }
+                  />
+                 */
+              }
               <FormNumberInput
                 label="Maximum Duration (seconds)"
                 placeholder="Automatic"

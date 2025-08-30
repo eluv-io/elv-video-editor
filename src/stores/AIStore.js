@@ -36,7 +36,7 @@ class AIStore {
     channelAuth=false,
     update=false,
     queryParams={},
-    body={},
+    body,
     headers={},
     format="json"
   }) {
@@ -83,7 +83,14 @@ class AIStore {
 
     url.searchParams.set("authorization", authToken);
 
-    const response = yield fetch(url, {method, body: JSON.stringify(body), headers});
+    const response = yield fetch(
+      url,
+      {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined
+      }
+    );
 
     if(response.status >= 400) {
       throw response;
