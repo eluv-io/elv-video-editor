@@ -3,12 +3,15 @@ import GroundTruthStyles from "@/assets/stylesheets/modules/ground-truth.module.
 import {observer} from "mobx-react-lite";
 import {
   AsyncButton,
-  Confirm, FormMultiSelect, FormSelect,
+  Confirm,
+  FormMultiSelect,
+  FormSelect,
   FormTextArea,
   FormTextInput,
   Icon,
   IconButton,
-  Linkish, LoaderImage,
+  Linkish,
+  LoaderImage,
   Modal,
   ProgressModal, StyledButton
 } from "@/components/common/Common.jsx";
@@ -30,6 +33,8 @@ import EditIcon from "@/assets/icons/Edit.svg";
 import ImageIcon from "@/assets/icons/picture.svg";
 import AnchorIcon from "@/assets/icons/v2/anchor.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
+import CheckmarkIcon from "@/assets/icons/check-circle.svg";
+import ExclamationPointIcon from "@/assets/icons/v2/exclamation.svg";
 
 const S = CreateModuleClassMatcher(GroundTruthStyles);
 
@@ -412,6 +417,20 @@ export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
       }
   );
 
+  useEffect(() => {
+    groundTruthStore.client.utils.LimitedMap(
+      1,
+      assetFiles,
+      async assetFile => {
+        await groundTruthStore.ValidateImage({
+          poolId,
+          url: assetFile.publicUrl,
+          label: assetFile.fullPath
+        });
+      }
+    );
+  }, [assetFiles]);
+
   let errorMessages = [];
   const matchingLabelEntity = Object.values(pool?.metadata?.entities || {})
     .find((e, index) => (!entity || entity.index !== index) && e.label?.toLowerCase() === formData.label?.toLowerCase());
@@ -425,6 +444,15 @@ export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
   const anchorImageUrl =
     (assetFiles.find(assetFile => assetFile.anchor) || assetFiles[0])?.publicUrl ||
     (entity?.sample_files.find(asset => asset.anchor) || entity?.sample_files?.[0])?.link?.url;
+
+  if(
+    assetFiles.find(assetFile =>
+      groundTruthStore.imageQualityCheckStatus[assetFile.publicUrl] &&
+      !groundTruthStore.imageQualityCheckStatus[assetFile.publicUrl]?.pass
+    )
+  ) {
+    errorMessages.push("One or more assets failed validation. Please remove them before continuing.");
+  }
 
   return (
     <>
@@ -513,32 +541,63 @@ export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
             assetFiles.length === 0 ? null :
               <div className={S("entity-list", "entity-list--small")}>
                 {
-                  assetFiles.map((assetFile, index) =>
-                    <EntityListItem
-                      key={`asset-${index}-${assetFile.fullPath}`}
-                      image={assetFile.publicUrl || assetFile.url}
-                      label={assetFile.filename}
-                      contain
-                      small
-                      anchor={assetFile.anchor}
-                      actions={
-                        <>
-                          <IconButton
-                            icon={AnchorIcon}
-                            disabled={assetFile.anchor}
-                            faded
-                            label="Set as Entity Anchor Image"
-                            onClick={() => setAssetFiles(
-                              assetFiles.map((assetFile, i) => ({...assetFile, anchor: i === index}))
-                            )}
-                          />
-                          <IconButton
-                            icon={XIcon}
-                            faded
-                            label="Remove Asset"
-                            onClick={() => setAssetFiles(assetFiles.filter((_, i) => i !== index))}
-                          />
-                        </>
+                  assetFiles
+                    .sort((a, b) => {
+                      if(
+                        groundTruthStore.imageQualityCheckStatus[a.publicUrl] &&
+                        !groundTruthStore.imageQualityCheckStatus[a.publicUrl]?.pass
+                      ) {
+                        return -1;
+                      } else if (
+                        groundTruthStore.imageQualityCheckStatus[b.publicUrl] &&
+                        !groundTruthStore.imageQualityCheckStatus[b.publicUrl]?.pass
+                      ) {
+                        return 1;
+                      }
+
+                      return 0;
+                    })
+                    .map((assetFile, index) =>
+                      <EntityListItem
+                        key={`asset-${index}-${assetFile.fullPath}`}
+                        image={assetFile.publicUrl || assetFile.url}
+                        label={assetFile.filename}
+                        contain
+                        small
+                        anchor={assetFile.anchor}
+                        actions={
+                          <>
+                            <IconButton
+                              icon={AnchorIcon}
+                              disabled={assetFile.anchor}
+                              faded
+                              label="Set as Entity Anchor Image"
+                              onClick={() => setAssetFiles(
+                                assetFiles.map((assetFile, i) => ({...assetFile, anchor: i === index}))
+                              )}
+                            />
+                            <IconButton
+                              icon={XIcon}
+                              faded
+                              label="Remove Asset"
+                              onClick={() => setAssetFiles(assetFiles.filter((_, i) => i !== index))}
+                            />
+                            <IconButton
+                              loading={!groundTruthStore.imageQualityCheckStatus[assetFile.publicUrl]}
+                              label={groundTruthStore.imageQualityCheckStatus[assetFile.publicUrl]?.reason}
+                              icon={
+                                groundTruthStore.imageQualityCheckStatus[assetFile.publicUrl]?.pass ?
+                                  CheckmarkIcon :
+                                  ExclamationPointIcon
+                              }
+                              className={
+                                S(
+                                  "ground-truth-form__asset-indicator",
+                                  `ground-truth-form__asset-indicator--${groundTruthStore.imageQualityCheckStatus[assetFile.publicUrl]?.pass ? "pass" : "fail"}`
+                                )
+                              }
+                            />
+                          </>
                       }
                     />
                   )
@@ -605,7 +664,7 @@ export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
             objectId={poolId}
             multiple
             extensions="image"
-            Submit={files => setAssetFiles([...assetFiles, ...files])}
+            Submit={files => setAssetFiles([...files, ...assetFiles])}
             Close={() => setShowAssetFileBrowser(false)}
           />
       }

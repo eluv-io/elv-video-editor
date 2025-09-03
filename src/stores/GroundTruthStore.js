@@ -8,6 +8,8 @@ class GroundTruthStore {
   saveProgress = 0;
   saveError = undefined;
   contentAdminsGroupAddress;
+  imageQualityCheckStatus = {};
+  imageEntityCheckStatus = {};
 
   constructor(rootStore) {
     makeAutoObservable(this);
@@ -820,6 +822,53 @@ class GroundTruthStore {
   ClearSaveError() {
     this.saveError = undefined;
   }
+
+  ValidateImage = flow(function * ({poolId, url, label}) {
+    if(!this.imageQualityCheckStatus[url]) {
+      const response = (yield this.rootStore.aiStore.QueryAIAPI({
+        method: "POST",
+        path: UrlJoin("/ground-truth", "q", poolId, "rep", "check_quality"),
+        objectId: poolId,
+        channelAuth: true,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: {
+          "gt_url": url,
+          "gt_label": label
+        }
+      })).results?.[0] || { quality_pass: false, quality_reasons: [] };
+
+      this.imageQualityCheckStatus[url] = {
+        pass: response.quality_pass || false,
+        reason: response.quality_reasons?.length > 0 ?
+          `Image quality check failed: ${(response.quality_reasons || []).join(", ")}` :
+          undefined
+      };
+    }
+
+    return this.imageQualityCheckStatus[url];
+  });
+
+  LookupImage = flow(function * ({poolId, url, model="insight"}) {
+    if(!this.imageEntityCheckStatus[url]) {
+      this.imageEntityCheckStatus[url] = yield this.rootStore.aiStore.QueryAIAPI({
+        method: "POST",
+        path: UrlJoin("/ground-truth", "q", poolId, "rep", "find_similar"),
+        objectId: poolId,
+        channelAuth: true,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: {
+          "gt_url": url,
+          "embedding_model": model
+        }
+      });
+    }
+
+    return this.imageEntityCheckStatus[url];
+  });
 
   RebuildGroundTruthPool = flow(function * ({poolId, model="vgg"}) {
     const response = yield this.rootStore.aiStore.QueryAIAPI({

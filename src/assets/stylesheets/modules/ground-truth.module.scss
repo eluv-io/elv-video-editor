@@ -201,8 +201,8 @@
     align-items: center;
     background-color: var(--background-primary);
     display: flex;
-    height: 350px;
     justify-content: center;
+    max-height: 200px;
     max-width: 100%;
     object-fit: contain;
 
@@ -215,6 +215,16 @@
     max-height: 100%;
     max-width: 100%;
     object-fit: contain;
+  }
+
+  &__asset-indicator {
+    &--pass {
+      color: var(--text-pass);
+    }
+
+    &--fail {
+      color: var(--text-error);
+    }
   }
 }
 

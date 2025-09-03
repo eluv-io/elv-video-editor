@@ -13,7 +13,7 @@ import {
 } from "@/components/common/Common.jsx";
 import {LibraryBrowser, ObjectBrowser} from "@/components/nav/Browser.jsx";
 import {Redirect} from "wouter";
-import {rootStore, compositionStore, aiStore} from "@/stores/index.js";
+import {rootStore, compositionStore} from "@/stores/index.js";
 import {Button, Checkbox, Group} from "@mantine/core";
 import UrlJoin from "url-join";
 import {LoadVideo} from "@/stores/Helpers.js";
