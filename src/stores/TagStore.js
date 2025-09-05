@@ -412,7 +412,7 @@ class TagStore {
           }
       };
     } else {
-      // eslint-disable-next-line no-console
+       
       console.error("Unknown editing type: " + type);
       return;
     }

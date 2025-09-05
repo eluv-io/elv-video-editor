@@ -10,6 +10,7 @@ class GroundTruthStore {
   contentAdminsGroupAddress;
   imageQualityCheckStatus = {};
   imageEntityCheckStatus = {};
+  activeCheckCount = 0;
 
   constructor(rootStore) {
     makeAutoObservable(this);
@@ -55,9 +56,9 @@ class GroundTruthStore {
                 })) || poolId
               };
             } catch(error) {
-              // eslint-disable-next-line no-console
+               
               console.error("Failed to load ground truth pool:");
-              // eslint-disable-next-line no-console
+               
               console.error(error);
             }
           })
@@ -410,16 +411,7 @@ class GroundTruthStore {
       id: entityId
     };
 
-    entity.sample_files = assetFiles.map(file => ({
-      id: this.rootStore.NextId(true),
-      link: {
-        "/": UrlJoin("./", "files", file.fullPath),
-        url: file.publicUrl || file.url
-      },
-      label: file.filename,
-      added_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }));
+    entity.sample_files = assetFiles.map(file => this.FormatAsset(file));
 
     const anchorIndex = assetFiles.findIndex(file => file.anchor);
     if(anchorIndex >= 0) {
@@ -455,17 +447,21 @@ class GroundTruthStore {
     return entityId;
   }
 
-  ModifyEntity({poolId, entityId, ...entity}) {
+  ModifyEntity({poolId, entityId, assetFiles=[], ...entity}) {
     const pool = this.pools[poolId];
 
     if(!pool) { throw Error("Unable to find pool " + poolId); }
 
-    entity = {
-      ...entity,
-      id: entityId
-    };
-
     const originalEntity = pool.metadata.entities[entityId];
+    entity = {
+      ...originalEntity,
+      ...entity,
+      id: entityId,
+      sample_files: [
+        ...entity.sample_files,
+        ...assetFiles.map(file => this.FormatAsset(file))
+      ]
+    };
 
     this.rootStore.editStore.PerformAction({
       label: `Modify Entity ${entity.label}`,
@@ -526,6 +522,21 @@ class GroundTruthStore {
 
   /* Assets */
 
+  FormatAsset(file) {
+    return {
+      id: this.rootStore.NextId(true),
+      link: {
+        "/": UrlJoin("./", "files", file.fullPath),
+        url: file.publicUrl || file.url
+      },
+      label: file.label || file.filename,
+      description: file.description || "",
+      source: file.source,
+      added_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+  }
+
   AddAssets({poolId, entityId, files}) {
     const pool = this.pools[poolId];
 
@@ -539,16 +550,7 @@ class GroundTruthStore {
 
     const newFiles = [
       ...originalFiles,
-      ...files.map(file => ({
-        id: this.rootStore.NextId(true),
-        link: {
-          "/": UrlJoin("./", "files", file.fullPath),
-          url: file.publicUrl || file.url
-        },
-        label: file.filename,
-        added_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }))
+      ...files.map(this.FormatAsset)
     ];
 
     this.rootStore.editStore.PerformAction({
@@ -572,6 +574,49 @@ class GroundTruthStore {
     });
   }
 
+  AddMixedEntityAssets({poolId, files}) {
+    const pool = this.pools[poolId];
+
+    if(!pool) { throw Error("Unable to find pool " + poolId); }
+
+    let assets = {};
+    let originalAssets = {};
+    files.forEach(file => {
+      if(!assets[file.entityId]) {
+        assets[file.entityId] = pool.metadata.entities[file.entityId]?.sample_files || [];
+        originalAssets[file.entityId] = pool.metadata.entities[file.entityId]?.sample_files || [];
+      }
+
+      assets[file.entityId].push(this.FormatAsset(file));
+    });
+
+    this.rootStore.editStore.PerformAction({
+      label: "Add Assets",
+      type: "assets",
+      action: "add",
+      modifiedItem: originalAssets,
+      Action: () => {
+        for(const entityId of Object.keys(assets)) {
+          this.pools[poolId].metadata.entities[entityId].sample_files = assets[entityId];
+        }
+      },
+      Undo: () => {
+        for(const entityId of Object.keys(assets)) {
+          this.pools[poolId].metadata.entities[entityId].sample_files = originalAssets[entityId];
+        }
+      },
+      Write: async writeParams => {
+        for(const entityId of Object.keys(assets)) {
+          await this.client.ReplaceMetadata({
+            ...writeParams,
+            metadataSubtree: UrlJoin("/ground_truth", "entities", entityId, "sample_files"),
+            metadata: Unproxy(StripFabricLinkUrls(assets[entityId]))
+          });
+        }
+      }
+    });
+  }
+
   AddAssetFromUrl({poolId, entityId, image, label="", description="", source}) {
     const pool = this.pools[poolId];
 
@@ -585,18 +630,13 @@ class GroundTruthStore {
 
     const newFiles = [
       ...originalFiles,
-      {
-        id: this.rootStore.NextId(true),
-        link: {
-          "/": UrlJoin("./", "files", "frames", image.filename),
-          url: image.url
-        },
-        source,
-        label: label || image.filename,
-        description: description,
-        added_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
+      this.FormatAsset({
+        ...image,
+        fullPath: UrlJoin("./", "files", "frames", image.filename),
+        label,
+        description,
+        source
+      })
     ];
 
     this.rootStore.editStore.PerformAction({
@@ -794,9 +834,9 @@ class GroundTruthStore {
           yield action.Write({libraryId, objectId, writeToken});
           this.saveProgress += progressPerAction;
         } catch(error) {
-          // eslint-disable-next-line no-console
+           
           console.error("Save action failed:");
-          // eslint-disable-next-line no-console
+           
           console.error(action);
           // eslint-disable-next-line no-console
           console.log(error);
@@ -823,51 +863,88 @@ class GroundTruthStore {
     this.saveError = undefined;
   }
 
-  ValidateImage = flow(function * ({poolId, url, label}) {
-    if(!this.imageQualityCheckStatus[url]) {
-      const response = (yield this.rootStore.aiStore.QueryAIAPI({
-        method: "POST",
-        path: UrlJoin("/ground-truth", "q", poolId, "rep", "check_quality"),
-        objectId: poolId,
-        channelAuth: true,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: {
-          "gt_url": url,
-          "gt_label": label
+  ValidateImage = flow(function * ({poolId, url, label, force}) {
+    return yield this.rootStore.LoadResource({
+      key: "validateImage",
+      id: `${poolId}-${url}`,
+      force,
+      bind: this,
+      Load: flow(function * () {
+        while(this.activeCheckCount >= 5) {
+          yield new Promise(resolve => setTimeout(resolve, 200));
         }
-      })).results?.[0] || { quality_pass: false, quality_reasons: [] };
 
-      this.imageQualityCheckStatus[url] = {
-        pass: response.quality_pass || false,
-        reason: response.quality_reasons?.length > 0 ?
-          `Image quality check failed: ${(response.quality_reasons || []).join(", ")}` :
-          undefined
-      };
-    }
+        try {
+          this.activeCheckCount = this.activeCheckCount + 1;
 
-    return this.imageQualityCheckStatus[url];
+          const response = (yield this.rootStore.aiStore.QueryAIAPI({
+            method: "POST",
+            path: UrlJoin("/ground-truth", "q", poolId, "rep", "check_quality"),
+            objectId: poolId,
+            channelAuth: true,
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: {
+              "gt_url": url,
+              "gt_label": label
+            }
+          })).results?.[0] || {quality_pass: false, quality_reasons: []};
+
+          this.imageQualityCheckStatus[url] = {
+            pass: response.quality_pass || false,
+            fail: !response.quality_pass || false,
+            reason: response.quality_reasons?.length > 0 ?
+              `Image quality check failed: ${(response.quality_reasons || []).join(", ")}` :
+              undefined
+          };
+        } catch(error) {
+          console.error(error);
+        } finally {
+          this.activeCheckCount = this.activeCheckCount - 1;
+        }
+
+        return this.imageQualityCheckStatus[url];
+      })
+    });
   });
 
-  LookupImage = flow(function * ({poolId, url, model="insight"}) {
-    if(!this.imageEntityCheckStatus[url]) {
-      this.imageEntityCheckStatus[url] = yield this.rootStore.aiStore.QueryAIAPI({
-        method: "POST",
-        path: UrlJoin("/ground-truth", "q", poolId, "rep", "find_similar"),
-        objectId: poolId,
-        channelAuth: true,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: {
-          "gt_url": url,
-          "embedding_model": model
+  LookupImage = flow(function * ({poolId, url, model="insight", force}) {
+    return yield this.rootStore.LoadResource({
+      key: "lookupImage",
+      id: `${poolId}-${url}`,
+      force,
+      bind: this,
+      Load: flow(function * () {
+        while(this.activeCheckCount >= 5) {
+          yield new Promise(resolve => setTimeout(resolve, 200));
         }
-      });
-    }
 
-    return this.imageEntityCheckStatus[url];
+        try {
+          this.activeCheckCount = this.activeCheckCount + 1;
+
+          this.imageEntityCheckStatus[url] = yield this.rootStore.aiStore.QueryAIAPI({
+            method: "POST",
+            path: UrlJoin("/ground-truth", "q", poolId, "rep", "find_similar"),
+            objectId: poolId,
+            channelAuth: true,
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: {
+              "gt_url": url,
+              "embedding_model": model
+            }
+          });
+        } catch(error) {
+          console.error(error);
+        } finally {
+          this.activeCheckCount = this.activeCheckCount - 1;
+        }
+
+        return this.imageEntityCheckStatus[url];
+      })
+    });
   });
 
   RebuildGroundTruthPool = flow(function * ({poolId, model="vgg"}) {
@@ -887,6 +964,9 @@ class GroundTruthStore {
     });
 
     this.pools[poolId].embeddingsBuilt = true;
+
+    this.rootStore.ClearResource({key: "validateImage"});
+    this.rootStore.ClearResource({key: "lookupImage"});
 
     return response;
   });

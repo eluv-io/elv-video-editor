@@ -123,10 +123,10 @@
   gap: 10px;
 
   &--transparent {
-    background-color: transparent;
-    border: 0;
-    box-shadow: none;
-    outline: 0;
+    --tooltip-background: transparent;
+    --tooltip-border-color: 0;
+    --tooltip-box-shadow: none;
+    --tooltip-content-border-color: none;
   }
 
   &__item {
@@ -202,6 +202,7 @@
     display: flex;
     justify-content: space-between;
     margin-bottom: 5px;
+    position: relative;
     width: 100%;
   }
 

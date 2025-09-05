@@ -106,9 +106,9 @@ const Video = observer(({
     // Reload on fatal error
     player.on(HLSPlayer.Events.ERROR, function (event, data) {
       if(data.fatal) {
-        // eslint-disable-next-line no-console
+         
         console.error("Fatal HLS Error:");
-        // eslint-disable-next-line no-console
+         
         console.error(data);
 
         switch(data.type) {

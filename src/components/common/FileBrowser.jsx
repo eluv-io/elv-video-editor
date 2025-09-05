@@ -297,7 +297,7 @@ const CreateDirectoryForm = ({Create}) => {
           setRenaming(true);
           Create({filename: values.filename})
             .catch(error => {
-              // eslint-disable-next-line no-console
+
               console.error(error);
               setRenaming(false);
             })
@@ -343,7 +343,7 @@ const RenameFileForm = ({filename, Rename}) => {
           setRenaming(true);
           Rename({newFilename: values.newFilename})
             .catch(error => {
-              // eslint-disable-next-line no-console
+
               console.error(error);
               setRenaming(false);
             })
@@ -404,7 +404,7 @@ const DownloadFileButton = ({objectId, path, filename, url, encrypted}) => {
               callback: ({bytesFinished, bytesTotal}) => setProgress((bytesFinished || 0) / (bytesTotal || 1) * 100)
             });
           } catch(error) {
-            // eslint-disable-next-line no-console
+
             console.error(error);
           }
         }}
@@ -500,10 +500,29 @@ const FileBrowserTable = observer(({
   directory = directory.slice(0, batchSize);
 
   const isRecordSelectable = ({encrypted, type, ext}) =>
-    !encrypted && type !== "directory" && (!extensions || extensions.length === 0 || extensions.includes(ext?.toLowerCase()));
+    !encrypted && !(type === "directory" && !multiple) && (type === "directory" || !extensions || extensions.length === 0 || extensions.includes(ext?.toLowerCase()));
 
-  // Determine records for this path and for other paths
-  const thisPathSelectedRecords = selectedRecords.filter(record => record.fullPath.startsWith(path));
+  const allDirectoryRecords = directory => {
+    return fileBrowserStore.Directory({objectId, path: directory.fullPath})
+      .map(item => {
+        if(item.type === "directory") {
+          return allDirectoryRecords(item);
+        } else if(isRecordSelectable(item)) {
+          return item;
+        }
+      })
+      .filter(item => item)
+      .flat();
+  };
+
+  // Determine records for this path or directories that contain selected records
+  const thisPathSelectedRecords = directory
+    .filter(item =>
+      item.type === "directory" ?
+        selectedRecords.find(record => record.fullPath.startsWith(item.fullPath)) :
+        selectedRecords.find(record => record.fullPath === item.fullPath)
+    );
+
   const otherPathSelectedRecords = selectedRecords.filter(record => !record.fullPath.startsWith(path));
 
   return (
@@ -531,6 +550,14 @@ const FileBrowserTable = observer(({
         selectedRecords={thisPathSelectedRecords}
         onSelectedRecordsChange={newSelectedRecords => {
           if(multiple) {
+            newSelectedRecords = newSelectedRecords
+              .map(record =>
+                record.type === "directory" ?
+                  allDirectoryRecords(record) :
+                  record
+              )
+              .flat();
+
             setSelectedRecords([...otherPathSelectedRecords, ...newSelectedRecords]);
           } else {
             // Only allow one selection
@@ -540,7 +567,7 @@ const FileBrowserTable = observer(({
         // Hide select all if not multiple
         allRecordsSelectionCheckboxProps={{style: multiple ? {} : {display: "none"}}}
         // Hide directory selection checkbox
-        getRecordSelectionCheckboxProps={({type}) => ({style: type === "directory" ? {display: "none"} : {}})}
+        getRecordSelectionCheckboxProps={({type}) => ({style: type === "directory" && !multiple ? {display: "none"} : {}})}
         isRecordSelectable={isRecordSelectable}
         columns={[
           {
@@ -785,7 +812,7 @@ const FileBrowser = observer(({objectId, multiple, title, extensions=[], initial
 
                   Close();
                 } catch(error) {
-                  // eslint-disable-next-line no-console
+
                   console.error(error);
                   setSaving(false);
                 }

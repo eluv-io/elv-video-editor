@@ -182,9 +182,9 @@ class OverlayStore {
         this.overlayEnabled = true;
       }
     } catch(error) {
-      // eslint-disable-next-line no-console
+       
       console.error("Failed to load overlay tracks:");
-      // eslint-disable-next-line no-console
+       
       console.error(error);
     }
   });

@@ -11,7 +11,7 @@ import {CardDisplaySwitch, SearchBar} from "@/components/nav/Browser.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import UrlJoin from "url-join";
 import {
-  GroundTruthEntityForm, GroundTruthEntityMenu,
+  GroundTruthEntityForm, GroundTruthEntityMenu, GroundTruthMultiEntityAssetForm,
   GroundTruthPoolForm,
   GroundTruthPoolSaveButton
 } from "@/components/ground_truth/GroundTruthForms.jsx";
@@ -21,6 +21,7 @@ import BackIcon from "@/assets/icons/v2/back.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
 import CreateIcon from "@/assets/icons/v2/add2.svg";
 import RebuildModelIcon from "@/assets/icons/v2/rebuild-model.svg";
+import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles, GroundTruthStyles);
 
@@ -196,8 +197,10 @@ const GroundTruthPool = observer(() => {
   const [queryParams] = useSearchParams();
   const filter = decodeURIComponent(queryParams.get("q") || "");
   const [showEntityModal, setShowEntityModal] = useState(false);
+  const [showAssetModal, setShowAssetModal] = useState(false);
   const [showList, setShowList] = useState(StorageHandler.get({type: "session", key: "pool-display"}) || false);
   const pool = groundTruthStore.pools[poolId] || {};
+  const [updateKey, setUpdateKey] = useState(0);
   const [, navigate] = useLocation();
 
   useEffect(() => {
@@ -270,6 +273,12 @@ const GroundTruthPool = observer(() => {
             >
               New Entity
             </StyledButton>
+            <StyledButton
+              icon={GroundTruthIcon}
+              onClick={() => setShowAssetModal(true)}
+            >
+              Add New Ground Truth Assets
+            </StyledButton>
             <CardDisplaySwitch showList={showList} setShowList={setShowList} />
           </div>
           {
@@ -278,7 +287,7 @@ const GroundTruthPool = observer(() => {
                 <Loader/>
               </div> :
               <div className={S("list-page", "list-page--with-sidebar")}>
-                <Entities showList={showList} filter={filter}/>
+                <Entities key={updateKey} showList={showList} filter={filter}/>
                 <PoolDetails/>
               </div>
           }
@@ -287,10 +296,26 @@ const GroundTruthPool = observer(() => {
       {
         !showEntityModal ? null :
           <GroundTruthEntityForm
+            title="Create Ground Truth Entity"
             poolId={poolId}
+            showForm
+            showAssets
             Close={entityId => {
               setShowEntityModal(false);
               entityId && navigate(UrlJoin("/", poolId, "entities", entityId));
+            }}
+          />
+      }
+      {
+        !showAssetModal ? null :
+          <GroundTruthMultiEntityAssetForm
+            title="Add New Ground Truth Assets"
+            poolId={poolId}
+            showAssets
+            showEntitySelection
+            Close={() => {
+              setShowAssetModal(false);
+              setUpdateKey(Math.random());
             }}
           />
       }

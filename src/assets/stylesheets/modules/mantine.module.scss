@@ -10,10 +10,10 @@
 
 .__mantine {
   &--tooltip {
-    background-color: var(--background-active);
-    border: 1px solid var(--background-secondary);
-    box-shadow: 0 0 10px black;
-    color: var(--text-primary);
+    background-color: var(--tooltip-background);
+    border: 1px solid var(--tooltip-border-color);
+    box-shadow: var(--tooltip-box-shadow);
+    color: var(--tooltip-text);
     z-index: 100;
   }
 
@@ -27,8 +27,8 @@
     }
 
     &__content {
-      border: 1px solid var(--table-border-color);
-      max-height: 95vh;
+      border: 1px solid var(--tooltip-content-border-color);
+      max-height: 98vh;
     }
 
     &__body {

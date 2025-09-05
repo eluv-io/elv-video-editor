@@ -184,7 +184,7 @@ export const LoadVideo = async ({
 
     return videoObject;
   } catch(error) {
-    // eslint-disable-next-line no-console
+     
     console.error("Failed to load:");
     // eslint-disable-next-line no-console
     console.log(error);

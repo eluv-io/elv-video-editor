@@ -217,9 +217,9 @@ class BrowserStore {
                       )
                     );
                   } catch(error) {
-                    // eslint-disable-next-line no-console
+                     
                     console.error("Error parsing channel duration:");
-                    // eslint-disable-next-line no-console
+                     
                     console.error(error);
                   }
                 }
@@ -460,9 +460,9 @@ class BrowserStore {
         try {
           objectDetails[objectId] = await this.ObjectDetails({objectId});
         } catch(error) {
-          // eslint-disable-next-line no-console
+           
           console.error("Error retrieving my library item:");
-          // eslint-disable-next-line no-console
+           
           console.error(error);
 
           if(typeof error === "string" && error.includes("deleted")) {
@@ -623,13 +623,13 @@ class BrowserStore {
         case "object":
           return yield this.ObjectDetails({objectId, versionHash, force: true});
         default:
-          // eslint-disable-next-line no-console
+           
           console.error("Invalid content:", contentId, accessType);
       }
     } catch(error) {
-      // eslint-disable-next-line no-console
+       
       console.error("Failed to look up ID:");
-      // eslint-disable-next-line no-console
+       
       console.error(error);
     }
 

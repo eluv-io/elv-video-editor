@@ -56,6 +56,11 @@
   --track-height--compositions: 80px;
   --mantine-primary-color-filled: var(--background-toolbar--highlight);
   --mantine-primary-color-filled-hover: var(--color-highlight);
+  --tooltip-background: var(--background-primary);
+  --tooltip-border-color: var(--background-secondary);
+  --tooltip-text: var(--text-primary);
+  --tooltip-content-border-color: var(--table-border-color);
+  --tooltip-box-shadow: 0 0 10px black;
 
   @keyframes fadein {
     0% {

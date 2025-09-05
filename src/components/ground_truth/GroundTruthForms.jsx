@@ -17,7 +17,7 @@ import {
 } from "@/components/common/Common.jsx";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, CSVtoList, ScaleImage, SP} from "@/utils/Utils.js";
-import {Button} from "@mantine/core";
+import {Button, LoadingOverlay, Tooltip} from "@mantine/core";
 import {LibraryBrowser} from "@/components/nav/Browser.jsx";
 import {browserStore, editStore, groundTruthStore} from "@/stores/index.js";
 import FileBrowser from "@/components/common/FileBrowser.jsx";
@@ -35,8 +35,106 @@ import AnchorIcon from "@/assets/icons/v2/anchor.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
 import CheckmarkIcon from "@/assets/icons/check-circle.svg";
 import ExclamationPointIcon from "@/assets/icons/v2/exclamation.svg";
+import AISparkleIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 
 const S = CreateModuleClassMatcher(GroundTruthStyles);
+
+const EntityOption = ({option, checked}) => {
+  const entity = groundTruthStore.pools[option.poolId]?.metadata?.entities?.[option.value];
+
+  if(!entity && option.value !== "automatic") {
+    return null;
+  }
+
+  let imageUrl = AISparkleIcon;
+  if(entity) {
+    const image = (entity.sample_files || []).find(image => image.anchor) || (entity.sample_files || [])[0];
+    imageUrl = ScaleImage(image?.link?.url, 175);
+  }
+
+  return (
+    <Tooltip
+      disabled={!imageUrl || option.value === "automatic"}
+      label={
+        <LoaderImage
+          lazy
+          src={imageUrl}
+          className={S("entity-option__tooltip-image")}
+          showWithoutSource
+        />
+      }
+      openDelay={500}
+      position="bottom-start"
+      classNames={{
+        tooltip: S("tooltip--transparent")
+      }}
+    >
+      <div className={S("entity-option", checked ? "entity-option--selected" : "")}>
+        <div className={S("entity-option__image-container")}>
+          <LoaderImage
+            lazy
+            src={imageUrl}
+            className={S("entity-option__image", option.value === "automatic" ? "entity-option__image--automatic" : "")}
+            showWithoutSource
+          />
+        </div>
+        <div className={S("entity-option__text")}>
+          { entity?.label || option.label }
+        </div>
+      </div>
+    </Tooltip>
+  );
+};
+
+export const EntitySelect = ({poolId, entityId, showAutoOption, setEntityId, loading=false, ...props}) => {
+  const [selectedEntityId, setSelectedEntityId] = useState(entityId);
+  const pool = groundTruthStore.pools[poolId];
+
+  useEffect(() => {
+    setSelectedEntityId(entityId);
+  }, [entityId]);
+
+  useEffect(() => {
+    setEntityId(selectedEntityId);
+  }, [selectedEntityId]);
+
+  if(!pool?.metadata) {
+    return null;
+  }
+
+  return (
+    <div key={poolId} className={S("form__input-container")}>
+      <LoadingOverlay visible={loading} />
+      <FormSelect
+        searchable
+        limit={100}
+        label="Entity"
+        value={selectedEntityId}
+        onChange={value => setSelectedEntityId(value)}
+        options={
+          [
+            showAutoOption ? {label: "<Automatic>", value: "automatic", poolId} : undefined,
+            ...(
+              Object.keys(pool?.metadata?.entities || {})
+                .map(entityId =>
+                  ({
+                    label: pool?.metadata?.entities[entityId].label || entityId,
+                    value: entityId,
+                    poolId
+                  })
+                )
+            )
+          ].filter(option => option)
+        }
+        renderOption={EntityOption}
+        classNames={{
+          option: S("entity-option-wrapper")
+        }}
+        { ...props }
+      />
+    </div>
+  );
+};
 
 const AttributeForm = observer(({
   attribute,
@@ -351,7 +449,7 @@ export const GroundTruthPoolForm = observer(({pool, Close}) => {
                       await groundTruthStore.ModifyGroundTruthPool(formData);
                   Close(poolId);
                 } catch (error) {
-                  // eslint-disable-next-line no-console
+                   
                   console.error(error);
                   setError("Failed to create ground truth pool. Please try again");
                 } finally {
@@ -390,11 +488,300 @@ export const GroundTruthPoolForm = observer(({pool, Close}) => {
   );
 });
 
-export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
+export const AssetFile = observer(({poolId, assetFile, withEntitySelect, SetAnchor, Remove, Update}) => {
+  const [checkLoaded, setCheckLoaded] = useState(false);
+  const [entityLoaded, setEntityLoaded] = useState(false);
+  const [entityId, setEntityId] = useState("");
+
+  const qualityCheck = groundTruthStore.imageQualityCheckStatus[assetFile.publicUrl];
+
+  useEffect(() => {
+    groundTruthStore.ValidateImage({
+      poolId,
+      url: assetFile.publicUrl,
+      label: assetFile.fullPath
+    })
+      .then(async () => {
+        setCheckLoaded(true);
+
+        if(withEntitySelect && groundTruthStore.imageQualityCheckStatus[assetFile.publicUrl]?.pass) {
+          const result = await groundTruthStore.LookupImage({
+            poolId,
+            url: assetFile.publicUrl
+          });
+
+          setEntityId(result?.matched_uuid?.[0] || entityId);
+        }
+
+        setEntityLoaded(true);
+      })
+      .finally(() => setCheckLoaded(true));
+  }, [withEntitySelect]);
+
+  useEffect(() => {
+    Update({
+      ...assetFile,
+      entityId
+    });
+  }, [entityId]);
+
+  return (
+    <div className={S("ground-truth-form__assets-list-item")}>
+      <EntityListItem
+        key={`asset-${assetFile.key}`}
+        image={assetFile.publicUrl || assetFile.url}
+        label={assetFile.filename}
+        contain
+        small
+        anchor={assetFile.anchor}
+        actions={
+          <>
+            <IconButton
+              icon={AnchorIcon}
+              disabled={assetFile.anchor}
+              faded
+              label="Set as Entity Anchor Image"
+              onClick={SetAnchor}
+            />
+            <IconButton
+              icon={XIcon}
+              faded
+              label="Remove Asset"
+              onClick={Remove}
+            />
+            <IconButton
+              loading={!checkLoaded}
+              label={qualityCheck?.reason}
+              icon={qualityCheck?.fail ? ExclamationPointIcon : CheckmarkIcon}
+              className={
+                S(
+                  "ground-truth-form__asset-indicator",
+                  `ground-truth-form__asset-indicator--${qualityCheck?.fail ? "fail" : "pass"}`
+                )
+              }
+            />
+          </>
+        }
+      />
+      {
+        !withEntitySelect ? null :
+          <EntitySelect
+            poolId={poolId}
+            entityId={entityId}
+            loading={!entityLoaded}
+            setEntityId={setEntityId}
+          />
+      }
+    </div>
+  );
+});
+
+export const AssetFiles = observer(({poolId, withEntitySelect, Update}) => {
+  const [assetFiles, setAssetFiles] = useState([]);
+  const [updateKey, setUpdateKey] = useState(0);
+  const [showAssetFileBrowser, setShowAssetFileBrowser] = useState(false);
+
+  useEffect(() => {
+    Update(assetFiles);
+  }, [assetFiles, updateKey]);
+
+  return (
+    <>
+      <AsyncButton
+        color="gray.1"
+        autoContrast
+        onClick={() => setShowAssetFileBrowser(true)}
+      >
+        Select Assets
+      </AsyncButton>
+      {
+        assetFiles.length === 0 ? null :
+          <div
+            className={S("entity-list", "ground-truth-form__assets-list", withEntitySelect ? "ground-truth-form__assets-list--with-entity" : "")}>
+            {
+              assetFiles
+                .sort((a, b) =>
+                  // Failed items should show first
+                  groundTruthStore.imageQualityCheckStatus[a.publicUrl]?.fail ? -1 :
+                    groundTruthStore.imageQualityCheckStatus[b.publicUrl]?.fail ? 1 : 0
+                )
+                .map((assetFile, index) =>
+                  <AssetFile
+                    key={assetFile.key}
+                    withEntitySelect={withEntitySelect}
+                    poolId={poolId}
+                    assetFile={assetFile}
+                    SetAnchor={() => setAssetFiles(
+                      assetFiles.map((assetFile, i) => ({...assetFile, anchor: i === index}))
+                    )}
+                    Remove={() => setAssetFiles(assetFiles.filter((_, i) => i !== index))}
+                    Update={updatedAssetFile => {
+                      let updatedAssetFiles = assetFiles;
+                      const index = updatedAssetFiles.findIndex(file => file.fullPath === assetFile.fullPath);
+                      updatedAssetFiles[index] = updatedAssetFile;
+                      setAssetFiles(updatedAssetFiles);
+                      setUpdateKey(Math.random());
+                    }}
+                  />
+                )
+            }
+          </div>
+      }
+      {
+        !showAssetFileBrowser ? null :
+          <FileBrowser
+            alwaysOpened
+            title="Select Ground Truth Assets"
+            objectId={poolId}
+            multiple
+            extensions="image"
+            Submit={files =>
+              setAssetFiles([
+                ...files
+                  // Filter duplicates
+                  .filter(file =>
+                    !assetFiles.find(assetFile => assetFile.fullPath === file.fullPath)
+                  )
+                  .map(file => ({
+                    ...file,
+                    key: `${poolId}-${file.fullPath}`
+                  })),
+                ...assetFiles
+              ])
+            }
+            Close={() => setShowAssetFileBrowser(false)}
+          />
+      }
+    </>
+  );
+});
+
+export const GroundTruthMultiEntityAssetForm = observer(({poolId, title, Close}) => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [assetFiles, setAssetFiles] = useState([]);
-  const [showAssetFileBrowser, setShowAssetFileBrowser] = useState(false);
+  const [entityId, setEntityId] = useState("automatic");
+
+  // Required to trigger re-render after entity check finishes
+  const [, setUpdateKey] = useState(0);
+
+  let errorMessages = [];
+
+  if(
+    assetFiles.find(assetFile =>
+      groundTruthStore.imageQualityCheckStatus[assetFile.publicUrl] &&
+      !groundTruthStore.imageQualityCheckStatus[assetFile.publicUrl]?.pass
+    )
+  ) {
+    errorMessages.push("One or more assets failed validation. Please remove them before continuing.");
+  }
+
+  const checkingFiles = !!assetFiles.find(assetFile =>
+    !groundTruthStore.imageQualityCheckStatus[assetFile.publicUrl]
+  );
+
+  if(entityId === "automatic" && !!assetFiles.find(assetFile => !assetFile.entityId)) {
+    errorMessages.push("One or more assets does not have an entity selected.");
+  }
+
+  return (
+    <Modal
+      title={
+        <div className={S("ground-truth-form__header")}>
+          <Icon icon={GroundTruthIcon} />
+          <span>{title}</span>
+        </div>
+      }
+      alwaysOpened
+      centered
+      onClose={() => submitting ? null : Close()}
+      withCloseButton={false}
+      size={650}
+    >
+      <div className={S("ground-truth-form")}>
+        <EntitySelect
+          showAutoOption
+          defaultDropdownOpened={false}
+          poolId={poolId}
+          entityId={entityId}
+          setEntityId={newEntityId => setEntityId(newEntityId)}
+        />
+        <AssetFiles
+          poolId={poolId}
+          Update={updatedAssetFiles => {
+            setAssetFiles(updatedAssetFiles);
+            setUpdateKey(Math.random());
+          }}
+          withEntitySelect={entityId === "automatic"}
+        />
+
+        {
+          !error ? null :
+            <div className={S("ground-truth-form__error")}>
+              {error}
+            </div>
+        }
+
+        <div className={S("ground-truth-form__actions")}>
+          <Button
+            disabled={submitting}
+            w={150}
+            variant="subtle"
+            color="gray.5"
+            onClick={() => Close()}
+          >
+            Cancel
+          </Button>
+          <AsyncButton
+            color="gray.5"
+            autoContrast
+            w={150}
+            disabled={assetFiles.length === 0 || errorMessages.length > 0 || checkingFiles}
+            tooltip={
+              errorMessages.length === 0 ? null :
+                errorMessages
+                  .filter((x, i, a) => a.indexOf(x) == i)
+                  .map(message => <div key={message}>{message}</div>)
+            }
+            onClick={async () => {
+              setSubmitting(true);
+
+              try {
+                if(entityId === "automatic") {
+                  groundTruthStore.AddMixedEntityAssets({poolId, files: assetFiles});
+                } else {
+                  groundTruthStore.AddAssets({poolId, entityId, files: assetFiles});
+                }
+
+                Close();
+              } catch(error) {
+                 
+                console.error(error);
+                setError("Failed to add ground truth assets. Please try again");
+              } finally {
+                setSubmitting(false);
+              }
+            }}
+          >
+            Add Assets
+          </AsyncButton>
+        </div>
+      </div>
+    </Modal>
+  );
+});
+
+export const GroundTruthEntityForm = observer(({
+  title,
+  poolId,
+  entityId,
+  showForm=false,
+  showAssets=false,
+  Close
+}) => {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [assetFiles, setAssetFiles] = useState([]);
 
   const pool = groundTruthStore.pools[poolId] || {};
   const entity = entityId && pool.metadata?.entities?.[entityId];
@@ -417,33 +804,21 @@ export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
       }
   );
 
-  useEffect(() => {
-    groundTruthStore.client.utils.LimitedMap(
-      1,
-      assetFiles,
-      async assetFile => {
-        await groundTruthStore.ValidateImage({
-          poolId,
-          url: assetFile.publicUrl,
-          label: assetFile.fullPath
-        });
-      }
-    );
-  }, [assetFiles]);
-
   let errorMessages = [];
   const matchingLabelEntity = Object.values(pool?.metadata?.entities || {})
     .find((e, index) => (!entity || entity.index !== index) && e.label?.toLowerCase() === formData.label?.toLowerCase());
 
   if(!formData.label) {
     errorMessages.push("Label must be specified");
-  } else if(matchingLabelEntity) {
+  } else if(showForm && matchingLabelEntity) {
     errorMessages.push("An entity with this label already exists");
   }
 
   const anchorImageUrl =
-    (assetFiles.find(assetFile => assetFile.anchor) || assetFiles[0])?.publicUrl ||
-    (entity?.sample_files.find(asset => asset.anchor) || entity?.sample_files?.[0])?.link?.url;
+    assetFiles.find(assetFile => assetFile.anchor)?.publicUrl ||
+    entity?.sample_files.find(asset => asset.anchor)?.link?.url ||
+    entity?.sample_files?.[0]?.link?.url ||
+    assetFiles[0]?.publicUrl;
 
   if(
     assetFiles.find(assetFile =>
@@ -454,221 +829,146 @@ export const GroundTruthEntityForm = observer(({poolId, entityId, Close}) => {
     errorMessages.push("One or more assets failed validation. Please remove them before continuing.");
   }
 
+  const checkingFiles = !!assetFiles.find(assetFile =>
+    !groundTruthStore.imageQualityCheckStatus[assetFile.publicUrl]
+  );
+
   return (
-    <>
-      <Modal
-        title={
-          <div className={S("ground-truth-form__header")}>
-            <Icon icon={GroundTruthIcon} />
-            <span>{isNew ? "New" : "Update"} Ground Truth Entity</span>
-          </div>
-        }
-        alwaysOpened
-        centered
-        onClose={() => submitting ? null : Close()}
-        withCloseButton={false}
-        size={650}
-      >
-        <div className={S("ground-truth-form")}>
-          {
-            !anchorImageUrl ? null :
-              <div className={S("ground-truth-form__asset-image-container")}>
-                <LoaderImage
-                  loaderAspectRatio={1}
-                  loaderHeight="100%"
-                  src={ScaleImage(anchorImageUrl, 500)}
-                  alt={formData.label}
-                  className={S("ground-truth-form__asset-image", isNew ? "ground-truth-form__asset-image--small" : "")}
-                />
-              </div>
-          }
-
-          <FormTextInput
-            label="Label"
-            placeholder="Enter a label"
-            required
-            value={formData.label}
-            onChange={event => setFormData({...formData, label: event.target.value})}
-          />
-          <FormTextArea
-            label="Description"
-            placeholder="Enter a description"
-            value={formData.description}
-            onChange={event => setFormData({...formData, description: event.target.value})}
-          />
-
-          {
-            Object.keys(attributeConfig).map(attributeKey =>
-              attributeConfig[attributeKey]?.options?.length > 0 ?
-                <FormMultiSelect
-                  key={`attr-${attributeKey}`}
-                  label={attributeKey}
-                  value={(formData.meta[attributeKey] || "").split(",").map(s => s.trim()).filter(s => s)}
-                  options={attributeConfig[attributeKey].options}
-                  onChange={values => setFormData({
-                      ...formData,
-                      meta: {
-                        ...formData.meta,
-                        [attributeKey]: values.join(",")
-                      }
-                    }
-                  )}
-                /> :
-                <FormTextInput
-                  key={`attr-${attributeKey}`}
-                  label={attributeKey}
-                  value={formData.meta[attributeKey]}
-                  onChange={event => setFormData({
-                    ...formData,
-                    meta: {...formData.meta, [attributeKey]: event.target.value}
-                  })}
-                />
-            )
-          }
-
-          {
-            !isNew ? null :
-              <AsyncButton
-                color="gray.1"
-                autoContrast
-                onClick={() => setShowAssetFileBrowser(true)}
-              >
-                Select Assets
-              </AsyncButton>
-          }
-
-          {
-            assetFiles.length === 0 ? null :
-              <div className={S("entity-list", "entity-list--small")}>
-                {
-                  assetFiles
-                    .sort((a, b) => {
-                      if(
-                        groundTruthStore.imageQualityCheckStatus[a.publicUrl] &&
-                        !groundTruthStore.imageQualityCheckStatus[a.publicUrl]?.pass
-                      ) {
-                        return -1;
-                      } else if (
-                        groundTruthStore.imageQualityCheckStatus[b.publicUrl] &&
-                        !groundTruthStore.imageQualityCheckStatus[b.publicUrl]?.pass
-                      ) {
-                        return 1;
-                      }
-
-                      return 0;
-                    })
-                    .map((assetFile, index) =>
-                      <EntityListItem
-                        key={`asset-${index}-${assetFile.fullPath}`}
-                        image={assetFile.publicUrl || assetFile.url}
-                        label={assetFile.filename}
-                        contain
-                        small
-                        anchor={assetFile.anchor}
-                        actions={
-                          <>
-                            <IconButton
-                              icon={AnchorIcon}
-                              disabled={assetFile.anchor}
-                              faded
-                              label="Set as Entity Anchor Image"
-                              onClick={() => setAssetFiles(
-                                assetFiles.map((assetFile, i) => ({...assetFile, anchor: i === index}))
-                              )}
-                            />
-                            <IconButton
-                              icon={XIcon}
-                              faded
-                              label="Remove Asset"
-                              onClick={() => setAssetFiles(assetFiles.filter((_, i) => i !== index))}
-                            />
-                            <IconButton
-                              loading={!groundTruthStore.imageQualityCheckStatus[assetFile.publicUrl]}
-                              label={groundTruthStore.imageQualityCheckStatus[assetFile.publicUrl]?.reason}
-                              icon={
-                                groundTruthStore.imageQualityCheckStatus[assetFile.publicUrl]?.pass ?
-                                  CheckmarkIcon :
-                                  ExclamationPointIcon
-                              }
-                              className={
-                                S(
-                                  "ground-truth-form__asset-indicator",
-                                  `ground-truth-form__asset-indicator--${groundTruthStore.imageQualityCheckStatus[assetFile.publicUrl]?.pass ? "pass" : "fail"}`
-                                )
-                              }
-                            />
-                          </>
-                      }
-                    />
-                  )
-                }
-              </div>
-          }
-
-          {
-            !error ? null :
-              <div className={S("ground-truth-form__error")}>
-                {error}
-              </div>
-          }
-
-          <div className={S("ground-truth-form__actions")}>
-            <Button
-              disabled={submitting}
-              w={150}
-              variant="subtle"
-              color="gray.5"
-              onClick={() => Close()}
-            >
-              Cancel
-            </Button>
-            <AsyncButton
-              color="gray.5"
-              autoContrast
-              w={150}
-              disabled={errorMessages.length > 0}
-              tooltip={
-                errorMessages.length === 0 ? null :
-                  errorMessages
-                    .filter((x, i, a) => a.indexOf(x) == i)
-                    .map(message => <div key={message}>{message}</div>)
-              }
-              onClick={async () => {
-                setSubmitting(true);
-
-                try {
-                  const id =
-                    isNew ?
-                      await groundTruthStore.AddEntity({poolId, assetFiles, ...formData}) :
-                      await groundTruthStore.ModifyEntity({poolId, entityId, ...formData});
-                  Close(id);
-                } catch(error) {
-                  // eslint-disable-next-line no-console
-                  console.error(error);
-                  setError("Failed to create ground truth entity. Please try again");
-                } finally {
-                  setSubmitting(false);
-                }
-              }}
-            >
-              {isNew ? "Create" : "Update"}
-            </AsyncButton>
-          </div>
+    <Modal
+      title={
+        <div className={S("ground-truth-form__header")}>
+          <Icon icon={GroundTruthIcon} />
+          <span>{title}</span>
         </div>
-      </Modal>
-      {
-        !showAssetFileBrowser ? null :
-          <FileBrowser
-            alwaysOpened
-            title="Select Ground Truth Assets"
-            objectId={poolId}
-            multiple
-            extensions="image"
-            Submit={files => setAssetFiles([...files, ...assetFiles])}
-            Close={() => setShowAssetFileBrowser(false)}
-          />
       }
-    </>
+      alwaysOpened
+      centered
+      onClose={() => submitting ? null : Close()}
+      withCloseButton={false}
+      size={650}
+    >
+      <div className={S("ground-truth-form")}>
+        {
+          !anchorImageUrl ? null :
+            <div className={S("ground-truth-form__asset-image-container")}>
+              <LoaderImage
+                loaderAspectRatio={1}
+                loaderHeight="100%"
+                src={ScaleImage(anchorImageUrl, 500)}
+                alt={formData.label}
+                className={S("ground-truth-form__asset-image")}
+              />
+            </div>
+        }
+
+        {
+          !showForm ? null :
+            <>
+            <FormTextInput
+              label="Label"
+              placeholder="Enter a label"
+              required
+              value={formData.label}
+              onChange={event => setFormData({...formData, label: event.target.value})}
+            />
+            <FormTextArea
+              label="Description"
+              placeholder="Enter a description"
+              value={formData.description}
+              onChange={event => setFormData({...formData, description: event.target.value})}
+            />
+          </>
+        }
+
+        {
+          Object.keys(attributeConfig).map(attributeKey =>
+            attributeConfig[attributeKey]?.options?.length > 0 ?
+              <FormMultiSelect
+                key={`attr-${attributeKey}`}
+                label={attributeKey}
+                value={(formData.meta[attributeKey] || "").split(",").map(s => s.trim()).filter(s => s)}
+                options={attributeConfig[attributeKey].options}
+                onChange={values => setFormData({
+                    ...formData,
+                    meta: {
+                      ...formData.meta,
+                      [attributeKey]: values.join(",")
+                    }
+                  }
+                )}
+              /> :
+              <FormTextInput
+                key={`attr-${attributeKey}`}
+                label={attributeKey}
+                value={formData.meta[attributeKey]}
+                onChange={event => setFormData({
+                  ...formData,
+                  meta: {...formData.meta, [attributeKey]: event.target.value}
+                })}
+              />
+          )
+        }
+
+        {
+          !showAssets ? null :
+            <AssetFiles
+              poolId={poolId}
+              Update={setAssetFiles}
+            />
+        }
+
+        {
+          !error ? null :
+            <div className={S("ground-truth-form__error")}>
+              {error}
+            </div>
+        }
+
+        <div className={S("ground-truth-form__actions")}>
+          <Button
+            disabled={submitting}
+            w={150}
+            variant="subtle"
+            color="gray.5"
+            onClick={() => Close()}
+          >
+            Cancel
+          </Button>
+          <AsyncButton
+            color="gray.5"
+            autoContrast
+            w={150}
+            loading={checkingFiles}
+            disabled={errorMessages.length > 0 || checkingFiles}
+            tooltip={
+              errorMessages.length === 0 ? null :
+                errorMessages
+                  .filter((x, i, a) => a.indexOf(x) == i)
+                  .map(message => <div key={message}>{message}</div>)
+            }
+            onClick={async () => {
+              setSubmitting(true);
+
+              try {
+                const id =
+                  isNew ?
+                    await groundTruthStore.AddEntity({poolId, assetFiles, ...formData}) :
+                    await groundTruthStore.ModifyEntity({poolId, entityId, assetFiles, ...formData});
+                Close(id);
+              } catch(error) {
+                 
+                console.error(error);
+                setError("Failed to create ground truth entity. Please try again");
+              } finally {
+                setSubmitting(false);
+              }
+            }}
+          >
+            {isNew ? "Create" : "Update"}
+          </AsyncButton>
+        </div>
+      </div>
+    </Modal>
   );
 });
 
@@ -742,7 +1042,7 @@ export const GroundTruthAssetForm = observer(({poolId, entityId, assetIndexOrId,
                 await groundTruthStore.ModifyAsset({poolId, entityId, assetIndexOrId, ...formData});
                 Close(entityId);
               } catch (error) {
-                // eslint-disable-next-line no-console
+                 
                 console.error(error);
                 setError("Failed to edit ground truth asset. Please try again");
               }
@@ -923,6 +1223,7 @@ export const GroundTruthEntityMenu = observer(({poolId, entityId, Update}) => {
       {
         !showEdit ? null :
           <GroundTruthEntityForm
+            title="Update Ground Truth Entity"
             poolId={poolId}
             entityId={entityId}
             Close={() => {

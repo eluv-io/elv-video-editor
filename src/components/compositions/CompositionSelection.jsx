@@ -304,7 +304,7 @@ const CompositionCreationModal = observer(({type, Cancel}) => {
                   offeringKey
                 });
               } catch(error) {
-                // eslint-disable-next-line no-console
+                 
                 console.error(error);
                 setOptions({...options, creating: false});
 

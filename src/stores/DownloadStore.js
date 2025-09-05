@@ -211,9 +211,9 @@ class DownloadStore {
         status
       };
     } catch(error) {
-      // eslint-disable-next-line no-console
+       
       console.error("Error performing download:");
-      // eslint-disable-next-line no-console
+       
       console.error(error);
       if(encrypt) {
         return this.StartDownloadJob({...arguments[0], encrypt: false});
@@ -260,7 +260,7 @@ class DownloadStore {
       this.downloadedJobs[jobId] = true;
     } catch(error) {
       this.rootStore.SetError("Unable to download");
-      // eslint-disable-next-line no-console
+       
       console.error("Invalid URL or failed to download", error);
     }
   });
@@ -476,9 +476,9 @@ class DownloadStore {
       try {
         share.shareOptions = JSON.parse(share.attributes.shareOptions[0]);
       } catch(error) {
-        // eslint-disable-next-line no-console
+         
         console.error("Unable to parse share details", share);
-        // eslint-disable-next-line no-console
+         
         console.error(error);
       }
     }
@@ -487,9 +487,9 @@ class DownloadStore {
       try {
         share.downloadOptions = JSON.parse(share.attributes.downloadOptions[0]);
       } catch(error) {
-        // eslint-disable-next-line no-console
+         
         console.error("Unable to parse share details", share);
-        // eslint-disable-next-line no-console
+         
         console.error(error);
       }
     }

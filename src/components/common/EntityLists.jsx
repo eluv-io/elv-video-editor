@@ -72,66 +72,86 @@ export const EntityListItem = observer(({
   tooltip,
   aspectRatio="square"
 }) =>
-  <Linkish
-    to={link}
-    className={
-      S(
-        "entity-card",
-        `entity-card--${aspectRatio}`,
-        "entity-list-item",
-        `entity-list-item--${aspectRatio}`,
-        small ? "entity-list-item--small" : ""
-      )
+  <Tooltip
+    position="top-start"
+    openDelay={500}
+    disabled={!image}
+    label={
+      <LoaderImage
+        width={250}
+        src={image}
+        loaderDelay={25}
+        loaderAspectRatio={aspectRatio === "landscape" ? 16/9 : 1}
+        className={S("entity-card__image--hover")}
+      />
     }
+    classNames={{
+      tooltip: S("tooltip--transparent")
+    }}
   >
-    <div className={S("entity-card__image-container")}>
-      {
-        !image ?
-          <div className={S("entity-card__image", "entity-card__image--blank")}>
-            <Icon icon={ImageIcon}/>
-          </div> :
-          <LoaderImage
-            width={100}
-            src={image}
-            loaderDelay={25}
-            loaderAspectRatio={aspectRatio === "landscape" ? 16/9 : 1}
-            className={S("entity-card__image", contain ? "entity-card__image--contain" : "")}
-          />
+    <Linkish
+      to={link}
+      className={
+        S(
+          "entity-card",
+          `entity-card--${aspectRatio}`,
+          "entity-list-item",
+          `entity-list-item--${aspectRatio}`,
+          small ? "entity-list-item--small" : ""
+        )
       }
-      {
-        !anchor ? null :
-          <Icon icon={AnchorIcon} className={S("entity-card__image-badge")} />
-      }
-    </div>
-    <div className={S("entity-card__text")}>
-      <Tooltip position="top-start" openDelay={500} label={tooltip || label}>
-        <div className={S("entity-card__title")}>
-          <div className={S("ellipsis")}>
-            {label}
+    >
+      <div className={S("entity-card__image-container")}>
+        {
+          !image ?
+            <div className={S("entity-card__image", "entity-card__image--blank")}>
+              <Icon icon={ImageIcon}/>
+            </div> :
+            <Tooltip label={"Asd"} withinPortal={false}>
+              <LoaderImage
+                width={100}
+                src={image}
+                loaderDelay={25}
+                loaderAspectRatio={aspectRatio === "landscape" ? 16/9 : 1}
+                className={S("entity-card__image", contain ? "entity-card__image--contain" : "")}
+              />
+            </Tooltip>
+        }
+        {
+          !anchor ? null :
+            <Icon icon={AnchorIcon} className={S("entity-card__image-badge")} />
+        }
+      </div>
+      <div className={S("entity-card__text")}>
+        <Tooltip position="top-start" openDelay={500} label={tooltip || label}>
+          <div className={S("entity-card__title")}>
+            <div className={S("ellipsis")}>
+              {label}
+            </div>
+            {
+              typeof count === "undefined" ? null :
+                <div className={S("entity-card__count")}>({count})</div>
+            }
           </div>
-          {
-            typeof count === "undefined" ? null :
-              <div className={S("entity-card__count")}>({count})</div>
-          }
-        </div>
-      </Tooltip>
-      {
-        !subtitle ? null :
-          <div className={S("entity-card__subtitle")}>
-            { subtitle }
-          </div>
-      }
-      {
-        !id ? null :
-          <CopyableField value={id} showOnHover className={S("entity-card__id")}>
-            {id}
-          </CopyableField>
-      }
-    </div>
-    <div onClick={SP()} className={S("entity-list-item__actions")}>
-      { actions }
-    </div>
-  </Linkish>
+        </Tooltip>
+        {
+          !subtitle ? null :
+            <div className={S("entity-card__subtitle")}>
+              { subtitle }
+            </div>
+        }
+        {
+          !id ? null :
+            <CopyableField value={id} showOnHover className={S("entity-card__id")}>
+              {id}
+            </CopyableField>
+        }
+      </div>
+      <div onClick={SP()} className={S("entity-list-item__actions")}>
+        { actions }
+      </div>
+    </Linkish>
+  </Tooltip>
 );
 
 export const EntityCard = observer(({

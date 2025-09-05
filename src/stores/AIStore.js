@@ -277,7 +277,7 @@ class AIStore {
         versionHash
       };
     } catch(error) {
-      // eslint-disable-next-line no-console
+       
       console.error("Unable to load search fields", error);
     }
 
@@ -324,7 +324,7 @@ class AIStore {
           )
         );
       } catch(error) {
-        // eslint-disable-next-line no-console
+         
         console.error("Error parsing custom search indexes");
       }
     }
@@ -415,7 +415,7 @@ class AIStore {
       this.ClearSearchResults();
     }
 
-    const type = this.searchIndex.type.includes("assets") ? "image" : "video";
+    const type = this.searchIndex.type?.includes("assets") ? "image" : "video";
 
     let {results, contents, pagination} = (yield this.QueryAIAPI({
       update: true,
@@ -546,9 +546,9 @@ class AIStore {
 
       yield this.client.FinalizeContentObject({libraryId, objectId, writeToken});
     } catch(error) {
-      // eslint-disable-next-line no-console
+       
       console.error("Tag aggregation failed:");
-      // eslint-disable-next-line no-console
+       
       console.error(error);
     } finally {
       clearInterval(progressInterval);
@@ -682,9 +682,9 @@ class AIStore {
 
       this.searchIndexUpdateProgress[indexId] = 100;
     } catch(error) {
-      // eslint-disable-next-line no-console
+       
       console.error("Failed to update search index", indexId);
-      // eslint-disable-next-line no-console
+       
       console.error(error);
     }
   });

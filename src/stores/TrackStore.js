@@ -72,7 +72,7 @@ class TrackStore {
     if(!window.AudioContext && !window.webkitAudioContext) {
       this.audioSupported = false;
 
-      // eslint-disable-next-line no-console
+       
       console.error("AudioContext not supported in this browser");
     }
   }
@@ -366,9 +366,9 @@ class TrackStore {
           resolve();
         });
       } catch (error) {
-        // eslint-disable-next-line no-console
+         
         console.error("Failed to decode audio segment");
-        // eslint-disable-next-line no-console
+         
         console.error(error);
         reject(error);
       }
@@ -486,7 +486,7 @@ class TrackStore {
             }
           );
         } catch(error) {
-          // eslint-disable-next-line no-console
+           
           console.error(error);
         }
       })
@@ -580,17 +580,17 @@ class TrackStore {
               tags
             });
           } catch(error) {
-            // eslint-disable-next-line no-console
+             
             console.error("Error parsing VTT track:");
-            // eslint-disable-next-line no-console
+             
             console.error(error);
           }
         })
       );
     } catch(error) {
-      // eslint-disable-next-line no-console
+       
       console.error("Failed to load subtitle tracks:");
-      // eslint-disable-next-line no-console
+       
       console.error(error);
     }
   });
@@ -600,9 +600,9 @@ class TrackStore {
       const metadataTracks = this.AddTracksFromTags(metadataTags, type);
       metadataTracks.map(track => {
         if(!track.label || !track.tags) {
-          // eslint-disable-next-line no-console
+           
           console.error("Invalid track:", track.key);
-          // eslint-disable-next-line no-console
+           
           console.error(Unproxy(metadataTags[track.key]));
           return;
         }
@@ -619,9 +619,9 @@ class TrackStore {
 
       this.uiUpdateDelayFactor = Math.max(0.25, Math.log10(this.totalTags) / 4 - 0.5);
     } catch(error) {
-      // eslint-disable-next-line no-console
+       
       console.error("Failed to load metadata tracks:");
-      // eslint-disable-next-line no-console
+       
       console.error(error);
     }
   }
@@ -646,7 +646,7 @@ class TrackStore {
         )
         .forEach(stream => {
           if(!streams[stream]) {
-            // eslint-disable-next-line no-console
+             
             console.error(`No ${stream} stream found. Skipping ${stream} segment track.`);
             return;
           }
@@ -677,9 +677,9 @@ class TrackStore {
           });
         });
       } catch(error) {
-        // eslint-disable-next-line no-console
+         
         console.error("Failed to load segment tracks:");
-        // eslint-disable-next-line no-console
+         
         console.error(error);
       }
   }

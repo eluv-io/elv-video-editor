@@ -300,7 +300,7 @@ class VideoStore {
           }
         }
       } catch(error) {
-        // eslint-disable-next-line no-console
+         
         console.error("Unable to determine frame rate");
       }
 
@@ -379,7 +379,7 @@ class VideoStore {
         this.ready = true;
       }
     } catch(error) {
-      // eslint-disable-next-line no-console
+       
       console.error("Failed to load:");
       // eslint-disable-next-line no-console
       console.log(error);
@@ -503,9 +503,9 @@ class VideoStore {
     this.player.on(HLS.Events.ERROR, action((event, data) => {
       if(data.fatal || (data.type === "networkError" && data.response && parseInt(data.response.code) >= 500)) {
         this.consecutiveSegmentErrors += 1;
-        // eslint-disable-next-line no-console
+         
         console.error("HLS playback error:");
-        // eslint-disable-next-line no-console
+         
         console.error(data);
 
         // Give up and show an error message after several failures
@@ -583,9 +583,9 @@ class VideoStore {
     this.video.addEventListener("durationchange", InitializeDuration);
 
     this.video.addEventListener("error", action(() => {
-      // eslint-disable-next-line no-console
+       
       console.error("Video error: ");
-      // eslint-disable-next-line no-console
+       
       console.error(video.error);
 
       //setTimeout(() => this.videoKey = this.videoKey + 1, 1000);
@@ -1188,7 +1188,7 @@ class VideoStore {
               string: `${width}x${height} (${(parseInt(bit_rate) / 1000 / 1000).toFixed(1)}Mbps)`
             };
           } catch(error) {
-            // eslint-disable-next-line no-console
+             
             console.error(error);
           }
         })
@@ -1236,7 +1236,7 @@ class VideoStore {
                     repKey
                 };
               } catch(error) {
-                // eslint-disable-next-line no-console
+                 
                 console.error(error);
               }
             })

@@ -187,7 +187,7 @@ class ThumbnailStore {
       this.generating = true;
       localStorage.setItem(`regenerate-thumbnails-${this.parentStore.videoObject?.objectId}`, "true");
     } catch(error) {
-      // eslint-disable-next-line no-console
+       
       console.error(error);
       this.thumbnailStatus.status = { state: "failed" };
     }

@@ -8,12 +8,13 @@ import {
   Confirm,
   FormNumberInput,
   FormSelect,
-  FormTextArea, FormTextInput,
-  IconButton, Loader,
-  LoaderImage,
+  FormTextArea,
+  FormTextInput,
+  IconButton,
+  Loader,
   StyledButton
 } from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher, FormatConfidence, Round, ScaleImage} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, FormatConfidence, Round} from "@/utils/Utils.js";
 import {BoxToPolygon, BoxToRectangle} from "@/utils/Geometry.js";
 
 import EditIcon from "@/assets/icons/Edit.svg";
@@ -22,75 +23,10 @@ import XIcon from "@/assets/icons/X.svg";
 import TrashIcon from "@/assets/icons/trash.svg";
 import CheckmarkIcon from "@/assets/icons/check-circle.svg";
 import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
+import {EntitySelect} from "@/components/ground_truth/GroundTruthForms.jsx";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
-const EntityOption = ({option, checked}) => {
-  const entity = groundTruthStore.pools[option.poolId]?.metadata?.entities?.[option.value];
-
-  if(!entity) {
-    return null;
-  }
-
-  const image = (entity.sample_files || []).find(image => image.anchor) || (entity.sample_files || [])[0];
-  const imageUrl = ScaleImage(image?.link?.url, 300);
-
-  return (
-    <div className={S("entity-option", checked ? "entity-option--selected" : "")}>
-      <Tooltip
-        label={
-          <LoaderImage lazy src={imageUrl} className={S("entity-option__tooltip-image")} showWithoutSource />
-        }
-        openDelay={500}
-        classNames={{
-          tooltip: S("tooltip--transparent")
-        }}
-      >
-        <div className={S("entity-option__image-container")}>
-          <LoaderImage lazy src={imageUrl} className={S("entity-option__image")} showWithoutSource />
-        </div>
-      </Tooltip>
-      <div className={S("entity-option__text")}>
-        { entity.label || entityId }
-      </div>
-    </div>
-  );
-};
-
-const EntitySelect = ({poolId, entityId, setEntityId}) => {
-  const [component, setComponent] = useState(null);
-
-  const pool = groundTruthStore.pools[poolId];
-
-  useEffect(() => {
-    setComponent(
-      <div className={S("form__input-container")}>
-        <FormSelect
-          searchable
-          limit={100}
-          label="Entity"
-          onChange={value => setEntityId(value)}
-          options={
-            Object.keys(pool?.metadata?.entities || {})
-              .map(entityId =>
-                ({
-                  label: pool?.metadata?.entities[entityId].label || entityId,
-                  value: entityId,
-                  poolId
-                })
-              )
-          }
-          renderOption={EntityOption}
-          classNames={{
-            option: S("entity-option-wrapper")
-          }}
-        />
-      </div>
-    );
-  }, [poolId, pool?.metadata, entityId]);
-
-  return component;
-};
 
 export const GroundTruthAssetFromOverlayForm = observer(() => {
   const [image, setImage] = useState(undefined);

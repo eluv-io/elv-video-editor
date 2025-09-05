@@ -200,7 +200,8 @@
   &__asset-image-container {
     align-items: center;
     background-color: var(--background-primary);
-    display: flex;
+
+    //display: flex;
     justify-content: center;
     max-height: 200px;
     max-width: 100%;
@@ -212,6 +213,8 @@
   }
 
   &__asset-image {
+    display: block;
+    margin: 0 auto;
     max-height: 100%;
     max-width: 100%;
     object-fit: contain;
@@ -224,6 +227,22 @@
 
     &--fail {
       color: var(--text-error);
+    }
+  }
+
+  &__assets-list {
+    max-height: 30vh;
+
+    &--with-entity {
+      max-height: 53vh;
+
+      .ground-truth-form__assets-list-item {
+        background-color: var(--background-secondary);
+        border-radius: 10px;
+        display: grid;
+        gap: 10px;
+        padding: 10px;
+      }
     }
   }
 }
@@ -301,5 +320,60 @@
     right: 10px;
     top: 10px;
     width: 15px;
+  }
+}
+
+
+.entity-option-wrapper {
+  padding: 0;
+
+  &:not(:last-child) {
+    margin-bottom: 5px;
+  }
+}
+
+// Ground truth
+.entity-option {
+  border-radius: 10px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 50px 1fr;
+  width: 100%;
+
+  &--selected {
+    background-color: var(--background-toolbar--highlight);
+  }
+
+  &__image-container {
+    height: 50px;
+    overflow: hidden;
+    position: relative;
+    width: 50px;
+  }
+
+  &__image {
+    background-color: black;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    width: 100%;
+
+    &--automatic {
+      background-color: transparent;
+    }
+  }
+
+  &__tooltip-image {
+    border-radius: 10px;
+    box-shadow: 0 0 10px black;
+    max-height: 300px;
+    max-width: 300px;
+    object-fit: contain;
+  }
+
+  &__text {
+    align-items: center;
+    display: flex;
+    font-weight: 600;
   }
 }

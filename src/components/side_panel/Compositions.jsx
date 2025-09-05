@@ -377,7 +377,7 @@ export const CompositionBrowser = observer(() => {
         paging
       });
     } catch(error) {
-      // eslint-disable-next-line no-console
+       
       console.error(error);
     } finally {
       setLoading(false);

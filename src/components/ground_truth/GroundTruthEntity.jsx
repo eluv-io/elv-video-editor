@@ -11,7 +11,6 @@ import {CardDisplaySwitch, SearchBar} from "@/components/nav/Browser.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import UrlJoin from "url-join";
 import {
-  GroundTruthAssetFileBrowser,
   GroundTruthAssetMenu,
   GroundTruthEntityForm,
   GroundTruthPoolSaveButton
@@ -39,7 +38,9 @@ const EntityDetails = observer(() => {
       {
         !editing ? null :
           <GroundTruthEntityForm
+            title="Update Ground Truth Entity"
             poolId={poolId}
+            showForm
             entityId={entityId}
             Close={() => setEditing(false)}
           />
@@ -280,9 +281,11 @@ const GroundTruthEntity = observer(() => {
       </div>
       {
         !showAssetModal ? null :
-          <GroundTruthAssetFileBrowser
+          <GroundTruthEntityForm
+            title="Add Ground Truth Assets"
             poolId={poolId}
             entityId={entityId}
+            showAssets
             Close={() => setShowAssetModal(false)}
           />
       }

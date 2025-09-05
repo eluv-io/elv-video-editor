@@ -699,9 +699,9 @@ class CompositionStore {
 
       return playoutUrl;
     } catch(error) {
-      // eslint-disable-next-line no-console
+       
       console.error("Error getting composition playout url:");
-      // eslint-disable-next-line no-console
+       
       console.error(error);
 
       if(retry < 2) {
@@ -1027,7 +1027,7 @@ class CompositionStore {
         (error.status === 404 && error.message === "Not Found") ||
         (typeof error === "string" && (error.toLowerCase().includes("write token") && error.toLowerCase().includes("not found")))
       ) {
-        // eslint-disable-next-line no-console
+         
         console.error(`Error: Dead write token for composition ${objectId}/${compositionKey}, discarding draft`);
         this.DiscardDraft({objectId, compositionKey});
 

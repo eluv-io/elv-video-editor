@@ -1070,9 +1070,9 @@ class EditStore {
 
       return vodObjectId;
     } catch(error) {
-      // eslint-disable-next-line no-console
+       
       console.error("Failed to update vod from live", liveObjectId, vodObjectId);
-      // eslint-disable-next-line no-console
+       
       console.error(error);
     } finally {
       delete this.liveToVodProgress[progressKey];
