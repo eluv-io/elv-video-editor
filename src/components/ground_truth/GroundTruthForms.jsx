@@ -449,7 +449,6 @@ export const GroundTruthPoolForm = observer(({pool, Close}) => {
                       await groundTruthStore.ModifyGroundTruthPool(formData);
                   Close(poolId);
                 } catch (error) {
-                   
                   console.error(error);
                   setError("Failed to create ground truth pool. Please try again");
                 } finally {
@@ -699,12 +698,15 @@ export const GroundTruthMultiEntityAssetForm = observer(({poolId, title, Close})
       size={650}
     >
       <div className={S("ground-truth-form")}>
+        {/* Input here to prevent entity selection from automatically opening when the modal opens */}
+        <input type="text" hidden/>
         <EntitySelect
           showAutoOption
           defaultDropdownOpened={false}
           poolId={poolId}
           entityId={entityId}
           setEntityId={newEntityId => setEntityId(newEntityId)}
+          autoFocus={false}
         />
         <AssetFiles
           poolId={poolId}
@@ -753,9 +755,8 @@ export const GroundTruthMultiEntityAssetForm = observer(({poolId, title, Close})
                   groundTruthStore.AddAssets({poolId, entityId, files: assetFiles});
                 }
 
-                Close();
+                Close(true);
               } catch(error) {
-                 
                 console.error(error);
                 setError("Failed to add ground truth assets. Please try again");
               } finally {
@@ -956,7 +957,6 @@ export const GroundTruthEntityForm = observer(({
                     await groundTruthStore.ModifyEntity({poolId, entityId, assetFiles, ...formData});
                 Close(id);
               } catch(error) {
-                 
                 console.error(error);
                 setError("Failed to create ground truth entity. Please try again");
               } finally {
@@ -1042,7 +1042,6 @@ export const GroundTruthAssetForm = observer(({poolId, entityId, assetIndexOrId,
                 await groundTruthStore.ModifyAsset({poolId, entityId, assetIndexOrId, ...formData});
                 Close(entityId);
               } catch (error) {
-                 
                 console.error(error);
                 setError("Failed to edit ground truth asset. Please try again");
               }

@@ -217,9 +217,7 @@ class BrowserStore {
                       )
                     );
                   } catch(error) {
-                     
                     console.error("Error parsing channel duration:");
-                     
                     console.error(error);
                   }
                 }
@@ -460,9 +458,7 @@ class BrowserStore {
         try {
           objectDetails[objectId] = await this.ObjectDetails({objectId});
         } catch(error) {
-           
           console.error("Error retrieving my library item:");
-           
           console.error(error);
 
           if(typeof error === "string" && error.includes("deleted")) {
@@ -623,13 +619,10 @@ class BrowserStore {
         case "object":
           return yield this.ObjectDetails({objectId, versionHash, force: true});
         default:
-           
           console.error("Invalid content:", contentId, accessType);
       }
     } catch(error) {
-       
       console.error("Failed to look up ID:");
-       
       console.error(error);
     }
 

@@ -27,9 +27,10 @@ import {EntitySelect} from "@/components/ground_truth/GroundTruthForms.jsx";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
-
 export const GroundTruthAssetFromOverlayForm = observer(() => {
   const [image, setImage] = useState(undefined);
+  //const [checkLoading, setCheckLoading] = useState(false);
+  const [entityLoading, setEntityLoading] = useState(false);
   const asset = tagStore.editedGroundTruthAsset;
   const pool = groundTruthStore.pools[asset.poolId];
 
@@ -57,12 +58,37 @@ export const GroundTruthAssetFromOverlayForm = observer(() => {
 
   useEffect(() => {
     videoStore.GetFrame({bounds: asset.box, maxWidth: 500, maxHeight: 500})
-      .then(blob => setImage({
-        filename: `${videoStore.videoObject.objectId}-${videoStore.smpte.replaceAll(":", "_")}.jpg`,
-        blob,
-        url: window.URL.createObjectURL(blob)
-      }));
+      .then(async blob =>
+        setImage({
+          filename: `${videoStore.videoObject.objectId}-${videoStore.smpte.replaceAll(":", "_")}.jpg`,
+          blob,
+          url: window.URL.createObjectURL(blob)
+        })
+      );
   }, [asset.box, asset.frame]);
+
+  useEffect(() => {
+    if(!tagStore.editedGroundTruthAsset?.poolId || !image?.blob) {
+      return;
+    }
+
+    setEntityLoading(true);
+
+    groundTruthStore.LookupImage({
+      poolId: tagStore.editedGroundTruthAsset.poolId,
+      imageBlob: image.blob,
+      key: "overlayForm",
+      force: true
+    })
+      .then(() => {
+        const entityId = groundTruthStore.imageEntityCheckStatus["overlayForm"]?.matched_entity?.[0];
+        Update("entityId")({
+          value: tagStore.editedGroundTruthAsset?.entityId || entityId
+        });
+      })
+      .catch(console.error)
+      .finally(() => setEntityLoading(false));
+  }, [tagStore.editedGroundTruthAsset.poolId, image?.url]);
 
   useEffect(() => {
     Update("image")(image);
@@ -79,7 +105,9 @@ export const GroundTruthAssetFromOverlayForm = observer(() => {
           />
         </div>
         <div className={S("tag-details__track")}>
-          <div className={S("tag-details__track-label")}>Add New Ground Truth Asset</div>
+          <div className={S("tag-details__track-label")}>
+            Add New Ground Truth Asset
+          </div>
         </div>
         <div className={S("tag-details__right-actions")}>
           <IconButton
@@ -113,6 +141,7 @@ export const GroundTruthAssetFromOverlayForm = observer(() => {
               !pool?.metadata ? <Loader className={S("form__loader")} /> :
                 <>
                   <EntitySelect
+                    loading={entityLoading}
                     key={`entity-select-${asset.poolId}`}
                     poolId={asset.poolId}
                     entityId={asset.entityId}

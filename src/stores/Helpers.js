@@ -184,10 +184,8 @@ export const LoadVideo = async ({
 
     return videoObject;
   } catch(error) {
-     
     console.error("Failed to load:");
-    // eslint-disable-next-line no-console
-    console.log(error);
+    console.error(error);
 
     if(error.status === 403) {
       window.location.pathname = "/";

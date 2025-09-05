@@ -1070,9 +1070,7 @@ class EditStore {
 
       return vodObjectId;
     } catch(error) {
-       
       console.error("Failed to update vod from live", liveObjectId, vodObjectId);
-       
       console.error(error);
     } finally {
       delete this.liveToVodProgress[progressKey];

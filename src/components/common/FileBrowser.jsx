@@ -297,7 +297,6 @@ const CreateDirectoryForm = ({Create}) => {
           setRenaming(true);
           Create({filename: values.filename})
             .catch(error => {
-
               console.error(error);
               setRenaming(false);
             })
@@ -343,7 +342,6 @@ const RenameFileForm = ({filename, Rename}) => {
           setRenaming(true);
           Rename({newFilename: values.newFilename})
             .catch(error => {
-
               console.error(error);
               setRenaming(false);
             })
@@ -404,7 +402,6 @@ const DownloadFileButton = ({objectId, path, filename, url, encrypted}) => {
               callback: ({bytesFinished, bytesTotal}) => setProgress((bytesFinished || 0) / (bytesTotal || 1) * 100)
             });
           } catch(error) {
-
             console.error(error);
           }
         }}
@@ -812,7 +809,6 @@ const FileBrowser = observer(({objectId, multiple, title, extensions=[], initial
 
                   Close();
                 } catch(error) {
-
                   console.error(error);
                   setSaving(false);
                 }

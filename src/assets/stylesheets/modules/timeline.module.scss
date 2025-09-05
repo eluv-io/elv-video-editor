@@ -57,6 +57,12 @@
     font-weight: 500;
     margin-right: 5px;
   }
+
+  @media screen and (width <= 1600px) {
+    &__label {
+      display: none;
+    }
+  }
 }
 
 .jump-to {

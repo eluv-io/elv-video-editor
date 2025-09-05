@@ -412,7 +412,6 @@ class TagStore {
           }
       };
     } else {
-       
       console.error("Unknown editing type: " + type);
       return;
     }

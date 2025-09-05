@@ -95,7 +95,7 @@ const TimelineTopBar = observer(({simple}) => {
                   label="Add New Overlay Tag"
                   onClick={() => {
                     tagStore.ClearEditing(false);
-                    tagStore.ClearSelectedTags();
+                    tagStore.ClearSelectedTag();
                     tagStore.ClearSelectedOverlayTags();
                     tagStore.AddOverlayTag({
                       trackId: tagStore.selectedTrackId,

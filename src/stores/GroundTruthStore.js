@@ -56,9 +56,7 @@ class GroundTruthStore {
                 })) || poolId
               };
             } catch(error) {
-               
               console.error("Failed to load ground truth pool:");
-               
               console.error(error);
             }
           })
@@ -834,9 +832,7 @@ class GroundTruthStore {
           yield action.Write({libraryId, objectId, writeToken});
           this.saveProgress += progressPerAction;
         } catch(error) {
-           
           console.error("Save action failed:");
-           
           console.error(action);
           // eslint-disable-next-line no-console
           console.log(error);
@@ -863,10 +859,11 @@ class GroundTruthStore {
     this.saveError = undefined;
   }
 
-  ValidateImage = flow(function * ({poolId, url, label, force}) {
+  ValidateImage = flow(function * ({poolId, url, key, label, force}) {
+    key = key || url;
     return yield this.rootStore.LoadResource({
       key: "validateImage",
-      id: `${poolId}-${url}`,
+      id: `${poolId}-${key}`,
       force,
       bind: this,
       Load: flow(function * () {
@@ -891,7 +888,7 @@ class GroundTruthStore {
             }
           })).results?.[0] || {quality_pass: false, quality_reasons: []};
 
-          this.imageQualityCheckStatus[url] = {
+          this.imageQualityCheckStatus[key] = {
             pass: response.quality_pass || false,
             fail: !response.quality_pass || false,
             reason: response.quality_reasons?.length > 0 ?
@@ -904,18 +901,31 @@ class GroundTruthStore {
           this.activeCheckCount = this.activeCheckCount - 1;
         }
 
-        return this.imageQualityCheckStatus[url];
+        return this.imageQualityCheckStatus[key];
       })
     });
   });
 
-  LookupImage = flow(function * ({poolId, url, model="insight", force}) {
+  LookupImage = flow(function * ({poolId, url, imageBlob, key, model="insight", force}) {
+    key = key || url;
+
     return yield this.rootStore.LoadResource({
       key: "lookupImage",
-      id: `${poolId}-${url}`,
+      id: `${poolId}-${key}`,
       force,
       bind: this,
       Load: flow(function * () {
+        let body = {
+          embedding_model: model,
+          gt_url: url
+        };
+
+        if(imageBlob) {
+          body = new FormData();
+          body.append("embedding_model", model);
+          body.append("frame_img", yield imageBlob.bytes());
+        }
+
         while(this.activeCheckCount >= 5) {
           yield new Promise(resolve => setTimeout(resolve, 200));
         }
@@ -923,18 +933,16 @@ class GroundTruthStore {
         try {
           this.activeCheckCount = this.activeCheckCount + 1;
 
-          this.imageEntityCheckStatus[url] = yield this.rootStore.aiStore.QueryAIAPI({
+          this.imageEntityCheckStatus[key] = yield this.rootStore.aiStore.QueryAIAPI({
             method: "POST",
             path: UrlJoin("/ground-truth", "q", poolId, "rep", "find_similar"),
             objectId: poolId,
             channelAuth: true,
             headers: {
-              "Content-Type": "application/json",
+              "Content-Type": imageBlob ? "multipart/form-data" : "application/json"
             },
-            body: {
-              "gt_url": url,
-              "embedding_model": model
-            }
+            body,
+            stringifyBody: !imageBlob
           });
         } catch(error) {
           console.error(error);
@@ -942,7 +950,7 @@ class GroundTruthStore {
           this.activeCheckCount = this.activeCheckCount - 1;
         }
 
-        return this.imageEntityCheckStatus[url];
+        return this.imageEntityCheckStatus[key];
       })
     });
   });

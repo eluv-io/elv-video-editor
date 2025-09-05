@@ -377,7 +377,6 @@ export const CompositionBrowser = observer(() => {
         paging
       });
     } catch(error) {
-       
       console.error(error);
     } finally {
       setLoading(false);

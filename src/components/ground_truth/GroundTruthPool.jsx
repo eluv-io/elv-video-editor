@@ -313,9 +313,12 @@ const GroundTruthPool = observer(() => {
             poolId={poolId}
             showAssets
             showEntitySelection
-            Close={() => {
+            Close={modified => {
               setShowAssetModal(false);
-              setUpdateKey(Math.random());
+
+              if(modified) {
+                setUpdateKey(Math.random());
+              }
             }}
           />
       }

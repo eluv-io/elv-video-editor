@@ -446,9 +446,7 @@ export const AggregateTagsButton = observer(() => {
                   )
                 );
               } catch(error) {
-                 
                 console.error("Error aggregating or updating indexes: ");
-                 
                 console.error(error);
               } finally {
                 setUpdating(false);

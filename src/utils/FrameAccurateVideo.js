@@ -82,7 +82,6 @@ class FrameAccurateVideo {
           return "NTSCHD";
         }
 
-         
         console.error(`Unknown playback rate: ${input}`);
 
         FrameRateNumerator.Unknown = parseInt(input.split("/")[0]);

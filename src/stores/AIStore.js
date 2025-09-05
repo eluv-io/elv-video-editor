@@ -37,6 +37,7 @@ class AIStore {
     update=false,
     queryParams={},
     body,
+    stringifyBody=true,
     headers={},
     format="json"
   }) {
@@ -83,12 +84,16 @@ class AIStore {
 
     url.searchParams.set("authorization", authToken);
 
+    if(body && stringifyBody) {
+      body = JSON.stringify(body);
+    }
+
     const response = yield fetch(
       url,
       {
         method,
         headers,
-        body: body ? JSON.stringify(body) : undefined
+        body
       }
     );
 
@@ -277,7 +282,6 @@ class AIStore {
         versionHash
       };
     } catch(error) {
-       
       console.error("Unable to load search fields", error);
     }
 
@@ -324,7 +328,6 @@ class AIStore {
           )
         );
       } catch(error) {
-         
         console.error("Error parsing custom search indexes");
       }
     }
@@ -546,9 +549,7 @@ class AIStore {
 
       yield this.client.FinalizeContentObject({libraryId, objectId, writeToken});
     } catch(error) {
-       
       console.error("Tag aggregation failed:");
-       
       console.error(error);
     } finally {
       clearInterval(progressInterval);
@@ -682,9 +683,7 @@ class AIStore {
 
       this.searchIndexUpdateProgress[indexId] = 100;
     } catch(error) {
-       
       console.error("Failed to update search index", indexId);
-       
       console.error(error);
     }
   });

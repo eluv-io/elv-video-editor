@@ -304,7 +304,6 @@ const CompositionCreationModal = observer(({type, Cancel}) => {
                   offeringKey
                 });
               } catch(error) {
-                 
                 console.error(error);
                 setOptions({...options, creating: false});
 

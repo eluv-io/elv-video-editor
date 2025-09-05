@@ -182,9 +182,7 @@ class OverlayStore {
         this.overlayEnabled = true;
       }
     } catch(error) {
-       
       console.error("Failed to load overlay tracks:");
-       
       console.error(error);
     }
   });

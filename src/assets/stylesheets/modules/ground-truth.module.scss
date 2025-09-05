@@ -198,11 +198,7 @@
   }
 
   &__asset-image-container {
-    align-items: center;
     background-color: var(--background-primary);
-
-    //display: flex;
-    justify-content: center;
     max-height: 200px;
     max-width: 100%;
     object-fit: contain;

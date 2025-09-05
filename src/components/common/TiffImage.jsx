@@ -29,9 +29,7 @@ const TiffImage = ({url, setRef}) => {
 
         await LoadTiff(canvas, retries+1);
       } else {
-         
         console.error("Failed to load tiff: ");
-         
         console.error(error);
       }
     }

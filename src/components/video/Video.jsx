@@ -106,9 +106,7 @@ const Video = observer(({
     // Reload on fatal error
     player.on(HLSPlayer.Events.ERROR, function (event, data) {
       if(data.fatal) {
-         
         console.error("Fatal HLS Error:");
-         
         console.error(data);
 
         switch(data.type) {

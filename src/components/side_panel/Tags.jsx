@@ -159,7 +159,9 @@ const TagActions = observer(({tag, track}) => {
 
 const TagForm = observer(() => {
   const tag = tagStore.editedTag;
-  const track = trackStore.Track(tag.trackId);
+  const track = trackStore.Track(tag?.trackId);
+
+  if(!track) { return null; }
 
   const duration = parseFloat(tag.endTime - tag.startTime);
 

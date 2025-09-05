@@ -171,7 +171,7 @@ class FileBrowserStore {
 
       yield this.LoadFiles({objectId, force: true});
     } catch(error) {
-       
+
       console.error(error);
     } finally {
       this.activeUploadJobs[objectId] -= 1;
@@ -194,7 +194,6 @@ class FileBrowserStore {
 
       this.rootStore.OpenExternalLink(window.URL.createObjectURL(blob), filename);
     } catch(error) {
-       
       console.error(error);
     }
   }

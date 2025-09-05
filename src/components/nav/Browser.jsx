@@ -290,7 +290,6 @@ const LiveToVodForm = observer(() => {
                       setSubmitting(false);
                     }
                   } catch(error) {
-                     
                     console.error(error);
                     setSubmitting(false);
                   }
