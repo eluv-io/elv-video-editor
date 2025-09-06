@@ -104,7 +104,7 @@ export const EntitySelect = ({poolId, entityId, showAutoOption, setEntityId, loa
 
   return (
     <div key={poolId} className={S("form__input-container")}>
-      <LoadingOverlay visible={loading} />
+      <LoadingOverlay visible={loading} className={S("form__input-container-loader")} />
       <FormSelect
         searchable
         limit={100}

@@ -27,6 +27,7 @@ import {EntitySelect} from "@/components/ground_truth/GroundTruthForms.jsx";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
+let lookupTimeout;
 export const GroundTruthAssetFromOverlayForm = observer(() => {
   const [image, setImage] = useState(undefined);
   //const [checkLoading, setCheckLoading] = useState(false);
@@ -68,26 +69,36 @@ export const GroundTruthAssetFromOverlayForm = observer(() => {
   }, [asset.box, asset.frame]);
 
   useEffect(() => {
-    if(!tagStore.editedGroundTruthAsset?.poolId || !image?.blob) {
+    if(
+      tagStore.editedGroundTruthAsset?.entityId ||
+      !tagStore.editedGroundTruthAsset?.poolId ||
+      !image?.blob
+    ) {
       return;
     }
 
-    setEntityLoading(true);
+    clearTimeout(lookupTimeout);
 
-    groundTruthStore.LookupImage({
-      poolId: tagStore.editedGroundTruthAsset.poolId,
-      imageBlob: image.blob,
-      key: "overlayForm",
-      force: true
-    })
-      .then(() => {
-        const entityId = groundTruthStore.imageEntityCheckStatus["overlayForm"]?.matched_entity?.[0];
-        Update("entityId")({
-          value: tagStore.editedGroundTruthAsset?.entityId || entityId
+    lookupTimeout = setTimeout(async () => {
+      try {
+        setEntityLoading(true);
+
+        await groundTruthStore.LookupImage({
+          poolId: tagStore.editedGroundTruthAsset.poolId,
+          imageBlob: image.blob,
+          key: "overlayForm",
+          force: true
         });
-      })
-      .catch(console.error)
-      .finally(() => setEntityLoading(false));
+
+        const entityId = groundTruthStore.imageEntityCheckStatus["overlayForm"]?.matched_entity?.[0];
+
+        Update("entityId")(tagStore.editedGroundTruthAsset?.entityId || entityId);
+      } catch(error) {
+        console.error(error);
+      }
+
+      setEntityLoading(false);
+    }, 1000);
   }, [tagStore.editedGroundTruthAsset.poolId, image?.url]);
 
   useEffect(() => {

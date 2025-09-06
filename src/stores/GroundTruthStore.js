@@ -936,7 +936,7 @@ class GroundTruthStore {
         if(imageBlob) {
           body = new FormData();
           body.append("embedding_model", model);
-          body.append("frame_img", yield imageBlob.bytes());
+          body.append("frame_img", new Blob([yield imageBlob.bytes()], {type: "image/jpeg"}), "dummy.jpg");
         }
 
         while(this.activeCheckCount >= 5) {
@@ -951,9 +951,6 @@ class GroundTruthStore {
             path: UrlJoin("/ground-truth", "q", poolId, "rep", "find_similar"),
             objectId: poolId,
             channelAuth: true,
-            headers: {
-              "Content-Type": imageBlob ? "multipart/form-data" : "application/json"
-            },
             body,
             stringifyBody: !imageBlob
           });

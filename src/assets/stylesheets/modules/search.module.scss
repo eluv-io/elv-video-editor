@@ -166,6 +166,17 @@
     right: 10px;
     top: 10px;
   }
+
+  @media screen and (width <= 1600px) {
+    &__actions {
+      a,
+      button {
+        font-size: 10px;
+        min-width: 0;
+        padding-inline: 10px;
+      }
+    }
+  }
 }
 
 .summary-box {

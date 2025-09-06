@@ -161,10 +161,7 @@ const TimelineTopBar = observer(({simple}) => {
           label="Set Clip Out to Current Frame"
           onClick={() => videoStore.SetClipMark({outFrame: videoStore.frame})}
         />
-        {
-          !simple ? null :
-            <ClipModalButton/>
-        }
+        <ClipModalButton/>
         {
           !videoStore.isLiveToVod ? null :
             <>
@@ -269,14 +266,9 @@ const TimelineBottomBar = observer(({simple}) => {
         }}
         label="Reset Timeline Scale"
       />
-      {
-        !simple ? null :
-          <>
-            <div className={S("toolbar__separator")}/>
-            <MyClipsButton/>
-          </>
-      }
 
+      <div className={S("toolbar__separator")}/>
+      <MyClipsButton/>
     </div>
   );
 });

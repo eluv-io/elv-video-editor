@@ -41,16 +41,15 @@ const Summary = observer(({result}) => {
   const Generate = async ({cacheOnly, regenerate}={}) => {
     try {
       if(result.type === "video") {
-        const summ = await aiStore.GenerateClipSummary({
-            objectId: result.objectId,
-            startTime: result.startTime,
-            endTime: result.endTime,
-            cacheOnly,
-            regenerate
-          });
-        setSummary(
-          summ
-        );
+        const summary = await aiStore.GenerateClipSummary({
+          objectId: result.objectId,
+          startTime: result.startTime,
+          endTime: result.endTime,
+          cacheOnly,
+          regenerate
+        });
+
+        setSummary(summary);
       } else {
         setSummary(
           await aiStore.GenerateImageSummary({
@@ -74,7 +73,10 @@ const Summary = observer(({result}) => {
     Generate({cacheOnly: true});
   }, []);
 
-  if(loading) { return null; }
+  if(
+    loading ||
+    (result.type === "video" && !rootStore.searchVideoStore?.videoObject?.metadata?.video_tags)
+  ) { return null; }
 
   if(summaryError) {
     return (
@@ -343,6 +345,9 @@ const SearchResult = observer(() => {
     return <Redirect to={`/${queryB58}`} />;
   }
 
+  // Try and get 16:9 default size for video
+  const contentRatio = 100 * ((window.innerHeight - 350) * 16 / 9) / (window.innerWidth - 80);
+
   return (
     <div key={`result-${queryB58}-${resultIndex}`} className={S("browser-page")}>
       <div className={S("browser")}>
@@ -370,11 +375,11 @@ const SearchResult = observer(() => {
           </div>
         </h1>
         <PanelGroup direction="horizontal" className={S("result-page")}>
-          <Panel id="side-panel" order={1} minSize={25} defaultSize={35} >
+          <Panel id="side-panel" order={1} minSize={25}>
             <SearchResults className={S("result-page__side-panel")} />
           </Panel>
           <PanelResizeHandle />
-          <Panel id="content" order={2} minSize={30}>
+          <Panel id="content" order={2} minSize={30} defaultSize={contentRatio} >
               {
                 result.type === "video" ?
                   <ClipResultPanel result={result} /> :

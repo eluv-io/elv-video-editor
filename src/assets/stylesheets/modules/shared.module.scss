@@ -208,6 +208,10 @@
     width: 100%;
   }
 
+  &__input-container-loader {
+    border-radius: 10px;
+  }
+
   &__input-actions {
     align-items: center;
     display: flex;
