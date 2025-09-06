@@ -217,6 +217,9 @@
   }
 
   &__asset-indicator {
+    height: 20px;
+    width: 20px;
+
     &--pass {
       color: var(--text-pass);
     }

@@ -495,7 +495,7 @@ export const AssetFile = observer(({poolId, assetFile, withEntitySelect, SetAnch
   const qualityCheck = groundTruthStore.imageQualityCheckStatus[assetFile.publicUrl];
 
   useEffect(() => {
-    groundTruthStore.ValidateImage({
+    groundTruthStore.ValidateImageQuality({
       poolId,
       url: assetFile.publicUrl,
       label: assetFile.fullPath
@@ -552,6 +552,18 @@ export const AssetFile = observer(({poolId, assetFile, withEntitySelect, SetAnch
               loading={!checkLoaded}
               label={qualityCheck?.reason}
               icon={qualityCheck?.fail ? ExclamationPointIcon : CheckmarkIcon}
+              small
+              onClick={
+                !qualityCheck?.fail ? null :
+                  () => Confirm({
+                    title: "Override Quality Check",
+                    text: "Are you sure you want to ignore the quality check for this asset?",
+                    onConfirm: () => {
+                      groundTruthStore.OverrideQualityCheck({key: assetFile.publicUrl});
+                      Update(assetFile);
+                    }
+                  })
+              }
               className={
                 S(
                   "ground-truth-form__asset-indicator",
@@ -673,15 +685,13 @@ export const GroundTruthMultiEntityAssetForm = observer(({poolId, title, Close})
     )
   ) {
     errorMessages.push("One or more assets failed validation. Please remove them before continuing.");
+  } else if(entityId === "automatic" && !!assetFiles.find(assetFile => !assetFile.entityId)) {
+    errorMessages.push("One or more assets does not have an entity selected.");
   }
 
   const checkingFiles = !!assetFiles.find(assetFile =>
     !groundTruthStore.imageQualityCheckStatus[assetFile.publicUrl]
   );
-
-  if(entityId === "automatic" && !!assetFiles.find(assetFile => !assetFile.entityId)) {
-    errorMessages.push("One or more assets does not have an entity selected.");
-  }
 
   return (
     <Modal

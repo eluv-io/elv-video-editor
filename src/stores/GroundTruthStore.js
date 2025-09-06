@@ -859,7 +859,7 @@ class GroundTruthStore {
     this.saveError = undefined;
   }
 
-  ValidateImage = flow(function * ({poolId, url, key, label, force}) {
+  ValidateImageQuality = flow(function * ({poolId, url, key, label, force}) {
     key = key || url;
     return yield this.rootStore.LoadResource({
       key: "validateImage",
@@ -904,6 +904,19 @@ class GroundTruthStore {
         return this.imageQualityCheckStatus[key];
       })
     });
+  });
+
+  OverrideQualityCheck = flow(function ({key}) {
+    if(!this.imageQualityCheckStatus[key]) {
+      return;
+    }
+
+    this.imageQualityCheckStatus[key] = {
+      ...this.imageQualityCheckStatus[key],
+      pass: true,
+      fail: false,
+      overridden: true
+    };
   });
 
   LookupImage = flow(function * ({poolId, url, imageBlob, key, model="insight", force}) {
