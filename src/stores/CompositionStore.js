@@ -1214,7 +1214,7 @@ class CompositionStore {
       videoHandler,
       name: sourceName,
       fullClipId: sourceFullClipId,
-      clipIds: sourceClipIds,
+      clipIds: sourceClipIds
     };
 
     this.LoadHighlights({
@@ -1248,13 +1248,13 @@ class CompositionStore {
     this.selectedSourceId = objectId;
   }
 
-  LoadHighlights = flow(function * ({store, objectId, prompt}) {
+  LoadHighlights = flow(function * ({store, objectId, prompt, wait=true}) {
     try {
       this.sources[objectId].highlightsLoading = true;
       const highlights = (yield this.rootStore.aiStore.GenerateAIHighlights({
         objectId,
         prompt,
-        wait: true
+        wait
       }))?.clips || [];
 
       let aiClipIds = [];
