@@ -181,7 +181,7 @@ const ClipResultPanel = observer(({result}) => {
             </StyledButton>
             {
               showFull ? null :
-                <div>
+                <div className={S("result__time")}>
                   { result.subtitle }
                 </div>
             }

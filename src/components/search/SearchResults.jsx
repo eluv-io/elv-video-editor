@@ -54,7 +54,6 @@ export const SearchResults = observer(({showList, preserveScrollPosition, classN
             }
             link={UrlJoin("/", queryB58, index.toString())}
             id={result.objectId}
-            anchor
             label={result.name}
             aspectRatio={aiStore.searchResults.type === "image" ? "square" : "landscape"}
             subtitle={result.subtitle}

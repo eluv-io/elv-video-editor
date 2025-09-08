@@ -177,6 +177,13 @@
       }
     }
   }
+
+  @media screen and (width <= 1400px) {
+
+    &__time {
+      display: none;
+    }
+  }
 }
 
 .summary-box {
