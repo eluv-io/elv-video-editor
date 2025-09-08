@@ -394,6 +394,7 @@ class CompositionStore {
       label: "Reorder Clips",
       Action: () => {
         const clipIdList = this.clipList
+          .filter((objectId, index, list) => list.findIndex(otherId => objectId === otherId) === index)
           .sort((a, b) => a.clipInFrame < b.clipInFrame ? -1 : 1)
           .map(clip => clip.clipId);
 
