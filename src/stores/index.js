@@ -1,4 +1,8 @@
 import {configure, makeAutoObservable, flow} from "mobx";
+import Id from "@/utils/Id.js";
+import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
+import {v4 as UUID, parse as UUIDParse} from "uuid";
+
 import AssetStore from "@/stores/AssetStore.js";
 import BrowserStore from "./BrowserStore";
 import EditStore from "./EditStore";
@@ -10,10 +14,9 @@ import VideoStore from "./VideoStore";
 import FileBrowserStore from "./FileBrowserStore.js";
 import CompositionStore from "@/stores/CompositionStore.js";
 import DownloadStore from "@/stores/DownloadStore.js";
-import AIStore from "@/stores/AIStore.jsx";
-import Id from "@/utils/Id.js";
-import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
-import {v4 as UUID, parse as UUIDParse} from "uuid";
+import AIStore from "@/stores/AIStore.js";
+import GroundTruthStore from "@/stores/GroundTruthStore.js";
+
 
 import LocalizationEN from "@/assets/localizations/en.yml";
 import UrlJoin from "url-join";
@@ -42,35 +45,44 @@ class RootStore {
   l10n = LocalizationEN;
 
   tenantContractId;
+  tenantInfoObjectId;
   signedToken;
   authToken;
 
   libraryIds = {};
   versionHashes = {};
 
+  authTokens = {};
+
   selectedObjectId;
   selectedObjectName = "";
 
   _resources = {};
-  logTiming = true;
+  logTiming = new URLSearchParams(window.location.search).has("logTiming") || sessionStorage.getItem("log-timing");
 
   constructor() {
     makeAutoObservable(this);
 
     this.aiStore = new AIStore(this);
-    this.editStore = new EditStore(this);
-    this.tagStore = new TagStore(this);
-    this.keyboardControlStore = new KeyboardControlStore(this);
+    this.assetStore = new AssetStore(this);
     this.browserStore = new BrowserStore(this);
+    this.compositionStore = new CompositionStore(this);
+    this.downloadStore = new DownloadStore(this);
+    this.editStore = new EditStore(this);
+    this.fileBrowserStore = new FileBrowserStore(this);
+    this.groundTruthStore = new GroundTruthStore(this);
+    this.keyboardControlStore = new KeyboardControlStore(this);
     this.overlayStore = new OverlayStore(this);
+    this.tagStore = new TagStore(this);
     this.trackStore = new TrackStore(this);
     this.videoStore = new VideoStore(this);
-    this.compositionStore = new CompositionStore(this);
-    this.assetStore = new AssetStore(this);
-    this.fileBrowserStore = new FileBrowserStore(this);
-    this.downloadStore = new DownloadStore(this);
+    this.searchVideoStore = new VideoStore(this, {tags: false, thumbnails: false});
 
     this.InitializeClient();
+
+    if(this.logTiming) {
+      sessionStorage.setItem("log-timing", "true");
+    }
 
     window.rootStore = this;
   }
@@ -125,10 +137,6 @@ class RootStore {
       timeout: 120
     });
 
-    this.client = client;
-
-    this.initialized = true;
-
     const UpdatePage = () =>
       client.SendMessage({
         options: {
@@ -148,12 +156,27 @@ class RootStore {
 
     //yield client.SetNodes({fabricURIs: ["https://host-76-74-28-230.contentfabric.io"]});
 
-    this.address = yield this.client.CurrentAccountAddress();
-    this.network = (yield this.client.NetworkInfo()).name;
-    this.publicToken = client.utils.B64(JSON.stringify({qspace_id: yield this.client.ContentSpaceId()}));
+    this.address = yield client.CurrentAccountAddress();
+    this.network = (yield client.NetworkInfo()).name;
+    this.publicToken = client.utils.B64(JSON.stringify({qspace_id: yield client.ContentSpaceId()}));
     this.signedToken = yield client.CreateFabricToken({duration: 7 * 24 * 60 * 60 * 1000});
 
     this.tenantContractId = yield client.userProfileClient.TenantContractId();
+
+    this.tenantInfoObjectId = yield client.ContentObjectMetadata({
+      libraryId: this.tenantContractId.replace(/^iten/, "ilib"),
+      objectId: this.tenantContractId.replace(/^iten/, "iq__"),
+      metadataSubtree: "public/ml_config",
+    });
+
+    if(!this.tenantInfoObjectId) {
+      // eslint-disable-next-line no-console
+      console.warn(`Tenant info object ID (public/ml_config) not set for this tenant (${this.tenantContractId})`);
+      this.tenantInfoObjectId = this.tenantContractId.replace(/^iten/, "iq__");
+    }
+
+    this.client = client;
+    this.initialized = true;
 
     yield this.aiStore.LoadSearchIndexes();
     yield this.compositionStore.Initialize();
@@ -169,7 +192,7 @@ class RootStore {
 
     let urlPath = UrlJoin("s", this.network);
     if(auth === "private") {
-      urlPath = UrlJoin("t", this.authToken);
+      urlPath = UrlJoin("t", this.authTokens[objectId]);
     }
 
     if(versionHash) {
@@ -270,8 +293,25 @@ class RootStore {
     return this.versionHashes[objectId].versionHash;
   });
 
+  SetAuthToken = flow(function * ({objectId, versionHash}) {
+    if(!versionHash) {
+      versionHash = yield this.client.LatestVersionHash({objectId});
+    } else {
+      objectId = yield this.client.utils.DecodeVersionHash(versionHash).objectId;
+    }
+
+    if(!this.authTokens[objectId]) {
+      const baseFileUrl = yield this.client.FileUrl({
+        versionHash: versionHash,
+        filePath: "/"
+      });
+
+      this.authTokens[objectId] = new URL(baseFileUrl).searchParams.get("authorization");
+    }
+  });
+
   // Ensure the specified load method is called only once unless forced
-  LoadResource = flow(function * ({key, id, force=false, ttl, Load}) {
+  LoadResource = flow(function * ({key, id, force=false, ttl, Load, bind}) {
     if(force || (ttl && this._resources[key]?.[id] && Date.now() - this._resources[key][id].retrievedAt > ttl * 1000)) {
       // Force - drop all loaded content
       this._resources[key] = {};
@@ -280,6 +320,10 @@ class RootStore {
     this._resources[key] = this._resources[key] || {};
 
     if(force || !this._resources[key][id]) {
+      if(bind) {
+        Load = Load.bind(bind);
+      }
+
       if(this.logTiming) {
         this._resources[key][id] = {
           promise: (async (...args) => {
@@ -320,15 +364,17 @@ class RootStore {
 const root = new RootStore();
 
 export const rootStore = root;
-export const editStore = rootStore.editStore;
-export const tagStore = rootStore.tagStore;
-export const keyboardControlsStore = rootStore.keyboardControlStore;
+
+export const aiStore = rootStore.aiStore;
+export const assetStore = rootStore.assetStore;
 export const browserStore = rootStore.browserStore;
+export const compositionStore = rootStore.compositionStore;
+export const downloadStore = rootStore.downloadStore;
+export const editStore = rootStore.editStore;
+export const fileBrowserStore = rootStore.fileBrowserStore;
+export const groundTruthStore = rootStore.groundTruthStore;
+export const keyboardControlsStore = rootStore.keyboardControlStore;
 export const overlayStore = rootStore.overlayStore;
+export const tagStore = rootStore.tagStore;
 export const trackStore = rootStore.trackStore;
 export const videoStore = rootStore.videoStore;
-export const compositionStore = rootStore.compositionStore;
-export const assetStore = rootStore.assetStore;
-export const fileBrowserStore = rootStore.fileBrowserStore;
-export const downloadStore = rootStore.downloadStore;
-export const aiStore = rootStore.aiStore;

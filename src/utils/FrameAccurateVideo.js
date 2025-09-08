@@ -47,6 +47,7 @@ class FrameAccurateVideo {
       this.RegisterCallback();
     }
 
+    this.TimeToString = FrameAccurateVideo.TimeToString.bind(this);
     this.Update = this.Update.bind(this);
   }
 
@@ -81,7 +82,6 @@ class FrameAccurateVideo {
           return "NTSCHD";
         }
 
-        // eslint-disable-next-line no-console
         console.error(`Unknown playback rate: ${input}`);
 
         FrameRateNumerator.Unknown = parseInt(input.split("/")[0]);
@@ -89,6 +89,43 @@ class FrameAccurateVideo {
         FrameRates.Unknown = rate;
         return "Unknown";
     }
+  }
+
+  static TimeToString({time, includeFractionalSeconds, format="description"}) {
+    let seconds = Fraction(time);
+    const hours = seconds.div(3600).floor().valueOf();
+    const minutes = seconds.div(60).mod(60).floor(0).valueOf();
+    seconds = seconds.mod(60);
+
+    let string = "";
+    if(format === "smpte") {
+      string = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+      string += `:${seconds.floor().valueOf().toString().padStart(2, "0")}`;
+
+      if(includeFractionalSeconds && seconds.floor().valueOf() !== seconds.valueOf()) {
+        string += `.${parseFloat(seconds.valueOf().toFixed(4).toString().split(".")[1])}`;
+      }
+
+      return string;
+    }
+
+    if(hours > 0) {
+      string += `${hours}h `;
+    }
+
+    if(minutes > 0) {
+      string += `${minutes}m `;
+    }
+
+    if(!string || seconds > 0) {
+      if(includeFractionalSeconds) {
+        string += `${parseFloat(seconds.valueOf().toFixed(4))}s`;
+      } else {
+        string += `${seconds.floor().valueOf()}s`;
+      }
+    }
+
+    return string.trim();
   }
 
   /* Conversion utility methods */
@@ -269,32 +306,6 @@ class FrameAccurateVideo {
 
     if(seconds > 0 || !string) {
       string += `${seconds}s`;
-    }
-
-    return string.trim();
-  }
-
-  TimeToString({time, includeFractionalSeconds}) {
-    let seconds = Fraction(time);
-    const hours = seconds.div(3600).floor().valueOf();
-    const minutes = seconds.div(60).mod(60).floor(0).valueOf();
-    seconds = seconds.mod(60);
-
-    let string = "";
-    if(hours > 0) {
-      string += `${hours}h `;
-    }
-
-    if(minutes > 0) {
-      string += `${minutes}m `;
-    }
-
-    if(!string || seconds > 0) {
-      if(includeFractionalSeconds) {
-        string += `${parseFloat(seconds.valueOf().toFixed(4))}s`;
-      } else {
-        string += `${seconds.floor().valueOf()}s`;
-      }
     }
 
     return string.trim();

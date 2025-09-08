@@ -2,14 +2,18 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {Confirm, CopyableField, Icon, IconButton, Input, Modal} from "@/components/common/Common.jsx";
 import {rootStore, assetStore, compositionStore, tagStore, trackStore, aiStore} from "@/stores/index.js";
 import {TagDetails, TagsList} from "@/components/side_panel/Tags.jsx";
 import Assets from "@/components/side_panel/Assets.jsx";
 import {TrackDetails} from "@/components/side_panel/Tracks.jsx";
 
-import {OverlayTagDetails, OverlayTagsList} from "@/components/side_panel/OverlayTags.jsx";
+import {
+  GroundTruthAssetFromOverlayForm,
+  OverlayTagDetails,
+  OverlayTagsList
+} from "@/components/side_panel/OverlayTags.jsx";
 import {CompositionBrowser, CompositionClips} from "@/components/side_panel/Compositions.jsx";
 import {Combobox, Menu, PillsInput, RingProgress, Switch, Tooltip, useCombobox} from "@mantine/core";
 import {useLocation} from "wouter";
@@ -17,10 +21,10 @@ import {LibraryBrowser, ObjectBrowser} from "@/components/nav/Browser.jsx";
 
 import SelectArrowsIcon from "@/assets/icons/v2/select-arrows.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
-import SettingsIcon from "@/assets/icons/v2/settings.svg";
 import UpdateIndexIcon from "@/assets/icons/v2/reload.svg";
 import SourcesIcon from "@/assets/icons/v2/folder.svg";
-import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
+import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
+import CaretDownIcon from "@/assets/icons/v2/caret-down.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -50,6 +54,8 @@ const SearchIndexBrowseModal = observer(({Select, Cancel}) => {
       {
         libraryId ?
           <ObjectBrowser
+            withFilterBar
+            filterQueryParam="index"
             libraryId={libraryId}
             noDuration
             Back={() => setLibraryId(undefined)}
@@ -57,6 +63,8 @@ const SearchIndexBrowseModal = observer(({Select, Cancel}) => {
             className={S("search__index-browser")}
           /> :
           <LibraryBrowser
+            withFilterBar
+            filterQueryParam="index"
             title="Select search index"
             Select={({libraryId, objectId, name}) => {
               if(objectId) {
@@ -72,7 +80,7 @@ const SearchIndexBrowseModal = observer(({Select, Cancel}) => {
   );
 });
 
-const SearchIndexSelection = observer(() => {
+export const SearchIndexSelection = observer(({position="bottom-middle", className=""}) => {
   const [updatingIndexes, setUpdatingIndexes] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
   const [showBrowser, setShowBrowser] = useState(false);
@@ -109,18 +117,21 @@ const SearchIndexSelection = observer(() => {
         shadow="md"
         width={250}
         offset={15}
-        position="bottom-middle"
+        position={position}
         zIndex={200}
       >
         <Menu.Target>
-          <Tooltip label="Select Search Index" openDelay={500}>
+          <Tooltip disabled={showMenu} label="Select Search Index" openDelay={500}>
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className={S("search__button")}
+              className={JoinClassNames(S("search__button", showMenu ? "search__button--active" : ""), className)}
             >
               {
                 typeof indexUpdateProgress === "undefined" ?
-                  <Icon icon={SettingsIcon} /> :
+                  <div style={{display: "flex", alignItems: "center", gap: 5}}>
+                    <Icon icon={AIIcon}/>
+                    <Icon icon={CaretDownIcon}/>
+                  </div> :
                   <RingProgress
                     size={25}
                     thickness={3}
@@ -245,6 +256,8 @@ const SourceSelectionModal = observer(({Select, Cancel}) => {
       {
         libraryId ?
           <ObjectBrowser
+            withFilterBar
+            filterQueryParam="source"
             libraryId={libraryId}
             videoOnly
             Back={() => setLibraryId(undefined)}
@@ -252,6 +265,8 @@ const SourceSelectionModal = observer(({Select, Cancel}) => {
             className={S("search__source-browser")}
           /> :
           <LibraryBrowser
+            withFilterBar
+            filterQueryParam="source"
             title="Select source content for your composition"
             Select={({libraryId, objectId, name}) => {
               if(objectId) {
@@ -286,7 +301,7 @@ const SourceSelection = observer(() => {
         position="bottom-middle"
       >
         <Menu.Target>
-          <Tooltip label="Select Source" openDelay={500}>
+          <Tooltip label="Select Source" disabled={showMenu} openDelay={500}>
             <button
               onClick={() => setShowMenu(!showMenu)}
               className={S("search__source-button", showMenu ? "search__source-button--active" : "")}
@@ -313,11 +328,6 @@ const SourceSelection = observer(() => {
                   }}
                   className={S("search__source-option", compositionStore.selectedSourceId === objectId ? "search__source-option--active" : "")}
                 >
-                  <PreviewThumbnail
-                    maxThumbnails={10}
-                    store={compositionStore.ClipStore({sourceId: objectId})}
-                    className={S("search__source-thumbnail")}
-                  />
                   <Tooltip label={name}>
                     <div className={S("search__source-text")}>
                       <div className={S("search__source-option-name", "ellipsis")}>
@@ -360,7 +370,7 @@ const SourceSelection = observer(() => {
 });
 
 let filterTimeout;
-const SidebarFilter = observer(({store, label, sideContent, afterContent, delay = 100}) => {
+const SidebarFilter = observer(({store, label, sideContent, rightSideContent, afterContent, delay=100, className=""}) => {
   const [filter, setFilter] = useState(store.filter);
 
   useEffect(() => {
@@ -370,17 +380,21 @@ const SidebarFilter = observer(({store, label, sideContent, afterContent, delay 
   }, [filter]);
 
   return (
-    <div className={S("search")}>
+    <div className={JoinClassNames(S("search"), className)}>
       <Input
         placeholder={label}
         h={35}
         value={filter}
         onChange={event => setFilter(event.currentTarget.value)}
         aria-label={label}
-        className={S("search__input")}
-        rightSection={
+        className={S("search__input", sideContent ? "search__input--with-side-content" : "")}
+        leftSection={
           <div className={S("search__buttons")}>
             {sideContent}
+          </div>
+        }
+        rightSection={
+          <div className={S("search__buttons")}>
             {
               !filter ? null :
                 <IconButton
@@ -390,12 +404,13 @@ const SidebarFilter = observer(({store, label, sideContent, afterContent, delay 
                     setFilter("");
                     store.SetFilter("");
                   }}
-                  className={S("search__button")}
                 />
             }
+            {rightSideContent }
           </div>
-          }
-        rightSectionWidth="max-content"
+
+        }
+        rightSectionWidth={rightSideContent ? "max-content" : undefined}
       />
       { afterContent }
     </div>
@@ -556,7 +571,7 @@ export const TagSidePanel = observer(({setElement}) => {
   return (
     <div ref={setElement} className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
-        <SidebarFilter sideContent={<TagSwitch />} store={tagStore} label="Search within tags" />
+        <SidebarFilter delay={1000} rightSideContent={<TagSwitch />} store={tagStore} label="Search within tags" />
         <TrackSelection mode="tags" />
         <TagsList mode="tags" />
 
@@ -571,11 +586,17 @@ export const TagSidePanel = observer(({setElement}) => {
             <div className={S("side-panel-modal")}>
               {
                 tagStore.selectedOverlayTagId ?
-                  <OverlayTagDetails /> :
+                  <OverlayTagDetails/> :
                   tagStore.selectedTrackId ?
-                    <TrackDetails /> :
-                    <TagDetails />
+                    <TrackDetails/> :
+                    <TagDetails/>
               }
+            </div>
+        }
+        {
+          !tagStore.editedGroundTruthAsset ? null :
+            <div className={S("side-panel-modal")}>
+              <GroundTruthAssetFromOverlayForm Close={() => tagStore.ClearEditing()} />
             </div>
         }
       </div>
@@ -587,7 +608,7 @@ export const ClipSidePanel = observer(({setElement}) => {
   return (
     <div ref={setElement} className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
-        <SidebarFilter sideContent={<TagSwitch />} store={tagStore} label="Search clips" />
+        <SidebarFilter rightSideContent={<TagSwitch />} store={tagStore} label="Search clips" />
         <TrackSelection mode="clips" />
         <TagsList mode="clips" />
         {
@@ -634,7 +655,8 @@ export const CompositionSidePanel = observer(() => {
           sideContent={<SearchIndexSelection />}
           afterContent={<SourceSelection />}
           store={compositionStore}
-          label="Search Clips"
+          label="Search"
+          className={S("search--ai")}
         />
         <CompositionClips />
       </div>
@@ -649,8 +671,8 @@ export const CompositionBrowserPanel = observer(() => {
         <SidebarFilter
           key="composition-browser"
           store={compositionStore}
-          label="Search Compositions"
-          sideContent={<SearchIndexSelection />}
+          label="Filter Compositions"
+          className={S("search__input--filter")}
         />
         <CompositionBrowser />
       </div>

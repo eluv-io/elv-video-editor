@@ -88,7 +88,7 @@ class BrowserStore {
       .filter(({id, name}) =>
         !filter ||
         name.toLowerCase().includes(filter.toLowerCase()) ||
-        id.includes(filter.toLowerCase())
+        id.includes(filter)
       );
 
     return ({
@@ -130,7 +130,7 @@ class BrowserStore {
     }
   }
 
-  ObjectDetails = flow(function * ({objectId, versionHash, publicMetadata, noCache}) {
+  ObjectDetails = flow(function * ({objectId, versionHash, publicMetadata, force}) {
     if(!versionHash) {
       versionHash = yield this.rootStore.client.LatestVersionHash({objectId});
     }
@@ -138,10 +138,11 @@ class BrowserStore {
     objectId = this.rootStore.client.utils.DecodeVersionHash(versionHash).objectId;
 
     return yield this.rootStore.LoadResource({
-      key: "object-details",
+      key: "objectDetails",
       id: objectId,
-      force: noCache,
+      force,
       ttl: 60,
+      bind: this,
       Load: flow(function * () {
         yield this.rootStore.compositionStore.LoadMyCompositions();
 
@@ -216,9 +217,7 @@ class BrowserStore {
                       )
                     );
                   } catch(error) {
-                    // eslint-disable-next-line no-console
                     console.error("Error parsing channel duration:");
-                    // eslint-disable-next-line no-console
                     console.error(error);
                   }
                 }
@@ -312,11 +311,11 @@ class BrowserStore {
             }),
           metadata
         };
-      }).bind(this)
+      })
     });
   });
 
-  ListObjects = flow(function * ({libraryId, page=1, perPage=25, filter="", cacheId=""}) {
+  ListObjects = flow(function * ({libraryId, page=1, perPage=25, filter=""}) {
     if(filter.startsWith("iq__") || filter.startsWith("hq__")) {
       filter = "";
     }
@@ -336,8 +335,7 @@ class BrowserStore {
         filter: filters,
         start: (page-1) * perPage,
         limit: perPage,
-        sort: "public/name",
-        cacheId
+        sort: "public/name"
       }
     });
 
@@ -361,11 +359,49 @@ class BrowserStore {
     };
   });
 
+  ListGroundTruthPools = flow(function * ({start=0, limit=10, page, perPage, filter=""}) {
+    if(page && perPage) {
+      start = (page - 1) * perPage;
+      limit = perPage;
+    }
+
+    yield this.rootStore.groundTruthStore.LoadGroundTruthPools();
+
+    const pools = Object.values(this.rootStore.groundTruthStore.pools)
+      .filter(pool =>
+        !filter ||
+        pool.name.toLowerCase().includes(filter.toLowerCase()) ||
+        pool.objectId.toLowerCase().includes(filter.toLowerCase())
+      )
+      .sort((a, b) => a?.name?.localeCompare(b?.name));
+    const total = pools.length;
+
+    return {
+      content: yield Promise.all(
+        pools.slice(start, start + limit)
+          .map(async pool => {
+            let details = await this.ObjectDetails({objectId: pool.objectId});
+            details.name = this.rootStore.groundTruthStore.pools[pool.objectId]?.name || details.name;
+            return details;
+          })
+      ),
+      paging: {
+        page,
+        perPage,
+        start,
+        limit,
+        pages: Math.ceil(total / perPage),
+        total
+      }
+    };
+  });
+
   // My library
   LoadMyLibrary = flow(function * () {
     yield this.rootStore.LoadResource({
-      key: "my-library",
-      id: "my-library",
+      key: "myLibrary",
+      id: "myLibrary",
+      bind: this,
       ttl: 10,
       Load: flow(function * () {
         const myLibraryItems = yield this.client.walletClient.ProfileMetadata({
@@ -380,7 +416,7 @@ class BrowserStore {
         } else {
           this.myLibraryItems = [];
         }
-      }).bind(this)
+      })
     });
   });
 
@@ -422,9 +458,7 @@ class BrowserStore {
         try {
           objectDetails[objectId] = await this.ObjectDetails({objectId});
         } catch(error) {
-          // eslint-disable-next-line no-console
           console.error("Error retrieving my library item:");
-          // eslint-disable-next-line no-console
           console.error(error);
 
           if(typeof error === "string" && error.includes("deleted")) {
@@ -463,6 +497,7 @@ class BrowserStore {
 
           return {
             ...item,
+            source: objectDetails[item.objectId],
             duration: this.FormatDuration(item.duration),
             lastModified: this.FormatDate(item.accessedAt)
           };
@@ -582,15 +617,12 @@ class BrowserStore {
         case "library":
           return { libraryId };
         case "object":
-          return yield this.ObjectDetails({objectId, versionHash, noCache: true});
+          return yield this.ObjectDetails({objectId, versionHash, force: true});
         default:
-          // eslint-disable-next-line no-console
           console.error("Invalid content:", contentId, accessType);
       }
     } catch(error) {
-      // eslint-disable-next-line no-console
       console.error("Failed to look up ID:");
-      // eslint-disable-next-line no-console
       console.error(error);
     }
 

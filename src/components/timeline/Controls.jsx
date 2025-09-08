@@ -446,9 +446,7 @@ export const AggregateTagsButton = observer(() => {
                   )
                 );
               } catch(error) {
-                // eslint-disable-next-line no-console
                 console.error("Error aggregating or updating indexes: ");
-                // eslint-disable-next-line no-console
                 console.error(error);
               } finally {
                 setUpdating(false);

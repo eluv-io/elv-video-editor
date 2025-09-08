@@ -17,7 +17,8 @@
   },
   "dependencies": {
     "@babel/polyfill": "^7.4.3",
-    "@eluvio/elv-client-js": "^4.0.141",
+    "@eluvio/elv-client-js": "^4.2.1",
+    "@eluvio/elv-player-js": "^2.0.50",
     "@mantine/core": "^7.17.2",
     "@mantine/dates": "^7.17.2",
     "@mantine/dropzone": "^7.17.2",
@@ -29,7 +30,7 @@
     "dayjs": "^1.11.13",
     "deep-object-diff": "^1.1.0",
     "fraction.js": "^4.0.12",
-    "hls.js": "^1.6.2",
+    "hls.js": "1.6.0",
     "m3u8-parser": "^4.7.0",
     "mantine-datatable": "^7.15.1",
     "mime-types": "^2.1.35",
@@ -45,11 +46,10 @@
     "tiff.js": "^1.0.0",
     "url-join": "^4.0.0",
     "uuid": "^11.1.0",
-    "wouter": "^3.5.0"
+    "wouter": "^3.7.1"
   },
   "devDependencies": {
     "@modyfi/vite-plugin-yaml": "^1.1.1",
-    "@pmmmwh/react-refresh-webpack-plugin": "^0.5.11",
     "@vitejs/plugin-react-swc": "^3.7.2",
     "autoprefixer": "^9.8.6",
     "babel-eslint": "^10.1.0",

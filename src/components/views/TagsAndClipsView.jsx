@@ -3,36 +3,17 @@ import React, {useEffect, useState} from "react";
 import {ClipSidePanel, TagSidePanel} from "@/components/side_panel/SidePanel.jsx";
 import VideoSection from "@/components/video/VideoSection.jsx";
 import {ClipTimeline, TagTimeline} from "@/components/timeline/Timeline.jsx";
-import {editStore, keyboardControlsStore, rootStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
+import {
+  editStore,
+  groundTruthStore,
+  keyboardControlsStore,
+  rootStore,
+  tagStore,
+  trackStore,
+  videoStore
+} from "@/stores/index.js";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
-import {Modal} from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-
-const S = CreateModuleClassMatcher();
-
-const SaveProgressModal = observer(() => {
-  const tagProgress = 30 * editStore.saveProgress.tags;
-  const overlayProgress = 30 * editStore.saveProgress.overlay;
-  const aggregationProgress = 30 * editStore.saveProgress.aggregation;
-
-  // Last 5% is reserved for finalizing
-  return (
-    <Modal
-      title="Saving changes..."
-      opened
-      centered
-      onClose={() => {}}
-      withCloseButton={false}
-    >
-      <div className={S("progress")}>
-        <progress
-          value={tagProgress + overlayProgress + aggregationProgress}
-          max={100}
-        />
-      </div>
-    </Modal>
-  );
-});
+import {ProgressModal} from "@/components/common/Common.jsx";
 
 const TagsAndClipsView = observer(({mode}) => {
   const [sidePanel, setSidePanel] = useState(undefined);
@@ -41,6 +22,7 @@ const TagsAndClipsView = observer(({mode}) => {
   useEffect(() => {
     rootStore.SetPage(mode);
     keyboardControlsStore.SetActiveStore(videoStore);
+    groundTruthStore.LoadGroundTruthPools();
 
     if(videoStore.ready) {
       const clipPoints = videoStore.ParseClipParams();
@@ -76,7 +58,17 @@ const TagsAndClipsView = observer(({mode}) => {
 
   return (
     <>
-      { !editStore.saving ? null : <SaveProgressModal /> }
+      {
+        !editStore.saving ? null :
+          <ProgressModal
+            progress={
+              30 * editStore.saveProgress.tags +
+              30 * editStore.saveProgress.overlay +
+              30 * editStore.saveProgress.aggregation
+            }
+            title="Saving changes..."
+          />
+      }
       <PanelGroup direction="vertical" className="panel-group">
         <Panel id="top" order={1} defaultSize={Math.max(40, 60 - trackCount * 3)} minSize={25}>
           <PanelGroup direction="horizontal" className="panel-group">

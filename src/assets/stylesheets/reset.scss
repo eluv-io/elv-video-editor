@@ -32,6 +32,7 @@
 *::before,
 *::after {
   box-sizing: border-box;
+  font-variant-ligatures: no-contextual;
 }
 
 body {

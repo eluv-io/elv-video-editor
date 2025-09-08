@@ -14,6 +14,8 @@ import TagsAndClipsView from "@/components/views/TagsAndClipsView.jsx";
 import AssetsView from "@/components/views/AssetsView.jsx";
 import CompositionsView from "@/components/views/CompositionsView.jsx";
 import SimpleView from "@/components/views/SimpleView.jsx";
+import GroundTruthView from "@/components/views/GroundTruthView.jsx";
+import SearchView from "@/components/views/SearchView.jsx";
 
 // Keep track of the current page
 const SetView = observer(() => {
@@ -38,6 +40,8 @@ const DefaultContentRoutes = observer(() => {
       rootStore.Reset();
       videoStore.SetVideo({objectId, addToMyLibrary: true})
         .then(() => rootStore.SetSelectedObjectId(objectId, videoStore.name));
+    } else {
+      rootStore.SetSelectedObjectId(objectId, videoStore.name);
     }
   }, [objectId]);
 
@@ -126,17 +130,23 @@ const App = observer(() => {
               <Route path="/compositions">
                 <CompositionsView />
               </Route>
+              <Route path="/ground-truth" nest>
+                <GroundTruthView />
+              </Route>
               <Route path="/compositions/:objectId/:compositionKey">
                 <CompositionsView key="selected" />
               </Route>
-              <Route path="/">
+              <Route path="/search" nest>
+                <SearchView />
+              </Route>
+              <Route path="/browse" nest>
                 <Browser />
               </Route>
               <Route path="/:objectId" nest>
                 <DefaultContentRoutes />
               </Route>
               <Route>
-                <Redirect to="/" />
+                <Redirect to="/browse" />
               </Route>
             </Switch>
         }

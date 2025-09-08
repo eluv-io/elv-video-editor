@@ -1,4 +1,5 @@
 import { flow, makeAutoObservable } from "mobx";
+import {Capitalize} from "@/utils/Utils.js";
 
 class OverlayStore {
   metadataOverlayTags = {};
@@ -101,6 +102,15 @@ class OverlayStore {
               return;
             }
 
+            if(!trackIdMap[trackKey]) {
+              trackIdMap[trackKey] = this.rootStore.trackStore.AddTrack({
+                key: trackKey,
+                label: trackKey.split("_").map(Capitalize).join(" "),
+                type: "clip",
+                tags: []
+              });
+            }
+
             overlayTags[frame][trackKey].tags = (overlayTags[frame][trackKey]?.tags || [])
               .map((tag, tagIndex) => ({
                 ...tag,
@@ -124,7 +134,6 @@ class OverlayStore {
         return;
       }
 
-      // Load ML overlay tags from files
       const tagFileLinks = Object.keys(metadata.video_tags.overlay_tags);
       for(let i = 0; i < tagFileLinks.length; i++) {
         const tagInfo = yield this.rootStore.client.LinkData({
@@ -138,6 +147,15 @@ class OverlayStore {
           Object.keys(overlayTags[frame]).forEach(trackKey => {
             if(typeof overlayTags[frame][trackKey] !== "object") {
               return;
+            }
+
+            if(!trackIdMap[trackKey]) {
+              trackIdMap[trackKey] = this.rootStore.trackStore.AddTrack({
+                key: trackKey,
+                label: trackKey.split("_").map(Capitalize).join(" "),
+                type: "metadata",
+                tags: []
+              });
             }
 
             overlayTags[frame][trackKey].tags = (overlayTags[frame][trackKey]?.tags || [])
@@ -164,9 +182,7 @@ class OverlayStore {
         this.overlayEnabled = true;
       }
     } catch(error) {
-      // eslint-disable-next-line no-console
       console.error("Failed to load overlay tracks:");
-      // eslint-disable-next-line no-console
       console.error(error);
     }
   });

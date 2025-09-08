@@ -150,6 +150,97 @@
   }
 }
 
+.styled-button {
+  align-items: center;
+  animation: var(--animation-fadein) 0.25s ease;
+  border-radius: 5px;
+  display: flex;
+  font-weight: 600;
+  gap: 10px;
+  height: 35px;
+  justify-content: center;
+  min-width: 120px;
+  padding-inline: 25px;
+  position: relative;
+  transition: opacity 0.1s ease;
+
+
+  &--loading {
+    .styled-button__icon-container,
+    .styled-button__children {
+      opacity: 0;
+    }
+  }
+
+  &:hover,
+  &:focus-visible {
+    opacity: 0.9;
+    transition: opacity 0.25s ease;
+  }
+
+  &--primary {
+    background-color: var(--button-color);
+    border: 1px solid var(--button-color);
+    color: var(--text-primary);
+  }
+
+  &--secondary {
+    background-color: var(--background-secondary);
+    border: 1px solid var(--button-color);
+    color: var(--button-color);
+  }
+
+  &:disabled,
+  &--subtle {
+    background: var(--background-modal);
+    border: 1px solid var(--background-modal);
+    color: var(--text-secondary);
+  }
+
+  &__children {
+    animation: var(--animation-fadein) 0.25s ease;
+  }
+
+  &__icon-container,
+  &__icon {
+    max-height: 20px;
+    max-width: 20px;
+    min-height: 20px;
+    min-width: 20px;
+  }
+
+  &.disabled,
+  &:disabled {
+    opacity: 0.7;
+  }
+
+  &--small {
+    font-size: 12px;
+    height: 30px;
+    padding-inline: 15px;
+  }
+
+  &__loader-container {
+    align-items: center;
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    position: absolute;
+    z-index: 1;
+  }
+
+  &__loader {
+    height: 80%;
+    width: 100%;
+
+    * {
+      --spinner-width: 3px;
+
+      min-height: 10px;
+    }
+  }
+}
+
 .copy-button {
   background-color: transparent!important;
   transition: color 0.1s ease;
@@ -168,19 +259,37 @@
     .copyable-field__button {
       opacity: 0;
       transition: opacity 0.25s ease;
+      transition-delay: 0.5s;
     }
 
     &:hover {
       .copyable-field__button {
         opacity: 1;
+        transition: opacity 0.25s ease;
       }
+    }
+  }
+
+  &--copied {
+    .copyable-field__button {
+      opacity: 1;
     }
   }
 
   &__button {
     color: inherit;
+    height: 1.5em;
+
+    /*
     height: 18px;
     min-height: 18px;
+    width: 18px;
+    min-width: 18px;
+
+     */
+    min-height: 1.5em;
+    min-width: 1.5em;
+    width: 1.5em;
   }
 }
 
@@ -280,7 +389,39 @@
   }
 
   &__multiselect {
+    font-size: 16px;
     height: max-content;
+    min-height: 57px;
+  }
+
+  &__multiselect-list {
+    height: max-content;
+    margin-top: 10px;
+  }
+
+  &__multiselect-item {
+    align-items: center;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    display: flex;
+    font-size: 14px;
+    height: 30px;
+    justify-content: center;
+
+    span,
+    button {
+      align-items: center;
+      display: flex;
+      justify-content: center;
+    }
+
+    span {
+      padding-bottom: 3px;
+    }
+
+    button {
+      color: var(--text-tertiary);
+    }
   }
 
   &__color-section {
@@ -531,7 +672,7 @@
   align-items: center;
   display: flex;
   font-size: 14px;
-  gap: 5px;
+  gap: 2px;
 }
 
 .confirm {
@@ -543,5 +684,25 @@
   &__text {
     font-size: 16px;
     margin-bottom: 30px;
+  }
+}
+
+.progress {
+  &__error-message {
+    margin-bottom: 30px;
+  }
+
+  &__actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+  }
+}
+
+.infinite-scroll {
+  &__loader {
+    min-height: 120px;
   }
 }

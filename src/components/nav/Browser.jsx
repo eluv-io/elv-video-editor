@@ -2,21 +2,23 @@ import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 
 import React, {useState, useEffect} from "react";
 import {observer} from "mobx-react-lite";
-import {rootStore, browserStore, compositionStore, editStore} from "@/stores";
+import {rootStore, browserStore, compositionStore, editStore, groundTruthStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {
   AsyncButton,
   Confirm, CopyableField,
   FormSelect,
-  FormTextInput,
+  FormTextInput, Icon,
   IconButton,
   Linkish,
-  Loader
+  Loader, StyledButton
 } from "@/components/common/Common";
 import SVG from "react-inlinesvg";
-import {Redirect} from "wouter";
+import {Redirect, Route, Switch, useParams, useLocation, useSearchParams} from "wouter";
 import UrlJoin from "url-join";
-import {Tabs, Tooltip} from "@mantine/core";
+import {Select, Tabs, Tooltip} from "@mantine/core";
+import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
+import {SearchIndexSelection} from "@/components/side_panel/SidePanel.jsx";
 
 import LibraryIcon from "@/assets/icons/v2/library.svg";
 import ObjectIcon from "@/assets/icons/file.svg";
@@ -29,6 +31,14 @@ import PageForwardIcon from "@/assets/icons/Forward.svg";
 import PageBackIcon from "@/assets/icons/Backward.svg";
 import DeleteIcon from "@/assets/icons/trash.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
+import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
+import CreateIcon from "@/assets/icons/v2/add2.svg";
+import ListIcon from "@/assets/icons/v2/list.svg";
+import GridIcon from "@/assets/icons/v2/source.svg";
+import SearchArrowIcon from "@/assets/icons/v2/search-arrow.svg";
+import SearchIcon from "@/assets/icons/v2/search.svg";
+import AssetIcon from "@/assets/icons/v2/asset.svg";
+import PinIcon from "@/assets/icons/v2/pin.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -103,523 +113,81 @@ const PageControls = observer(({currentPage, pages, maxSpread=15, SetPage}) => {
   );
 });
 
-const SearchBar = observer(({filter, setFilter, delay=500, Select}) => {
-  const [updateTimeout, setUpdateTimeout] = useState(undefined);
-  const [input, setInput] = useState(filter);
-
-  useEffect(() => {
-    clearTimeout(updateTimeout);
-
-    setUpdateTimeout(setTimeout(() => setFilter(input), delay));
-  }, [input]);
-
-  return (
-    <input
-      value={input}
-      placeholder="Title, Content ID, Version Hash"
-      onChange={event => setInput(event.target.value)}
-      onKeyDown={async event => {
-        if(!Select || event.key !== "Enter") { return; }
-
-        if(["ilib", "iq__", "hq__", "0x"].find(prefix => event.target.value.trim().startsWith(prefix))) {
-          const result = await browserStore.LookupContent(event.target.value);
-
-          Select(result);
-        }
-      }}
-      className={S("search-bar")}
-    />
-  );
-});
-
-const BrowserTable = observer(({
-  filter,
-  Load,
+let savedFilters = {};
+export const SearchBar = observer(({
+  placeholder,
+  filterQueryParam="q",
+  saveByLocation=false,
   Select,
-  defaultIcon,
-  contentType="library",
-  videoOnly,
-  frameRate,
-  noDuration,
-  Delete
-}) => {
-  const [loading, setLoading] = useState(false);
-  const [showLoader, setShowLoader] = useState(true);
-  const [content, setContent] = useState(undefined);
-  const [paging, setPaging] = useState({page: 1, perPage: window.innerHeight < 900 ? 8 : 10});
-  const [deleting, setDeleting] = useState(undefined);
-
-  const LoadPage = page => {
-    if(loading) { return; }
-
-    setPaging({page, ...paging});
-
-    setLoading(true);
-    const loaderTimeout = setTimeout(() => setShowLoader(true), 500);
-
-    Load({...paging, page, filter})
-      .then(({content, paging}) => {
-        setContent(content);
-        setPaging(paging);
-      })
-      .finally(() => {
-        clearTimeout(loaderTimeout);
-        setLoading(false);
-        setShowLoader(false);
-      });
-  };
-
-  useEffect(() => {
-    if(deleting) { return; }
-
-    LoadPage(1);
-  }, [filter, deleting]);
-
-  let table;
-  if(showLoader) {
-    table = (
-      <div className={S("browser-table", "browser-table--loading")}>
-        <Loader />
-      </div>
-    );
-  } else {
-    table = (
-      <div className={S("browser-table", `browser-table--${contentType}`, noDuration ? `browser-table--${contentType}--no-duration` : "")}>
-        <div className={S("browser-table__row", "browser-table__row--header")}>
-          <div className={S("browser-table__cell", "browser-table__cell--header")}>
-            Name
-          </div>
-          {
-            !["object", "composition", "my-library"].includes(contentType) ? null :
-              <>
-                {
-                  noDuration ? null :
-                    <div className={S("browser-table__cell", "browser-table__cell--header", "browser-table__cell--centered")}>
-                      Duration
-                    </div>
-                }
-                <div className={S("browser-table__cell", "browser-table__cell--header", "browser-table__cell--centered")}>
-                  { ["object", "composition"].includes(contentType) ? "Last Modified" : "Last Accessed" }
-                </div>
-              </>
-          }
-          {
-            !["composition", "my-library"].includes(contentType) ? null :
-              <div className={S("browser-table__cell", "browser-table__cell--header")} />
-          }
-        </div>
-        {
-          (content || []).map(item => {
-            if(!item) {
-              // eslint-disable-next-line no-console
-              console.warn("Browser table missing item", content);
-              return null;
-            }
-
-            let disabled, message;
-            if(deleting) {
-              disabled = true;
-            } else if(item.forbidden) {
-              disabled = true;
-              message = "You do not have access to this object";
-            } else if(videoOnly && !item.isVideo) {
-              disabled = true;
-              message = "This object does not contain video";
-            } else if(frameRate && item.frameRate !== frameRate) {
-              disabled = true;
-              message = "The framerate of this content is incompatible with the primary source of this composition";
-            }
-
-            return (
-              <Linkish
-                divButton
-                onClick={() => {
-                  if(contentType === "library") {
-                    Select({libraryId: item.id, ...item});
-                  } else if(contentType === "object") {
-                    Select({objectId: item.id, ...item});
-                  } else if(contentType === "composition") {
-                    Select(item);
-                  } else if(contentType === "my-library") {
-                    Select(item);
-                  }
-                }}
-                key={`browser-row-${item.id || item.key || item.compositionKey}`}
-                disabled={disabled}
-                className={S("browser-table__row", "browser-table__row--content", disabled ? "browser-table__row--disabled" : "")}
-              >
-                <div className={S("browser-table__cell")}>
-                  {
-                    item.image ?
-                      <img src={item.image} alt={item.name} className={S("browser-table__cell-image")}/> :
-                      <SVG
-                        src={
-                          item.compositionKey ? CompositionIcon :
-                            item.duration ?
-                              VideoIcon : defaultIcon
-                        }
-                        className={S("browser-table__cell-icon")}
-                      />
-                  }
-                  <div className={S("browser-table__row-title")}>
-                    <Tooltip
-                      label={
-                        <div className={S("tooltip")}>
-                          <div className={S("tooltip__item")}>
-                            { item.name }
-                          </div>
-                          {
-                            !message ? null :
-                              <div className={S("tooltip__item")}>
-                                { message }
-                              </div>
-                          }
-                        </div>
-                      }
-                      openDelay={500}
-                    >
-                      <div className={S("browser-table__row-title-main")}>
-                        <span className={S("ellipsis")}>
-                          {item.name}{item.compositionKey ? " (Composition)" : ""}
-                        </span>
-                        {
-                          !item.isLiveStream ? "" :
-                            <span className={S("browser-table__live-tag", item.isLive ? "browser-table__live-tag--active" : "")}>
-                              { item.isLive ? "LIVE" : "Live Stream" }
-                            </span>
-                        }
-                      </div>
-                    </Tooltip>
-                    <div className={S("browser-table__row-title-id")}>
-                      {
-                        !["composition"].includes(contentType) ?
-                          <CopyableField value={item.objectId || item.id} showOnHover>{item.id}</CopyableField> :
-                          contentType !== "my-library" ? item.id :
-                            `${item.objectId}${item.compositionKey ? ` - ${item.compositionKey}` : ""}`
-                      }
-                    </div>
-                  </div>
-                </div>
-                {
-                  !["object", "composition", "my-library"].includes(contentType) ? null :
-                    <>
-                      {
-                        noDuration ? null :
-                          <div className={S("browser-table__cell", "browser-table__cell--centered")}>
-                            {item.duration || "-"}
-                          </div>
-                      }
-                      <div className={S("browser-table__cell", "browser-table__cell--centered")}>
-                        {item.lastModified || "-"}
-                      </div>
-                    </>
-                }
-                {
-                  !Delete || !item.id ? null :
-                    <div className={S("browser-table__cell", "browser-table__cell--centered")}>
-                      <IconButton
-                        label="Remove Item"
-                        icon={contentType === "my-library" ? XIcon : DeleteIcon}
-                        faded
-                        disabled={deleting}
-                        onClick={async event => {
-                          event.stopPropagation();
-                          setDeleting(true);
-
-                          try {
-                            await Delete(item);
-                          } finally {
-                            setDeleting(false);
-                          }
-                        }}
-                      />
-                    </div>
-                }
-              </Linkish>
-            );
-          })
-        }
-      </div>
-    );
-  }
-
-  if(!showLoader && (!content || content.length === 0)) {
-    return (
-      <div className={S("browser-table--empty")}>
-        <div className={S("browser-table__message")}>
-          No Results
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={S("browser-table-container")}>
-      {table}
-      <PageControls
-        currentPage={paging.page}
-        pages={paging.pages}
-        SetPage={page => LoadPage(page)}
-      />
-    </div>
-  );
-});
-
-const CompositionBrowser = observer(({selectedObject, Select, Back, className=""}) => {
-  const [filter, setFilter] = useState("");
-  const [deletedChannels, setDeletedChannels] = useState([]);
-
-  return (
-    <div className={JoinClassNames(S("browser", "browser--channel"), className)}>
-      <SearchBar filter={filter} setFilter={setFilter} Select={Select} />
-      <h1 className={S("browser__header")}>
-        <IconButton
-          icon={BackIcon}
-          label="Back to Content"
-          onClick={Back}
-          className={S("browser__header-back")}
-        />
-        <span>
-          {selectedObject.name} / Select Content
-        </span>
-      </h1>
-      <BrowserTable
-        filter={filter}
-        defaultIcon={VideoIcon}
-        contentType="composition"
-        Select={Select}
-        Load={async ({page, perPage, filter}) => {
-          const content = [
-            {
-              id: "",
-              name: `Main Content - ${selectedObject.name}`,
-              objectId: selectedObject.objectId,
-              duration: selectedObject.duration,
-              lastModified: selectedObject.lastModified
-            },
-            ...(selectedObject.channels.map(channel =>
-              ({id: channel.compositionKey, name: `Composition - ${channel.name || channel.label}`, ...channel})
-            ))
-          ]
-            .filter(({id}) => !deletedChannels.includes(id))
-            // Filter duplicates
-            .filter(({objectId, compositionKey}, i, s) =>
-              i === s.findIndex(other => other.objectId === objectId && other.compositionKey === compositionKey)
-            )
-            .filter(({name}) => !filter || name.toLowerCase().includes(filter.toLowerCase()));
-
-          const total = content.length;
-
-          return {
-            content: content.slice((page - 1) * perPage, page * perPage),
-            paging: {
-              page,
-              pages: Math.ceil(total / perPage),
-              perPage
-            }
-          };
-        }}
-        Delete={async ({id, name}) => await Confirm({
-          title: "Delete Composition",
-          text: `Are you sure you want to delete the composition '${name}'?`,
-          onConfirm: async () => {
-            await compositionStore.DeleteComposition({
-              objectId: selectedObject.objectId,
-              compositionKey: id
-            });
-
-            setDeletedChannels([...deletedChannels, id]);
-          }})}
-      />
-    </div>
-  );
-});
-
-export const ObjectBrowser = observer(({
-  libraryId,
-  title,
-  Select,
-  Path,
-  Back,
-  backPath,
-  videoOnly,
-  frameRate,
-  noDuration,
   className=""
 }) => {
-  const [filter, setFilter] = useState("");
+  const [location] = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [input, setInput] = useState(decodeURIComponent(searchParams.get(filterQueryParam) || ""));
 
-  useEffect(() => {
-    // Ensure libraries are loaded
-    browserStore.ListLibraries({});
-  }, []);
+  const Submit = async (input) => {
+    if(Select && ["ilib", "iq__", "hq__", "0x"].find(prefix => input.trim().startsWith(prefix))) {
+      const result = await browserStore.LookupContent(input);
+      Select(result);
 
-  const library = browserStore.libraries?.[libraryId];
-
-  return (
-    <div className={JoinClassNames(S("browser", "browser--object"), className)}>
-      <SearchBar filter={filter} setFilter={setFilter} Select={Select} />
-      <h1 className={S("browser__header")}>
-        <IconButton
-          icon={BackIcon}
-          label="Back to Content Libraries"
-          to={backPath}
-          onClick={Back}
-          className={S("browser__header-back")}
-        />
-        <span>
-          { title || `Content Libraries / ${library?.name || libraryId}` }
-        </span>
-      </h1>
-      <BrowserTable
-        filter={filter}
-        defaultIcon={ObjectIcon}
-        contentType="object"
-        videoOnly={videoOnly}
-        frameRate={frameRate}
-        noDuration={noDuration}
-        Path={Path}
-        Select={Select}
-        Load={async args => await browserStore.ListObjects({libraryId, ...args})}
-      />
-    </div>
-  );
-});
-
-export const LibraryBrowser = observer(({title, Path, Select, className=""}) => {
-  const [filter, setFilter] = useState("");
-
-  return (
-    <div className={JoinClassNames(S("browser", "browser--library"), className)}>
-      <SearchBar filter={filter} setFilter={setFilter} Select={Select}/>
-      {
-        !title ? null :
-          <h1 className={S("browser__header")}>
-            { title || "Content Libraries" }
-          </h1>
+      if(saveByLocation) {
+        delete savedFilters[location];
       }
-      <BrowserTable
-        filter={filter}
-        defaultIcon={LibraryIcon}
-        contentType="library"
-        Select={Select}
-        Path={Path}
-        Load={async args => await browserStore.ListLibraries(args)}
-      />
-    </div>
-  );
-});
+    } else {
+      setSearchParams(prev => {
+        if(input) {
+          prev.set(filterQueryParam, encodeURIComponent(input.trim()));
+        } else {
+          prev.delete(filterQueryParam);
+        }
 
-const Browser = observer(() => {
-  const [selectedLibraryId, setSelectedLibraryId] = useState(undefined);
-  const [selectedObject, setSelectedObject] = useState(undefined);
-  const [redirect, setRedirect] = useState(undefined);
+        if(saveByLocation) {
+          savedFilters[location] = input.trim();
+        }
+
+        return Object.fromEntries(prev);
+      });
+    }
+  };
 
   useEffect(() => {
-    rootStore.SetPage("source");
-  }, []);
+    const input = savedFilters[location] || "";
+    setInput(input);
+    Submit(input);
+  }, [location]);
 
-  if(redirect) {
-    return <Redirect to={redirect} />;
-  }
+  return (
+    <div className={JoinClassNames(S("search-bar-container"), className)}>
+      <input
+        value={input}
+        placeholder={placeholder || "Title, Content ID, Version Hash"}
+        onChange={event => setInput(event.target.value)}
+        onKeyDown={async event => {
+          if(event.key !== "Enter") { return; }
 
-  if(selectedObject) {
-    return (
-      <CompositionBrowser
-        selectedObject={selectedObject}
-        Back={() => setSelectedObject(undefined)}
-        Select={({objectId, compositionKey}) => {
-          compositionStore.Reset();
-          setRedirect(
-            compositionKey ?
-              UrlJoin("/compositions", objectId, compositionKey) :
-              UrlJoin("/", objectId)
-          );
+          Submit(input);
         }}
+        className={S("search-bar")}
       />
-    );
-  }
+      <div className={S("search-bar-container__right-buttons")}>
+        <IconButton
+          label="Filter Results"
+          icon={SearchIcon}
+          onClick={() => Submit(input)}
+        />
 
-  const Select = (item) => {
-    if(item.libraryId) {
-      setSelectedLibraryId(item.libraryId);
-    }
-
-    if(!item.objectId) { return; }
-
-    if(item.isLiveStream) {
-      if(!item.vods || Object.keys(item.vods).length === 0) {
-        // No vods, must create new
-        browserStore.SetLiveToVodFormFields({
-          liveStreamLibraryId: item.libraryId,
-          liveStreamId: item.objectId
-        });
-        return;
-      }
-
-      setRedirect(UrlJoin("/", Object.keys(item.vods)[0]));
-      return;
-    }
-
-    if(!item.isVideo) {
-      setRedirect(UrlJoin("/", item.objectId, "assets"));
-      return;
-    }
-
-    if(item.hasChannels) {
-      setSelectedObject(item);
-    } else {
-      setRedirect(UrlJoin("/", item.objectId));
-    }
-  };
-
-  if(selectedLibraryId) {
-    return (
-      <ObjectBrowser
-        key={`browser-${selectedLibraryId}`}
-        libraryId={selectedLibraryId}
-        Back={() => setSelectedLibraryId(undefined)}
-        Select={Select}
-      />
-    );
-  }
-
-  return <LibraryBrowser Select={Select} />;
-});
-
-const MyLibraryBrowser = observer(() => {
-  const [filter, setFilter] = useState("");
-  const [redirect, setRedirect] = useState(undefined);
-
-  if(redirect) {
-    return <Redirect to={redirect} />;
-  }
-
-  const Select = ({id, objectId, isVideo}) => {
-    const item = browserStore.myLibraryItems.find(item => item.id === id) || (objectId ? {objectId, isVideo} : undefined);
-
-    if(!item) { return; }
-
-    if(item.compositionKey) {
-      setRedirect(UrlJoin("/compositions", item.objectId, item.compositionKey));
-    } else if(!item.isVideo) {
-      setRedirect(UrlJoin("/", item.objectId, "assets"));
-    } else {
-      setRedirect(UrlJoin("/", item.objectId));
-    }
-  };
-
-  return (
-    <div className={S("browser", "browser--my-library")}>
-      <SearchBar filter={filter} setFilter={setFilter} Select={Select} />
-      <BrowserTable
-        filter={filter}
-        defaultIcon={ObjectIcon}
-        contentType="my-library"
-        Select={Select}
-        Delete={async args => browserStore.RemoveMyLibraryItem(args)}
-        Load={async args => await browserStore.ListMyLibrary(args)}
-      />
+        {
+          !input ? null :
+            <IconButton
+              label="Clear Filter"
+              icon={XIcon}
+              onClick={() => {
+                setInput("");
+                Submit("");
+              }}
+            />
+        }
+      </div>
     </div>
   );
 });
@@ -722,7 +290,6 @@ const LiveToVodForm = observer(() => {
                       setSubmitting(false);
                     }
                   } catch(error) {
-                    // eslint-disable-next-line no-console
                     console.error(error);
                     setSubmitting(false);
                   }
@@ -737,8 +304,720 @@ const LiveToVodForm = observer(() => {
   );
 });
 
-const BrowserPage = observer(() => {
-  const [tab, setTab] = useState("content");
+export const CardDisplaySwitch = observer(({showList, setShowList}) => {
+  return (
+    <div className={S("display-switch", "browser__action--right")}>
+      <Linkish
+        label="List View"
+        className={S("display-switch__button", showList ? "display-switch__button--active" : "")}
+        onClick={() => setShowList(true)}
+      >
+        <Icon icon={ListIcon} />
+      </Linkish>
+      <Linkish
+        label="Grid View"
+        className={S("display-switch__button", !showList ? "display-switch__button--active" : "")}
+        onClick={() => setShowList(false)}
+      >
+        <Icon icon={GridIcon} />
+      </Linkish>
+    </div>
+  );
+});
+
+export const AISearchBar = observer(({basePath="~/search", initialQuery=""}) => {
+  const [input, setInput] = useState(initialQuery);
+  const [,navigate] = useLocation();
+
+  const Submit = async () => {
+    if(!input) { return; }
+
+    if(["ilib", "iq__", "hq__", "0x"].find(prefix => input.trim().startsWith(prefix))) {
+      const item = await browserStore.LookupContent(input);
+
+      if(item && Object.keys(item).length > 0) {
+        return ContentBrowserSelect({item, navigate});
+      }
+    }
+
+    navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
+  };
+
+  return (
+    <div className={S("search-bar-container", "search-bar-container--ai")}>
+      <div className={S("search-bar-container__search-icon")}>
+        <Icon icon={SearchIcon} />
+      </div>
+      <SearchIndexSelection position="bottom-start" className={S("search-bar-container__button-left")} />
+      <input
+        value={input}
+        placeholder="Search within content by phrase or keyword"
+        onChange={event => setInput(event.target.value)}
+        onKeyDown={async event => {
+          if(!input || event.key !== "Enter") { return; }
+
+          Submit();
+          //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
+        }}
+        className={S("search-bar", "search-bar--ai")}
+      />
+      <div className={S("search-bar-container__right-buttons")}>
+        <IconButton
+          label="Search"
+          icon={SearchArrowIcon}
+          noHover
+          //onClick={() => input && navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)))}
+          onClick={Submit}
+        />
+      </div>
+    </div>
+  );
+});
+
+export const BrowserTable = observer(({
+  filter,
+  Load,
+  Select,
+  defaultIcon,
+  contentType="library",
+  videoOnly,
+  frameRate,
+  noDuration,
+  Actions,
+  Delete
+}) => {
+  const hasActiveItem = rootStore.selectedObjectId;
+  const [loading, setLoading] = useState(false);
+  const [showLoader, setShowLoader] = useState(true);
+  const [content, setContent] = useState(undefined);
+  const [paging, setPaging] = useState({
+    page: 1,
+    perPage:
+      (window.innerHeight < 900 ? 8 : 10) - (hasActiveItem ? 2 : 0)
+  });
+  const [deleting, setDeleting] = useState(undefined);
+
+  const LoadPage = page => {
+    if(loading) { return; }
+
+    setPaging({page, ...paging});
+
+    setLoading(true);
+    const loaderTimeout = setTimeout(() => setShowLoader(true), 500);
+
+    Load({...paging, page, filter})
+      .then(({content, paging}) => {
+        setContent(content);
+        setPaging(paging);
+      })
+      .finally(() => {
+        clearTimeout(loaderTimeout);
+        setLoading(false);
+        setShowLoader(false);
+      });
+  };
+
+  useEffect(() => {
+    if(deleting) { return; }
+
+    LoadPage(1);
+  }, [filter, deleting]);
+
+  let table;
+  if(showLoader) {
+    table = (
+      <div className={S("browser-table", "browser-table--loading", hasActiveItem ? "browser-table--with-active-item" : "")}>
+        <Loader/>
+      </div>
+    );
+  } else {
+    table = (
+      <div
+        className={
+          S(
+            "browser-table",
+            `browser-table--${contentType}`,
+            hasActiveItem ? "browser-table--with-active-item" : "",
+            noDuration ? `browser-table--${contentType}--no-duration` : ""
+          )
+        }
+      >
+        <div className={S("browser-table__row", "browser-table__row--header")}>
+          <div className={S("browser-table__cell", "browser-table__cell--header")}>
+            Name
+          </div>
+          {
+            contentType !== "my-library" ? null :
+              <div className={S("browser-table__cell", "browser-table__cell--header", "browser-table__cell--padded")}>
+                Source Object
+              </div>
+          }
+          {
+            !["object", "composition", "my-library", "ground-truth"].includes(contentType) ? null :
+              <>
+                {
+                  noDuration ? null :
+                    <div className={S("browser-table__cell", "browser-table__cell--header", "browser-table__cell--centered")}>
+                      Duration
+                    </div>
+                }
+                <div className={S("browser-table__cell", "browser-table__cell--header", "browser-table__cell--centered")}>
+                  { ["object", "composition"].includes(contentType) ? "Last Modified" : "Last Accessed" }
+                </div>
+              </>
+          }
+          {
+            !["composition", "my-library"].includes(contentType) ? null :
+              <div className={S("browser-table__cell", "browser-table__cell--header")} />
+          }
+        </div>
+        {
+          (content || []).map(item => {
+            if(!item) {
+              // eslint-disable-next-line no-console
+              console.warn("Browser table missing item", content);
+              return null;
+            }
+
+            let disabled, message;
+            if(deleting) {
+              disabled = true;
+            } else if(item.forbidden) {
+              disabled = true;
+              message = "You do not have access to this object";
+            } else if(videoOnly && !item.isVideo) {
+              disabled = true;
+              message = "This object does not contain video";
+            } else if(frameRate && item.frameRate !== frameRate) {
+              disabled = true;
+              message = "The framerate of this content is incompatible with the primary source of this composition";
+            }
+
+            return (
+              <Linkish
+                divButton
+                onClick={() => {
+                  if(contentType === "library") {
+                    Select({libraryId: item.id, ...item});
+                  } else if(contentType === "object") {
+                    Select({objectId: item.id, ...item});
+                  } else {
+                    Select(item);
+                  }
+                }}
+                key={`browser-row-${item.id || item.key || item.compositionKey}`}
+                disabled={disabled}
+                className={
+                  S(
+                    "browser-table__row",
+                    "browser-table__row--content",
+                    disabled ? "browser-table__row--disabled" : ""
+                  )
+                }
+              >
+                <div className={S("browser-table__cell")}>
+                  {
+                    item.image ?
+                      <img src={item.image} alt={item.name} className={S("browser-table__cell-image")}/> :
+                      <SVG
+                        src={
+                          contentType === "ground-truth" ? GroundTruthIcon :
+                            item.compositionKey ? CompositionIcon :
+                              item.duration ?
+                                VideoIcon : defaultIcon
+                        }
+                        className={S("browser-table__cell-icon")}
+                      />
+                  }
+                  <div className={S("browser-table__row-title")}>
+                    <Tooltip
+                      position="top-start"
+                      label={
+                        <div className={S("tooltip")}>
+                          <div className={S("tooltip__item")}>
+                            {item.name}
+                          </div>
+                          {
+                            !message ? null :
+                              <div className={S("tooltip__item")}>
+                                {message}
+                              </div>
+                          }
+                        </div>
+                      }
+                      openDelay={500}
+                    >
+                      <div className={S("browser-table__row-title-main")}>
+                        <span className={S("ellipsis")}>
+                          {item.name}{item.compositionKey ? " (Composition)" : ""}
+                        </span>
+                        {
+                          !item.isLiveStream ? "" :
+                            <span
+                              className={S("browser-table__live-tag", item.isLive ? "browser-table__live-tag--active" : "")}>
+                              {item.isLive ? "LIVE" : "Live Stream"}
+                            </span>
+                        }
+                      </div>
+                    </Tooltip>
+                    <div className={S("browser-table__row-title-id")}>
+                      {
+                        !["composition"].includes(contentType) ?
+                          <CopyableField value={item.objectId || item.id} showOnHover>{item.id}</CopyableField> :
+                          contentType !== "my-library" ? item.id :
+                            `${item.objectId}${item.compositionKey ? ` - ${item.compositionKey}` : ""}`
+                      }
+                    </div>
+                  </div>
+                </div>
+                {
+                  // Composition source info in My Library view
+                  contentType !== "my-library" ? null :
+                    !item.compositionKey ?
+                      <div className={S("browser-table__cell")} /> :
+                      <div className={S("browser-table__cell", "browser-table__cell--padded")}>
+                        <SVG src={VideoIcon} className={S("browser-table__cell-icon")} />
+                        <div className={S("browser-table__row-title")}>
+                          <Tooltip label={item.source?.name || ""} openDelay={500} position="top-start">
+                            <div className={S("browser-table__row-title-main")}>
+                              <span className={S("ellipsis")}>
+                                {item.source?.name || ""}
+                              </span>
+                              {
+                                !item?.source.isLiveStream ? "" :
+                                  <span
+                                    className={S("browser-table__live-tag", item.source?.isLive ? "browser-table__live-tag--active" : "")}>
+                                    {item.source?.isLive ? "LIVE" : "Live Stream"}
+                                  </span>
+                              }
+                            </div>
+                          </Tooltip>
+                          <div className={S("browser-table__row-title-id")}>
+                            <CopyableField value={item.source?.objectId} showOnHover>{item.source?.id}</CopyableField>
+                          </div>
+                        </div>
+                      </div>
+                }
+                {
+                  !["object", "composition", "my-library", "ground-truth"].includes(contentType) ? null :
+                    <>
+                      {
+                        noDuration ? null :
+                          <div className={S("browser-table__cell", "browser-table__cell--centered")}>
+                            {item.duration || "-"}
+                          </div>
+                      }
+                      <div className={S("browser-table__cell", "browser-table__cell--centered")}>
+                        {item.lastModified || "-"}
+                      </div>
+                    </>
+                }
+                {
+                  (!Delete || !item.id) && !Actions ? null :
+                    <div className={S("browser-table__cell", "browser-table__cell--centered")}>
+                      {Actions?.(item)}
+                      {
+                        !Delete || !item.id ? null :
+                          <IconButton
+                            label="Remove Item"
+                            icon={contentType === "my-library" ? XIcon : DeleteIcon}
+                            faded
+                            disabled={deleting}
+                            onClick={async event => {
+                              event.stopPropagation();
+                              setDeleting(true);
+
+                              try {
+                                await Delete(item);
+                              } finally {
+                                setDeleting(false);
+                              }
+                            }}
+                          />
+                      }
+                    </div>
+                }
+              </Linkish>
+            );
+          })
+        }
+      </div>
+    );
+  }
+
+  if(!showLoader && (!content || content.length === 0)) {
+    return (
+      <div className={S("browser-table--empty")}>
+        <div className={S("browser-table__message")}>
+          No Results
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={S("browser-table-container")}>
+      {table}
+      <PageControls
+        currentPage={paging.page}
+        pages={paging.pages}
+        SetPage={page => LoadPage(page)}
+      />
+    </div>
+  );
+});
+
+const CompositionBrowser = observer(({
+  selectedObject,
+  withFilterBar,
+  Select,
+  Back,
+  className = ""
+}) => {
+  const [queryParams] = useSearchParams();
+  const filter = decodeURIComponent(queryParams.get("q") || "");
+  const [deletedChannels, setDeletedChannels] = useState([]);
+
+  return (
+    <div className={JoinClassNames(S("browser", "browser--channel"), className)}>
+      {
+        !withFilterBar ? null :
+          <SearchBar Select={Select} />
+      }
+      <h1 className={S("browser__header")}>
+        <IconButton
+          icon={BackIcon}
+          label="Back to Content"
+          onClick={Back}
+          className={S("browser__header-back")}
+        />
+        <span className={S("browser__header-last")}>
+          {selectedObject.name} / Select Content
+        </span>
+      </h1>
+      <BrowserTable
+        filter={filter}
+        defaultIcon={VideoIcon}
+        contentType="composition"
+        Select={Select}
+        Load={async ({page, perPage, filter}) => {
+          const content = [
+            {
+              id: "",
+              name: `Main Content - ${selectedObject.name}`,
+              objectId: selectedObject.objectId,
+              duration: selectedObject.duration,
+              lastModified: selectedObject.lastModified
+            },
+            ...(selectedObject.channels.map(channel =>
+              ({id: channel.compositionKey, name: `Composition - ${channel.name || channel.label}`, ...channel})
+            ))
+          ]
+            .filter(({id}) => !deletedChannels.includes(id))
+            // Filter duplicates
+            .filter(({objectId, compositionKey}, i, s) =>
+              i === s.findIndex(other => other.objectId === objectId && other.compositionKey === compositionKey)
+            )
+            .filter(({name}) => !filter || name.toLowerCase().includes(filter.toLowerCase()));
+
+          const total = content.length;
+
+          return {
+            content: content.slice((page - 1) * perPage, page * perPage),
+            paging: {
+              page,
+              pages: Math.ceil(total / perPage),
+              perPage
+            }
+          };
+        }}
+        Delete={async ({id, name}) => await Confirm({
+          title: "Delete Composition",
+          text: `Are you sure you want to delete the composition '${name}'?`,
+          onConfirm: async () => {
+            await compositionStore.DeleteComposition({
+              objectId: selectedObject.objectId,
+              compositionKey: id
+            });
+
+            setDeletedChannels([...deletedChannels, id]);
+          }})}
+      />
+    </div>
+  );
+});
+
+export const ObjectBrowser = observer(({
+  libraryId,
+  title,
+  withFilterBar,
+  filterQueryParam="q",
+  Select,
+  Path,
+  Back,
+  backPath,
+  videoOnly,
+  frameRate,
+  noDuration,
+  className=""
+}) => {
+  const [queryParams] = useSearchParams();
+  const filter = decodeURIComponent(queryParams.get(filterQueryParam) || "");
+
+  useEffect(() => {
+    // Ensure libraries are loaded
+    browserStore.ListLibraries({});
+  }, []);
+
+  const library = browserStore.libraries?.[libraryId];
+
+  return (
+    <div className={JoinClassNames(S("browser", "browser--object"), className)}>
+      {
+        !withFilterBar ? null :
+          <SearchBar filterQueryParam={filterQueryParam} Select={Select} />
+      }
+      <h1 className={S("browser__header")}>
+        <IconButton
+          icon={BackIcon}
+          label="Back to Content Libraries"
+          to={backPath}
+          onClick={Back}
+          className={S("browser__header-back")}
+        />
+        <span className={S("browser__header-last")}>
+          {title || `Content Libraries / ${library?.name || libraryId}`}
+        </span>
+      </h1>
+      <BrowserTable
+        filter={filter}
+        defaultIcon={ObjectIcon}
+        contentType="object"
+        videoOnly={videoOnly}
+        frameRate={frameRate}
+        noDuration={noDuration}
+        Path={Path}
+        Select={Select}
+        Load={async args => await browserStore.ListObjects({libraryId, ...args})}
+      />
+    </div>
+  );
+});
+
+export const LibraryBrowser = observer(({
+  title,
+  withFilterBar="",
+  filterQueryParam="q",
+  Path,
+  Select,
+  className=""
+}) => {
+  const [queryParams] = useSearchParams();
+  const filter = decodeURIComponent(queryParams.get(filterQueryParam) || "");
+
+  return (
+    <div className={JoinClassNames(S("browser", "browser--library"), className)}>
+      {
+        !withFilterBar ? null :
+          <SearchBar filterQueryParam={filterQueryParam} Select={Select} />
+      }
+      {
+        !title ? null :
+          <h1 className={S("browser__header")}>
+            { title || "Content Libraries" }
+          </h1>
+      }
+      <BrowserTable
+        filter={filter}
+        defaultIcon={LibraryIcon}
+        contentType="library"
+        Select={Select}
+        Path={Path}
+        Load={async args => await browserStore.ListLibraries(args)}
+      />
+    </div>
+  );
+});
+
+const ContentBrowserSelect = ({item, navigate}) => {
+  let path = "/";
+  if(item.libraryId) {
+    path = UrlJoin("/", item.libraryId);
+  }
+
+  if(item.objectId) {
+    if(item.isLiveStream) {
+      if(!item.vods || Object.keys(item.vods).length === 0) {
+        // No vods, must create new
+        browserStore.SetLiveToVodFormFields({
+          liveStreamLibraryId: item.libraryId,
+          liveStreamId: item.objectId
+        });
+      }
+
+      path = UrlJoin("~/", Object.keys(item.vods)[0]);
+    } else if(!item.isVideo) {
+      path = UrlJoin("~/", item.objectId, "assets");
+    } else if(item.hasChannels) {
+      path = UrlJoin(path, item.objectId);
+    } else {
+      path = UrlJoin("~/", item.objectId);
+    }
+  }
+
+  navigate(path);
+};
+
+const ContentBrowser = observer(({setSelect}) => {
+  const [, navigate] = useLocation();
+  const {libraryId, objectId} = useParams();
+
+  const [selectedObject, setSelectedObject] = useState(undefined);
+
+  useEffect(() => {
+    if(!objectId) {
+      setSelectedObject(undefined);
+      return;
+    }
+
+    browserStore.ObjectDetails({objectId})
+      .then(setSelectedObject);
+  }, [objectId]);
+
+  const Select = item => ContentBrowserSelect({item, navigate});
+
+  useEffect(() => {
+    rootStore.SetPage("source");
+
+    setSelect(() => Select);
+  }, []);
+
+  if(objectId) {
+    if(!selectedObject) { return null; }
+
+    return (
+      <CompositionBrowser
+        selectedObject={selectedObject}
+        Back={() => navigate(UrlJoin("/", libraryId))}
+        Select={({objectId, compositionKey}) => {
+          compositionStore.Reset();
+          navigate(
+            compositionKey ?
+              UrlJoin("~/compositions", objectId, compositionKey) :
+              UrlJoin("~/", objectId)
+          );
+        }}
+      />
+    );
+  }
+
+  if(libraryId) {
+    return (
+      <ObjectBrowser
+        key={`browser-${libraryId}`}
+        libraryId={libraryId}
+        Back={() => navigate("/")}
+        Select={Select}
+      />
+    );
+  }
+
+  return <LibraryBrowser Select={Select} />;
+});
+
+const MyLibrarySelect = ({id, objectId, isVideo, setRedirect}) => {
+  const item = browserStore.myLibraryItems.find(item => item.id === id) || (objectId ? {objectId, isVideo} : undefined);
+
+  if(!item) { return; }
+
+  if(item.compositionKey) {
+    setRedirect(UrlJoin("~/compositions", item.objectId, item.compositionKey));
+  } else if(!item.isVideo) {
+    setRedirect(UrlJoin("~/", item.objectId, "assets"));
+  } else {
+    setRedirect(UrlJoin("~/", item.objectId));
+  }
+};
+
+const MyLibraryBrowser = observer(({setSelect, withFilterBar}) => {
+  const [queryParams] = useSearchParams();
+  const filter = decodeURIComponent(queryParams.get("q") || "");
+
+  const [redirect, setRedirect] = useState(undefined);
+
+  const Select = args => MyLibrarySelect({...args, setRedirect});
+
+  useEffect(() => {
+    setSelect(() => Select);
+  }, []);
+
+  if(redirect) {
+    return <Redirect to={redirect} />;
+  }
+
+  return (
+    <div className={S("browser", "browser--my-library")}>
+      {
+        !withFilterBar ? null :
+          <SearchBar Select={Select} />
+      }
+      <BrowserTable
+        filter={filter}
+        defaultIcon={ObjectIcon}
+        contentType="my-library"
+        Select={Select}
+        Delete={async args => browserStore.RemoveMyLibraryItem(args)}
+        Load={async args => await browserStore.ListMyLibrary(args)}
+      />
+    </div>
+  );
+});
+
+const ActiveItem = observer(() => {
+  if(!rootStore.selectedObjectId) { return null; }
+
+  return (
+    <div className={S("active-item")}>
+      <div className={S("active-item__header")}>
+        Active Item
+      </div>
+      <Linkish
+        to={
+          compositionStore.compositionObject ?
+            UrlJoin("/compositions", compositionStore.compositionObject.objectId, compositionStore.compositionObject.compositionKey) :
+            videoStore.videoObject?.isVideo ?
+              UrlJoin("/", rootStore.selectedObjectId) :
+              UrlJoin("/", rootStore.selectedObjectId, "assets")
+        }
+        className={S("active-item__content")}
+      >
+        <div className={S("active-item__icons")}>
+          <Icon icon={PinIcon} className={S("active-item__icon", "active-item__icon--pin")} />
+          <Icon
+            icon={
+              compositionStore.compositionObject ? CompositionIcon :
+                videoStore.videoObject?.isVideo ? VideoIcon : AssetIcon
+          }
+            className={S("active-item__icon")}
+          />
+        </div>
+        <div className={S("active-item__text")}>
+          <div className={S("active-item__title")}>
+            { rootStore.selectedObjectName || rootStore.selectedObjectId }
+          </div>
+          <CopyableField value={rootStore.selectedObjectId} showOnHover className={S("active-item__id")}>
+            {rootStore.selectedObjectId}
+          </CopyableField>
+        </div>
+      </Linkish>
+    </div>
+  );
+});
+
+const BrowserPage = observer(({Component}) => {
+  const [filter, setFilter] = useState("");
+  const [select, setSelect] = useState(undefined);
+  const [location, navigate] = useLocation();
 
   if(browserStore.liveToVodFormFields.liveStreamId) {
     return <LiveToVodForm />;
@@ -746,23 +1025,107 @@ const BrowserPage = observer(() => {
 
   return (
     <div className={S("browser-page")}>
-      <Tabs value={tab} onChange={setTab} color="var(--text-secondary)">
-        <Tabs.List fz={24} fw={800}>
-          <Tabs.Tab px="xl" value="content" className={tab !== "content" ? S("tab--inactive") : ""}>
-            Content Libraries
-          </Tabs.Tab>
-          <Tabs.Tab px="xl" value="my-library" className={tab !== "my-library" ? S("tab--inactive") : ""}>
-            My Library
-          </Tabs.Tab>
-        </Tabs.List>
-        {
-          tab === "content" ?
-            <Browser /> :
-            <MyLibraryBrowser />
-        }
-      </Tabs>
+      <AISearchBar />
+      <div className={S("browser-page__filters")}>
+        <Tabs value={location} onChange={navigate} color="var(--text-secondary)">
+          <Tabs.List fz={24} fw={800}>
+            <Tabs.Tab px="xs" mr="sm" value="/" className={location.includes("my-library") ? S("tab--inactive") : ""}>
+              Content
+            </Tabs.Tab>
+            <Tabs.Tab px="xs" value="/my-library" className={!location.includes("my-library") ? S("tab--inactive") : ""}>
+              My Library
+            </Tabs.Tab>
+          </Tabs.List>
+        </Tabs>
+        <SearchBar
+          saveByLocation
+          Select={select}
+          className={S("browser-page__filter-input")}
+        />
+      </div>
+      <ActiveItem />
+      <Component filter={filter} setFilter={setFilter} setSelect={setSelect} Select={Select} />
     </div>
   );
 });
 
-export default BrowserPage;
+export const GroundTruthPoolBrowser = observer(() => {
+  const [queryParams] = useSearchParams();
+  const filter = decodeURIComponent(queryParams.get("q") || "");
+  const [redirect, setRedirect] = useState(undefined);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  if(redirect) {
+    return <Redirect to={redirect} />;
+  }
+
+  const Select = ({id, objectId}) => {
+    const pool = groundTruthStore.pools[id] || groundTruthStore.pools[objectId];
+
+    if(!pool) { return; }
+
+    setRedirect(UrlJoin("/", id || objectId));
+  };
+
+  return (
+    <div className={S("browser-page")}>
+      {
+        !showCreateModal ? null :
+          <GroundTruthPoolForm
+            Close={poolId => {
+              setShowCreateModal(false);
+
+              if(poolId) {
+                Select({objectId: poolId});
+              }
+            }}
+          />
+      }
+      <div className={S("browser", "browser--ground-truth")}>
+        <SearchBar saveByLocation Select={Select}/>
+        <h1 className={S("browser__header")}>All Ground Truth</h1>
+        <div className={S("browser__actions")}>
+          <StyledButton
+            icon={CreateIcon}
+            onClick={() => setShowCreateModal(true)}
+          >
+            New Ground Truth Pool
+          </StyledButton>
+        </div>
+        <BrowserTable
+          filter={filter}
+          defaultIcon={ObjectIcon}
+          contentType="ground-truth"
+          noDuration
+          Select={Select}
+          Actions={({id}) => <GroundTruthPoolSaveButton poolId={id} icon /> }
+          Delete={async ({id, name}) => await Confirm({
+            title: "Delete Ground Truth Pool",
+            text: `Are you sure you want to delete the ground truth pool '${name}'? This action cannot be undone.`,
+            onConfirm: async () => {
+              await groundTruthStore.DeleteGroundTruthPool({
+                objectId: id
+              });
+            }
+          })}
+          Load={async args => await browserStore.ListGroundTruthPools(args)}
+        />
+      </div>
+    </div>
+  );
+});
+
+const BrowserRoutes = observer(() => {
+  return (
+    <Switch>
+      <Route exact path="/my-library">
+        <BrowserPage Component={MyLibraryBrowser} />
+      </Route>
+      <Route exact path="/:libraryId?/:objectId?">
+        <BrowserPage Component={ContentBrowser} />
+      </Route>
+    </Switch>
+  );
+});
+
+export default BrowserRoutes;

@@ -59,8 +59,14 @@ class EditStore {
     return this.redoStack?.slice(-1)[0];
   }
 
-  HasUnsavedChanges(type) {
-    return this.editInfo[type]?.position > 0;
+  HasUnsavedChanges(type, subpage) {
+    if(!subpage) {
+      return this.editInfo[type]?.position > 0;
+    }
+
+    return this.editInfo[type]?.actionStack
+      ?.filter(action => action.subpage === subpage)
+      ?.length > 0;
   }
 
   Reset() {
@@ -69,6 +75,7 @@ class EditStore {
     this.ResetPage("tags");
     this.ResetPage("clips");
     this.ResetPage("assets");
+    this.ResetPage("groundTruth");
   }
 
   ResetPage(page) {
@@ -79,25 +86,39 @@ class EditStore {
     };
   }
 
-  PerformAction({label, Action, Undo, ...attrs}, fromRedo=false) {
-    const result = Action();
+  ResetSubpage(page, subpage) {
+    const actionStack = this.editInfo[page].actionStack
+      .filter(action => action.subpage !== subpage);
+    const redoStack = this.editInfo[page].redoStack
+      .filter(action => action.subpage !== subpage);
 
-    this.editInfo[this.page].actionStack.push({
+    this.editInfo[page] = {
+      position: actionStack.length,
+      actionStack,
+      redoStack
+    };
+  }
+
+  PerformAction({label, Action, Undo, page, subpage, ...attrs}, fromRedo=false) {
+    page = page || this.page;
+    const result = runInAction(() => Action());
+
+    this.editInfo[page].actionStack.push({
       id: this.rootStore.NextId(),
       label,
       Action,
       Undo,
-      page: this.rootStore.page,
-      subpage: this.rootStore.subpage,
+      page,
+      subpage: subpage || this.rootStore.subpage,
       addedAt: Date.now(),
       ...attrs
     });
 
-    this.editInfo[this.page].position += 1;
+    this.editInfo[page].position += 1;
 
     // Undid action(s), but performed new action - Drop redo stack for this context
     if(!fromRedo) {
-      this.editInfo[this.page].redoStack = this.editInfo[this.page].redoStack.filter(action =>
+      this.editInfo[page].redoStack = this.editInfo[page].redoStack.filter(action =>
         action.subpage !== this.rootStore.subpage
       );
     }
@@ -371,9 +392,8 @@ class EditStore {
 
         // Track modified
         switch(action.action) {
-          // No action needed for create - tracks are created automatically via adding tags
-
-          // When tracks are modified or deleted, we must go into *all* files and modify it
+          // When tracks are changed, we must go into *all* files and modify it
+          case "create":
           case "modify":
             // Label or color changed
             if(!track.requiresSave) {
@@ -475,7 +495,7 @@ class EditStore {
     let fileInfo = [];
     yield Promise.all(
       Object.keys(modifiedFiles).map(async linkKey => {
-        if(fileHashes[linkKey] === await this.CreateHash(JSON.stringify(modifiedFiles[linkKey]))) {
+        if(!modifiedFiles[linkKey].new && fileHashes[linkKey] === await this.CreateHash(JSON.stringify(modifiedFiles[linkKey]))) {
           return;
         }
 
@@ -1050,9 +1070,7 @@ class EditStore {
 
       return vodObjectId;
     } catch(error) {
-      // eslint-disable-next-line no-console
       console.error("Failed to update vod from live", liveObjectId, vodObjectId);
-      // eslint-disable-next-line no-console
       console.error(error);
     } finally {
       delete this.liveToVodProgress[progressKey];

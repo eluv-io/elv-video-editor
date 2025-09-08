@@ -14,7 +14,6 @@ import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import ClipIcon from "@/assets/icons/v2/clip.svg";
 import VideoIcon from "@/assets/icons/v2/video.svg";
 import CompositionIcon from "@/assets/icons/v2/composition.svg";
-import AISparkleIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import XIcon from "@/assets/icons/X.svg";
 import TagIcon from "@/assets/icons/v2/tag.svg";
 import DeleteIcon from "@/assets/icons/trash.svg";
@@ -46,6 +45,7 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
       <PreviewThumbnail
         useLoaderImage
         store={store}
+        baseImageUrl={clip.imageUrl}
         onDragEnd={() => compositionStore.EndDrag()}
         startFrame={clip.clipInFrame}
         endFrame={clip.clipOutFrame}
@@ -72,7 +72,7 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
           />
       }
       {
-        clip.offering === "default" ? null :
+        clip.offering?.includes("default") ? null :
           <div className={S("clip__offering")}>
             Offering: {clip.offering}
           </div>
@@ -115,18 +115,25 @@ const ClipGroup = observer(({
   title,
   subtitle,
   groupKey,
+  defaultClosed,
   clipIds=[],
   noFilter,
   loading=false,
   showTagLinks,
   showEmpty
 }) => {
-  const [hide, setHide] = useState(StorageHandler.get({type: "session", key: `hide-clips-${groupKey}`}));
+  const [hide, setHide] = useState(
+    defaultClosed ?
+      StorageHandler.get({type: "session", key: `show-clips-${groupKey}`}) ? false : true :
+      StorageHandler.get({type: "session", key: `hide-clips-${groupKey}`})
+  );
 
   useEffect(() => {
     if(hide) {
       StorageHandler.set({type: "session", key: `hide-clips-${groupKey}`, value: "true"});
+      StorageHandler.remove({type: "session", key: `show-clips-${groupKey}`});
     } else {
+      StorageHandler.set({type: "session", key: `show-clips-${groupKey}`, value: "true"});
       StorageHandler.remove({type: "session", key: `hide-clips-${groupKey}`});
     }
   }, [hide]);
@@ -172,6 +179,7 @@ const ClipGroup = observer(({
         <Icon icon={hide ? ChevronDownIcon : ChevronUpIcon} className={S("clip-group__header-indicator")} />
       </button>
       {
+        hide ? null :
          hidden ? (showEmpty ? <div className={S("clip-group__empty")}>No Results</div> : null) :
           loading ? <Loader className={S("clip-group__loader")} /> :
             <div className={S("clip-group__clips")}>
@@ -215,17 +223,20 @@ const AIClips = observer(() => {
       });
   }, [compositionStore.filter, aiStore.selectedSearchIndexId, compositionStore.selectedSourceId]);
 
+  if(!aiStore.highlightsAvailable && !compositionStore.filter) {
+    return null;
+  }
+
   return  (
     <ClipGroup
       key={`ai-clips-${compositionStore.selectedSourceId}`}
       noFilter
       groupKey="ai"
-      icon={AISparkleIcon}
       showTagLinks
-      title={compositionStore.filter ? "Results" : "Suggestions"}
+      title={compositionStore.filter ? "Results" : "Selected Candidates"}
       subtitle={!compositionStore.filter ? "Prompt" : ""}
       clipIds={clipIds}
-      loading={loading}
+      loading={loading || compositionStore.sources[compositionStore.selectedSourceId]?.highlightsLoading}
       showEmpty
     />
   );
@@ -263,6 +274,7 @@ export const CompositionClips = observer(() => {
       <ClipGroup
         title="My Clips"
         groupKey="my-clips"
+        defaultClosed
         clipIds={[
           compositionStore.sourceFullClipId,
           ...compositionStore.myClipIds
@@ -287,12 +299,26 @@ export const CompositionClips = observer(() => {
   );
 });
 
+let filterTimeout;
 export const CompositionBrowser = observer(() => {
+  const [filter, setFilter] = useState(compositionStore.filter);
   const [selectedObjectInfo, setSelectedObjectInfo] = useState(undefined);
   const [myLibraryInfo, setMyLibraryInfo] = useState({content: []});
   const [deleting, setDeleting] = useState(false);
   const [selectedObjectId, setSelectedObjectId] = useState(rootStore.selectedObjectId);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    clearTimeout(filterTimeout);
+    filterTimeout = setTimeout(() => {
+      setMyLibraryInfo({content: []});
+      setFilter(compositionStore.filter);
+
+      if(!selectedObjectId) {
+        setLoading(true);
+      }
+    }, 500);
+  }, [compositionStore.filter]);
 
   useEffect(() => {
     if(deleting) { return; }
@@ -337,12 +363,35 @@ export const CompositionBrowser = observer(() => {
         i === s.findIndex(other => other.objectId === objectId && other.compositionKey === compositionKey)
       )
       .filter(({name, compositionKey}) =>
-        !compositionStore.filter ||
-        name.toLowerCase().includes(compositionStore.filter.toLowerCase()) ||
-        compositionKey.toLowerCase().includes(compositionStore.filter.toLowerCase())
+        !filter ||
+        name.toLowerCase().includes(filter.toLowerCase()) ||
+        compositionKey.toLowerCase().includes(filter.toLowerCase())
       );
   }
 
+  const LoadMyLibraryContent = async ({start=0, limit=10}) => {
+    setLoading(true);
+
+    try {
+      const {content, paging} = await browserStore.ListMyLibrary({
+        start,
+        limit,
+        filter,
+        type: "composition"
+      });
+
+      setMyLibraryInfo({
+        content: start === 0 ? content : [...myLibraryInfo.content, ...content],
+        paging
+      });
+    } catch(error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const limit = 10;
   return (
     <>
       <div className={S("composition-browser-header")}>
@@ -364,35 +413,16 @@ export const CompositionBrowser = observer(() => {
       </div>
       <div className={S("composition-browser")}>
         <InfiniteScroll
-          key={`scroll-${selectedObjectId}`}
+          key={`scroll-${selectedObjectId}-${filter}`}
           watchList={[selectedObjectId]}
-          batchSize={5}
           className={S("composition-browser__content")}
-          Update={async limit => {
+          Update={async () => {
             if(
               selectedObjectId ||
               (myLibraryInfo.paging && myLibraryInfo.paging.start >= myLibraryInfo.content.length)
             ) { return; }
 
-            setLoading(true);
-
-            try {
-              const {content, paging} = await browserStore.ListMyLibrary({
-                start: myLibraryInfo.content.length,
-                limit,
-                type: "composition"
-              });
-
-              setMyLibraryInfo({
-                content: [...myLibraryInfo.content, ...content],
-                paging
-              });
-            } catch(error) {
-              // eslint-disable-next-line no-console
-              console.error(error);
-            } finally {
-              setLoading(false);
-            }
+            await LoadMyLibraryContent({start: myLibraryInfo.content.length, limit});
           }}
         >
           <div className={S("composition-browser__header", "composition-browser__item")}>
@@ -405,7 +435,7 @@ export const CompositionBrowser = observer(() => {
           {compositions.map(({name, objectId, compositionKey, lastModified}) =>
             <Linkish
               disabled={deleting}
-              key={compositionKey}
+              key={`${objectId}-${compositionKey}`}
               onClick={() => compositionStore.SetFilter("")}
               to={
                 !compositionKey ?
@@ -457,7 +487,10 @@ export const CompositionBrowser = observer(() => {
                                 compositionKey
                               });
 
-                              setMyLibraryInfo({content: []});
+                              await LoadMyLibraryContent({
+                                start: 0,
+                                limit: myLibraryInfo.content.length - 1,
+                              });
                             } finally {
                               setDeleting(false);
                             }

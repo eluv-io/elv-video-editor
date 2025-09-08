@@ -1,15 +1,18 @@
 import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss";
 
-import React, {useEffect} from "react";
+import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
-import {rootStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
+import {groundTruthStore, rootStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
 import {FocusTrap, Tooltip} from "@mantine/core";
 import {
   Confirm,
   FormNumberInput,
   FormSelect,
   FormTextArea,
+  FormTextInput,
   IconButton,
+  Loader,
+  StyledButton
 } from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher, FormatConfidence, Round} from "@/utils/Utils.js";
 import {BoxToPolygon, BoxToRectangle} from "@/utils/Geometry.js";
@@ -19,8 +22,164 @@ import BackIcon from "@/assets/icons/v2/back.svg";
 import XIcon from "@/assets/icons/X.svg";
 import TrashIcon from "@/assets/icons/trash.svg";
 import CheckmarkIcon from "@/assets/icons/check-circle.svg";
+import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
+import {EntitySelect} from "@/components/ground_truth/GroundTruthForms.jsx";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
+
+let lookupTimeout;
+export const GroundTruthAssetFromOverlayForm = observer(() => {
+  const [image, setImage] = useState(undefined);
+  //const [checkLoading, setCheckLoading] = useState(false);
+  const [entityLoading, setEntityLoading] = useState(false);
+  const asset = tagStore.editedGroundTruthAsset;
+  const pool = groundTruthStore.pools[asset.poolId];
+
+  const Update = key => event => tagStore.UpdateEditedGroundTruthAsset({
+    ...tagStore.editedGroundTruthAsset,
+    [key]: event?.target?.value || event?.value || event
+  });
+
+  useEffect(() => {
+    groundTruthStore.LoadGroundTruthPools();
+  }, []);
+
+  useEffect(() => {
+    tagStore.UpdateEditedGroundTruthAsset({
+      ...asset,
+      entityId: ""
+    });
+
+    if(!asset.poolId) {
+      return;
+    }
+
+    groundTruthStore.LoadGroundTruthPool({poolId: asset.poolId});
+  }, [tagStore.editedGroundTruthAsset.poolId]);
+
+  useEffect(() => {
+    videoStore.GetFrame({bounds: asset.box, maxWidth: 500, maxHeight: 500})
+      .then(async blob =>
+        setImage({
+          filename: `${videoStore.videoObject.objectId}-${videoStore.smpte.replaceAll(":", "_")}.jpg`,
+          blob,
+          url: window.URL.createObjectURL(blob)
+        })
+      );
+  }, [asset.box, asset.frame]);
+
+  useEffect(() => {
+    if(
+      tagStore.editedGroundTruthAsset?.entityId ||
+      !tagStore.editedGroundTruthAsset?.poolId ||
+      !image?.blob
+    ) {
+      return;
+    }
+
+    clearTimeout(lookupTimeout);
+
+    lookupTimeout = setTimeout(async () => {
+      try {
+        setEntityLoading(true);
+
+        await groundTruthStore.LookupImage({
+          poolId: tagStore.editedGroundTruthAsset.poolId,
+          imageBlob: image.blob,
+          key: "overlayForm",
+          force: true
+        });
+
+        const entityId = groundTruthStore.imageEntityCheckStatus["overlayForm"]?.matched_entity?.[0];
+
+        Update("entityId")(tagStore.editedGroundTruthAsset?.entityId || entityId);
+      } catch(error) {
+        console.error(error);
+      }
+
+      setEntityLoading(false);
+    }, 1000);
+  }, [tagStore.editedGroundTruthAsset.poolId, image?.url]);
+
+  useEffect(() => {
+    Update("image")(image);
+  }, [image]);
+
+  return (
+    <div className={S("tag-details", "form")}>
+      <div className={S("tag-details__actions")}>
+        <div className={S("tag-details__left-actions")}>
+          <IconButton
+            label="Discard Changes"
+            icon={XIcon}
+            onClick={() => tagStore.ClearEditing(false)}
+          />
+        </div>
+        <div className={S("tag-details__track")}>
+          <div className={S("tag-details__track-label")}>
+            Add New Ground Truth Asset
+          </div>
+        </div>
+        <div className={S("tag-details__right-actions")}>
+          <IconButton
+            label="Save Ground Truth Asset"
+            icon={CheckmarkIcon}
+            disabled={!asset.poolId || !asset.entityId || !asset.image}
+            highlight
+            onClick={() => tagStore.ClearEditing()}
+          />
+        </div>
+      </div>
+      <div className={S("tag-details__content")}>
+        <div className={S("form__inputs")}>
+          {
+            !image?.url ? null :
+              <img alt="Asset Preview Image" src={image?.url} className={S("form__image")}/>
+          }
+          <div className={S("form__input-container")}>
+            <FormSelect
+              label="Ground Truth Pool"
+              value={asset.poolId}
+              onChange={Update("poolId")}
+              options={
+                Object.keys(groundTruthStore.pools).map(poolId =>
+                  ({label: groundTruthStore.pools[poolId].name, value: poolId})
+                )}
+            />
+          </div>
+          {
+            !asset.poolId ? null :
+              !pool?.metadata ? <Loader className={S("form__loader")} /> :
+                <>
+                  <EntitySelect
+                    loading={entityLoading}
+                    key={`entity-select-${asset.poolId}`}
+                    poolId={asset.poolId}
+                    entityId={asset.entityId}
+                    setEntityId={Update("entityId")}
+                  />
+                  <div className={S("form__input-container")}>
+                    <FormTextInput
+                      label="Label"
+                      value={asset.label}
+                      placeholder={image?.filename}
+                      onChange={Update("label")}
+                    />
+                  </div>
+                  <div className={S("form__input-container")}>
+                    <FormTextArea
+                      label="Description"
+                      value={asset.description}
+                      onChange={Update("description")}
+                    />
+                  </div>
+                </>
+          }
+        </div>
+      </div>
+    </div>
+  );
+});
 
 const OverlayTagActions = observer(({tag, track}) => {
   return (
@@ -29,13 +188,13 @@ const OverlayTagActions = observer(({tag, track}) => {
         <IconButton
           label={
             tagStore.editing ?
-              "Save changes and return to tag details" :
+              "Discard Changes" :
               "Return to tag list"
           }
-          icon={tagStore.editing ? CheckmarkIcon : BackIcon}
+          icon={tagStore.editing ? XIcon : BackIcon}
           onClick={() =>
             tagStore.editing ?
-              tagStore.ClearEditing() :
+              tagStore.ClearEditing(false) :
               tagStore.ClearSelectedOverlayTag()
           }
         />
@@ -51,9 +210,10 @@ const OverlayTagActions = observer(({tag, track}) => {
         {
           tagStore.editing ?
             <IconButton
-              label="Discard Changes"
-              icon={XIcon}
-              onClick={() => tagStore.ClearEditing(false)}
+              label="Save changes and return to tag details"
+              icon={CheckmarkIcon}
+              highlight
+              onClick={() => tagStore.ClearEditing()}
             /> :
             <>
               <IconButton
@@ -81,8 +241,20 @@ const OverlayTagActions = observer(({tag, track}) => {
 });
 
 const OverlayTagForm = observer(() => {
+  const [image, setImage] = useState(undefined);
   const tag = tagStore.editedOverlayTag;
   const track = trackStore.Track(tag.trackId);
+
+  useEffect(() => {
+    setTimeout(() => {
+      videoStore.GetFrame({bounds: tag.box, maxWidth: 500, maxHeight: 500})
+        .then(blob => setImage({
+          filename: `${videoStore.videoObject.objectId}-${videoStore.smpte.replaceAll(":", "_")}.jpg`,
+          blob,
+          url: window.URL.createObjectURL(blob)
+        }));
+    }, 1);
+  }, [tag.box, tag.frame]);
 
   return (
     <form
@@ -94,6 +266,10 @@ const OverlayTagForm = observer(() => {
       <div className={S("tag-details__content")}>
         <FocusTrap active>
           <div className={S("form__inputs")}>
+            {
+              !image ? null :
+                <img alt="Image" src={image?.url} className={S("form__image")}/>
+            }
             {
               !tag.isNew ? null :
                 <div className={S("form__input-container")}>
@@ -165,12 +341,23 @@ const OverlayTagForm = observer(() => {
 export const OverlayTagDetails = observer(() => {
   const tag = tagStore.editedOverlayTag || tagStore.selectedOverlayTag;
   const track = trackStore.Track(tag?.trackId);
+  const [image, setImage] = useState({});
+  const [showGroundTruthModal, setShowGroundTruthModal] = useState(false);
 
   useEffect(() => {
     if(!tag || !track) {
       tagStore.ClearEditing();
       tagStore.ClearSelectedOverlayTag();
     }
+
+    if(tagStore.editing || !tag) { return; }
+
+    videoStore.GetFrame({bounds: tag.box, maxWidth: 500, maxHeight: 500})
+      .then(blob => setImage({
+        filename: `${videoStore.videoObject.objectId}-${videoStore.smpte.replaceAll(":", "_")}.jpg`,
+        blob,
+        url: window.URL.createObjectURL(blob)
+      }));
   }, [tag, track]);
 
   if(!tag || !track) {
@@ -182,6 +369,9 @@ export const OverlayTagDetails = observer(() => {
       <div key={`tag-details-${tag.tagId}-${!!tagStore.editedOverlayTag}`} className={S("tag-details")}>
         <OverlayTagActions tag={tag} track={track}/>
         <div className={S("tag-details__content")}>
+          <div className={S("form__inputs")}>
+            <img alt="Image" src={image?.url} className={S("form__image")}/>
+          </div>
           <pre className={S("tag-details__text", tag.content ? "tag-details__text--json" : "")}>
             {tag.text}
           </pre>
@@ -192,12 +382,29 @@ export const OverlayTagDetails = observer(() => {
                 <span>{FormatConfidence(tag.confidence)}</span>
               </div>
           }
+          <StyledButton
+            small
+            style={{marginTop: 30}}
+            icon={GroundTruthIcon}
+            onClick={() => tagStore.AddGroundTruthAsset({label: tag.text, box: tag.box})}
+          >
+            Add to Ground Truth Pool
+          </StyledButton>
         </div>
       </div>
       {
-        !tagStore.editing ? null :
+        !tagStore.editing || !tagStore.editedOverlayTag ? null :
           <div className={S("side-panel-modal")}>
             <OverlayTagForm/>
+          </div>
+      }
+      {
+        !showGroundTruthModal ? null :
+          <div className={S("side-panel-modal")}>
+            <GroundTruthAssetFromOverlayForm
+              image={image}
+              Close={() => setShowGroundTruthModal(false)}
+            />
           </div>
       }
     </>

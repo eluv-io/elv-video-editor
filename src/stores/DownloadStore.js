@@ -31,7 +31,7 @@ class DownloadStore {
 
     let filename = store.channel ?
       this.rootStore.compositionStore.compositionObject?.name :
-      this.rootStore.videoStore.name;
+      store.name;
 
     if(offering && offering !== "default") {
       filename = `${filename || ""} (${offering})`;
@@ -95,6 +95,7 @@ class DownloadStore {
   });
 
   StartDownloadJob = flow(function * ({
+    store,
     composition,
     filename,
     format="mp4",
@@ -114,9 +115,9 @@ class DownloadStore {
         versionHash = this.rootStore.compositionStore.videoStore.videoObject.versionHash;
         offering = this.rootStore.compositionStore.compositionObject.compositionKey;
       } else {
-        totalFrames = this.rootStore.videoStore.totalFrames;
-        frameRate = this.rootStore.videoStore.frameRate;
-        versionHash = this.rootStore.videoStore.videoObject.versionHash;
+        totalFrames = store.totalFrames;
+        frameRate = store.frameRate;
+        versionHash = store.videoObject.versionHash;
       }
 
       clipInFrame = clipInFrame || 0;
@@ -210,10 +211,9 @@ class DownloadStore {
         status
       };
     } catch(error) {
-      // eslint-disable-next-line no-console
       console.error("Error performing download:");
-      // eslint-disable-next-line no-console
       console.error(error);
+
       if(encrypt) {
         return this.StartDownloadJob({...arguments[0], encrypt: false});
       }
@@ -259,7 +259,6 @@ class DownloadStore {
       this.downloadedJobs[jobId] = true;
     } catch(error) {
       this.rootStore.SetError("Unable to download");
-      // eslint-disable-next-line no-console
       console.error("Invalid URL or failed to download", error);
     }
   });
@@ -361,6 +360,7 @@ class DownloadStore {
       attributes.downloadJobId = [
         (yield this.StartDownloadJob({
           ...downloadOptions,
+          store,
           composition: store.channel,
           isShareDownload: true
         })).jobId
@@ -397,8 +397,17 @@ class DownloadStore {
       options.offering = downloadOptions.offering;
     }
 
+    let objectIds = [];
+    if(shareOptions.compositionKey) {
+      // Composition
+      objectIds = this.rootStore.compositionStore.clipList
+        .map(c => c.objectId)
+        .filter((x, i, a) => a.indexOf(x) == i);
+    }
+
     const share = (yield this.rootStore.client.CreateShare({
       objectId,
+      objectIds,
       expiresAt: shareOptions.expiresAt,
       params: Unproxy(options)
     })).share;
@@ -465,9 +474,7 @@ class DownloadStore {
       try {
         share.shareOptions = JSON.parse(share.attributes.shareOptions[0]);
       } catch(error) {
-        // eslint-disable-next-line no-console
         console.error("Unable to parse share details", share);
-        // eslint-disable-next-line no-console
         console.error(error);
       }
     }
@@ -476,9 +483,7 @@ class DownloadStore {
       try {
         share.downloadOptions = JSON.parse(share.attributes.downloadOptions[0]);
       } catch(error) {
-        // eslint-disable-next-line no-console
         console.error("Unable to parse share details", share);
-        // eslint-disable-next-line no-console
         console.error(error);
       }
     }
@@ -556,7 +561,7 @@ class DownloadStore {
   });
 
   SendShareEmail = flow(function * ({share}) {
-    const tenantId = yield this.rootStore.client.ContentObjectTenantId({objectId: share.object_id});
+    const tenantId = yield this.rootStore.client.ContentObjectTenantId({objectId: share.object_id || share.object_ids?.[0]});
 
     let options = {
       tenant: tenantId,

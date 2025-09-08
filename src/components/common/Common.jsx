@@ -1,12 +1,12 @@
 import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
 import React, {forwardRef, useEffect, useState} from "react";
-import {ConvertColor, Copy, CreateModuleClassMatcher, JoinClassNames, TextWidth} from "@/utils/Utils.js";
+import {ConvertColor, Copy, CreateModuleClassMatcher, JoinClassNames, SP, TextWidth} from "@/utils/Utils.js";
 import {
   Button,
   ColorInput,
   Modal as MantineModal, MultiSelect,
-  NumberInput, RingProgress,
+  NumberInput, Progress, RingProgress,
   Select,
   Switch,
   Textarea,
@@ -74,7 +74,7 @@ export const LoaderImage = observer(({
 
   if(error) {
     return (
-      <object
+      <div
         {...props}
         style={{
           ...(props.style || {}),
@@ -97,7 +97,7 @@ export const LoaderImage = observer(({
     );
   }
 
-  if(width) {
+  if(width && src?.startsWith("http")) {
     try {
       const url = new URL(src);
       url.searchParams.set("width", width);
@@ -132,7 +132,7 @@ export const LoaderImage = observer(({
       }
       {
         loaded ? null :
-          <object
+          <div
             {...props}
             style={{
               ...(props.style || {}),
@@ -185,30 +185,38 @@ export const Linkish = forwardRef(function Linkish({
   disabled,
   styled=false,
   divButton=false,
+  label,
   ...props
 }, ref) {
   if(styled) {
     props.className = JoinClassNames("button", props.className || "");
   }
 
-  if(!disabled) {
+  let element;
+  if(!disabled && (href || to)) {
     // a tags don't have :disabled
     if(href) {
-      return <a href={href} target={target} rel={rel} onClick={onClick} ref={ref} {...props} />;
+      element = <a href={href} target={target} rel={rel} onClick={onClick} ref={ref} {...props} />;
     } else if(to) {
-      return <Link href={to} onClick={onClick} ref={ref} {...props} />;
+      element = <Link href={to} onClick={onClick} ref={ref} {...props} />;
     }
-  }
-
-  if(onClick || props.type === "submit") {
+  } else if(onClick || props.type === "submit") {
     if(divButton) {
-      return <div role="button" tabIndex={0} aria-disabled={disabled} onClick={!disabled ? onClick : undefined} ref={ref} {...props} />;
+      element = <div role="button" tabIndex={0} aria-disabled={disabled} onClick={!disabled ? onClick : undefined} ref={ref} {...props} />;
     } else {
-      return <button disabled={disabled} onClick={onClick} ref={ref} {...props} />;
+      element = <button disabled={disabled} onClick={onClick} ref={ref} {...props} />;
     }
+  } else {
+    element = <div ref={ref} {...props} />;
   }
 
-  return <div ref={ref} {...props} />;
+  if(!label || !element) { return element; }
+
+  return (
+    <Tooltip label={label} openDelay={500}>
+      { element }
+    </Tooltip>
+  );
 });
 
 export const Icon = ({
@@ -330,8 +338,12 @@ export const IconButton = ({
 };
 
 let copyTimeout;
-export const CopyButton = observer(({value, ...props}) => {
+export const CopyButton = observer(({value, onCopyChange, ...props}) => {
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    onCopyChange?.(copied);
+  }, [copied]);
 
   return (
     <IconButton
@@ -358,13 +370,28 @@ export const CopyButton = observer(({value, ...props}) => {
 });
 
 export const CopyableField = observer(({value, children, buttonProps={}, showOnHover=false, className="", ...props}) => {
+  const [copied, setCopied] = useState(false);
+
   return (
-    <div {...props} className={JoinClassNames(S("copyable-field", showOnHover ? "copyable-field--show-hover" : ""), className)}>
+    <div
+      {...props}
+      className={
+        JoinClassNames(
+          S(
+            "copyable-field",
+            showOnHover ? "copyable-field--show-hover" : "",
+            copied ? "copyable-field--copied" : ""
+          ),
+          className
+        )
+      }
+    >
       <div className={S("copyable-field__value", "ellipsis")}>
         { children || value }
       </div>
       <CopyButton
         {...buttonProps}
+        onCopyChange={setCopied}
         value={value}
         className={JoinClassNames(S("copyable-field__button", "ellipsis"), buttonProps.className)}
       />
@@ -372,20 +399,22 @@ export const CopyableField = observer(({value, children, buttonProps={}, showOnH
   );
 });
 
-export const AsyncButton = observer(({onClick, tooltip, ...props}) => {
-  const [loading, setLoading] = useState(false);
+export const AsyncButton = observer(({onClick, tooltip, loading, ...props}) => {
+  const [submitting, setSubmitting] = useState(false);
 
   let button = (
     <Button
       {...props}
-      loading={loading}
+      loading={loading || submitting}
       onClick={async event => {
-        setLoading(true);
+        if(loading || submitting) { return; }
+
+        setSubmitting(true);
 
         try {
           await onClick?.(event);
         } finally {
-          setLoading(false);
+          setSubmitting(false);
         }
       }}
     />
@@ -399,6 +428,60 @@ export const AsyncButton = observer(({onClick, tooltip, ...props}) => {
     <Tooltip label={tooltip}>
       { button }
     </Tooltip>
+  );
+});
+
+export const StyledButton = observer(({icon, variant="primary", small, color="--color-highlight", children, loading, ...props}) => {
+  const [submitting, setSubmitting] = useState(false);
+  return (
+    <Linkish
+      {...props}
+      onClick={
+        !props.onClick ? null :
+          async event => {
+            if(loading || submitting) { return; }
+
+            setSubmitting(true);
+
+            try {
+              await props.onClick?.(event);
+            } finally {
+              setSubmitting(false);
+            }
+          }
+      }
+      style={{
+        ...(props.style || {}),
+        "--button-color": `var(${color})`
+      }}
+      className={
+        JoinClassNames(
+          S(
+            "styled-button",
+            `styled-button--${variant}`,
+            small ? "styled-button--small" : "",
+            loading || submitting ? "styled-button--loading" : ""
+          ),
+          props.className
+        )
+      }
+    >
+      {
+        !icon ? null :
+          <div className={S("styled-button__icon-container")}>
+            <Icon icon={icon} className={S("styled-button__icon")} />
+          </div>
+      }
+      <div className={S("styled-button__children")}>
+        {children}
+      </div>
+      {
+        !submitting && !loading ? null :
+          <div className={S("styled-button__loader-container")}>
+            <Loader className={S("styled-button__loader")} />
+          </div>
+      }
+    </Linkish>
   );
 });
 
@@ -488,8 +571,8 @@ export const FormNumberInput = observer(props =>
 export const FormTextArea = observer(props =>
   <Textarea
     autosize
-    maxRows={10}
-    minRows={3}
+    maxRows={props.maxRows || 10}
+    minRows={props.minRows || 3}
     resize="vertical"
     {...props}
     classNames={{
@@ -550,7 +633,8 @@ export const FormSelect = observer(props =>
     classNames={{
       root: S("form-input"),
       label: S("form-input__label"),
-      input: S("form-input__input")
+      input: S("form-input__input"),
+      ...(props.classNames || {})
     }}
   />
 );
@@ -562,7 +646,9 @@ export const FormMultiSelect = observer(props =>
     classNames={{
       root: S("form-input"),
       label: S("form-input__label"),
-      input: S("form-input__input", "form-input__multiselect")
+      input: S("form-input__input", "form-input__multiselect"),
+      pillsList: S("form-input__multiselect-list"),
+      pill: S("form-input__multiselect-item"),
     }}
   />
 );
@@ -629,7 +715,16 @@ export const SwitchInput = observer(({...props}) => {
   );
 });
 
-export const Modal = observer((props) => {
+export const Modal = observer(({alwaysOpened, ...props}) => {
+  const [opened, setOpened] = useState(props.opened);
+
+  useEffect(() => {
+    if(alwaysOpened) {
+      // Show open effect even if it was newly created
+      setTimeout(() => setOpened(true), 0);
+    }
+  }, []);
+
   // Disable keyboard controls when modal is opened
   useEffect(() => {
     if(!props.opened) { return; }
@@ -641,7 +736,7 @@ export const Modal = observer((props) => {
     return () => keyboardControlsStore.ToggleKeyboardControls(controlsOriginallyEnabled);
   }, [props.opened]);
 
-  return <MantineModal {...props} />;
+  return <MantineModal opened={props.opened || opened} {...props} />;
 });
 
 export const ClipTimeInfo = observer(({store, clipInFrame, clipOutFrame, className=""}) => {
@@ -666,12 +761,19 @@ export const ClipTimeInfo = observer(({store, clipInFrame, clipOutFrame, classNa
   );
 });
 
+let cancelTimeout;
 export const Confirm = async ({title, text, labels={}, onConfirm, onCancel}) => {
   if(!await new Promise(resolve => {
     const Title = () => {
       // For some reason, closing the modal any way except the cancel button *doesn't* call onCancel
       // Detect when one of the components is unrendered to ensure the promise is resolved
-      useEffect(() => () => setTimeout(() => resolve(false), 100), []);
+      useEffect(() => {
+        clearTimeout(cancelTimeout);
+
+        return () => {
+          cancelTimeout = setTimeout(() => resolve(false), 100);
+        };
+      }, []);
 
       return <div className={S("confirm__title")}>{title || "Confirm"}</div>;
     };
@@ -691,5 +793,47 @@ export const Confirm = async ({title, text, labels={}, onConfirm, onCancel}) => 
     return;
   }
 
-  await onConfirm();
+  return await onConfirm?.();
 };
+
+export const ProgressModal = observer(({title, progress, error, Close}) => {
+  return (
+    <Modal
+      onClick={SP()}
+      title={title}
+      alwaysOpened
+      centered
+      onClose={() => {}}
+      withCloseButton={false}
+    >
+      {
+        error ?
+          <div className={S("progress__error")}>
+            <div className={S("progress__error-message")}>
+              Something went wrong, please try again.
+            </div>
+            <div className={S("progress__actions")}>
+              <StyledButton
+                color="--background-active"
+                icon={CopyIcon}
+                onClick={() => Copy(JSON.stringify(error, null, 2))}
+              >
+                Copy Error Details
+              </StyledButton>
+              <StyledButton onClick={Close}>
+                Close
+              </StyledButton>
+            </div>
+          </div> :
+          <div className={S("progress")}>
+            <Progress
+              value={progress}
+              max={100}
+              transitionDuration={1000}
+              mb="md"
+            />
+          </div>
+      }
+    </Modal>
+  );
+});

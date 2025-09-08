@@ -3,7 +3,7 @@ import AssetStyles from "@/assets/stylesheets/modules/assets.module.scss";
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
-import {rootStore, assetStore, editStore, tagStore} from "@/stores/index.js";
+import {rootStore, assetStore, editStore, tagStore, aiStore} from "@/stores/index.js";
 import {AsyncButton, Confirm, Icon, IconButton, LoaderImage} from "@/components/common/Common.jsx";
 import {Tooltip} from "@mantine/core";
 import Overlay from "@/components/video/Overlay.jsx";
@@ -264,7 +264,7 @@ const SelectedAsset = observer(({assetKey}) => {
   useEffect(() => {
     setSummary(undefined);
 
-    assetStore.GenerateSummary({objectId, asset})
+    aiStore.GenerateImageSummary({objectId, filePath: asset?.file?.["/"]?.replace("./files/", "")})
       .then(setSummary);
   }, [assetKey]);
 

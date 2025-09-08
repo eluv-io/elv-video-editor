@@ -5,9 +5,8 @@ import {
   Container,
   Group,
   HoverCard,
-  Modal,
   Progress,
-  RingProgress,
+  RingProgress, ScrollArea,
   Text,
   TextInput,
   UnstyledButton
@@ -25,11 +24,12 @@ import {
   LocalizeString,
   AsyncButton,
   LoaderImage,
-  Confirm
+  Confirm, Modal
 } from "@/components/common/Common.jsx";
 import UrlJoin from "url-join";
 import {useDebouncedValue} from "@mantine/hooks";
 import {ScaleImage} from "@/utils/Utils.js";
+import Path from "path";
 
 export const SortTable = ({sortStatus, AdditionalCondition}) => {
   return (a, b) => {
@@ -77,7 +77,7 @@ import {
 // Table showing the status of file uploads in the upload form
 const UploadStatus = observer(({selectedFiles, fileStatus}) => {
   const [records, setRecords] = useState([]);
-  const [sortStatus, setSortStatus] = useState({columnAccessor: "progress", direction: "desc"});
+  const [sortStatus, setSortStatus] = useState({columnAccessor: "filename", direction: "asc"});
 
   useEffect(() => {
     setRecords(
@@ -149,8 +149,61 @@ const UploadStatus = observer(({selectedFiles, fileStatus}) => {
 // Form for uploading files
 const UploadForm = observer(({objectId, path, Close}) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const [directoryUploadInput, setDirectoryUploadInput] = useState(undefined);
   const fileStatus = rootStore.fileBrowserStore.uploadStatus[objectId] || {};
   const uploading = fileBrowserStore.activeUploadJobs[objectId] > 0;
+
+  const Upload = async files => {
+    if(!files || files.length === 0) {
+      return;
+    }
+
+    let formattedFiles = [];
+
+    let dirname = "";
+    setSelectedFiles([
+      ...files.map(file => {
+        const filepath = UrlJoin(path, file.overrideName || file.webkitRelativePath || file.name).replace(/^\/+/g, "");
+
+        if(filepath.includes(".DS_Store")) {
+          return;
+        }
+
+        const parts = filepath.split(Path.sep);
+
+        if(!dirname) { dirname = parts[0]; }
+
+        if(parts.length > 2) {
+          const dirInfo = files[parts[1]] || {};
+          formattedFiles.push({
+            path: filepath,
+            type: "directory",
+            mime_type: file.type,
+            size: (dirInfo.size || 0) + file.size,
+            data: file
+          });
+        } else {
+          formattedFiles.push({
+            path: filepath,
+            type: "file",
+            mime_type: file.type,
+            size: file.size,
+            data: file
+          });
+        }
+
+        // Add to list of files added
+        return {
+          filename: (file.webkitRelativePath || file.name),
+          filepath,
+          size: file.size
+        };
+      }).filter(f => f),
+      ...selectedFiles
+    ]);
+
+    fileBrowserStore.UploadFiles({objectId, files: formattedFiles});
+  };
 
   return (
     <Modal
@@ -166,68 +219,59 @@ const UploadForm = observer(({objectId, path, Close}) => {
           multiple
           py={50}
           mx="auto"
-          onDrop={async (files) => {
-            if(!files || files.length === 0) { return; }
-
-            let formattedFiles = [];
-
-            setSelectedFiles([
-              ...files.map(file => {
-                const filename = (file.webkitRelativePath || file.name);
-                const filepath = UrlJoin(path, filename.replace(/^\/+/g, ""));
-
-                // Formatted request to send to client
-                formattedFiles.push({
-                  path: filepath,
-                  type: "file",
-                  mime_type: file.type,
-                  size: file.size,
-                  data: file,
-                });
-
-                // Add to list of files added
-                return {
-                  filename: (file.webkitRelativePath || file.name),
-                  filepath,
-                  size: file.size
-                };
-              }),
-              ...selectedFiles
-            ]);
-
-            fileBrowserStore.UploadFiles({objectId, files: formattedFiles});
-          }}
+          onDrop={Upload}
         >
           <Group justify="center" align="center">
             <Dropzone.Accept>
-              <IconUpload />
+              <IconUpload/>
             </Dropzone.Accept>
             <Dropzone.Reject>
-              <IconX />
+              <IconX/>
             </Dropzone.Reject>
             <Dropzone.Idle>
-              <IconFiles />
+              <IconFiles/>
             </Dropzone.Idle>
 
             <Text size="xl" inline>
-              { rootStore.l10n.components.file_browser.upload_instructions_drag }
+              {rootStore.l10n.components.file_browser.upload_instructions_drag}
             </Text>
           </Group>
           <Group justify="center" align="center">
             <Text size="sm" mt="sm" inline>
-              { rootStore.l10n.components.file_browser.upload_instructions_click }
+              {rootStore.l10n.components.file_browser.upload_instructions_click}
             </Text>
           </Group>
         </Dropzone>
         {
           selectedFiles.length === 0 ? null :
             <Container mt={50}>
-              <UploadStatus path={path} selectedFiles={selectedFiles} fileStatus={fileStatus} />
+              <UploadStatus path={path} selectedFiles={selectedFiles} fileStatus={fileStatus}/>
             </Container>
         }
-        <Group justify="end" mt={50}>
-          <AsyncButton w={200} disabled={uploading} loading={uploading} onClick={Close}>
-            { uploading ? "" : rootStore.l10n.components.actions.done }
+        <input
+          hidden={true}
+          ref={setDirectoryUploadInput}
+          name="directory-upload"
+          type="file"
+          multiple
+          onChange={async event => await Upload(Array.from(event.target.files))}
+          {
+            ...({
+              webkitdirectory: "true",
+              mozdirectory: "true",
+              msdirectory: "true",
+              odirectory: "true",
+              directory: "true"
+            })
+          }
+        />
+
+        <Group justify="space-between" mt={50}>
+          <AsyncButton w={200} disabled={uploading} loading={uploading} onClick={() => directoryUploadInput.click()}>
+            Upload Directory
+          </AsyncButton>
+          <AsyncButton color="gray.4" autoContrast w={200} disabled={uploading} loading={uploading} onClick={Close}>
+            {uploading ? "" : rootStore.l10n.components.actions.done}
           </AsyncButton>
         </Group>
       </Container>
@@ -240,7 +284,7 @@ const CreateDirectoryForm = ({Create}) => {
   const [renaming, setRenaming] = useState(false);
 
   const form = useForm({
-    initialValues: { filename: "" },
+    initialValues: {filename: ""},
     validate: {
       filename: value => value ? null : rootStore.l10n.components.file_browser.validation.filename_must_be_specified
     }
@@ -253,7 +297,6 @@ const CreateDirectoryForm = ({Create}) => {
           setRenaming(true);
           Create({filename: values.filename})
             .catch(error => {
-              // eslint-disable-next-line no-console
               console.error(error);
               setRenaming(false);
             })
@@ -299,7 +342,6 @@ const RenameFileForm = ({filename, Rename}) => {
           setRenaming(true);
           Rename({newFilename: values.newFilename})
             .catch(error => {
-              // eslint-disable-next-line no-console
               console.error(error);
               setRenaming(false);
             })
@@ -360,7 +402,6 @@ const DownloadFileButton = ({objectId, path, filename, url, encrypted}) => {
               callback: ({bytesFinished, bytesTotal}) => setProgress((bytesFinished || 0) / (bytesTotal || 1) * 100)
             });
           } catch(error) {
-            // eslint-disable-next-line no-console
             console.error(error);
           }
         }}
@@ -456,7 +497,30 @@ const FileBrowserTable = observer(({
   directory = directory.slice(0, batchSize);
 
   const isRecordSelectable = ({encrypted, type, ext}) =>
-    !encrypted && type !== "directory" && (!extensions || extensions.length === 0 || extensions.includes(ext?.toLowerCase()));
+    !encrypted && !(type === "directory" && !multiple) && (type === "directory" || !extensions || extensions.length === 0 || extensions.includes(ext?.toLowerCase()));
+
+  const allDirectoryRecords = directory => {
+    return fileBrowserStore.Directory({objectId, path: directory.fullPath})
+      .map(item => {
+        if(item.type === "directory") {
+          return allDirectoryRecords(item);
+        } else if(isRecordSelectable(item)) {
+          return item;
+        }
+      })
+      .filter(item => item)
+      .flat();
+  };
+
+  // Determine records for this path or directories that contain selected records
+  const thisPathSelectedRecords = directory
+    .filter(item =>
+      item.type === "directory" ?
+        selectedRecords.find(record => record.fullPath.startsWith(item.fullPath)) :
+        selectedRecords.find(record => record.fullPath === item.fullPath)
+    );
+
+  const otherPathSelectedRecords = selectedRecords.filter(record => !record.fullPath.startsWith(path));
 
   return (
     <>
@@ -480,10 +544,18 @@ const FileBrowserTable = observer(({
         sortStatus={sortStatus}
         onSortStatusChange={setSortStatus}
         records={directory}
-        selectedRecords={selectedRecords}
+        selectedRecords={thisPathSelectedRecords}
         onSelectedRecordsChange={newSelectedRecords => {
           if(multiple) {
-            setSelectedRecords(newSelectedRecords);
+            newSelectedRecords = newSelectedRecords
+              .map(record =>
+                record.type === "directory" ?
+                  allDirectoryRecords(record) :
+                  record
+              )
+              .flat();
+
+            setSelectedRecords([...otherPathSelectedRecords, ...newSelectedRecords]);
           } else {
             // Only allow one selection
             setSelectedRecords(newSelectedRecords.filter(newRecord => !selectedRecords.find(record => record.filename === newRecord.filename)));
@@ -492,7 +564,7 @@ const FileBrowserTable = observer(({
         // Hide select all if not multiple
         allRecordsSelectionCheckboxProps={{style: multiple ? {} : {display: "none"}}}
         // Hide directory selection checkbox
-        getRecordSelectionCheckboxProps={({type}) => ({style: type === "directory" ? {display: "none"} : {}})}
+        getRecordSelectionCheckboxProps={({type}) => ({style: type === "directory" && !multiple ? {display: "none"} : {}})}
         isRecordSelectable={isRecordSelectable}
         columns={[
           {
@@ -528,7 +600,13 @@ const FileBrowserTable = observer(({
             }
           },
           { accessor: "filename", title: rootStore.l10n.components.file_browser.columns.filename, sortable: true, render: ({filename}) => <Text style={{wordWrap: "anywhere"}}>{filename}</Text> },
-          { accessor: "size", width: 100, title: rootStore.l10n.components.file_browser.columns.size, sortable: true, render: ({size}) => typeof size === "number" ? PrettyBytes(size) : "" },
+          {
+            accessor: "size",
+            width: 120,
+            title: rootStore.l10n.components.file_browser.columns.size,
+            sortable: true,
+            render: ({type, size}) => type !== "directory" && typeof size === "number" ? PrettyBytes(size) : `${size} Items`
+          },
           {
             accessor: "actions",
             title: rootStore.l10n.components.file_browser.columns.actions,
@@ -600,8 +678,8 @@ const FileBrowserTable = observer(({
   );
 });
 
-const FileBrowser = observer(({store, objectId, multiple, title, extensions=[], opened=true, Close, Submit}) => {
-  const [path, setPath] = useState("/");
+const FileBrowser = observer(({objectId, multiple, title, extensions=[], initialPath, Close, Submit, ...modalProps}) => {
+  const [path, setPath] = useState(initialPath || "/");
   const [filter, setFilter] = useState("");
   const [debouncedFilter] = useDebouncedValue(filter, 200);
   const [selectedRecords, setSelectedRecords] = useState([]);
@@ -618,7 +696,7 @@ const FileBrowser = observer(({store, objectId, multiple, title, extensions=[], 
   const pathTokens = path.replace(/^\//, "").split("/");
 
   return (
-    <Modal opened={opened} withCloseButton={false} onClose={() => {}} centered size={1000} title={title} padding="xl">
+    <Modal withCloseButton={false} onClose={() => {}} centered size={1000} title={title} padding="xl" {...modalProps}>
       { showUploadForm ? <UploadForm objectId={objectId} path={path} Close={() => setShowUploadForm(false)} /> : null }
       <Container px={0}>
         <Group mb="xs" align="center" gap="xs">
@@ -673,8 +751,8 @@ const FileBrowser = observer(({store, objectId, multiple, title, extensions=[], 
         {
           !multiple || selectedRecords.length === 0 ? null :
             <Container my="xs" p={0}>
-              <Text mb="sm">Selected Files:</Text>
-              <Container p={0}>
+              <Text mb="sm">Selected Files ({selectedRecords.length}):</Text>
+              <ScrollArea p={0} h={100} bg="gray.8">
                 {
                   selectedRecords.map(({fullPath}) =>
                     <Group key={`selected-file-${fullPath}`} gap="xs">
@@ -689,7 +767,7 @@ const FileBrowser = observer(({store, objectId, multiple, title, extensions=[], 
                     </Group>
                   )
                 }
-              </Container>
+              </ScrollArea>
             </Container>
         }
         <Group mt="xl" justify="space-between">
@@ -727,11 +805,10 @@ const FileBrowser = observer(({store, objectId, multiple, title, extensions=[], 
               onClick={async () => {
                 try {
                   setSaving("cancel");
-                  await fileBrowserStore.Save({store, objectId, selectedObjectId});
+                  await fileBrowserStore.Save({objectId, selectedObjectId});
 
                   Close();
                 } catch(error) {
-                  // eslint-disable-next-line no-console
                   console.error(error);
                   setSaving(false);
                 }
@@ -747,7 +824,7 @@ const FileBrowser = observer(({store, objectId, multiple, title, extensions=[], 
                 try {
                   setSaving("submit");
 
-                  await fileBrowserStore.Save({store, objectId, selectedObjectId});
+                  await fileBrowserStore.Save({objectId, selectedObjectId});
 
                   await rootStore.VersionHash({objectId: selectedObjectId});
 

@@ -15,6 +15,7 @@ import MarkedSlider from "@/components/common/MarkedSlider.jsx";
 import {AsyncButton, Confirm, FormTextArea, Icon, IconButton, Modal, SelectInput} from "@/components/common/Common.jsx";
 import {Button, Tooltip} from "@mantine/core";
 import {useLocation} from "wouter";
+import {ClipTooltipContent} from "@/components/compositions/Clips.jsx";
 
 import ZoomInIcon from "@/assets/icons/v2/zoom-in.svg";
 import ZoomOutIcon from "@/assets/icons/v2/zoom-out.svg";
@@ -29,7 +30,6 @@ import XIcon from "@/assets/icons/v2/x.svg";
 import XCircleIcon from "@/assets/icons/X.svg";
 import TrashIcon from "@/assets/icons/trash.svg";
 import PublishIcon from "@/assets/icons/v2/publish.svg";
-import {ClipTooltipContent} from "@/components/compositions/Clips.jsx";
 
 const S = CreateModuleClassMatcher(VideoStyles);
 
@@ -541,7 +541,7 @@ const CompositionVideoSection = observer(({store, blank=false, clipView=false}) 
             volume={clipView ? compositionStore.clipVolume : compositionStore.compositionVolume}
             playoutUrl={clipView ? undefined : compositionStore.compositionPlayoutUrl}
             autoplay={clipView ? false : compositionStore.videoStore.playing}
-            key={clipView ? undefined : compositionStore.compositionPlayoutUrl}
+            key={clipView ? undefined : compositionStore.clipIdList.join("-") + compositionStore.compositionPlayoutUrl}
             contentId={clipView ? compositionStore.originalSelectedClipId || compositionStore.selectedClipId : compositionStore.compositionPlayoutUrl}
             Callback={video => {
               video.addEventListener("volumechange", () => compositionStore.__UpdateVideoSettings(

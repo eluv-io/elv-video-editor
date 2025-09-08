@@ -55,7 +55,7 @@ const Video = observer(({
   }, [video, contentId]);
 
   useEffect(() => {
-    if(!video || !playoutUrl || !store.isVideo || blank) {
+    if(!video || !playoutUrl || blank) {
       return;
     }
 
@@ -106,9 +106,7 @@ const Video = observer(({
     // Reload on fatal error
     player.on(HLSPlayer.Events.ERROR, function (event, data) {
       if(data.fatal) {
-        // eslint-disable-next-line no-console
         console.error("Fatal HLS Error:");
-        // eslint-disable-next-line no-console
         console.error(data);
 
         switch(data.type) {
@@ -128,7 +126,6 @@ const Video = observer(({
 
     player.loadSource(playoutUrl);
     player.attachMedia(video);
-
     store.Initialize(video, player);
 
     // Ensure loading doesn't hang if the video doesn't want to preload

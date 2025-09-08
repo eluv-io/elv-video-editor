@@ -1,6 +1,7 @@
 import {flow, makeAutoObservable, runInAction} from "mobx";
 import UrlJoin from "url-join";
 import {Unproxy} from "@/utils/Utils.js";
+import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 
 class AIStore {
   searchIndexes = [];
@@ -8,6 +9,9 @@ class AIStore {
   selectedSearchIndexId;
   searchIndexUpdateProgress = {};
   tagAggregationProgress = 0;
+  highlightsAvailable = true;
+
+  searchResults = {};
 
   _authTokens = {};
 
@@ -32,6 +36,9 @@ class AIStore {
     channelAuth=false,
     update=false,
     queryParams={},
+    body,
+    stringifyBody=true,
+    headers={},
     format="json"
   }) {
     const url = new URL(`https://${server}.contentfabric.io/`);
@@ -77,40 +84,93 @@ class AIStore {
 
     url.searchParams.set("authorization", authToken);
 
-    const response = yield fetch(url, {method});
+    if(body && stringifyBody) {
+      body = JSON.stringify(body);
+    }
+
+    const response = yield fetch(
+      url,
+      {
+        method,
+        headers,
+        body
+      }
+    );
 
     if(response.status >= 400) {
       throw response;
+    }
+
+    if(response.status === 204) {
+      return;
     }
 
     return !format ? response :
       yield this.client.utils.ResponseToFormat(format, response);
   });
 
+  GenerateImageSummary = flow(function * ({objectId, filePath, regenerate=false, cacheOnly=false}) {
+    return yield this.rootStore.LoadResource({
+      key: "imageSummary",
+      id: `${objectId}-${filePath}`,
+      bind: this,
+      force: !cacheOnly || regenerate,
+      Load: flow(function * () {
+        return yield this.rootStore.aiStore.QueryAIAPI({
+          server: "ai",
+          method: "GET",
+          path: UrlJoin("mlcache", "summary", "q", objectId, "rep", "image_summarize"),
+          objectId,
+          channelAuth: true,
+          queryParams: {
+            path: filePath,
+            engine: "summary",
+            regenerate,
+            cache: cacheOnly ? "only" : undefined
+          }
+        });
+      })
+    });
+  });
+
+  GenerateClipSummary = flow(function * ({objectId, startTime, endTime, regenerate=false, cacheOnly=false}) {
+    return yield this.rootStore.LoadResource({
+      key: "clipSummary",
+      id: `${objectId}-${startTime}-${endTime}`,
+      bind: this,
+      force: !cacheOnly || regenerate,
+      Load: flow(function * () {
+        return yield this.rootStore.aiStore.QueryAIAPI({
+          server: "ai",
+          method: "GET",
+          path: UrlJoin("mlcache", "summary", "q", objectId, "rep", "summarize"),
+          objectId,
+          channelAuth: true,
+          queryParams: {
+            start_time: parseInt(startTime * 1000),
+            end_time: parseInt(endTime * 1000),
+            regenerate,
+            cache: cacheOnly ? "only" : undefined
+          }
+        });
+      })
+    });
+  });
+
   GenerateAIHighlights = flow(function * ({objectId, prompt, maxDuration, regenerate=false, wait=true, StatusCallback}) {
-    let options = {};
-    if(prompt) { options.customization = prompt; }
-    if(maxDuration) { options.max_length = maxDuration * 1000; }
+    if(!this.highlightsAvailable) { return; }
 
-    if(regenerate) {
-      yield this.QueryAIAPI({
-        method: "POST",
-        path: UrlJoin("ml", "highlight_composition", "q", objectId),
-        objectId,
-        queryParams: {...options, regenerate: true}
-      });
-
-      yield new Promise(resolve => setTimeout(resolve, 1000));
-    }
-
-    let status;
-    do {
-      if(status) {
-        StatusCallback?.(status);
-        yield new Promise(resolve => setTimeout(resolve, 5000));
+    try {
+      let options = {};
+      if(prompt) {
+        options.customization = prompt;
       }
 
-      const response = yield this.QueryAIAPI({
+      if(maxDuration) {
+        options.max_length = maxDuration * 1000;
+      }
+
+      const initialStatus = yield this.QueryAIAPI({
         method: "GET",
         path: UrlJoin("ml", "highlight_composition", "q", objectId),
         objectId,
@@ -118,47 +178,121 @@ class AIStore {
         format: "none"
       });
 
-      if(response.status === 204 && !regenerate) {
-        return this.GenerateAIHighlights({...arguments[0], regenerate: true});
+      if(!initialStatus || regenerate) {
+        yield this.QueryAIAPI({
+          method: "POST",
+          path: UrlJoin("ml", "highlight_composition", "q", objectId),
+          objectId,
+          queryParams: {...options, regenerate: true}
+        });
+
+        yield new Promise(resolve => setTimeout(resolve, 1000));
       }
 
-      status = yield response.json();
+      let status;
+      do {
+        if(status) {
+          StatusCallback?.(status);
+          yield new Promise(resolve => setTimeout(resolve, 5000));
+        }
 
-      if(!wait) {
-        return status;
+        const response = yield this.QueryAIAPI({
+          method: "GET",
+          path: UrlJoin("ml", "highlight_composition", "q", objectId),
+          objectId,
+          queryParams: options,
+          format: "none"
+        });
+
+        if(!response) {
+          this.highlightsAvailable = false;
+          return;
+        }
+
+        if(response.status === 204 && !regenerate) {
+          return this.GenerateAIHighlights({...arguments[0], regenerate: true});
+        }
+
+        status = yield response.json();
+
+        if(!wait) {
+          return status;
+        }
+
+        if(status?.status === "ERROR") {
+          throw status;
+        }
+      } while(status?.status !== "COMPLETE");
+
+      return status;
+    } catch(error) {
+      if(error?.status === "ERROR" && error?.display_error?.includes("not configured")) {
+        this.highlightsAvailable = false;
       }
 
-      if(status?.status === "ERROR") {
-        throw status;
-      }
-    } while(status?.status !== "COMPLETE");
-
-    return status;
+      throw error;
+    }
   });
 
   // Search indexes
+  GetSearchFields = flow(function * ({id}) {
+    if(!id) { return; }
+
+    try {
+      const versionHash = yield this.client.LatestVersionHash({objectId: id});
+
+      const indexerInfo = yield this.client.ContentObjectMetadata({
+        versionHash,
+        metadataSubtree: "indexer/config/indexer/arguments",
+        select: [
+          "fields",
+          "document/prefix"
+        ]
+      });
+
+      if(!indexerInfo) { return; }
+
+      const indexerFields = indexerInfo.fields;
+      const fuzzySearchFields = {};
+      const excludedFields = ["music", "action", "segment", "title_type", "asset_type"];
+      Object.keys(indexerFields || {})
+        .filter(field => {
+          const isTextType = indexerFields[field].type === "text";
+          const isNotExcluded = !excludedFields.some(exclusion => field.includes(exclusion));
+          return isTextType && isNotExcluded;
+        })
+        .forEach(field => {
+          fuzzySearchFields[`f_${field}`] = {
+            label: field,
+            value: true
+          };
+        });
+
+      // Fields for all tenants that are not configured in the meta
+      ["movie_characters"].forEach(field => {
+        fuzzySearchFields[`f_${field}`] = {
+          label: field,
+          value: true
+        };
+      });
+
+      return {
+        fields: fuzzySearchFields,
+        type: indexerInfo.document?.prefix,
+        versionHash
+      };
+    } catch(error) {
+      console.error("Unable to load search fields", error);
+    }
+
+    return {};
+  });
 
   LoadSearchIndexes = flow(function * () {
-    let info = yield this.client.ContentObjectMetadata({
-      libraryId: this.rootStore.tenantContractId.replace(/^iten/, "ilib"),
-      objectId: this.rootStore.tenantContractId.replace(/^iten/, "iq__"),
-      metadataSubtree: "public",
-      select: [
-        "ml_config",
-        "search/indexes"
-      ]
+    let searchIndexes = yield this.client.ContentObjectMetadata({
+      versionHash: yield this.client.LatestVersionHash({objectId: this.rootStore.tenantInfoObjectId}),
+      metadataSubtree: "public/search/indexes",
     });
-
-    let searchIndexes;
-    if(info?.ml_config) {
-      searchIndexes = yield this.client.ContentObjectMetadata({
-        libraryId: yield this.client.ContentObjectLibraryId({objectId: info.ml_config}),
-        objectId: info.ml_config,
-        metadataSubtree: "public/search/indexes"
-      });
-    } else {
-      searchIndexes = info?.search?.indexes;
-    }
 
     searchIndexes = (searchIndexes || [])
       .filter((x, i, a) => a.findIndex(other => x.id === other.id) === i);
@@ -194,16 +328,21 @@ class AIStore {
           )
         );
       } catch(error) {
-        // eslint-disable-next-line no-console
         console.error("Error parsing custom search indexes");
       }
     }
 
-    this.SetSelectedSearchIndex(this.searchIndexes[0]?.id);
+    const savedIndexId = localStorage.getItem(`search-index-${this.rootStore.tenantContractId}`);
+    this.SetSelectedSearchIndex(
+      savedIndexId && this.searchIndexes?.find(index => index.id === savedIndexId) ?
+        savedIndexId :
+        this.searchIndexes[0]?.id
+    );
   });
 
   SetSelectedSearchIndex(id) {
     this.selectedSearchIndexId = id;
+    localStorage.setItem(`search-index-${this.rootStore.tenantContractId}`, id);
   }
 
   AddSearchIndex = flow(function * ({objectId, add=true}) {
@@ -259,53 +398,127 @@ class AIStore {
     }
   });
 
-  GetSearchFields = flow(function * ({id}) {
-    if(!id) { return; }
+  /* Search */
 
-    try {
-      const versionHash = yield this.client.LatestVersionHash({objectId: id});
+  Search = flow(function * ({query, limit=10}) {
+    let start = 0;
+    const resultsKey = `${this.searchIndex.versionHash}-${this.client.utils.B58(query)}`;
 
-      const indexerFields = yield this.client.ContentObjectMetadata({
-        versionHash,
-        metadataSubtree: "indexer/config/indexer/arguments/fields"
-      });
+    if(this.searchResults.key === resultsKey) {
+      // Continuation of same query
+      if((this.searchResults.pagination.start + this.searchResults.pagination.limit) >= this.searchResults.pagination.total) {
+        // Exhausted results
+        return this.searchResults;
+      }
 
-      if(!indexerFields) { return; }
-
-      const fuzzySearchFields = {};
-      const excludedFields = ["music", "action", "segment", "title_type", "asset_type"];
-      Object.keys(indexerFields || {})
-        .filter(field => {
-          const isTextType = indexerFields[field].type === "text";
-          const isNotExcluded = !excludedFields.some(exclusion => field.includes(exclusion));
-          return isTextType && isNotExcluded;
-        })
-        .forEach(field => {
-          fuzzySearchFields[`f_${field}`] = {
-            label: field,
-            value: true
-          };
-        });
-
-      // Fields for all tenants that are not configured in the meta
-      ["movie_characters"].forEach(field => {
-        fuzzySearchFields[`f_${field}`] = {
-          label: field,
-          value: true
-        };
-      });
-
-      return {
-        fields: fuzzySearchFields,
-        versionHash
-      };
-    } catch(error) {
-      // eslint-disable-next-line no-console
-      console.error("Unable to load search fields", error);
+      // Set start + limit to fetch next batch
+      start = this.searchResults.pagination.start + this.searchResults.pagination.limit;
+    } else {
+      // New query - reset
+      this.ClearSearchResults();
     }
 
-    return {};
+    const type = this.searchIndex.type?.includes("assets") ? "image" : "video";
+
+    let {results, contents, pagination} = (yield this.QueryAIAPI({
+      update: true,
+      objectId: this.searchIndex.id,
+      path: UrlJoin("search", "q", this.searchIndex.versionHash, "rep", "search"),
+      queryParams: {
+        terms: query,
+        searchFields: Object.keys(this.searchIndex.fields).join(","),
+        start,
+        limit,
+        display_fields: "all",
+        clips: type === "video",
+        clip_include_source_tags: true,
+        debug: true,
+        max_total: 100,
+        select: "/public/asset_metadata/title,/public/name,public/asset_metadata/display_title"
+      }
+    })) || {};
+
+    results = results || contents;
+
+    const baseUrl = yield this.client.Rep({
+      versionHash: this.searchIndex.versionHash,
+      rep: "frame",
+      channelAuth: true
+    });
+
+    this.searchResults = {
+      key: resultsKey,
+      query,
+      indexHash: this.searchIndex.versionHash,
+      pagination: pagination || {},
+      type,
+      results: [
+        ...(this.searchResults.results || []),
+        ...(results || []).map(result => {
+          let imageUrl;
+          if(result.image_url || result.prefix) {
+            imageUrl = new URL(baseUrl);
+
+            if(type === "image") {
+              imageUrl.pathname = UrlJoin("q", result.hash, "files", result.prefix);
+            } else {
+              imageUrl.pathname = result.image_url.split("?")[0];
+
+              const params = new URLSearchParams(result.image_url.split("?")[1]);
+              params.keys().forEach((key, value) => imageUrl.searchParams.set(key, value));
+            }
+          }
+
+          let startTime, endTime, subtitle;
+          if(type === "video") {
+            startTime = (result.start_time || 0) / 1000;
+            endTime = result.end_time ? result.end_time / 1000 : undefined;
+
+            if(startTime || endTime) {
+              subtitle = FrameAccurateVideo.TimeToString({time: startTime, format: "smpte", includeFractionalSeconds: true});
+
+              if(endTime) {
+                subtitle += " - " + FrameAccurateVideo.TimeToString({time: endTime, format: "smpte", includeFractionalSeconds: true});
+                subtitle = `${subtitle} (${FrameAccurateVideo.TimeToString({time: endTime - startTime})})`;
+              }
+
+              imageUrl.searchParams.set("t", startTime.toFixed(2));
+            }
+          }
+          
+          let score = result.score;
+          // Score is provided as an array of scores
+          if(!score) {
+            score = Math.max(result?.sources?.map(source => source.score));
+          }
+
+          return {
+            libraryId: result.qlib_id,
+            objectId: result.id,
+            versionHash: result.hash,
+            imageUrl: imageUrl?.toString(),
+            filePath: type === "image" ? result.prefix : undefined,
+            startTime,
+            endTime,
+            sources: result.sources,
+            name: result.meta?.public?.asset_metadata?.title || result.meta?.public?.name,
+            subtitle,
+            score: score ? (score * 100).toFixed(1) : "",
+            type,
+            result
+          };
+        })
+      ]
+    };
+
+    return this.searchResults;
   });
+
+  ClearSearchResults() {
+    this.searchResults = {};
+  }
+
+  /* Updates */
 
   AggregateUserTags = flow(function * ({objectId}) {
     this.searchIndexUpdateProgress = {};
@@ -343,9 +556,7 @@ class AIStore {
 
       yield this.client.FinalizeContentObject({libraryId, objectId, writeToken});
     } catch(error) {
-      // eslint-disable-next-line no-console
       console.error("Tag aggregation failed:");
-      // eslint-disable-next-line no-console
       console.error(error);
     } finally {
       clearInterval(progressInterval);
@@ -479,9 +690,7 @@ class AIStore {
 
       this.searchIndexUpdateProgress[indexId] = 100;
     } catch(error) {
-      // eslint-disable-next-line no-console
       console.error("Failed to update search index", indexId);
-      // eslint-disable-next-line no-console
       console.error(error);
     }
   });

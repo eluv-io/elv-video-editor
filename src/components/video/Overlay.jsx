@@ -513,6 +513,21 @@ const Overlay = observer(({element, asset, highlightTag}) => {
     );
   }
 
+  if(tagStore.editedGroundTruthAsset) {
+    return (
+      <OverlayEdit
+        mode={"rectangle"}
+        initalBox={tagStore.editedGroundTruthAsset.box}
+        onChange={box =>
+          tagStore.UpdateEditedGroundTruthAsset({
+            ...tagStore.editedGroundTruthAsset,
+            box
+          })
+        }
+      />
+    );
+  }
+
   return (
     <div className={S("overlay")} style={{width: `${overlayStore.overlayCanvasDimensions.width}px`}}>
       <Tooltip

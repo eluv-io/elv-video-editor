@@ -1,5 +1,5 @@
 :root {
-  --color-highlight: #bc77ec;
+  --color-highlight: #BD6DFF;
   --rgb-color-highlight: 188, 118, 236;
   --color-highlight-secondary: #7787ec;
   --background-primary: #151515;
@@ -16,9 +16,12 @@
   --background-clip: #42423f;
   --background-clip--hover: #797974;
   --background-clip--selected: var(--color-highlight-secondary);
+  --background-form-button: #3c3c3c;
   --content-border-color: #222;
   --content-border-radius: 5px;
   --content-inline-padding: 20px;
+  --color-border: #5C5B5F;
+  --background-search-input: #322b37;
 
   /* Note: Gutter sizes are doubled due to resize handles */
   --gutter-size-x: 3px;
@@ -34,6 +37,7 @@
   --text-disabled: #4b494e;
   --text-highlight: var(--color-highlight);
   --text-highlight-secondary: var(--color-highlight-secondary);
+  --text-pass: #66ce66;
   --text-error: #ce6666;
   --table-border-color: #3B3B3B;
   --font-default: inter, system-ui, "Segoe UI", roboto, helvetica, arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
@@ -52,6 +56,11 @@
   --track-height--compositions: 80px;
   --mantine-primary-color-filled: var(--background-toolbar--highlight);
   --mantine-primary-color-filled-hover: var(--color-highlight);
+  --tooltip-background: var(--background-primary);
+  --tooltip-border-color: var(--background-secondary);
+  --tooltip-text: var(--text-primary);
+  --tooltip-content-border-color: var(--table-border-color);
+  --tooltip-box-shadow: 0 0 10px black;
 
   @keyframes fadein {
     0% {

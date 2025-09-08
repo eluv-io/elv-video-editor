@@ -77,16 +77,15 @@ const TagActions = observer(({tag, track}) => {
     <div className={S("tag-details__actions")}>
       <div className={S("tag-details__left-actions")}>
         <IconButton
-          highlight={tagStore.editing}
           label={
             tagStore.editing ?
-              "Save changes and return to tag details" :
+              "Discard Changes" :
               "Return to tag list"
           }
-          icon={tagStore.editing ? CheckmarkIcon : BackIcon}
+          icon={tagStore.editing ? XIcon : BackIcon}
           onClick={() =>
             tagStore.editing ?
-              tagStore.ClearEditing() :
+              tagStore.ClearEditing(false) :
               tagStore.ClearSelectedTag(true)
           }
         />
@@ -121,9 +120,11 @@ const TagActions = observer(({tag, track}) => {
         {
           tagStore.editing ?
             <IconButton
-              label="Discard Changes"
-              icon={XIcon}
-              onClick={() => tagStore.ClearEditing(false)}
+              label="Save changes and return to tag details"
+              icon={CheckmarkIcon}
+              highlight
+              style={{marginLeft: 20}}
+              onClick={() => tagStore.ClearEditing()}
             /> :
             <>
               {
@@ -158,7 +159,9 @@ const TagActions = observer(({tag, track}) => {
 
 const TagForm = observer(() => {
   const tag = tagStore.editedTag;
-  const track = trackStore.Track(tag.trackId);
+  const track = trackStore.Track(tag?.trackId);
+
+  if(!track) { return null; }
 
   const duration = parseFloat(tag.endTime - tag.startTime);
 

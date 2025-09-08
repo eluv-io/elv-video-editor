@@ -21,6 +21,10 @@ class FileBrowserStore {
     this.uploadStatus = {};
   }
 
+  ClearCachedFiles(objectId) {
+    delete this.files[objectId];
+  }
+
   WriteToken({objectId}) {
     return this.writeInfo[objectId]?.write_token;
   }
@@ -39,7 +43,7 @@ class FileBrowserStore {
     const writeToken = this.rootStore.editStore.WriteToken({objectId});
 
     // Transform from fabric file metadata
-    return Object.keys(directory)
+    return Object.keys(directory || {})
       .map(filename => {
         if(filename === ".") { return; }
 
@@ -50,7 +54,8 @@ class FileBrowserStore {
             objectId,
             type: "directory",
             filename,
-            fullPath: UrlJoin(path, filename)
+            fullPath: UrlJoin(path, filename),
+            size: Object.keys(file).filter(key => key !== ".").length
           };
         } else if(file?.["."]) {
           const ext = filename.includes(".") ? filename.split(".").slice(-1)[0].toLowerCase() : "";
@@ -166,7 +171,7 @@ class FileBrowserStore {
 
       yield this.LoadFiles({objectId, force: true});
     } catch(error) {
-      // eslint-disable-next-line no-console
+
       console.error(error);
     } finally {
       this.activeUploadJobs[objectId] -= 1;
@@ -189,7 +194,6 @@ class FileBrowserStore {
 
       this.rootStore.OpenExternalLink(window.URL.createObjectURL(blob), filename);
     } catch(error) {
-      // eslint-disable-next-line no-console
       console.error(error);
     }
   }

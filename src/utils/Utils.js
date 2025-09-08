@@ -194,7 +194,7 @@ export const Slugify = str =>
   (str || "")
     .toLowerCase()
     .replace(/ /g, "-")
-    .replace(/[^a-z0-9-]/g,"")
+    .replace(/[^a-z0-9-_]/g,"")
     .replace(/-+/g, "_");
 
 export const ScaleImage = (url, width) => {
@@ -299,3 +299,46 @@ export const useIsVisible = (ref, unloadDelay=0) => {
 
   return isIntersecting;
 };
+
+export const CSVtoList = (v="") => {
+  return v.trim().split(",").map(i => i.trim()).filter(i => i);
+};
+
+export const StripFabricLinkUrls = (metadata, depth=1) => {
+  if(depth > 10) {
+    return {};
+  }
+
+  if(Array.isArray(metadata)) {
+    return metadata.map(item => StripFabricLinkUrls(item, depth + 1));
+  } else if(typeof metadata === "object") {
+    if(metadata["/"]) {
+      return {
+        "/": metadata["/"]
+      };
+    }
+
+    let newMetadata = {};
+    Object.keys(metadata).forEach(key =>
+      newMetadata[key] = StripFabricLinkUrls(metadata[key], depth + 1)
+    );
+
+    return newMetadata;
+  }
+
+  return metadata;
+};
+
+// Stop propegation - useful in submenus of links
+export const SP = fn =>
+  fn?.constructor?.name === "AsyncFunction" ?
+    async event => {
+      event.stopPropagation();
+      event.preventDefault();
+      return fn?.(event);
+    } :
+    event => {
+      event.stopPropagation();
+      event.preventDefault();
+      return fn?.(event);
+    };

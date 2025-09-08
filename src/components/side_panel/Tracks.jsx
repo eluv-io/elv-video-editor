@@ -5,12 +5,13 @@ import {observer} from "mobx-react-lite";
 import {tagStore, trackStore} from "@/stores/index.js";
 import {Confirm, FormColorInput, FormTextArea, FormTextInput, IconButton} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {FocusTrap} from "@mantine/core";
 
 import EditIcon from "@/assets/icons/Edit.svg";
 import BackIcon from "@/assets/icons/v2/back.svg";
 import XIcon from "@/assets/icons/X.svg";
-import {FocusTrap} from "@mantine/core";
 import TrashIcon from "@/assets/icons/trash.svg";
+import CheckmarkIcon from "@/assets/icons/check-circle.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -21,13 +22,13 @@ const TrackActions = observer(({track}) => {
         <IconButton
           label={
             tagStore.editing ?
-              "Save changes and return to category details" :
+              "Discard Changes" :
               "Return to tag list"
           }
-          icon={BackIcon}
+          icon={tagStore.editing ? XIcon : BackIcon}
           onClick={() =>
             tagStore.editing ?
-              tagStore.ClearEditing() :
+              tagStore.ClearEditing(false) :
               tagStore.ClearSelectedTrack()
           }
         />
@@ -43,9 +44,10 @@ const TrackActions = observer(({track}) => {
         {
           tagStore.editing ?
             <IconButton
-              label="Discard Changes"
-              icon={XIcon}
-              onClick={() => tagStore.ClearEditing(false)}
+              label="Save changes and return to category details"
+              icon={CheckmarkIcon}
+              highlight
+              onClick={() => tagStore.ClearEditing()}
             /> :
             track.trackType === "primary-content" ? null :
               <>

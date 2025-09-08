@@ -414,19 +414,6 @@ class AssetStore {
       commitMessage: "EVIE - Update assets"
     });
   });
-
-  GenerateSummary = flow(function * ({objectId, asset}) {
-    const filePath = asset?.file?.["/"]?.replace("./files/", "");
-
-    return yield this.rootStore.aiStore.QueryAIAPI({
-      server: "ai-02",
-      method: "GET",
-      path: UrlJoin("ml", "summary", "q", objectId, "rep", "image_summarize"),
-      objectId,
-      channelAuth: true,
-      queryParams: { path: filePath, engine: "caption" }
-    });
-  });
 }
 
 export default AssetStore;

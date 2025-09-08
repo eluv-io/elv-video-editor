@@ -107,6 +107,8 @@
     justify-content: space-between;
 
     &__controls-group {
+      gap: 5px;
+
       &.left,
       &.right,
       &.center {
@@ -121,6 +123,13 @@
 .tooltip {
   display: grid;
   gap: 10px;
+
+  &--transparent {
+    --tooltip-background: transparent;
+    --tooltip-border-color: 0;
+    --tooltip-box-shadow: none;
+    --tooltip-content-border-color: none;
+  }
 
   &__item {
     font-size: 14px;
@@ -195,7 +204,12 @@
     display: flex;
     justify-content: space-between;
     margin-bottom: 5px;
+    position: relative;
     width: 100%;
+  }
+
+  &__input-container-loader {
+    border-radius: 10px;
   }
 
   &__input-actions {
@@ -261,6 +275,16 @@
       width: 100%;
     }
   }
+
+  &__image {
+    margin: 0 auto 10px;
+    max-height: 200px;
+    max-width: 200px;
+  }
+
+  &__loader {
+    padding: 20px 0;
+  }
 }
 
 .thumbnail-hover {
@@ -299,5 +323,61 @@
 @container toolbar (width < 900px) {
   .toolbar__description {
     max-width: 30%;
+  }
+}
+
+
+/* Entity lists */
+
+.list-page {
+  border-top: 1px solid var(--color-border);
+  display: grid;
+  gap: 20px;
+  height: 100%;
+  margin-top: 20px;
+  max-height: calc(100vh - 250px);
+  overflow: hidden;
+  padding-top: 20px;
+
+  &--with-sidebar {
+    grid-template-columns: 1fr 400px;
+  }
+
+  &--search {
+    max-height: calc(100vh - 175px);
+  }
+}
+
+.entity-grid {
+  display: grid;
+  gap: 30px 10px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  max-height: 100%;
+  overflow-y: auto;
+  padding-right: 10px;
+  scrollbar-gutter: stable;
+
+  &--empty {
+    display: flex;
+    font-size: 20px;
+    justify-content: center;
+    padding-top: 100px;
+  }
+}
+
+.entity-list {
+  display: grid;
+  gap: 3px;
+  height: max-content;
+  max-height: 100%;
+  overflow-y: auto;
+  padding-right: 10px;
+  scrollbar-gutter: stable;
+
+  &--small {
+    margin: 0;
+    max-height: 200px;
+    overflow-y: scroll;
+    padding: 0;
   }
 }

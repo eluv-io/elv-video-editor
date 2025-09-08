@@ -47,7 +47,6 @@ class VideoStore {
   playoutUrl;
   baseUrl = undefined;
   baseStateChannelUrl = undefined;
-  baseFileUrl = undefined;
 
   dropFrame = false;
   frameRateKey = "NTSC";
@@ -113,7 +112,7 @@ class VideoStore {
     }
   }
 
-  constructor(rootStore, options={clipKey: "", tags: true, channel: false}) {
+  constructor(rootStore, options={clipKey: "", tags: true, thumbnails: true, channel: false}) {
     makeAutoObservable(
       this,
       {
@@ -125,6 +124,7 @@ class VideoStore {
     this.rootStore = rootStore;
     this.thumbnailStore = new ThumbnailStore(this);
     this.tags = typeof options.tags !== "undefined" ? options.tags : true;
+    this.thumbnails = typeof options.thumbnails !== "undefined" ? options.thumbnails : true;
     this.initialClipPoints = options.initialClipPoints;
     this.channel = options.channel || false;
 
@@ -161,7 +161,6 @@ class VideoStore {
     this.downloadOfferingKeys = [];
 
     this.playoutUrl = undefined;
-    this.baseFileUrl = undefined;
     this.baseUrl = undefined;
 
     this.dropFrame = false;
@@ -239,12 +238,7 @@ class VideoStore {
         channelAuth: true
       });
 
-      this.baseFileUrl = yield this.rootStore.client.FileUrl({
-        versionHash: this.versionHash,
-        filePath: "/"
-      });
-
-      this.rootStore.authToken = new URL(this.baseFileUrl).searchParams.get("authorization");
+      this.rootStore.SetAuthToken({versionHash: this.versionHash});
 
       this.metadata = videoObject.metadata;
       this.isVideo = videoObject.isVideo;
@@ -306,7 +300,7 @@ class VideoStore {
           }
         }
       } catch(error) {
-        // eslint-disable-next-line no-console
+
         console.error("Unable to determine frame rate");
       }
 
@@ -328,7 +322,9 @@ class VideoStore {
         });
       }
 
-      this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl);
+      if(this.thumbnails) {
+        this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl);
+      }
 
       if(addToMyLibrary) {
         this.rootStore.browserStore.AddMyLibraryItem({
@@ -337,7 +333,6 @@ class VideoStore {
           isVideo: videoObject.isVideo
         });
       }
-
 
       if(!this.tags) {
         this.initialized = true;
@@ -384,10 +379,8 @@ class VideoStore {
         this.ready = true;
       }
     } catch(error) {
-      // eslint-disable-next-line no-console
       console.error("Failed to load:");
-      // eslint-disable-next-line no-console
-      console.log(error);
+      console.error(error);
 
       this.rootStore.SetError(error.toString());
     } finally {
@@ -440,7 +433,7 @@ class VideoStore {
 
   // Update version hash and urls without reloading (e.g. uploading files)
   UpdateObjectVersion = flow(function * () {
-    if(!this.videoObject.objectId) { return; }
+    if(!this.videoObject?.objectId) { return; }
 
     this.versionHash = yield this.rootStore.client.LatestVersionHash({objectId: this.videoObject.objectId});
 
@@ -451,11 +444,6 @@ class VideoStore {
     this.baseStateChannelUrl = yield this.rootStore.client.FabricUrl({
       versionHash: this.versionHash,
       channelAuth: true
-    });
-
-    this.baseFileUrl = yield this.rootStore.client.FileUrl({
-      versionHash: this.versionHash,
-      filePath: "/"
     });
 
     this.videoObject.versionHash = this.versionHash;
@@ -513,9 +501,8 @@ class VideoStore {
     this.player.on(HLS.Events.ERROR, action((event, data) => {
       if(data.fatal || (data.type === "networkError" && data.response && parseInt(data.response.code) >= 500)) {
         this.consecutiveSegmentErrors += 1;
-        // eslint-disable-next-line no-console
+
         console.error("HLS playback error:");
-        // eslint-disable-next-line no-console
         console.error(data);
 
         // Give up and show an error message after several failures
@@ -593,9 +580,7 @@ class VideoStore {
     this.video.addEventListener("durationchange", InitializeDuration);
 
     this.video.addEventListener("error", action(() => {
-      // eslint-disable-next-line no-console
       console.error("Video error: ");
-      // eslint-disable-next-line no-console
       console.error(video.error);
 
       //setTimeout(() => this.videoKey = this.videoKey + 1, 1000);
@@ -1074,18 +1059,56 @@ class VideoStore {
     }
   }
 
-  SaveFrame() {
+  async GetFrame({maxHeight, maxWidth, bounds}={}) {
     if(!this.video) { return; }
 
+    let width = this.video.videoWidth;
+    let height = this.video.videoHeight;
+
+    let minX=0, maxX=width;
+    let minY=0, maxY=height;
+
+    if(bounds) {
+      minX = Math.min(bounds.x1, bounds.x2, bounds.x3 || 1, bounds.x4 || 1) * width;
+      maxX = Math.max(bounds.x1, bounds.x2, bounds.x3 || 0, bounds.x4 || 0) * width;
+      minY = Math.min(bounds.y1, bounds.y2, bounds.y3 || 1, bounds.y4 || 1) * height;
+      maxY = Math.max(bounds.y1, bounds.y2, bounds.y3 || 0, bounds.y4 || 0) * height;
+
+      width = maxX - minX;
+      height = maxY - minY;
+    }
+
+    if(maxWidth && width > maxWidth) {
+      const scale = maxWidth / width;
+      width = width * scale;
+      height = height * scale;
+    }
+
+    if(maxHeight && height > maxHeight) {
+      const scale = maxHeight / height;
+      width = width * scale;
+      height = height * scale;
+    }
+
     const canvas = document.createElement("canvas");
-    canvas.width = this.video.videoWidth;
-    canvas.height = this.video.videoHeight;
-    canvas.getContext("2d").drawImage(this.video, 0, 0, this.video.videoWidth, this.video.videoHeight);
-    canvas.toBlob(blob => {
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const filename = `${this.name}_${this.smpte.replace(":", "-")}.png`;
-      DownloadFromUrl(downloadUrl, filename);
-    });
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext("2d").drawImage(this.video, minX, minY, maxX - minX, maxY - minY, 0, 0, width, height);
+
+    return await new Promise(resolve =>
+      canvas.toBlob(blob => resolve(blob), "image/jpg", 1)
+    );
+  }
+
+  SaveFrame({maxHeight, maxWidth, bounds}={}) {
+    if(!this.video) { return; }
+
+    this.GetFrame({maxHeight, maxWidth, bounds})
+      .then(blob => {
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const filename = `${this.name}_${this.smpte.replace(":", "-")}.png`;
+        DownloadFromUrl(downloadUrl, filename);
+      });
   }
 
   async SaveVideo() {
@@ -1160,7 +1183,6 @@ class VideoStore {
               string: `${width}x${height} (${(parseInt(bit_rate) / 1000 / 1000).toFixed(1)}Mbps)`
             };
           } catch(error) {
-            // eslint-disable-next-line no-console
             console.error(error);
           }
         })
@@ -1208,7 +1230,6 @@ class VideoStore {
                     repKey
                 };
               } catch(error) {
-                // eslint-disable-next-line no-console
                 console.error(error);
               }
             })

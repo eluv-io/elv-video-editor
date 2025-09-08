@@ -29,9 +29,7 @@ const TiffImage = ({url, setRef}) => {
 
         await LoadTiff(canvas, retries+1);
       } else {
-        // eslint-disable-next-line no-console
         console.error("Failed to load tiff: ");
-        // eslint-disable-next-line no-console
         console.error(error);
       }
     }
