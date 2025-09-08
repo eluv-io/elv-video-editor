@@ -67,6 +67,7 @@ export const EntityListItem = observer(({
   count,
   contain,
   anchor,
+  badge,
   small,
   actions,
   tooltip,
@@ -119,7 +120,13 @@ export const EntityListItem = observer(({
         }
         {
           !anchor ? null :
-            <Icon icon={AnchorIcon} className={S("entity-card__image-badge")} />
+            <div className={S("entity-card__image-badge", "entity-card__image-badge--left")}>
+              <Icon icon={AnchorIcon} />
+            </div>
+        }
+        {
+          !badge ? null :
+            <div className={S("entity-card__image-badge", "entity-card__image-badge--right")}>{badge}</div>
         }
       </div>
       <div className={S("entity-card__text")}>
@@ -163,6 +170,7 @@ export const EntityCard = observer(({
   count,
   contain,
   anchor,
+  badge,
   actions,
   tooltip,
   aspectRatio="square",
@@ -190,7 +198,11 @@ export const EntityCard = observer(({
         }
         {
           !anchor ? null :
-            <Icon icon={AnchorIcon} className={S("entity-card__image-badge")}/>
+            <Icon icon={AnchorIcon} className={S("entity-card__image-badge", "entity-card__image-badge--left")}/>
+        }
+        {
+          !badge ? null :
+            <div className={S("entity-card__image-badge", "entity-card__image-badge--right")}>{badge}</div>
         }
       </Linkish>
       <div className={S("entity-card__text")}>

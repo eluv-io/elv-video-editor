@@ -115,18 +115,25 @@ const ClipGroup = observer(({
   title,
   subtitle,
   groupKey,
+  defaultClosed,
   clipIds=[],
   noFilter,
   loading=false,
   showTagLinks,
   showEmpty
 }) => {
-  const [hide, setHide] = useState(StorageHandler.get({type: "session", key: `hide-clips-${groupKey}`}));
+  const [hide, setHide] = useState(
+    defaultClosed ?
+      StorageHandler.get({type: "session", key: `show-clips-${groupKey}`}) ? false : true :
+      StorageHandler.get({type: "session", key: `hide-clips-${groupKey}`})
+  );
 
   useEffect(() => {
     if(hide) {
       StorageHandler.set({type: "session", key: `hide-clips-${groupKey}`, value: "true"});
+      StorageHandler.remove({type: "session", key: `show-clips-${groupKey}`});
     } else {
+      StorageHandler.set({type: "session", key: `show-clips-${groupKey}`, value: "true"});
       StorageHandler.remove({type: "session", key: `hide-clips-${groupKey}`});
     }
   }, [hide]);
@@ -229,7 +236,7 @@ const AIClips = observer(() => {
       title={compositionStore.filter ? "Results" : "Selected Candidates"}
       subtitle={!compositionStore.filter ? "Prompt" : ""}
       clipIds={clipIds}
-      loading={loading}
+      loading={loading || compositionStore.sources[compositionStore.selectedSourceId]?.highlightsLoading}
       showEmpty
     />
   );
@@ -267,6 +274,7 @@ export const CompositionClips = observer(() => {
       <ClipGroup
         title="My Clips"
         groupKey="my-clips"
+        defaultClosed
         clipIds={[
           compositionStore.sourceFullClipId,
           ...compositionStore.myClipIds

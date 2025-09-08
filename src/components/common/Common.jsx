@@ -793,7 +793,7 @@ export const Confirm = async ({title, text, labels={}, onConfirm, onCancel}) => 
     return;
   }
 
-  await onConfirm();
+  return await onConfirm?.();
 };
 
 export const ProgressModal = observer(({title, progress, error, Close}) => {

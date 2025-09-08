@@ -4,7 +4,7 @@ import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, Slugify} from "@/utils/Utils.js";
 import {
-  AsyncButton,
+  AsyncButton, Confirm,
   FormNumberInput,
   FormSelect,
   FormTextInput,
@@ -179,8 +179,6 @@ const CompositionCreationModal = observer(({type, Cancel}) => {
     error = "Please select source content";
   } else if(!options.name) {
     error = "Please specify a name for your composition";
-  } else if(keyExists) {
-    error = "A composition with this key already exists for this content";
   }
 
   // Creation form
@@ -290,6 +288,18 @@ const CompositionCreationModal = observer(({type, Cancel}) => {
             w={150}
             loading={!!options.sourceId && !sourceInfo && !error}
             onClick={async () => {
+              if(keyExists) {
+                if(
+                  !await Confirm({
+                    title: "Overwrite Existing Composition",
+                    text: "A composition with this key already exists for this content. If you proceed in creating this new composition, it will be overwritten. Would you like to continue?",
+                    onConfirm: () => true
+                  })
+                ) {
+                  return;
+                }
+              }
+
               setOptions({...options, creating: true});
 
               try {

@@ -194,7 +194,7 @@ export const Slugify = str =>
   (str || "")
     .toLowerCase()
     .replace(/ /g, "-")
-    .replace(/[^a-z0-9-]/g,"")
+    .replace(/[^a-z0-9-_]/g,"")
     .replace(/-+/g, "_");
 
 export const ScaleImage = (url, width) => {

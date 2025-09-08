@@ -1215,12 +1215,13 @@ class CompositionStore {
       name: sourceName,
       fullClipId: sourceFullClipId,
       clipIds: sourceClipIds,
-      highlightClipIds: yield this.LoadHighlights({
-        store,
-        objectId,
-        prompt: primary ? this.compositionObject?.initialPrompt : ""
-      })
     };
+
+    this.LoadHighlights({
+      store,
+      objectId,
+      prompt: primary ? this.compositionObject?.initialPrompt : ""
+    });
 
     yield this.LoadMyClips({objectId});
 
@@ -1249,6 +1250,7 @@ class CompositionStore {
 
   LoadHighlights = flow(function * ({store, objectId, prompt}) {
     try {
+      this.sources[objectId].highlightsLoading = true;
       const highlights = (yield this.rootStore.aiStore.GenerateAIHighlights({
         objectId,
         prompt,
@@ -1276,10 +1278,16 @@ class CompositionStore {
         aiClipIds.push(clipId);
       }
 
+      this.sources[objectId].highlightClipIds = aiClipIds;
+
       return aiClipIds;
     } catch(error) {
       // eslint-disable-next-line no-console
       console.log(error);
+    } finally {
+      if(this.sources[objectId]) {
+        this.sources[objectId].highlightsLoading = false;
+      }
     }
   });
 

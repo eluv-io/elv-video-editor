@@ -75,14 +75,27 @@
   }
 
   &__image-badge {
+    align-items: center;
     bottom: 15px;
     color: var(--text-primary);
+    display: flex;
     filter: drop-shadow(0 0 2px black);
     height: 25px;
-    left: 15px;
+    justify-content: center;
     position: absolute;
-    width: 25px;
     z-index: 1;
+
+    svg {
+      height: 100%;
+    }
+  }
+
+  &__image-badge--left {
+    left: 15px;
+  }
+
+  &__image-badge--right {
+    right: 25px;
   }
 
   &__text {
@@ -226,10 +239,16 @@
   }
 
   .entity-card__image-badge {
-    bottom: 5px;
+    bottom: 10px;
     height: 15px;
+  }
+
+  .entity-card__image-badge--left {
     left: 5px;
-    width: 15px;
+  }
+
+  .entity-card__image-badge--right {
+    right: 5px;
   }
 
   &__actions {

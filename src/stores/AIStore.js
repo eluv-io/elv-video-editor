@@ -485,6 +485,12 @@ class AIStore {
               imageUrl.searchParams.set("t", startTime.toFixed(2));
             }
           }
+          
+          let score = result.score;
+          // Score is provided as an array of scores
+          if(!score) {
+            score = Math.max(result?.sources?.map(source => source.score));
+          }
 
           return {
             libraryId: result.qlib_id,
@@ -497,6 +503,7 @@ class AIStore {
             sources: result.sources,
             name: result.meta?.public?.asset_metadata?.title || result.meta?.public?.name,
             subtitle,
+            score: score ? (score * 100).toFixed(1) : "",
             type,
             result
           };
