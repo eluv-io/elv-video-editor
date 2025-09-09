@@ -58,6 +58,12 @@ export const SearchResults = observer(({showList, preserveScrollPosition, classN
             aspectRatio={aiStore.searchResults.type === "image" ? "square" : "landscape"}
             subtitle={result.subtitle}
             image={ScaleImage(result.imageUrl, 100)}
+            badge={
+              !result.score ? null :
+                <div className={S("search-result__score")}>
+                  Score: {result.score}
+                </div>
+            }
             contain
             className={
               index !== resultIndex ? null :

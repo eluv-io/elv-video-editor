@@ -485,11 +485,11 @@ class AIStore {
               imageUrl.searchParams.set("t", startTime.toFixed(2));
             }
           }
-          
+
           let score = result.score;
           // Score is provided as an array of scores
           if(!score) {
-            score = Math.max(result?.sources?.map(source => source.score));
+            score = Math.max(...(result?.sources?.map(source => source.score) || []));
           }
 
           return {

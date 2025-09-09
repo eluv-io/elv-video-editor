@@ -346,7 +346,7 @@ const SearchResult = observer(() => {
   }
 
   // Try and get 16:9 default size for video
-  const contentRatio = 100 * ((window.innerHeight - 350) * 16 / 9) / (window.innerWidth - 80);
+  const contentRatio = 100 * ((window.innerHeight - 300) * 16 / 9) / (window.innerWidth - 85);
 
   return (
     <div key={`result-${queryB58}-${resultIndex}`} className={S("browser-page")}>
