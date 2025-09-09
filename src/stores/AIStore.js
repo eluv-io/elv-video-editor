@@ -205,12 +205,18 @@ class AIStore {
     });
   });
 
-  GenerateAIHighlights = flow(function * ({objectId, prompt, maxDuration, regenerate=false, wait=true, StatusCallback}) {
+  GenerateAIHighlights = flow(function * ({
+    objectId,
+    prompt,
+    maxDuration,
+    profile,
+    regenerate=false,
+    wait=true,
+    StatusCallback
+  }) {
     if(!this.highlightsAvailable) { return; }
 
     try {
-      // TODO: Specify profile
-
       let options = { iq: objectId };
       if(prompt) {
         options.customization = prompt;
@@ -218,6 +224,10 @@ class AIStore {
 
       if(maxDuration) {
         options.max_length = maxDuration * 1000;
+      }
+
+      if(profile) {
+        options.profile = Unproxy(profile);
       }
 
       let initialStatus;
@@ -792,9 +802,7 @@ class AIStore {
       Object.keys(defaults || {}).forEach(key =>
         highlightProfiles[key] = {
           ...defaults[key],
-          ...(highlightProfiles[key] || {}),
-          isDefault: !highlightProfiles[key],
-          hasDefault: true
+          ...(highlightProfiles[key] || {})
         }
       );
     }
@@ -816,13 +824,11 @@ class AIStore {
 
     profile = Unproxy({...profile, key});
 
+    profile.key = key;
+    profile.original_profile_key = profile.original_profile_key || originalProfileKey;
     profile.created_at = profile.created_at || new Date().toISOString();
     profile.updated_at = new Date().toISOString();
     profile.author = yield this.client.CurrentAccountAddress();
-
-    delete profile.isDefault;
-    delete profile.hasDefault;
-    delete profile.key;
 
     const libraryId = yield this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId});
     const objectId = this.rootStore.tenantInfoObjectId;

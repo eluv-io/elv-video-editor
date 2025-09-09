@@ -21,6 +21,7 @@ import {LoadVideo} from "@/stores/Helpers.js";
 import CompositionIcon from "@/assets/icons/v2/composition.svg";
 import FolderIcon from "@/assets/icons/v2/library.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
+import AISparkleIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 
 import ManualCompositionSelectionImage from "@/assets/images/composition-manual.svg";
 import AICompositionSelectionImage from "@/assets/images/composition-ai.svg";
@@ -237,12 +238,15 @@ const CompositionCreationModal = observer(({type, defaultProfileType="", Cancel}
       return;
     }
 
+    const subtype = Object.keys(availableProfiles).includes(options.profileSubtype) ?
+      options.profileSubtype : Object.keys(availableProfiles)[0];
+
     setOptions({
       ...options,
-      profileSubtype: Object.keys(availableProfiles)[0],
-      profileKey: availableProfiles[Object.keys(availableProfiles)[0]]?.[0]?.key,
+      profileSubtype: subtype,
+      profileKey: availableProfiles[subtype]?.[0]?.key,
     });
-  }, [options.profileType]);
+  }, [options.profileType, options.profileSubtype]);
 
   // Generation complete - redirect to composition view
   if(options.creating && compositionStore.compositionGenerationStatus?.created) {
@@ -258,7 +262,7 @@ const CompositionCreationModal = observer(({type, defaultProfileType="", Cancel}
       <div key="status" className={S("composition-selection")}>
         <div className={S("composition-selection__creating")}>
           <div className={S("composition-selection__title")}>
-            <Icon icon={CompositionIcon} />
+            <Icon icon={type === "ai" ? AISparkleIcon : CompositionIcon} />
             {
               type === "ai" ?
                 "Generating AI Highlights..." :
@@ -483,6 +487,8 @@ const CompositionCreationModal = observer(({type, defaultProfileType="", Cancel}
                   prompt: options.prompt,
                   maxDuration: options.maxDuration,
                   regenerate: options.regenerate,
+                  profileKey: options.profileKey,
+                  indexId: options.indexId,
                   offeringKey
                 });
               } catch(error) {

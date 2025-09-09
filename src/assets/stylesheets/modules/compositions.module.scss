@@ -161,8 +161,11 @@
   }
 
   &__title {
+    align-items: center;
+    display: flex;
     font-size: 20px;
     font-weight: 600;
+    gap: 10px;
   }
 
   &__error {
@@ -291,6 +294,16 @@
 }
 
 .highlight-form {
+  align-items: center;
+  animation: var(--animation-fadein) 0.5s ease;
+  display: flex;
+  gap: 12px;
+  height: 100%;
+  justify-content: center;
+  min-height: 150px;
+  width: 100%;
+
+
   &__title {
     display: flex;
     font-size: 18px;
@@ -345,6 +358,18 @@
     padding: 20px 0;
     position: sticky;
     z-index: 100;
+
+    &--with-error {
+      padding-top: 65px;
+    }
+  }
+
+  &__error {
+    color: var(--text-error);
+    position: absolute;
+    text-align: center;
+    top: 20px;
+    width: 100%;
   }
 
   &__content {

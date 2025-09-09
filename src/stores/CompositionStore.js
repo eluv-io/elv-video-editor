@@ -717,6 +717,8 @@ class CompositionStore {
     name,
     key,
     prompt,
+    profileKey,
+    indexId,
     maxDuration,
     offeringKey,
     regenerate=false
@@ -774,12 +776,22 @@ class CompositionStore {
     };
 
     let items = [];
+    let profile;
     if(type === "ai") {
+      if(profileKey) {
+        profile = this.rootStore.aiStore.highlightProfiles[profileKey];
+
+        if(!profile.index) {
+          profile.index = indexId;
+        }
+      }
+
       const highlights = (yield this.rootStore.aiStore.GenerateAIHighlights({
         objectId: sourceObjectId,
         prompt,
         maxDuration,
         regenerate,
+        profile,
         StatusCallback: status => this.compositionGenerationStatus = status
       })).clips;
 
@@ -819,7 +831,9 @@ class CompositionStore {
         frameRate,
         type,
         prompt,
-        promptDuration: maxDuration
+        promptDuration: maxDuration,
+        profileKey,
+        profile
       }
     };
 
@@ -1051,6 +1065,7 @@ class CompositionStore {
       sourceOfferingKey,
       initialPrompt: metadata?.source_info?.prompt,
       initialPromptDuration: metadata?.source_info?.promptDuration,
+      initialProfile: metadata?.source_info?.profile,
       name: metadata?.display_name || metadata?.name,
       compositionKey,
       metadata
@@ -1224,7 +1239,8 @@ class CompositionStore {
       store,
       objectId,
       prompt: primary ? this.compositionObject?.initialPrompt : "",
-      maxDuration: primary ? this.compositionObject.initialPromptDuration : undefined
+      maxDuration: primary ? this.compositionObject.initialPromptDuration : undefined,
+      profile: primary ? this.compositionObject.initialProfile : "",
     });
 
     yield this.LoadMyClips({objectId});
@@ -1252,12 +1268,14 @@ class CompositionStore {
     this.selectedSourceId = objectId;
   }
 
-  LoadHighlights = flow(function * ({store, objectId, prompt, wait=true}) {
+  LoadHighlights = flow(function * ({store, objectId, prompt, maxDuration, profile, wait=true}) {
     try {
       this.sources[objectId].highlightsLoading = true;
       const highlights = (yield this.rootStore.aiStore.GenerateAIHighlights({
         objectId,
         prompt,
+        maxDuration,
+        profile,
         wait
       }))?.clips || [];
 

@@ -245,6 +245,8 @@ const HighlightProfileForm = observer(({profileKey, Close}) => {
 
   const searchIndex = aiStore.searchIndexes.find(index => index.id === profile.index);
 
+  if(!originalProfile) { return null; }
+
   return (
     <Modal
       withCloseButton={false}
@@ -256,7 +258,7 @@ const HighlightProfileForm = observer(({profileKey, Close}) => {
       padding={0}
       onClose={() => Close()}
     >
-      <div key="form" className={S("composition-selection")}>
+      <div key="form" className={S("highlight-form")}>
         <form onSubmit={event => event.preventDefault()} className={S("composition-form")}>
           <div className={S("composition-form__title")}>
             <Icon icon={EditSlidersIcon}/>
@@ -268,11 +270,14 @@ const HighlightProfileForm = observer(({profileKey, Close}) => {
                   icon={DeleteIcon}
                   className={S("highlight-form__delete")}
                   onClick={async () => {
+                    setError(undefined);
+
                     await Confirm({
                       title: "Delete Composition Profile",
                       text: "Are you sure you want to delete this composition profile?",
                       onConfirm: async () => {
                         try {
+                          setSubmitting(true);
                           const nextProfileKey = await aiStore.DeleteHighlightProfile({
                             profileKey: profile.key
                           });
@@ -374,7 +379,7 @@ const HighlightProfileForm = observer(({profileKey, Close}) => {
             <SliderField
               label="Front Load"
               value={Math.floor(profile.padding_frontload * 100)}
-              defaultMark={originalProfile.padding_frontload * 100}
+              defaultMark={Math.floor(originalProfile.padding_frontload * 100)}
               unit="%"
               Update={value => setProfile({...profile, padding_frontload: value / 100})}
             />
@@ -444,7 +449,13 @@ const HighlightProfileForm = observer(({profileKey, Close}) => {
             />
           </ToggleSection>
 
-          <div className={S("composition-form__actions", "highlight-form__actions")}>
+          <div className={S("composition-form__actions", "highlight-form__actions", error ? "highlight-form__actions--with-error" : "")}>
+            {
+              !error ? null :
+                <div className={S("highlight-form__error")}>
+                  Something went wrong, please try again
+                </div>
+            }
             <Button
               disabled={submitting}
               color="gray.6"
@@ -477,8 +488,11 @@ const HighlightProfileForm = observer(({profileKey, Close}) => {
             <AsyncButton
               color="gray.1"
               autoContrast
+              disabled={submitting}
               w={150}
               onClick={async () => {
+                setError(undefined);
+
                 await Confirm({
                   title: isNew ? "Create Composition Profile" : "Update Composition Profile",
                   text: `Are you sure you want to ${isNew ? "create" : "update"} this composition profile?`,
