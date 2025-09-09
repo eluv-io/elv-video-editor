@@ -544,14 +544,14 @@ export const SelectInput = observer(({label, options=[], autoWidth=true, ...prop
 });
 
 // Form styled inputs
-export const FormTextInput = observer(props =>
+export const FormTextInput = observer(({icon, iconOnClick, ...props}) =>
   <TextInput
     {...props}
     rightSection={
-      !props.icon ? null :
-        props.iconOnClick ?
-          <IconButton icon={props.icon} onClick={props.iconOnClick} className={S("form-input__icon")} /> :
-          <Icon icon={props.icon} className={S("form-input__icon")} />
+      !icon ? null :
+        iconOnClick ?
+          <IconButton icon={icon} onClick={iconOnClick} className={S("form-input__icon")} /> :
+          <Icon icon={icon} className={S("form-input__icon")} />
     }
     classNames={{
       root: S("form-input"),
@@ -631,14 +631,14 @@ export const FormColorInput = observer(props => {
   );
 });
 
-export const FormSelect = observer(props =>
+export const FormSelect = observer(({icon, iconOnClick, ...props}) =>
   <Select
     {...props}
     rightSection={
-      !props.icon ? null :
-        props.iconOnClick ?
-          <IconButton icon={props.icon} onClick={props.iconOnClick} className={S("form-input__icon", "form-input__icon-button")} /> :
-          <Icon icon={props.icon} className={S("form-input__icon")} />
+      !icon ? null :
+        iconOnClick ?
+          <IconButton icon={icon} onClick={iconOnClick} className={S("form-input__icon", "form-input__icon-button")} /> :
+          <Icon icon={icon} className={S("form-input__icon")} />
     }
     allowDeselect={false}
     data={props.options || props.data}
@@ -646,7 +646,7 @@ export const FormSelect = observer(props =>
       root: S("form-input"),
       label: S("form-input__label"),
       input: S("form-input__input"),
-      section: props.iconOnClick ? S("form-input__section-clickable") : "",
+      section: iconOnClick ? S("form-input__section-clickable") : "",
       ...(props.classNames || {})
     }}
   />

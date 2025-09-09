@@ -356,10 +356,10 @@ const CompositionCreationModal = observer(({type, defaultProfileType="", Cancel}
                 />
               </div>
               {
-                selectedProfile.index ? null :
+                selectedProfile?.index ? null :
                   <FormSelect
                     label="Search Index"
-                    value={aiStore.selectedSearchIndexId}
+                    value={options.indexId}
                     onChange={value => setOptions({...options, indexId: value})}
                     options={
                       aiStore.searchIndexes.map(searchIndex =>
@@ -517,7 +517,13 @@ const CompositionCreationModal = observer(({type, defaultProfileType="", Cancel}
         !showProfileEditModal ? null :
           <HighlightProfileForm
             profileKey={options.profileKey}
-            Close={() => setShowProfileEditModal(false)}
+            Close={key => {
+              setShowProfileEditModal(false);
+
+              if(key) {
+                setOptions({...options, profileKey: key});
+              }
+            }}
           />
       }
     </div>
@@ -539,6 +545,8 @@ const CompositionSelection = observer(() => {
 
     setDefaultType(StorageHandler.get({type: "local", key: `highlight-type-${rootStore.tenantContractId}`}) || "");
   }, [type]);
+
+  if(!aiStore.highlightProfiles) { return null; }
 
   return (
     <>
@@ -594,6 +602,7 @@ const CompositionSelection = observer(() => {
         !type ? null :
           <Modal
             withCloseButton={false}
+            closeOnEscape={false}
             alwaysOpened
             centered
             size={600}

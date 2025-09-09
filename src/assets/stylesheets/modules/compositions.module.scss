@@ -247,9 +247,10 @@
     align-items: center;
     display: flex;
     font-size: 20px;
-    font-weight: 500;
+    font-weight: 700;
     gap: 10px;
     margin-bottom: 20px;
+    position: relative;
   }
 
   &__actions {
@@ -303,17 +304,13 @@
     }
   }
 
+  &__delete {
+    position: absolute;
+    right: 0;
+  }
+
   &__subtitle {
     font-size: 12px;
-  }
-
-  &__profile {
-    display: flex;
-    gap: 10px;
-  }
-
-  &__profile-name {
-    font-size: 18px;
   }
 
   &__slider-field {
@@ -349,6 +346,13 @@
     position: sticky;
     z-index: 100;
   }
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-left: 20px;
+  }
 }
 
 .toggle-section {
@@ -374,7 +378,11 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 20px 0 10px;
+    padding: 10px 0;
+
+    &--padded {
+      padding-left: 10px;
+    }
   }
 }
 
@@ -396,4 +404,8 @@
       white-space: wrap;
     }
   }
+}
+
+.pill {
+  background-color: #494949;
 }
