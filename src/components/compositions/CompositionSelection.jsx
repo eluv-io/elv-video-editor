@@ -238,15 +238,51 @@ const CompositionCreationModal = observer(({type, defaultProfileType="", Cancel}
       return;
     }
 
-    const subtype = Object.keys(availableProfiles).includes(options.profileSubtype) ?
-      options.profileSubtype : Object.keys(availableProfiles)[0];
+    // Automatically reselect profile subtype + profile key on change based on what's available, defaults and last selected
+
+    const lastProfile = aiStore.highlightProfiles[
+      StorageHandler.get({type: "local", key: `highlight-profile-${options.profileType}-${rootStore.tenantContractId}`})
+    ];
+    const defaultProfile = aiStore.highlightProfiles[aiStore.defaultHighlightProfileKey];
+    const selectedProfile = aiStore.highlightProfiles[options.profileKey];
+
+    let subtype = options.profileSubtype;
+    let key = options.profileKey;
+    if(
+      selectedProfile?.type !== options.profileType ||
+      selectedProfile?.subtype !== options.profileSubtype ||
+      selectedProfile?.key !== options.profileKey
+    ) {
+      // Selected type doesn't contain selected subtype, need to pick default
+      if(lastProfile?.type === options.profileType && (!options.profileSubtype || options.profileSubtype === lastProfile.subtype)) {
+        subtype = lastProfile.subtype;
+        key = lastProfile.key;
+      } else if(defaultProfile?.type === options.profileType && (!options.profileSubtype || options.profileSubtype === defaultProfile.subtype)) {
+        subtype = defaultProfile.subtype;
+        key = defaultProfile.key;
+      } else {
+        subtype = Object.keys(availableProfiles).includes(options.profileSubtype) ?
+          options.profileSubtype : Object.keys(availableProfiles)[0];
+        key = availableProfiles[subtype]?.[0]?.key;
+      }
+    }
 
     setOptions({
       ...options,
       profileSubtype: subtype,
-      profileKey: availableProfiles[subtype]?.[0]?.key,
+      profileKey: key
     });
   }, [options.profileType, options.profileSubtype]);
+
+  useEffect(() => {
+    if(!options.profileKey) { return; }
+    
+    StorageHandler.set({
+      type: "local",
+      key: `highlight-profile-${options.profileType}-${rootStore.tenantContractId}`,
+      value: options.profileKey
+    });
+  }, [options.profileKey]);
 
   // Generation complete - redirect to composition view
   if(options.creating && compositionStore.compositionGenerationStatus?.created) {

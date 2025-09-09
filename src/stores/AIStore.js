@@ -12,6 +12,7 @@ class AIStore {
   searchIndexUpdateProgress = {};
   tagAggregationProgress = 0;
   highlightProfiles;
+  defaultHighlightProfileKey;
 
   searchResults = {};
 
@@ -781,11 +782,18 @@ class AIStore {
   });
 
   LoadHighlightProfiles = flow(function * () {
-    let highlightProfiles = (yield this.client.ContentObjectMetadata({
+    let highlightProfileInfo = (yield this.client.ContentObjectMetadata({
       libraryId: yield this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId}),
       objectId: this.rootStore.tenantInfoObjectId,
-      metadataSubtree: "public/profiles/highlight_composition",
+      metadataSubtree: "public",
+      select: [
+        "default_domain",
+        "default_profile/highlight_composition",
+        "profiles/highlight_composition"
+      ]
     })) || {};
+
+    const highlightProfiles = highlightProfileInfo.profiles?.highlight_composition || {};
 
     if(this.rootStore.network === "main") {
       const defaults = yield this.client.ContentObjectMetadata({
@@ -813,6 +821,12 @@ class AIStore {
       );
 
     this.highlightProfiles = highlightProfiles;
+
+    const defaultProfileKey = highlightProfileInfo.default_profile?.highlight_composition || highlightProfileInfo.default_domain;
+
+    if(highlightProfiles[defaultProfileKey]) {
+      this.defaultHighlightProfileKey = defaultProfileKey;
+    }
   });
 
   SaveHighlightProfile = flow(function * ({profile, originalProfileKey}) {
