@@ -547,6 +547,12 @@ export const SelectInput = observer(({label, options=[], autoWidth=true, ...prop
 export const FormTextInput = observer(props =>
   <TextInput
     {...props}
+    rightSection={
+      !props.icon ? null :
+        props.iconOnClick ?
+          <IconButton icon={props.icon} onClick={props.iconOnClick} className={S("form-input__icon")} /> :
+          <Icon icon={props.icon} className={S("form-input__icon")} />
+    }
     classNames={{
       root: S("form-input"),
       label: S("form-input__label"),
@@ -628,12 +634,19 @@ export const FormColorInput = observer(props => {
 export const FormSelect = observer(props =>
   <Select
     {...props}
+    rightSection={
+      !props.icon ? null :
+        props.iconOnClick ?
+          <IconButton icon={props.icon} onClick={props.iconOnClick} className={S("form-input__icon", "form-input__icon-button")} /> :
+          <Icon icon={props.icon} className={S("form-input__icon")} />
+    }
     allowDeselect={false}
     data={props.options || props.data}
     classNames={{
       root: S("form-input"),
       label: S("form-input__label"),
       input: S("form-input__input"),
+      section: props.iconOnClick ? S("form-input__section-clickable") : "",
       ...(props.classNames || {})
     }}
   />

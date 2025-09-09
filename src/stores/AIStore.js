@@ -3,13 +3,15 @@ import UrlJoin from "url-join";
 import {Unproxy} from "@/utils/Utils.js";
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 
+const GLOBAL_PROFILE_OBJECT_ID = "iq__3MVS3kjshtnAodRv4qLebBvH3oXb";
+
 class AIStore {
   searchIndexes = [];
   customSearchIndexIds = [];
   selectedSearchIndexId;
   searchIndexUpdateProgress = {};
   tagAggregationProgress = 0;
-  highlightsAvailable = true;
+  highlightProfiles;
 
   searchResults = {};
 
@@ -28,6 +30,82 @@ class AIStore {
     return this.searchIndexes.find(index => index.id === this.selectedSearchIndexId);
   }
 
+  get highlightsAvailable() {
+    return this.searchIndexes.length > 0 && Object.keys(this.highlightProfiles || {}).length > 0;
+  }
+
+  get highlightProfileInfo() {
+    if(!this.highlightProfiles) {
+      return {};
+    }
+
+    let profiles = {};
+    Object.keys(this.highlightProfiles || {})
+      .filter(key => !this.highlightProfiles[key].hidden)
+      .forEach(key => {
+        const type = this.highlightProfiles[key].type;
+        if(!profiles[type]) {
+          profiles[type] = {};
+        }
+
+        const subtype = this.highlightProfiles[key].subtype;
+        if(!profiles[type][subtype]) {
+          profiles[type][subtype] = [];
+        }
+
+        profiles[type][subtype]
+          .push({
+            ...this.highlightProfiles[key],
+            key
+          });
+
+        profiles[type][subtype].sort((a, b) =>
+          a?.name?.toLowerCase()?.includes("default") ?
+            b?.name?.toLowerCase()?.includes("default") ? 0 : 1 :
+            b?.name?.toLowerCase()?.includes("default") ? 1 : 0
+        );
+      });
+
+    return profiles;
+  }
+
+  Initialize = flow(function * () {
+    yield this.LoadSearchIndexes();
+
+    let highlightProfiles = (yield this.client.ContentObjectMetadata({
+      libraryId: yield this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId}),
+      objectId: this.rootStore.tenantInfoObjectId,
+      metadataSubtree: "public/profiles/highlight_composition",
+    })) || {};
+
+    if(this.rootStore.network === "main") {
+      const defaults = yield this.client.ContentObjectMetadata({
+        libraryId: yield this.client.ContentObjectLibraryId({objectId: GLOBAL_PROFILE_OBJECT_ID}),
+        objectId: GLOBAL_PROFILE_OBJECT_ID,
+        metadataSubtree: "public/profiles/highlight_composition"
+      });
+
+      Object.keys(defaults || {}).forEach(key =>
+        // Ensure no index is set for default
+        delete defaults[key].index
+      );
+
+      Object.keys(defaults || {}).forEach(key =>
+        highlightProfiles[key] = {
+          ...defaults[key],
+          ...(highlightProfiles[key] || {})
+        }
+      );
+    }
+
+    Object.keys(highlightProfiles || {})
+      .forEach(key =>
+        highlightProfiles[key].key = key
+      );
+
+    this.highlightProfiles = highlightProfiles;
+  });
+
   QueryAIAPI = flow(function * ({
     server="ai",
     method="GET",
@@ -39,7 +117,8 @@ class AIStore {
     body,
     stringifyBody=true,
     headers={},
-    format="json"
+    format="json",
+    allowStatus=[],
   }) {
     const url = new URL(`https://${server}.contentfabric.io/`);
     url.pathname = path;
@@ -97,7 +176,7 @@ class AIStore {
       }
     );
 
-    if(response.status >= 400) {
+    if(response.status >= 400 && !allowStatus.includes(response.status)) {
       throw response;
     }
 
@@ -161,7 +240,9 @@ class AIStore {
     if(!this.highlightsAvailable) { return; }
 
     try {
-      let options = {};
+      // TODO: Specify profile
+
+      let options = { iq: objectId };
       if(prompt) {
         options.customization = prompt;
       }
@@ -170,24 +251,40 @@ class AIStore {
         options.max_length = maxDuration * 1000;
       }
 
-      const initialStatus = yield this.QueryAIAPI({
-        method: "GET",
-        path: UrlJoin("ml", "highlight_composition", "q", objectId),
-        objectId,
-        queryParams: options,
-        format: "none"
-      });
+      let initialStatus;
+      if(!regenerate) {
+        initialStatus = yield this.QueryAIAPI({
+          method: "POST",
+          path: UrlJoin("ml", "highlight_composition", "request"),
+          objectId,
+          allowStatus: [409],
+          body: {
+            cache: "only",
+            job_details: options
+          }
+        });
+      }
 
       if(!initialStatus || regenerate) {
-        yield this.QueryAIAPI({
+        initialStatus = yield this.QueryAIAPI({
           method: "POST",
-          path: UrlJoin("ml", "highlight_composition", "q", objectId),
+          path: UrlJoin("ml", "highlight_composition", "request"),
           objectId,
-          queryParams: {...options, regenerate: true}
+          allowStatus: [409],
+          body: {
+            cache: "refresh",
+            job_details: options
+          }
         });
 
         yield new Promise(resolve => setTimeout(resolve, 1000));
       }
+
+      if(initialStatus?.status === "COMPLETE") {
+        return initialStatus;
+      }
+
+      const jobId = initialStatus.job_id;
 
       let status;
       do {
@@ -198,10 +295,9 @@ class AIStore {
 
         const response = yield this.QueryAIAPI({
           method: "GET",
-          path: UrlJoin("ml", "highlight_composition", "q", objectId),
+          path: UrlJoin("ml", "highlight_composition", "request", jobId),
           objectId,
-          queryParams: options,
-          format: "none"
+          format: ""
         });
 
         if(!response) {

@@ -384,6 +384,19 @@
     }
   }
 
+  &__section-clickable {
+    pointer-events: initial;
+  }
+
+  &__icon {
+    color: var(--mantine-color-dark-3);
+    margin-right: 10px;
+  }
+
+  &__icon-button {
+    cursor: pointer;
+  }
+
   &__textarea {
     padding-top: 30px;
   }

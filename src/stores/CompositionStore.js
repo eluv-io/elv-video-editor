@@ -818,7 +818,8 @@ class CompositionStore {
         offeringKey,
         frameRate,
         type,
-        prompt
+        prompt,
+        promptDuration: maxDuration
       }
     };
 
@@ -1049,6 +1050,7 @@ class CompositionStore {
       sourceObjectId: objectId,
       sourceOfferingKey,
       initialPrompt: metadata?.source_info?.prompt,
+      initialPromptDuration: metadata?.source_info?.promptDuration,
       name: metadata?.display_name || metadata?.name,
       compositionKey,
       metadata
@@ -1221,7 +1223,8 @@ class CompositionStore {
     this.LoadHighlights({
       store,
       objectId,
-      prompt: primary ? this.compositionObject?.initialPrompt : ""
+      prompt: primary ? this.compositionObject?.initialPrompt : "",
+      maxDuration: primary ? this.compositionObject.initialPromptDuration : undefined
     });
 
     yield this.LoadMyClips({objectId});

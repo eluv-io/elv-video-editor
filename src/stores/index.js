@@ -46,6 +46,7 @@ class RootStore {
 
   tenantContractId;
   tenantInfoObjectId;
+  tenantConfig;
   signedToken;
   authToken;
 
@@ -178,7 +179,7 @@ class RootStore {
     this.client = client;
     this.initialized = true;
 
-    yield this.aiStore.LoadSearchIndexes();
+    yield this.aiStore.Initialize();
     yield this.compositionStore.Initialize();
   });
 
