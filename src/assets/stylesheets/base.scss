@@ -7,6 +7,12 @@ body {
   font-family: Inter, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 
   --mantine-font-family: Inter, system-ui, "Segoe UI", roboto, helvetica, arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  position: relative;
+}
+
+#root {
+  position: absolute;
+  inset: 0 0 0 0;
 }
 
 .page-container {

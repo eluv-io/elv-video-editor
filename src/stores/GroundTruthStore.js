@@ -630,7 +630,7 @@ class GroundTruthStore {
       ...originalFiles,
       this.FormatAsset({
         ...image,
-        fullPath: UrlJoin("./", "files", "frames", image.filename),
+        fullPath: UrlJoin("/frames", image.filename),
         label,
         description,
         source

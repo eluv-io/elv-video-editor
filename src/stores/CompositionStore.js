@@ -1514,6 +1514,8 @@ class CompositionStore {
   }
 
   LoadMyClips = flow(function * ({objectId}) {
+    if(!this.initialized) { return; }
+
     const store = this.ClipStore({clipId: this.sources[objectId]?.fullClipId});
 
     if(!store) { return; }

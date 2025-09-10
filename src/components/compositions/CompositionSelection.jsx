@@ -13,7 +13,7 @@ import {
 } from "@/components/common/Common.jsx";
 import {LibraryBrowser, ObjectBrowser} from "@/components/nav/Browser.jsx";
 import {Redirect} from "wouter";
-import {rootStore, compositionStore, aiStore} from "@/stores/index.js";
+import {rootStore, compositionStore, aiStore, videoStore} from "@/stores/index.js";
 import {Button, Checkbox, Group} from "@mantine/core";
 import UrlJoin from "url-join";
 import {LoadVideo} from "@/stores/Helpers.js";
@@ -165,8 +165,8 @@ const CompositionCreationModal = observer(({type, defaultProfileType="", Cancel}
   const [options, setOptions] = useState({
     creating: false,
     created: false,
-    sourceId: rootStore.selectedObjectId,
-    sourceName: rootStore.selectedObjectName,
+    sourceId: rootStore.selectedObjectId || videoStore.videoObject?.objectId,
+    sourceName: rootStore.selectedObjectName || videoStore.videoObject?.name,
     name: "",
     key: "",
     prompt: "",
