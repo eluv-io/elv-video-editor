@@ -86,6 +86,7 @@ class AIStore {
     queryParams={},
     body,
     stringifyBody=true,
+    authTokenInBody=false,
     headers={},
     format="json",
     allowStatus=[],
@@ -132,6 +133,12 @@ class AIStore {
     }
 
     url.searchParams.set("authorization", authToken);
+
+    if(authTokenInBody) {
+      body.append ?
+        body.append("authorization", authToken) :
+        body.authorization = authToken;
+    }
 
     if(body && stringifyBody) {
       body = JSON.stringify(body);
@@ -182,6 +189,22 @@ class AIStore {
     });
   });
 
+  DeleteImageSummary = flow(function * ({objectId, filePath}) {
+    yield this.rootStore.aiStore.QueryAIAPI({
+      server: "ai",
+      method: "DELETE",
+      path: UrlJoin("mlcache", "summary", "q", objectId, "rep", "image_summarize"),
+      objectId,
+      channelAuth: true,
+      queryParams: {
+        path: filePath,
+        engine: "summary"
+      }
+    });
+
+    this.rootStore.ClearResource({key: "imageSummary", id: `${objectId}-${filePath}`});
+  });
+
   GenerateClipSummary = flow(function * ({objectId, startTime, endTime, regenerate=false, cacheOnly=false}) {
     return yield this.rootStore.LoadResource({
       key: "clipSummary",
@@ -205,6 +228,23 @@ class AIStore {
       })
     });
   });
+
+  DeleteClipSummary = flow(function * ({objectId, startTime, endTime}) {
+    yield this.rootStore.aiStore.QueryAIAPI({
+      server: "ai",
+      method: "DELETE",
+      path: UrlJoin("mlcache", "summary", "q", objectId, "rep", "summarize"),
+      objectId,
+      channelAuth: true,
+      queryParams: {
+        start_time: parseInt(startTime * 1000),
+        end_time: parseInt(endTime * 1000),
+      }
+    });
+
+    this.rootStore.ClearResource({key: "clipSummary", id: `${objectId}-${startTime}-${endTime}`});
+  });
+
 
   GenerateAIHighlights = flow(function * ({
     objectId,

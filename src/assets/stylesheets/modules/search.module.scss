@@ -39,16 +39,19 @@
     align-items: center;
     background-color: black;
     display: flex;
-    height: calc(100vh - 455px);
+    height: auto;
     justify-content: center;
     margin-bottom: 10px;
     overflow: hidden;
     position: relative;
     width: 100%;
   }
-  
+
+  &__image-container {
+    max-height: calc(100vh - 375px);
+  }
+
   &__video-container {
-    height: auto;
     max-height: calc(100vh - 315px);
   }
 
@@ -108,10 +111,25 @@
     animation: var(--animation-fadein) 0.4s linear;
     background-color: var(--background-modal);
     border-radius: 7px;
-    max-height: 250px;
+    max-height: 155px;
     overflow-y: auto;
     padding: 10px 20px 20px;
     position: relative;
+  }
+
+  &__text-actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    position: absolute;
+    right: 10px;
+    top: 10px;
+  }
+
+  &__text-action {
+    background-color: var(--background-form-button);
+    border-radius: 5px;
+    padding: 5px;
   }
 
   &__title {
@@ -129,9 +147,9 @@
   }
 
   &__summary {
-    font-size: 14px;
+    font-size: 13px;
     margin-top: 10px;
-    max-height: 65px;
+    max-height: 55px;
     overflow-y: auto;
   }
 
@@ -168,22 +186,12 @@
     margin-top: 10px;
   }
 
-  &__regenerate-summary {
-    background-color: var(--background-form-button);
-    border-radius: 5px;
-    padding: 5px;
-    position: absolute;
-    right: 10px;
-    top: 10px;
-  }
-
   @media screen and (width <= 1600px) {
     &__actions {
       a,
       button {
         font-size: 10px;
         min-width: 0;
-        padding-inline: 10px;
       }
     }
   }
@@ -230,8 +238,7 @@
   }
 
   &__loader {
-    height: 20px;
-    margin-top: 30px;
-    width: 75px;
+    height: 15px;
+    margin-top: 15px;
   }
 }

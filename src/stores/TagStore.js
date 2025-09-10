@@ -397,6 +397,7 @@ class TagStore {
       tag.mode = typeof tag.box?.x3 === "undefined" ? "rectangle" : "polygon";
       this.editedAssetTag = tag;
     } else if(type === "groundTruthAsset") {
+      this.rootStore.videoStore.ToggleVideoControls(false);
       this.editedGroundTruthAsset = {
         poolId: undefined,
         entityId: undefined,
@@ -887,6 +888,7 @@ class TagStore {
 
   ClearEditedGroundTruthAsset() {
     this.editedGroundTruthAsset = undefined;
+    this.rootStore.videoStore.ToggleVideoControls(this.selectedOverlayTagIds.length === 0);
   }
 
   UpdateEditedGroundTruthAsset(asset) {

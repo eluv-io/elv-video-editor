@@ -90,7 +90,7 @@ export const GroundTruthAssetFromOverlayForm = observer(() => {
           force: true
         });
 
-        const entityId = groundTruthStore.imageEntityCheckStatus["overlayForm"]?.matched_entity?.[0];
+        const entityId = groundTruthStore.imageEntityCheckStatus["overlayForm"]?.matched_uuid?.[0];
 
         Update("entityId")(tagStore.editedGroundTruthAsset?.entityId || entityId);
       } catch(error) {
