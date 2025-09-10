@@ -53,30 +53,32 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
         className={S("clip__image")}
         loadingClassName={S("clip__image--loading")}
       />
-      <Tooltip
-        disabled={!!compositionStore.draggingClip}
-        label={<ClipTooltipContent clip={clip} />}
-        maw={300}
-      >
-        <div draggable={false} className={S("clip__name", "ellipsis")}>
-          {clip.name}
-        </div>
-      </Tooltip>
-      {
-        clip.clipId === compositionStore.sourceFullClipId ? null :
-          <ClipTimeInfo
-            store={store}
-            clipInFrame={clip.clipInFrame}
-            clipOutFrame={clip.clipOutFrame}
-            className={S("clip__time")}
-          />
-      }
-      {
-        clip.offering?.includes("default") ? null :
-          <div className={S("clip__offering")}>
-            Offering: {clip.offering}
+      <div className={S("clip__text")}>
+        <Tooltip
+          disabled={!!compositionStore.draggingClip}
+          label={<ClipTooltipContent clip={clip} />}
+          maw={300}
+        >
+          <div draggable={false} className={S("clip__name", "ellipsis")}>
+            {clip.name}
           </div>
-      }
+        </Tooltip>
+        {
+          clip.clipId === compositionStore.sourceFullClipId ? null :
+            <ClipTimeInfo
+              store={store}
+              clipInFrame={clip.clipInFrame}
+              clipOutFrame={clip.clipOutFrame}
+              className={S("clip__time")}
+            />
+        }
+        {
+          clip.offering?.includes("default") ? null :
+            <div className={S("clip__offering")}>
+              Offering: {clip.offering}
+            </div>
+        }
+      </div>
       {
         !compositionStore.myClipIds.includes(clip.clipId) ? null :
           <IconButton
@@ -261,7 +263,7 @@ export const CompositionClips = observer(() => {
       <div
         onDrop={() => {
           setShowDragIndicator(false);
-          compositionStore.AddMyClip({clip: compositionStore.draggingClip});
+          compositionStore.AddMyClip(compositionStore.draggingClip);
           compositionStore.EndDrag();
         }}
         className={S("composition-clips__drag-indicator", showDragIndicator ? "composition-clips__drag-indicator--active" : "")}

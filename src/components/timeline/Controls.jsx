@@ -2,7 +2,7 @@ import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
-import {aiStore, compositionStore, editStore, videoStore} from "@/stores/index.js";
+import {aiStore, editStore, videoStore} from "@/stores/index.js";
 import {
   AsyncButton,
   ClipTimeInfo,
@@ -32,6 +32,7 @@ const MyClipsModal = observer(({opened, highlightedClipId, Close}) => {
   const [showDownload, setShowDownload] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [submodalOpened, setSubmodalOpened] = useState(false);
+  const [renderIndex, setRenderIndex] = useState(0);
 
   useEffect(() => {
     if(!opened) {
@@ -65,17 +66,17 @@ const MyClipsModal = observer(({opened, highlightedClipId, Close}) => {
         opened={opened}
         centered
         onClose={Close}
-        size={850}
+        size={650}
         className={S("my-clips-modal")}
       >
         {
-          compositionStore.myClips.length === 0 ?
+          videoStore.myClips.length === 0 ?
             <div className={S("my-clips-modal__empty")}>
               No saved clips for this content
             </div> :
             <div className={S("my-clips-modal__content")}>
               {
-                compositionStore.myClips.map(clip =>
+                videoStore.myClips.map(clip =>
                   <div
                     key={`my-clip-${clip.clipId}`}
                     role="button"
@@ -104,9 +105,12 @@ const MyClipsModal = observer(({opened, highlightedClipId, Close}) => {
                         clipOutFrame={clip.clipOutFrame}
                         className={S("my-clips-modal__item-duration")}
                       />
-                      <div className={S("my-clips-modal__item-offering")}>
-                        {clip.offering}
-                      </div>
+                      {
+                        clip.offering === "default" ? null :
+                          <div className={S("my-clips-modal__item-offering")}>
+                            {clip.offering}
+                          </div>
+                      }
                     </div>
                     <div className={S("my-clips-modal__item-actions")}>
                       <IconButton
@@ -136,8 +140,9 @@ const MyClipsModal = observer(({opened, highlightedClipId, Close}) => {
                           await Confirm({
                             title: "Remove Clip",
                             text: "Are you sure you want to remove this clip?",
-                            onConfirm: async () => {
-                              await compositionStore.RemoveMyClip(clip.clipId);
+                            onConfirm: () => {
+                              videoStore.RemoveMyClip(clip.clipId);
+                              setRenderIndex(renderIndex + 1);
                             }
                           });
                         }}
@@ -203,16 +208,14 @@ export const ClipModalButton = observer(() => {
 
     setSubmitting(true);
 
-    const clip = await compositionStore.AddMyClip({
-      clip: {
-        name,
-        libraryId: videoStore.videoObject.libraryId,
-        objectId: videoStore.videoObject.objectId,
-        versionHash: videoStore.videoObject.versionHash,
-        offering: videoStore.offeringKey,
-        clipInFrame: videoStore.clipInFrame || 0,
-        clipOutFrame: videoStore.clipOutFrame || videoStore.totalFrames - 1
-      }
+    const clip = await videoStore.AddMyClip({
+      name,
+      libraryId: videoStore.videoObject.libraryId,
+      objectId: videoStore.videoObject.objectId,
+      versionHash: videoStore.videoObject.versionHash,
+      offering: videoStore.offeringKey,
+      clipInFrame: videoStore.clipInFrame || 0,
+      clipOutFrame: videoStore.clipOutFrame || videoStore.totalFrames - 1
     });
 
     await new Promise(resolve => setTimeout(resolve, 1000));

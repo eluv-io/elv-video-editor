@@ -276,7 +276,7 @@ const CompositionCreationModal = observer(({type, defaultProfileType="", Cancel}
 
   useEffect(() => {
     if(!options.profileKey) { return; }
-    
+
     StorageHandler.set({
       type: "local",
       key: `highlight-profile-${options.profileType}-${rootStore.tenantContractId}`,
