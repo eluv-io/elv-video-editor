@@ -588,7 +588,9 @@ const CompositionSelection = observer(() => {
     setDefaultType(StorageHandler.get({type: "local", key: `highlight-type-${rootStore.tenantContractId}`}) || "");
   }, [type]);
 
-  if(!aiStore.highlightProfiles) { return null; }
+  if(!aiStore.highlightProfiles) {
+    return null;
+  }
 
   return (
     <>
