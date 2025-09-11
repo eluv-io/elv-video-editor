@@ -359,6 +359,7 @@ export const ClipModalButton = observer(() => {
         !showMyClipsModal ? null :
           <MyClipsModal
             opened
+            store={videoStore}
             highlightedClipId={highlightedClipId}
             Close={() => setShowMyClipsModal(false)}
           />
