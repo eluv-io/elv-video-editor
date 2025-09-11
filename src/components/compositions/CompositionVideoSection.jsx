@@ -123,10 +123,7 @@ const ClipControls = observer(() => {
       </div>
       <div className={S("toolbar__separator")}/>
       <div className={S("toolbar__controls-group")}>
-        {
-          compositionStore.myClipIds.includes(compositionStore.originalSelectedClipId) ? null :
-            <CompositionClipModalButton clip={compositionStore.selectedClip} />
-        }
+        <CompositionClipModalButton clip={compositionStore.selectedClip} />
         <IconButton
           label="Append Clip to Composition"
           icon={AddClipIcon}
