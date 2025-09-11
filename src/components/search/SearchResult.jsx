@@ -37,6 +37,7 @@ const Summary = observer(({result}) => {
   const [generating, setGenerating] = useState(false);
   const [summary, setSummary] = useState(false);
   const [summaryError, setSummaryError] = useState(false);
+  const [showSummary, setShowSummary] = useState(result.type !== "video");
 
   const Generate = async ({cacheOnly, regenerate}={}) => {
     try {
@@ -94,13 +95,24 @@ const Summary = observer(({result}) => {
   useEffect(() => {
     if(!result?.objectId) { return; }
 
-    Generate({cacheOnly: true});
+    if(result.type === "image") {
+      Generate({cacheOnly: true});
+    } else {
+      aiStore.client.ContentObjectMetadata({
+        libraryId: result.libraryId,
+        objectId: result.objectId,
+        metadataSubtree: "video_tags"
+      })
+        .then(tags => {
+          if(tags) {
+            Generate({cacheOnly: true});
+            setShowSummary(true);
+          }
+        });
+    }
   }, []);
 
-  if(
-    loading ||
-    (result.type === "video" && !rootStore.searchVideoStore?.videoObject?.metadata?.video_tags)
-  ) { return null; }
+  if(loading || !showSummary) { return null; }
 
   if(summaryError) {
     return (
