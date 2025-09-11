@@ -780,7 +780,7 @@ class CompositionStore {
     let profile;
     if(type === "ai") {
       if(profileKey) {
-        profile = this.rootStore.aiStore.highlightProfiles[profileKey];
+        profile = Unproxy(this.rootStore.aiStore.highlightProfiles[profileKey]);
 
         if(!profile.index) {
           profile.index = indexId;
@@ -1176,6 +1176,8 @@ class CompositionStore {
 
     this.initialized = true;
 
+    yield this.LoadMyClips({objectId});
+
     this.rootStore.downloadStore.LoadDownloadJobInfo();
 
     if(addToMyLibrary) {
@@ -1519,6 +1521,8 @@ class CompositionStore {
     const store = this.ClipStore({clipId: this.sources[objectId]?.fullClipId});
 
     if(!store) { return; }
+
+    yield store.LoadMyClips();
 
     this.allMyClipIds[objectId] = yield Promise.all(
       store.myClips.map(async clip => {

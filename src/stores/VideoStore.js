@@ -646,6 +646,18 @@ class VideoStore {
     return this.myClips.slice(-1)[0];
   }
 
+  ModifyMyClip(clip) {
+    const index = this.myClips.findIndex(otherClip => clip.clipId == otherClip.clipId);
+
+    if(index >= 0) {
+      this.myClips[index].name = clip.name || this.myClips[index].name;
+      this.myClips[index].clipInFrame = clip.clipInFrame || this.myClips[index].clipInFrame;
+      this.myClips[index].clipOutFrame = clip.clipOutFrame || this.myClips[index].clipOutFrame;
+
+      this.SaveMyClips();
+    }
+  }
+
   RemoveMyClip(clipId) {
     this.myClips = this.myClips.filter(clip => clip.clipId !== clipId);
 

@@ -185,9 +185,9 @@
   }
 
   &--secondary {
-    background-color: var(--background-secondary);
+    background-color: transparent;
     border: 1px solid var(--button-color);
-    color: var(--button-color);
+    color: var(--button-text-color);
   }
 
   &:disabled,

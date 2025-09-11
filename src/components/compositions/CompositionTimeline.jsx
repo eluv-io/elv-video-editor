@@ -4,7 +4,7 @@ import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {rootStore, compositionStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
-import {AsyncButton, Confirm, Icon, IconButton, SMPTEInput} from "@/components/common/Common";
+import {Confirm, IconButton, SMPTEInput, StyledButton} from "@/components/common/Common";
 import MarkedSlider from "@/components/common/MarkedSlider";
 
 import {
@@ -31,6 +31,7 @@ import LinkIcon from "@/assets/icons/v2/external-link.svg";
 import DiscardDraftIcon from "@/assets/icons/v2/discard-draft.svg";
 import ReloadIcon from "@/assets/icons/v2/reload.svg";
 import ReorderIcon from "@/assets/icons/v2/sort-clips.svg";
+import {MyClipsButton} from "@/components/timeline/Controls.jsx";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -163,28 +164,32 @@ const TimelineBottomBar = observer(() => {
       <div className={S("toolbar__spacer")}/>
       {
         !compositionStore.compositionObject ? null :
-          <AsyncButton
-            autoContrast
-            h={30}
-            px="xs"
-            color="gray.6"
-            variant="outline"
-            disabled={compositionStore.saved && !compositionStore.hasUnsavedChanges}
-            onClick={async () => await Confirm({
-              title: "Discard Changes",
-              text: "Are you sure you want to discard changes to this composition? This action cannot be undone",
-              onConfirm: () => {
-                navigate("/compositions");
-                compositionStore.DiscardDraft({...compositionStore.compositionObject, removeComposition: true});
-                compositionStore.Reset();
-              }
-            })}
-          >
-            <Icon style={{height: 18, width: 18}} icon={DiscardDraftIcon}/>
-            <span style={{marginLeft: 10}}>
+          <>
+            <MyClipsButton
+              store={compositionStore.sourceVideoStore}
+              Select={clip => compositionStore.SetSelectedClip({clipId: clip.clipId, source: "side-panel"})}
+              Delete={clipId => compositionStore.RemoveMyClip(clipId)}
+            />
+            <StyledButton
+              variant="secondary"
+              small
+              color="--text-tertiary"
+              textColor="--text-secondary"
+              icon={DiscardDraftIcon}
+              disabled={compositionStore.saved && !compositionStore.hasUnsavedChanges}
+              onClick={async () => await Confirm({
+                title: "Discard Changes",
+                text: "Are you sure you want to discard changes to this composition? This action cannot be undone",
+                onConfirm: () => {
+                  navigate("/compositions");
+                  compositionStore.DiscardDraft({...compositionStore.compositionObject, removeComposition: true});
+                  compositionStore.Reset();
+                }
+              })}
+            >
               Discard Draft
-            </span>
-          </AsyncButton>
+            </StyledButton>
+          </>
       }
     </div>
   );

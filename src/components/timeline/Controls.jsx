@@ -2,7 +2,7 @@ import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
-import {aiStore, editStore, videoStore} from "@/stores/index.js";
+import {aiStore, compositionStore, editStore, videoStore} from "@/stores/index.js";
 import {
   AsyncButton,
   ClipTimeInfo,
@@ -10,7 +10,7 @@ import {
   FormTextArea,
   Icon,
   IconButton,
-  Modal
+  Modal, StyledButton
 } from "@/components/common/Common.jsx";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import {Button, Checkbox, Tooltip} from "@mantine/core";
@@ -28,7 +28,7 @@ import ShareIcon from "@/assets/icons/v2/share.svg";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
-const MyClipsModal = observer(({opened, highlightedClipId, Close}) => {
+const MyClipsModal = observer(({store, opened, highlightedClipId, Select, Delete, Close}) => {
   const [showDownload, setShowDownload] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [submodalOpened, setSubmodalOpened] = useState(false);
@@ -51,12 +51,17 @@ const MyClipsModal = observer(({opened, highlightedClipId, Close}) => {
   }, [showDownload, showShare]);
 
   const Seek = clip => {
-    videoStore.SetClipMark({
+    if(Select) {
+      Select(clip);
+      return;
+    }
+
+    store.SetClipMark({
       inFrame: clip.clipInFrame || 0,
       outFrame: clip.clipOutFrame || videoStore.totalFrames - 1
     });
 
-    videoStore.Seek(clip.clipInFrame);
+    store.Seek(clip.clipInFrame);
   };
 
   return (
@@ -70,13 +75,13 @@ const MyClipsModal = observer(({opened, highlightedClipId, Close}) => {
         className={S("my-clips-modal")}
       >
         {
-          videoStore.myClips.length === 0 ?
+          store.myClips.length === 0 ?
             <div className={S("my-clips-modal__empty")}>
               No saved clips for this content
             </div> :
             <div className={S("my-clips-modal__content")}>
               {
-                videoStore.myClips.map(clip =>
+                store.myClips.map(clip =>
                   <div
                     key={`my-clip-${clip.clipId}`}
                     role="button"
@@ -88,7 +93,7 @@ const MyClipsModal = observer(({opened, highlightedClipId, Close}) => {
                     className={S("my-clips-modal__item", clip.clipId === highlightedClipId ? "my-clips-modal__item--highlighted" : "")}
                   >
                     <PreviewThumbnail
-                      store={videoStore}
+                      store={store}
                       startFrame={clip.clipInFrame}
                       endFrame={clip.clipOutFrame}
                       className={S("my-clips-modal__item-thumbnail")}
@@ -100,7 +105,7 @@ const MyClipsModal = observer(({opened, highlightedClipId, Close}) => {
                         </div>
                       </Tooltip>
                       <ClipTimeInfo
-                        store={videoStore}
+                        store={store}
                         clipInFrame={clip.clipInFrame}
                         clipOutFrame={clip.clipOutFrame}
                         className={S("my-clips-modal__item-duration")}
@@ -141,7 +146,12 @@ const MyClipsModal = observer(({opened, highlightedClipId, Close}) => {
                             title: "Remove Clip",
                             text: "Are you sure you want to remove this clip?",
                             onConfirm: () => {
-                              videoStore.RemoveMyClip(clip.clipId);
+                              if(Delete) {
+                                Delete(clip.clipId);
+                                return;
+                              }
+
+                              store.RemoveMyClip(clip.clipId);
                               setRenderIndex(renderIndex + 1);
                             }
                           });
@@ -157,7 +167,7 @@ const MyClipsModal = observer(({opened, highlightedClipId, Close}) => {
       {
         !showDownload ? null :
           <DownloadModal
-            store={videoStore}
+            store={store}
             opened={submodalOpened}
             onClose={() => setShowDownload(false)}
           />
@@ -165,7 +175,7 @@ const MyClipsModal = observer(({opened, highlightedClipId, Close}) => {
       {
         !showShare ? null :
           <ShareModal
-            store={videoStore}
+            store={store}
             opened={submodalOpened}
             onClose={() => setShowShare(false)}
           />
@@ -174,18 +184,136 @@ const MyClipsModal = observer(({opened, highlightedClipId, Close}) => {
   );
 });
 
-export const MyClipsButton = observer(() => {
+export const MyClipsButton = observer(({store, Select, Delete}) => {
   const [showModal, setShowModal] = useState(false);
 
   return (
     <>
-      <button onClick={() => setShowModal(true)} className={S("my-clips-button")}>
-        <Icon icon={ClipIcon} />
-        <span>My Clips</span>
-      </button>
+      <StyledButton
+        icon={ClipIcon}
+        small
+        color="--text-tertiary"
+        textColor="--text-secondary"
+        variant="secondary"
+        onClick={() => setShowModal(true)}
+      >
+        My Clips
+      </StyledButton>
       <MyClipsModal
+        store={store || videoStore}
         opened={showModal}
+        Select={Select}
+        Delete={Delete}
         Close={() => setShowModal(false)}
+      />
+    </>
+  );
+});
+
+export const CompositionClipModalButton = observer(({clip}) => {
+  const [showModal, setShowModal] = useState(false);
+  const [showMyClipsModal, setShowMyClipsModal] = useState(false);
+  const [highlightedClipId, setHighlightedClipId] = useState(undefined);
+  const [name, setName] = useState(clip.name);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setSubmitting(false);
+  }, [showModal]);
+
+  const Submit = async () => {
+    if(!name) { return; }
+
+    setSubmitting(true);
+
+    await compositionStore.AddMyClip({
+      ...clip,
+      name
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    setShowModal(false);
+    setShowMyClipsModal(true);
+    setHighlightedClipId(clip.clipId);
+  };
+
+  return (
+    <>
+      {
+        !showMyClipsModal ? null :
+          <MyClipsModal
+            opened
+            store={compositionStore.sourceVideoStore}
+            highlightedClipId={highlightedClipId}
+            Close={() => setShowMyClipsModal(false)}
+          />
+      }
+      {
+        !showModal ? null :
+          <Modal
+            title={<div className={S("form__title")}>Save to My Clips</div>}
+            opened
+            size={600}
+            centered
+            onClose={() => setShowModal(false)}
+          >
+            <div className={S("form", "clip-form")}>
+              <PreviewThumbnail
+                store={compositionStore.sourceVideoStore}
+                startFrame={clip.clipInFrame}
+                endFrame={clip.clipOutFrame}
+                className={S("clip-form__preview")}
+              />
+              <div className={S("form__inputs")}>
+                <div className={S("clip-form__title")}>
+                  {clip.name}
+                </div>
+                <ClipTimeInfo
+                  store={compositionStore.sourceVideoStore}
+                  clipInFrame={clip.clipInFrame}
+                  clipOutFrame={clip.clipOutFrame}
+                  className={S("clip-form__details")}
+                />
+                <div className={S("clip-form__offering")}>
+                  Offering: {clip.offeringKey === "default" ? "Default" : clip.offeringKey}
+                </div>
+                <FormTextArea
+                  autoFocus
+                  label="Clip Name"
+                  autosize
+                  value={name}
+                  onChange={event => setName(event.target.value)}
+                  className={S("clip-form__description")}
+                />
+                <div className={S("form__actions")}>
+                  <Button
+                    w={150}
+                    color="gray.5"
+                    onClick={() => setShowModal(false)}
+                    variant="subtle"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    w={150}
+                    loading={submitting}
+                    autoContrast
+                    color="gray.5"
+                    disabled={!name}
+                    onClick={Submit}
+                  >
+                    Submit
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Modal>
+      }
+      <IconButton
+        icon={ClipIcon}
+        label="Save Clip"
+        onClick={() => setShowModal(true)}
       />
     </>
   );
@@ -231,6 +359,7 @@ export const ClipModalButton = observer(() => {
         !showMyClipsModal ? null :
           <MyClipsModal
             opened
+            store={videoStore}
             highlightedClipId={highlightedClipId}
             Close={() => setShowMyClipsModal(false)}
           />
@@ -265,7 +394,7 @@ export const ClipModalButton = observer(() => {
                 </div>
                 <FormTextArea
                   autoFocus
-                  label="Clip Description"
+                  label="Clip Name"
                   autosize
                   value={name}
                   onChange={event => setName(event.target.value)}
