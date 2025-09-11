@@ -780,7 +780,7 @@ class CompositionStore {
     let profile;
     if(type === "ai") {
       if(profileKey) {
-        profile = this.rootStore.aiStore.highlightProfiles[profileKey];
+        profile = Unproxy(this.rootStore.aiStore.highlightProfiles[profileKey]);
 
         if(!profile.index) {
           profile.index = indexId;
@@ -1175,6 +1175,8 @@ class CompositionStore {
     yield this.GetCompositionPlayoutUrl();
 
     this.initialized = true;
+
+    yield this.LoadMyClips({objectId});
 
     this.rootStore.downloadStore.LoadDownloadJobInfo();
 

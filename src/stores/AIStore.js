@@ -257,97 +257,88 @@ class AIStore {
   }) {
     if(!this.highlightsAvailable) { return; }
 
-    try {
-      let options = { iq: objectId };
-      if(prompt) {
-        options.customization = prompt;
-      }
-
-      if(maxDuration) {
-        options.max_length = maxDuration * 1000;
-      }
-
-      if(profile) {
-        options.profile = Unproxy(profile);
-      }
-
-      let initialStatus;
-      if(!regenerate) {
-        initialStatus = yield this.QueryAIAPI({
-          method: "POST",
-          path: UrlJoin("ml", "highlight_composition", "request"),
-          objectId,
-          allowStatus: [409],
-          body: {
-            cache: "only",
-            job_details: options
-          }
-        });
-      }
-
-      if(!initialStatus || regenerate) {
-        initialStatus = yield this.QueryAIAPI({
-          method: "POST",
-          path: UrlJoin("ml", "highlight_composition", "request"),
-          objectId,
-          allowStatus: [409],
-          body: {
-            cache: "refresh",
-            job_details: options
-          }
-        });
-
-        yield new Promise(resolve => setTimeout(resolve, 1000));
-      }
-
-      if(initialStatus?.status === "COMPLETE") {
-        return initialStatus;
-      }
-
-      const jobId = initialStatus.job_id;
-
-      let status;
-      do {
-        if(status) {
-          StatusCallback?.(status);
-          yield new Promise(resolve => setTimeout(resolve, 5000));
-        }
-
-        const response = yield this.QueryAIAPI({
-          method: "GET",
-          path: UrlJoin("ml", "highlight_composition", "request", jobId),
-          objectId,
-          format: ""
-        });
-
-        if(!response) {
-          this.highlightsAvailable = false;
-          return;
-        }
-
-        if(response.status === 204 && !regenerate) {
-          return this.GenerateAIHighlights({...arguments[0], regenerate: true});
-        }
-
-        status = yield response.json();
-
-        if(!wait) {
-          return status;
-        }
-
-        if(status?.status === "ERROR") {
-          throw status;
-        }
-      } while(status?.status !== "COMPLETE");
-
-      return status;
-    } catch(error) {
-      if(error?.status === "ERROR" && error?.display_error?.includes("not configured")) {
-        this.highlightsAvailable = false;
-      }
-
-      throw error;
+    let options = { iq: objectId };
+    if(prompt) {
+      options.customization = prompt;
     }
+
+    if(maxDuration) {
+      options.max_length = maxDuration * 1000;
+    }
+
+    if(profile) {
+      options.profile = Unproxy(profile);
+    }
+
+    let initialStatus;
+    if(!regenerate) {
+      initialStatus = yield this.QueryAIAPI({
+        method: "POST",
+        path: UrlJoin("ml", "highlight_composition", "request"),
+        objectId,
+        allowStatus: [409],
+        body: {
+          cache: "only",
+          job_details: options
+        }
+      });
+    }
+
+    if(!initialStatus || regenerate) {
+      initialStatus = yield this.QueryAIAPI({
+        method: "POST",
+        path: UrlJoin("ml", "highlight_composition", "request"),
+        objectId,
+        allowStatus: [409],
+        body: {
+          cache: "refresh",
+          job_details: options
+        }
+      });
+
+      yield new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    if(initialStatus?.status === "COMPLETE") {
+      return initialStatus;
+    }
+
+    const jobId = initialStatus.job_id;
+
+    let status;
+    do {
+      if(status) {
+        StatusCallback?.(status);
+        yield new Promise(resolve => setTimeout(resolve, 5000));
+      }
+
+      const response = yield this.QueryAIAPI({
+        method: "GET",
+        path: UrlJoin("ml", "highlight_composition", "request", jobId),
+        objectId,
+        format: ""
+      });
+
+      if(!response) {
+        return;
+      }
+
+      if(response.status === 204 && !regenerate) {
+        return this.GenerateAIHighlights({...arguments[0], regenerate: true});
+      }
+
+      status = yield response.json();
+
+      if(!wait) {
+        return status;
+      }
+
+      if(status?.status === "ERROR") {
+        throw status;
+      }
+    } while(status?.status !== "COMPLETE");
+
+    return status;
   });
 
   // Search indexes

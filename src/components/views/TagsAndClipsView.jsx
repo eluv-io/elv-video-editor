@@ -23,6 +23,7 @@ const TagsAndClipsView = observer(({mode}) => {
     rootStore.SetPage(mode);
     keyboardControlsStore.SetActiveStore(videoStore);
     groundTruthStore.LoadGroundTruthPools();
+    videoStore.LoadMyClips();
 
     if(videoStore.ready) {
       const clipPoints = videoStore.ParseClipParams();

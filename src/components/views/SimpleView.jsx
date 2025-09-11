@@ -2,14 +2,14 @@ import {observer} from "mobx-react-lite";
 import React, {useEffect} from "react";
 import VideoSection from "@/components/video/VideoSection.jsx";
 import {SimpleTimeline} from "@/components/timeline/Timeline.jsx";
-import {compositionStore, keyboardControlsStore, rootStore, videoStore} from "@/stores/index.js";
+import {keyboardControlsStore, rootStore, videoStore} from "@/stores/index.js";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 
 const SimpleView = observer(() => {
   useEffect(() => {
     rootStore.SetPage("simple");
     keyboardControlsStore.SetActiveStore(videoStore);
-    compositionStore.LoadMyClips({objectId: videoStore.videoObject.objectId});
+    videoStore.LoadMyClips();
   }, []);
 
   useEffect(() => {

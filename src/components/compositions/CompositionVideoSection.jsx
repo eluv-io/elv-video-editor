@@ -16,6 +16,7 @@ import {AsyncButton, Confirm, FormTextArea, Icon, IconButton, Modal, SelectInput
 import {Button, Tooltip} from "@mantine/core";
 import {useLocation} from "wouter";
 import {ClipTooltipContent} from "@/components/compositions/Clips.jsx";
+import {CompositionClipModalButton} from "@/components/timeline/Controls.jsx";
 
 import ZoomInIcon from "@/assets/icons/v2/zoom-in.svg";
 import ZoomOutIcon from "@/assets/icons/v2/zoom-out.svg";
@@ -122,6 +123,10 @@ const ClipControls = observer(() => {
       </div>
       <div className={S("toolbar__separator")}/>
       <div className={S("toolbar__controls-group")}>
+        {
+          compositionStore.myClipIds.includes(compositionStore.originalSelectedClipId) ? null :
+            <CompositionClipModalButton clip={compositionStore.selectedClip} />
+        }
         <IconButton
           label="Append Clip to Composition"
           icon={AddClipIcon}
