@@ -1522,6 +1522,8 @@ class CompositionStore {
 
     if(!store) { return; }
 
+    yield store.LoadMyClips();
+
     this.allMyClipIds[objectId] = yield Promise.all(
       store.myClips.map(async clip => {
         if(!this.clips[clip.clipId]) {
