@@ -41,7 +41,7 @@ const TagSwitch = observer(() => {
         classNames={{track: S("search__toggle-bg")}}
         onChange={event => navigate(event.currentTarget.checked ? "/clips" : "/tags")}
       />
-      <label>My Clips</label>
+      <label>Clips</label>
     </div>
   );
 });
