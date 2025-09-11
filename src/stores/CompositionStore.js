@@ -613,6 +613,7 @@ class CompositionStore {
   });
 
   InitializeClip = flow(function * ({
+    clipId,
     name,
     objectId,
     offering="default",
@@ -640,7 +641,7 @@ class CompositionStore {
       store.videoHandler.FrameToTime(source ? Math.floor(((clipOutFrame || store.totalFrames) - (clipInFrame || 0)) / 2) : clipInFrame).toFixed(2)
     );
 
-    const clipId = this.rootStore.NextId();
+    clipId = clipId || this.rootStore.NextId();
     this.clips[clipId] = {
       clipId,
       name: name || `${store.videoObject?.name || store.name} (Full Content)`,
@@ -717,6 +718,8 @@ class CompositionStore {
     name,
     key,
     prompt,
+    profileKey,
+    indexId,
     maxDuration,
     offeringKey,
     regenerate=false
@@ -774,12 +777,22 @@ class CompositionStore {
     };
 
     let items = [];
+    let profile;
     if(type === "ai") {
+      if(profileKey) {
+        profile = this.rootStore.aiStore.highlightProfiles[profileKey];
+
+        if(!profile.index) {
+          profile.index = indexId;
+        }
+      }
+
       const highlights = (yield this.rootStore.aiStore.GenerateAIHighlights({
         objectId: sourceObjectId,
         prompt,
         maxDuration,
         regenerate,
+        profile,
         StatusCallback: status => this.compositionGenerationStatus = status
       })).clips;
 
@@ -818,7 +831,10 @@ class CompositionStore {
         offeringKey,
         frameRate,
         type,
-        prompt
+        prompt,
+        promptDuration: maxDuration,
+        profileKey,
+        profile
       }
     };
 
@@ -1049,6 +1065,8 @@ class CompositionStore {
       sourceObjectId: objectId,
       sourceOfferingKey,
       initialPrompt: metadata?.source_info?.prompt,
+      initialPromptDuration: metadata?.source_info?.promptDuration,
+      initialProfile: metadata?.source_info?.profile,
       name: metadata?.display_name || metadata?.name,
       compositionKey,
       metadata
@@ -1221,7 +1239,9 @@ class CompositionStore {
     this.LoadHighlights({
       store,
       objectId,
-      prompt: primary ? this.compositionObject?.initialPrompt : ""
+      prompt: primary ? this.compositionObject?.initialPrompt : "",
+      maxDuration: primary ? this.compositionObject.initialPromptDuration : undefined,
+      profile: primary ? this.compositionObject.initialProfile : "",
     });
 
     yield this.LoadMyClips({objectId});
@@ -1249,12 +1269,14 @@ class CompositionStore {
     this.selectedSourceId = objectId;
   }
 
-  LoadHighlights = flow(function * ({store, objectId, prompt, wait=true}) {
+  LoadHighlights = flow(function * ({store, objectId, prompt, maxDuration, profile, wait=true}) {
     try {
       this.sources[objectId].highlightsLoading = true;
       const highlights = (yield this.rootStore.aiStore.GenerateAIHighlights({
         objectId,
         prompt,
+        maxDuration,
+        profile,
         wait
       }))?.clips || [];
 
@@ -1491,38 +1513,25 @@ class CompositionStore {
     });
   }
 
-  MyClips({objectId}) {
-    return (this.allMyClipIds[objectId] || [])
-      .map(clipId => this.clips[clipId])
-      .filter(clip =>
-        clip.objectId === (this.compositionObject?.objectId || this.rootStore.selectedObjectId) &&
-        (
-          !this.filter ||
-          clip.name?.toLowerCase()?.includes(this.filter)
-        )
-      )
-      .sort((a, b) => a.addedAt < b.addedAt ? 1 : -1);
-  }
-
   LoadMyClips = flow(function * ({objectId}) {
-    const clips = yield this.client.walletClient.ProfileMetadata({
-      type: "app",
-      appId: "video-editor",
-      mode: "private",
-      key: `my-clips-${objectId}${this.rootStore.localhost ? "-dev" : ""}`
-    });
+    if(!this.initialized) { return; }
 
-    if(clips) {
-      this.allMyClipIds[objectId] = yield Promise.all(
-        JSON.parse(this.client.utils.FromB64(clips))
-          .filter(clip => clip.objectId === objectId)
-          // Load clips
-          .map(async clip => await this.InitializeClip(clip))
-      );
-    }
+    const store = this.ClipStore({clipId: this.sources[objectId]?.fullClipId});
+
+    if(!store) { return; }
+
+    this.allMyClipIds[objectId] = yield Promise.all(
+      store.myClips.map(async clip => {
+        if(!this.clips[clip.clipId]) {
+          await this.InitializeClip(clip);
+        }
+
+        return clip.clipId;
+      })
+    );
   });
 
-  AddMyClip({clip}) {
+  AddMyClip(clip) {
     clip = {
       addedAt: Date.now(),
       clipId: this.rootStore.NextId(),
@@ -1545,7 +1554,7 @@ class CompositionStore {
     ]
       .sort((a, b) => this.clips[a].clipInFrame < this.clips[b].clipInFrame ? -1 : 1);
 
-    this.SaveMyClips({objectId: clip.objectId});
+    this.clipStores[clip.storeKey]?.AddMyClip(clip);
 
     this.SetSelectedClip({clipId: clip.clipId, source: "side-panel"});
 
@@ -1563,22 +1572,9 @@ class CompositionStore {
       this.SetSelectedClip({clipId: this.sourceFullClipId, source: "source-content"});
     }
 
-    if(clip) {
-      delete this.clips[clipId];
-      this.SaveMyClips({objectId: clip.objectId});
-    }
-  }
+    delete this.clips[clipId];
 
-  async SaveMyClips({objectId}) {
-    await this.client.walletClient.SetProfileMetadata({
-      type: "app",
-      appId: "video-editor",
-      mode: "private",
-      key: `my-clips-${objectId}${this.rootStore.localhost ? "-dev" : ""}`,
-      value: this.client.utils.B64(
-        JSON.stringify(this.MyClips({objectId}))
-      )
-    });
+    this.clipStores[clip.storeKey]?.RemoveMyClip(clip.clipId);
   }
 
   SearchClips = flow(function * ({store, objectId, query}) {

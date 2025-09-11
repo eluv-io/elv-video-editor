@@ -25,10 +25,10 @@ import RegenerateIcon from "@/assets/icons/rotate-ccw.svg";
 import LinkIcon from "@/assets/icons/v2/external-link.svg";
 import DownloadIcon from "@/assets/icons/v2/download.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
+import XIcon from "@/assets/icons/v2/x.svg";
 
 import AIImageGray from "@/assets/images/composition-manual.svg";
 import AIImageColor from "@/assets/images/composition-ai.svg";
-
 
 const S = CreateModuleClassMatcher(BrowserStyles, SearchStyles);
 
@@ -37,6 +37,7 @@ const Summary = observer(({result}) => {
   const [generating, setGenerating] = useState(false);
   const [summary, setSummary] = useState(false);
   const [summaryError, setSummaryError] = useState(false);
+  const [showSummary, setShowSummary] = useState(result.type !== "video");
 
   const Generate = async ({cacheOnly, regenerate}={}) => {
     try {
@@ -64,19 +65,54 @@ const Summary = observer(({result}) => {
       setSummaryError(error);
     } finally {
       setLoading(false);
+      setGenerating(false);
+    }
+  };
+
+  const Delete = async () => {
+    try {
+      if(result.type === "video") {
+        await aiStore.DeleteClipSummary({
+          objectId: result.objectId,
+          startTime: result.startTime,
+          endTime: result.endTime,
+        });
+
+        setSummary(undefined);
+      } else {
+        await aiStore.DeleteImageSummary({
+          objectId: result.objectId,
+          filePath: result.filePath
+        });
+        setSummary(undefined);
+      }
+    } finally {
+      setSummary(undefined);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     if(!result?.objectId) { return; }
 
-    Generate({cacheOnly: true});
+    if(result.type === "image") {
+      Generate({cacheOnly: true});
+    } else {
+      aiStore.client.ContentObjectMetadata({
+        libraryId: result.libraryId,
+        objectId: result.objectId,
+        metadataSubtree: "video_tags"
+      })
+        .then(tags => {
+          if(tags) {
+            Generate({cacheOnly: true});
+            setShowSummary(true);
+          }
+        });
+    }
   }, []);
 
-  if(
-    loading ||
-    (result.type === "video" && !rootStore.searchVideoStore?.videoObject?.metadata?.video_tags)
-  ) { return null; }
+  if(loading || !showSummary) { return null; }
 
   if(summaryError) {
     return (
@@ -132,12 +168,20 @@ const Summary = observer(({result}) => {
       <div className={S("result__summary")}>
         { summary.summary }
       </div>
-      <IconButton
-        disabled={!summary}
-        icon={RegenerateIcon}
-        onClick={async () => Generate({regenerate: true})}
-        className={S("result__regenerate-summary")}
-      />
+      <div className={S("result__text-actions")}>
+        <IconButton
+          disabled={!summary}
+          icon={RegenerateIcon}
+          onClick={async () => Generate({regenerate: true})}
+          className={S("result__text-action")}
+        />
+        <IconButton
+          disabled={!summary}
+          icon={XIcon}
+          onClick={async () => await Delete()}
+          className={S("result__text-action")}
+        />
+      </div>
     </div>
   );
 });

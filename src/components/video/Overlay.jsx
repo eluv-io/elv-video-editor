@@ -157,7 +157,6 @@ const RectangleOverlayEdit = observer(({points, setPoints, pos}) => {
   return (
     <div
       onMouseUp={() => setDragging(false)}
-      onMouseLeave={() => setDragging(false)}
       onMouseMove={event => {
         if(!dragging) { return; }
 

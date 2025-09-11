@@ -1,7 +1,9 @@
 import {flow, makeAutoObservable, runInAction} from "mobx";
 import UrlJoin from "url-join";
-import {Unproxy} from "@/utils/Utils.js";
+import {Slugify, Unproxy} from "@/utils/Utils.js";
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
+
+const GLOBAL_PROFILE_OBJECT_ID = "iq__3MVS3kjshtnAodRv4qLebBvH3oXb";
 
 class AIStore {
   searchIndexes = [];
@@ -9,7 +11,8 @@ class AIStore {
   selectedSearchIndexId;
   searchIndexUpdateProgress = {};
   tagAggregationProgress = 0;
-  highlightsAvailable = true;
+  highlightProfiles;
+  defaultHighlightProfileKey;
 
   searchResults = {};
 
@@ -28,6 +31,51 @@ class AIStore {
     return this.searchIndexes.find(index => index.id === this.selectedSearchIndexId);
   }
 
+  get highlightsAvailable() {
+    return this.searchIndexes.length > 0 && Object.keys(this.highlightProfiles || {}).length > 0;
+  }
+
+  get highlightProfileInfo() {
+    if(!this.highlightProfiles) {
+      return {};
+    }
+
+    let profiles = {};
+    Object.keys(this.highlightProfiles || {})
+      .filter(key => !this.highlightProfiles[key].hidden)
+      .forEach(key => {
+        const type = this.highlightProfiles[key].type;
+        if(!profiles[type]) {
+          profiles[type] = {};
+        }
+
+        const subtype = this.highlightProfiles[key].subtype;
+        if(!profiles[type][subtype]) {
+          profiles[type][subtype] = [];
+        }
+
+        profiles[type][subtype]
+          .push({
+            ...this.highlightProfiles[key],
+            key
+          });
+
+        profiles[type][subtype].sort((a, b) =>
+          a?.name?.toLowerCase()?.includes("default") ?
+            b?.name?.toLowerCase()?.includes("default") ? 0 : -1 :
+            b?.name?.toLowerCase()?.includes("default") ? 1 : 0
+        );
+      });
+
+    return profiles;
+  }
+
+  // Load search indexes and highlight profiles
+  Initialize = flow(function * () {
+    yield this.LoadSearchIndexes();
+    yield this.LoadHighlightProfiles();
+  });
+
   QueryAIAPI = flow(function * ({
     server="ai",
     method="GET",
@@ -38,8 +86,10 @@ class AIStore {
     queryParams={},
     body,
     stringifyBody=true,
+    authTokenInBody=false,
     headers={},
-    format="json"
+    format="json",
+    allowStatus=[],
   }) {
     const url = new URL(`https://${server}.contentfabric.io/`);
     url.pathname = path;
@@ -84,6 +134,12 @@ class AIStore {
 
     url.searchParams.set("authorization", authToken);
 
+    if(authTokenInBody) {
+      body.append ?
+        body.append("authorization", authToken) :
+        body.authorization = authToken;
+    }
+
     if(body && stringifyBody) {
       body = JSON.stringify(body);
     }
@@ -97,7 +153,7 @@ class AIStore {
       }
     );
 
-    if(response.status >= 400) {
+    if(response.status >= 400 && !allowStatus.includes(response.status)) {
       throw response;
     }
 
@@ -133,6 +189,22 @@ class AIStore {
     });
   });
 
+  DeleteImageSummary = flow(function * ({objectId, filePath}) {
+    yield this.rootStore.aiStore.QueryAIAPI({
+      server: "ai",
+      method: "DELETE",
+      path: UrlJoin("mlcache", "summary", "q", objectId, "rep", "image_summarize"),
+      objectId,
+      channelAuth: true,
+      queryParams: {
+        path: filePath,
+        engine: "summary"
+      }
+    });
+
+    this.rootStore.ClearResource({key: "imageSummary", id: `${objectId}-${filePath}`});
+  });
+
   GenerateClipSummary = flow(function * ({objectId, startTime, endTime, regenerate=false, cacheOnly=false}) {
     return yield this.rootStore.LoadResource({
       key: "clipSummary",
@@ -157,11 +229,36 @@ class AIStore {
     });
   });
 
-  GenerateAIHighlights = flow(function * ({objectId, prompt, maxDuration, regenerate=false, wait=true, StatusCallback}) {
+  DeleteClipSummary = flow(function * ({objectId, startTime, endTime}) {
+    yield this.rootStore.aiStore.QueryAIAPI({
+      server: "ai",
+      method: "DELETE",
+      path: UrlJoin("mlcache", "summary", "q", objectId, "rep", "summarize"),
+      objectId,
+      channelAuth: true,
+      queryParams: {
+        start_time: parseInt(startTime * 1000),
+        end_time: parseInt(endTime * 1000),
+      }
+    });
+
+    this.rootStore.ClearResource({key: "clipSummary", id: `${objectId}-${startTime}-${endTime}`});
+  });
+
+
+  GenerateAIHighlights = flow(function * ({
+    objectId,
+    prompt,
+    maxDuration,
+    profile,
+    regenerate=false,
+    wait=true,
+    StatusCallback
+  }) {
     if(!this.highlightsAvailable) { return; }
 
     try {
-      let options = {};
+      let options = { iq: objectId };
       if(prompt) {
         options.customization = prompt;
       }
@@ -170,24 +267,44 @@ class AIStore {
         options.max_length = maxDuration * 1000;
       }
 
-      const initialStatus = yield this.QueryAIAPI({
-        method: "GET",
-        path: UrlJoin("ml", "highlight_composition", "q", objectId),
-        objectId,
-        queryParams: options,
-        format: "none"
-      });
+      if(profile) {
+        options.profile = Unproxy(profile);
+      }
+
+      let initialStatus;
+      if(!regenerate) {
+        initialStatus = yield this.QueryAIAPI({
+          method: "POST",
+          path: UrlJoin("ml", "highlight_composition", "request"),
+          objectId,
+          allowStatus: [409],
+          body: {
+            cache: "only",
+            job_details: options
+          }
+        });
+      }
 
       if(!initialStatus || regenerate) {
-        yield this.QueryAIAPI({
+        initialStatus = yield this.QueryAIAPI({
           method: "POST",
-          path: UrlJoin("ml", "highlight_composition", "q", objectId),
+          path: UrlJoin("ml", "highlight_composition", "request"),
           objectId,
-          queryParams: {...options, regenerate: true}
+          allowStatus: [409],
+          body: {
+            cache: "refresh",
+            job_details: options
+          }
         });
 
         yield new Promise(resolve => setTimeout(resolve, 1000));
       }
+
+      if(initialStatus?.status === "COMPLETE") {
+        return initialStatus;
+      }
+
+      const jobId = initialStatus.job_id;
 
       let status;
       do {
@@ -198,10 +315,9 @@ class AIStore {
 
         const response = yield this.QueryAIAPI({
           method: "GET",
-          path: UrlJoin("ml", "highlight_composition", "q", objectId),
+          path: UrlJoin("ml", "highlight_composition", "request", jobId),
           objectId,
-          queryParams: options,
-          format: "none"
+          format: ""
         });
 
         if(!response) {
@@ -252,16 +368,25 @@ class AIStore {
 
       if(!indexerInfo) { return; }
 
-      const indexerFields = indexerInfo.fields;
       const fuzzySearchFields = {};
+      const eventTracks = [];
       const excludedFields = ["music", "action", "segment", "title_type", "asset_type"];
-      Object.keys(indexerFields || {})
+      Object.keys(indexerInfo.fields || {})
         .filter(field => {
-          const isTextType = indexerFields[field].type === "text";
+          const isTextType = indexerInfo.fields[field].type === "text";
           const isNotExcluded = !excludedFields.some(exclusion => field.includes(exclusion));
           return isTextType && isNotExcluded;
         })
         .forEach(field => {
+          (indexerInfo.fields[field]?.paths || [])
+            .forEach(path => {
+              const fieldEvent = path.match(/metadata_tags.shot_tags.tags.text.([^.]*)/)?.[1];
+
+              if(fieldEvent && !eventTracks.includes(fieldEvent)) {
+                eventTracks.push(fieldEvent);
+              }
+            });
+
           fuzzySearchFields[`f_${field}`] = {
             label: field,
             value: true
@@ -278,6 +403,7 @@ class AIStore {
 
       return {
         fields: fuzzySearchFields,
+        eventTracks,
         type: indexerInfo.document?.prefix,
         versionHash
       };
@@ -693,6 +819,125 @@ class AIStore {
       console.error("Failed to update search index", indexId);
       console.error(error);
     }
+  });
+
+  LoadHighlightProfiles = flow(function * () {
+    let highlightProfileInfo = (yield this.client.ContentObjectMetadata({
+      libraryId: yield this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId}),
+      objectId: this.rootStore.tenantInfoObjectId,
+      metadataSubtree: "public",
+      select: [
+        "default_domain",
+        "default_profile/highlight_composition",
+        "profiles/highlight_composition"
+      ]
+    })) || {};
+
+    const highlightProfiles = highlightProfileInfo.profiles?.highlight_composition || {};
+
+    if(this.rootStore.network === "main") {
+      const defaults = yield this.client.ContentObjectMetadata({
+        libraryId: yield this.client.ContentObjectLibraryId({objectId: GLOBAL_PROFILE_OBJECT_ID}),
+        objectId: GLOBAL_PROFILE_OBJECT_ID,
+        metadataSubtree: "public/profiles/highlight_composition"
+      });
+
+      Object.keys(defaults || {}).forEach(key =>
+        // Ensure no index is set for default
+        delete defaults[key].index
+      );
+
+      Object.keys(defaults || {}).forEach(key =>
+        highlightProfiles[key] = {
+          ...defaults[key],
+          ...(highlightProfiles[key] || {})
+        }
+      );
+    }
+
+    Object.keys(highlightProfiles || {})
+      .forEach(key =>
+        highlightProfiles[key].key = key
+      );
+
+    this.highlightProfiles = highlightProfiles;
+
+    const defaultProfileKey = highlightProfileInfo.default_profile?.highlight_composition || highlightProfileInfo.default_domain;
+
+    if(highlightProfiles[defaultProfileKey]) {
+      this.defaultHighlightProfileKey = defaultProfileKey;
+    }
+  });
+
+  SaveHighlightProfile = flow(function * ({profile, originalProfileKey}) {
+    let key = profile.key || originalProfileKey;
+    if(!key.startsWith("user")) {
+      // This is a new copy of an existing profile
+      key = `user__${profile.type}__${profile.subtype}_${Slugify(profile.name)}`;
+    }
+
+    profile = Unproxy({...profile, key});
+
+    profile.key = key;
+    profile.original_profile_key = profile.original_profile_key || originalProfileKey;
+    profile.created_at = profile.created_at || new Date().toISOString();
+    profile.updated_at = new Date().toISOString();
+    profile.author = yield this.client.CurrentAccountAddress();
+
+    const libraryId = yield this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId});
+    const objectId = this.rootStore.tenantInfoObjectId;
+    const {writeToken} = yield this.client.EditContentObject({
+      libraryId,
+      objectId,
+    });
+
+    yield this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: UrlJoin("/public", "profiles", "highlight_composition", key),
+      metadata: profile
+    });
+
+    yield this.client.FinalizeContentObject({
+      libraryId,
+      objectId,
+      writeToken,
+      commitMessage: `EVIE - ${key !== originalProfileKey ? "Create" : "Update"} highlight profile ${key}`
+    });
+
+    yield this.LoadHighlightProfiles();
+
+    return key;
+  });
+
+  DeleteHighlightProfile = flow(function * ({profileKey}) {
+    const profile = this.highlightProfiles[profileKey];
+
+    const libraryId = yield this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId});
+    const objectId = this.rootStore.tenantInfoObjectId;
+    const {writeToken} = yield this.client.EditContentObject({
+      libraryId,
+      objectId,
+    });
+
+    yield this.client.DeleteMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: UrlJoin("/public", "profiles", "highlight_composition", profileKey),
+    });
+
+    yield this.client.FinalizeContentObject({
+      libraryId,
+      objectId,
+      writeToken,
+      commitMessage: `EVIE - Remove highlight profile ${profileKey}`
+    });
+
+    yield this.LoadHighlightProfiles();
+
+    return this.highlightProfileInfo[profile.type][profile.subtype][0]?.key;
   });
 }
 

@@ -630,7 +630,7 @@ class GroundTruthStore {
       ...originalFiles,
       this.FormatAsset({
         ...image,
-        fullPath: UrlJoin("./", "files", "frames", image.filename),
+        fullPath: UrlJoin("/frames", image.filename),
         label,
         description,
         source
@@ -928,15 +928,13 @@ class GroundTruthStore {
       force,
       bind: this,
       Load: flow(function * () {
-        let body = {
-          embedding_model: model,
-          gt_url: url
-        };
+        const body = new FormData();
+        body.append("embedding_model", model);
 
         if(imageBlob) {
-          body = new FormData();
-          body.append("embedding_model", model);
-          body.append("frame_img", new Blob([yield imageBlob.bytes()], {type: "image/jpeg"}), "dummy.jpg");
+          body.append("frame_img", imageBlob, "dummy.jpg");
+        } else {
+          body.append("gt_url", url);
         }
 
         while(this.activeCheckCount >= 5) {
@@ -952,7 +950,8 @@ class GroundTruthStore {
             objectId: poolId,
             channelAuth: true,
             body,
-            stringifyBody: !imageBlob
+            stringifyBody: false,
+            authTokenInBody: true
           });
         } catch(error) {
           console.error(error);

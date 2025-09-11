@@ -760,7 +760,10 @@ const Timeline = observer(({content, simple=false}) => {
         className={S("timeline-section__content")}
       >
         <TimelineSeekBar hoverSeek={hoverSeek} />
-        { content }
+        {
+          !videoStore.initialized ? null :
+            content
+        }
         <TimelineScaleBar hoverSeek={hoverSeek} />
       </div>
 

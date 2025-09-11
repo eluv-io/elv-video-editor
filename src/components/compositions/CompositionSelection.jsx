@@ -2,24 +2,32 @@ import CompositionStyles from "@/assets/stylesheets/modules/compositions.module.
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
-import {CreateModuleClassMatcher, Slugify} from "@/utils/Utils.js";
+import {Capitalize, CreateModuleClassMatcher, Slugify, StorageHandler} from "@/utils/Utils.js";
 import {
   AsyncButton, Confirm,
   FormNumberInput,
   FormSelect,
-  FormTextInput,
+  FormTextInput, Icon,
   Loader,
   Modal
 } from "@/components/common/Common.jsx";
 import {LibraryBrowser, ObjectBrowser} from "@/components/nav/Browser.jsx";
 import {Redirect} from "wouter";
-import {rootStore, compositionStore} from "@/stores/index.js";
+import {rootStore, compositionStore, aiStore, videoStore} from "@/stores/index.js";
 import {Button, Checkbox, Group} from "@mantine/core";
 import UrlJoin from "url-join";
 import {LoadVideo} from "@/stores/Helpers.js";
 
+import CompositionIcon from "@/assets/icons/v2/composition.svg";
+import FolderIcon from "@/assets/icons/v2/library.svg";
+import EditIcon from "@/assets/icons/Edit.svg";
+import AISparkleIcon from "@/assets/icons/v2/ai-sparkle1.svg";
+
 import ManualCompositionSelectionImage from "@/assets/images/composition-manual.svg";
 import AICompositionSelectionImage from "@/assets/images/composition-ai.svg";
+import SportsCompositionSelectionImage from "@/assets/images/composition-sports.svg";
+import EntertainmentCompositionSelectionImage from "@/assets/images/composition-entertainment.svg";
+import HighlightProfileForm from "@/components/compositions/HighlightProfileForm.jsx";
 
 const S = CreateModuleClassMatcher(CompositionStyles);
 
@@ -57,8 +65,99 @@ const SourceSelectionModal = observer(({Select, Cancel}) => {
   );
 });
 
-const CompositionCreationModal = observer(({type, Cancel}) => {
+const ProfileTypeSelection = observer(({Select, Cancel}) => {
+  const availableTypes = Object.keys(aiStore.highlightProfileInfo || {});
+  const [selectedType, setSelectedType] = useState(
+    StorageHandler.get({type: "local", key: `highlight-type-${rootStore.tenantContractId}`}) || ""
+  );
+  const [remember, setRemember] = useState(false);
+
+  useEffect(() => {
+    if(availableTypes.length === 1) {
+      Select(availableTypes[0]);
+    }
+  }, []);
+
+  return (
+    <div key="form" className={S("composition-selection")}>
+      <form onSubmit={event => event.preventDefault()} className={S("composition-form")}>
+        <div className={S("composition-form__title")}>
+          <Icon icon={CompositionIcon} />
+          Create New Compositions with AI
+        </div>
+        <div className={S("composition-form__profile-type")}>
+          <div className={S("composition-form__profile-type-label")}>Choose a category to get started</div>
+          <button
+            onClick={() => setSelectedType("sports")}
+            className={S("selection-block", selectedType === "sports" ? "selection-block--selected" : "")}
+          >
+            <img alt="Sports" src={SportsCompositionSelectionImage} className={S("selection-block__image")}/>
+            <div className={S("selection-block__text")}>
+              <div className={S("selection-block__title")}>
+                Sports
+              </div>
+              <div className={S("selection-block__subtitle")}>
+                Let AI give you a head start on highlight compositions.
+              </div>
+            </div>
+          </button>
+          <button
+            onClick={() => setSelectedType("entertainment")}
+            className={S("selection-block", selectedType === "entertainment" ? "selection-block--selected" : "")}
+          >
+            <img alt="Entertainment" src={EntertainmentCompositionSelectionImage} className={S("selection-block__image")}/>
+            <div className={S("selection-block__text")}>
+              <div className={S("selection-block__title")}>
+                Entertainment
+              </div>
+              <div className={S("selection-block__subtitle")}>
+                Let AI give you a head start on short form compositions.
+              </div>
+            </div>
+          </button>
+        </div>
+        <div className={S("composition-form__actions")}>
+          <Checkbox
+            label="Remember my choice for next time"
+            value={remember}
+            onChange={event => setRemember(event.target.checked)}
+            fz="sm"
+            className={S("composition-form__checkbox")}
+          />
+          <Button
+            color="gray.6"
+            variant="subtle"
+            w={150}
+            onClick={Cancel}
+          >
+            Cancel
+          </Button>
+          <Button
+            disabled={!selectedType}
+            color="gray.1"
+            autoContrast
+            w={150}
+            onClick={() => {
+              Select(selectedType);
+
+              if(remember) {
+                StorageHandler.set({type: "local", key: `highlight-type-${rootStore.tenantContractId}`, value: selectedType});
+              } else {
+                StorageHandler.remove({type: "local", key: `highlight-type-${rootStore.tenantContractId}`, value: selectedType});
+              }
+            }}
+          >
+            Continue
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+});
+
+const CompositionCreationModal = observer(({type, defaultProfileType="", Cancel}) => {
   const [showSourceModal, setShowSourceModal] = useState(false);
+  const [showProfileEditModal, setShowProfileEditModal] = useState(false);
   const [keyExists, setKeyExists] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [sourceInfo, setSourceInfo] = useState(undefined);
@@ -66,20 +165,28 @@ const CompositionCreationModal = observer(({type, Cancel}) => {
   const [options, setOptions] = useState({
     creating: false,
     created: false,
-    sourceId: rootStore.selectedObjectId,
-    sourceName: rootStore.selectedObjectName,
+    sourceId: rootStore.selectedObjectId || videoStore.videoObject?.objectId,
+    sourceName: rootStore.selectedObjectName || videoStore.videoObject?.name,
     name: "",
     key: "",
     prompt: "",
+    indexId: aiStore.selectedSearchIndexId,
+    profileType: defaultProfileType,
+    profileSubtype: "",
+    profileKey: "",
     maxDuration: undefined,
     regenerate: false,
     length: undefined
   });
 
   const key = options.key || Slugify(options.name);
+  const availableProfiles = (aiStore.highlightProfileInfo || {})[options.profileType];
+  const selectedProfile = aiStore.highlightProfiles[options.profileKey];
 
   useEffect(() => {
-    if(!compositionStore.compositionFormOptions) { return; }
+    if(!compositionStore.compositionFormOptions) {
+      return;
+    }
 
     setOptions({...options, ...compositionStore.compositionFormOptions});
   }, []);
@@ -91,7 +198,9 @@ const CompositionCreationModal = observer(({type, Cancel}) => {
   useEffect(() => {
     clearTimeout(keyCheckTimeout);
 
-    if(!options.sourceId || !key) { return; }
+    if(!options.sourceId || !key) {
+      return;
+    }
 
     keyCheckTimeout = setTimeout(() => {
       compositionStore.__CheckCompositionKeyExists({objectId: options.sourceId, key})
@@ -100,7 +209,9 @@ const CompositionCreationModal = observer(({type, Cancel}) => {
   }, [options.sourceId, key]);
 
   useEffect(() => {
-    if(!options.sourceId) { return; }
+    if(!options.sourceId) {
+      return;
+    }
 
     setErrorMessage(undefined);
     setSourceInfo(undefined);
@@ -120,6 +231,59 @@ const CompositionCreationModal = observer(({type, Cancel}) => {
       .catch(error => setErrorMessage(error?.toString()));
   }, [options.sourceId]);
 
+  useEffect(() => {
+    const availableProfiles = (aiStore.highlightProfileInfo || {})[options.profileType];
+
+    if(!availableProfiles) {
+      return;
+    }
+
+    // Automatically reselect profile subtype + profile key on change based on what's available, defaults and last selected
+
+    const lastProfile = aiStore.highlightProfiles[
+      StorageHandler.get({type: "local", key: `highlight-profile-${options.profileType}-${rootStore.tenantContractId}`})
+    ];
+    const defaultProfile = aiStore.highlightProfiles[aiStore.defaultHighlightProfileKey];
+    const selectedProfile = aiStore.highlightProfiles[options.profileKey];
+
+    let subtype = options.profileSubtype;
+    let key = options.profileKey;
+    if(
+      selectedProfile?.type !== options.profileType ||
+      selectedProfile?.subtype !== options.profileSubtype ||
+      selectedProfile?.key !== options.profileKey
+    ) {
+      // Selected type doesn't contain selected subtype, need to pick default
+      if(lastProfile?.type === options.profileType && (!options.profileSubtype || options.profileSubtype === lastProfile.subtype)) {
+        subtype = lastProfile.subtype;
+        key = lastProfile.key;
+      } else if(defaultProfile?.type === options.profileType && (!options.profileSubtype || options.profileSubtype === defaultProfile.subtype)) {
+        subtype = defaultProfile.subtype;
+        key = defaultProfile.key;
+      } else {
+        subtype = Object.keys(availableProfiles).includes(options.profileSubtype) ?
+          options.profileSubtype : Object.keys(availableProfiles)[0];
+        key = availableProfiles[subtype]?.[0]?.key;
+      }
+    }
+
+    setOptions({
+      ...options,
+      profileSubtype: subtype,
+      profileKey: key
+    });
+  }, [options.profileType, options.profileSubtype]);
+
+  useEffect(() => {
+    if(!options.profileKey) { return; }
+
+    StorageHandler.set({
+      type: "local",
+      key: `highlight-profile-${options.profileType}-${rootStore.tenantContractId}`,
+      value: options.profileKey
+    });
+  }, [options.profileKey]);
+
   // Generation complete - redirect to composition view
   if(options.creating && compositionStore.compositionGenerationStatus?.created) {
     compositionStore.SetCompositionFormOptions({});
@@ -134,6 +298,7 @@ const CompositionCreationModal = observer(({type, Cancel}) => {
       <div key="status" className={S("composition-selection")}>
         <div className={S("composition-selection__creating")}>
           <div className={S("composition-selection__title")}>
+            <Icon icon={type === "ai" ? AISparkleIcon : CompositionIcon} />
             {
               type === "ai" ?
                 "Generating AI Highlights..." :
@@ -151,6 +316,15 @@ const CompositionCreationModal = observer(({type, Cancel}) => {
           }
         </div>
       </div>
+    );
+  }
+
+  if(type === "ai" && !options.profileType) {
+    return (
+      <ProfileTypeSelection
+        Select={type => setOptions({...options, profileType: type})}
+        Cancel={Cancel}
+      />
     );
   }
 
@@ -186,34 +360,77 @@ const CompositionCreationModal = observer(({type, Cancel}) => {
     <div key="form" className={S("composition-selection")}>
       <form onSubmit={event => event.preventDefault()} className={S("composition-form")}>
         <div className={S("composition-form__title")}>
+          <Icon icon={CompositionIcon} />
           {
             options.type === "manual" ?
-              "Create Composition" :
-              "Create Highlight Compositions with AI"
+              "Create New Composition" :
+              "Create New Compositions with AI"
           }
         </div>
-        <Button color="gray.5" autoContrast onClick={() => setShowSourceModal(true)}>
-          Choose Source Content
-        </Button>
         {
-          !options.sourceName ? null :
-            <FormTextInput
-              disabled
-              label="Source"
-              value={options.sourceName}
-            />
+          type !== "ai" || !availableProfiles?.[options.profileSubtype] ? null :
+            <>
+              <div className={S("composition-form__input-group")}>
+                <FormSelect
+                  label="Profile Type"
+                  value={options.profileSubtype}
+                  options={
+                    Object.keys(availableProfiles).map(key => ({
+                      label: Capitalize(key), value: key
+                    }))
+                  }
+                  onChange={value => setOptions({...options, profileSubtype: value})}
+                />
+                <FormSelect
+                  label="Profile"
+                  value={options.profileKey}
+                  options={
+                    availableProfiles[options.profileSubtype].map(profile => ({
+                      label: profile.name || key, value: profile.key
+                    }))
+                  }
+                  onChange={value => setOptions({...options, profileKey: value})}
+                  icon={EditIcon}
+                  iconOnClick={() => setShowProfileEditModal(true)}
+                  className={S("form__input--wide")}
+                />
+              </div>
+              {
+                selectedProfile?.index ? null :
+                  <FormSelect
+                    label="Search Index"
+                    value={options.indexId}
+                    onChange={value => setOptions({...options, indexId: value})}
+                    options={
+                      aiStore.searchIndexes.map(searchIndex =>
+                        ({label: searchIndex.name || "", value: searchIndex.id})
+                      )
+                    }
+                  />
+              }
+            </>
         }
         <FormTextInput
-          label="Composition Name"
-          value={options.name}
-          onChange={event => setOptions({...options, name: event.target.value})}
+          onClick={() => setShowSourceModal(true)}
+          placeholder="Choose Source Content"
+          label="Source"
+          value={options.sourceName}
+          onChange={() => {}}
+          icon={FolderIcon}
         />
-        <FormTextInput
-          label="Composition Key"
-          value={options.key}
-          placeholder={key}
-          onChange={event => setOptions({...options, key: event.target.value})}
-        />
+        <div className={S("composition-form__input-group")}>
+          <FormTextInput
+            label="Composition Name"
+            value={options.name}
+            onChange={event => setOptions({...options, name: event.target.value})}
+          />
+          <FormTextInput
+            label="Composition Key"
+            value={options.key}
+            placeholder={key}
+            onChange={event => setOptions({...options, key: event.target.value})}
+          />
+        </div>
         {
           !sourceInfo || !sourceInfo.availableOfferings || Object.keys(sourceInfo.availableOfferings).length === 0 ? null :
             <FormSelect
@@ -234,20 +451,6 @@ const CompositionCreationModal = observer(({type, Cancel}) => {
         {
           type !== "ai" ? null :
             <>
-              {
-                /*
-                  <FormSelect
-                    label="Search Index"
-                    value={aiStore.selectedSearchIndexId}
-                    onChange={value => aiStore.SetSelectedSearchIndex(value)}
-                    options={
-                      aiStore.searchIndexes.map(searchIndex =>
-                        ({label: searchIndex.name || "", value: searchIndex.id})
-                      )
-                    }
-                  />
-                 */
-              }
               <FormNumberInput
                 label="Maximum Duration (seconds)"
                 placeholder="Automatic"
@@ -276,9 +479,18 @@ const CompositionCreationModal = observer(({type, Cancel}) => {
             color="gray.6"
             variant="subtle"
             w={150}
-            onClick={Cancel}
+            onClick={() => {
+              if(type === "ai" && !defaultProfileType) {
+                setOptions({...options, profileType: ""});
+              } else {
+                Cancel();
+              }
+            }}
           >
-            Cancel
+            {
+              type === "ai" && !defaultProfileType ?
+                "Back" : "Cancel"
+            }
           </Button>
           <AsyncButton
             tooltip={error}
@@ -311,6 +523,8 @@ const CompositionCreationModal = observer(({type, Cancel}) => {
                   prompt: options.prompt,
                   maxDuration: options.maxDuration,
                   regenerate: options.regenerate,
+                  profileKey: options.profileKey,
+                  indexId: options.indexId,
                   offeringKey
                 });
               } catch(error) {
@@ -341,6 +555,19 @@ const CompositionCreationModal = observer(({type, Cancel}) => {
             Cancel={() => setShowSourceModal(false)}
           />
       }
+      {
+        !showProfileEditModal ? null :
+          <HighlightProfileForm
+            profileKey={options.profileKey}
+            Close={key => {
+              setShowProfileEditModal(false);
+
+              if(key) {
+                setOptions({...options, profileKey: key});
+              }
+            }}
+          />
+      }
     </div>
   );
 });
@@ -348,12 +575,28 @@ const CompositionCreationModal = observer(({type, Cancel}) => {
 let keyCheckTimeout;
 const CompositionSelection = observer(() => {
   const [type, setType] = useState(undefined);
+  const [skipDefaultType, setSkipDefaultType] = useState(false);
+  const [defaultType, setDefaultType] = useState(
+    StorageHandler.get({type: "local", key: `highlight-type-${rootStore.tenantContractId}`}) || ""
+  );
+
+  useEffect(() => {
+    if(!type) {
+      setSkipDefaultType(false);
+    }
+
+    setDefaultType(StorageHandler.get({type: "local", key: `highlight-type-${rootStore.tenantContractId}`}) || "");
+  }, [type]);
+
+  if(!aiStore.highlightProfiles) {
+    return null;
+  }
 
   return (
     <>
       <div key="selection" className={S("composition-selection")}>
-        <button onClick={() => setType("manual")} className={S("selection-block", "selection-block--manual")}>
-          <img src={ManualCompositionSelectionImage} className={S("selection-block__image")}/>
+        <button onClick={() => setType("manual")} className={S("selection-block")}>
+          <img alt="Manual" src={ManualCompositionSelectionImage} className={S("selection-block__image")}/>
           <div className={S("selection-block__text")}>
             <div className={S("selection-block__title")}>
               Choose a Source & Create
@@ -363,8 +606,17 @@ const CompositionSelection = observer(() => {
             </div>
           </div>
         </button>
-        <button onClick={() => setType("ai")} className={S("selection-block", "selection-block--ai")}>
-          <img src={AICompositionSelectionImage} className={S("selection-block__image")}/>
+        <button onClick={() => setType("ai")} className={S("selection-block")}>
+          <img
+            alt="AI"
+            src={
+              defaultType === "sports" ?
+                SportsCompositionSelectionImage :
+                defaultType === "entertainment" ? EntertainmentCompositionSelectionImage :
+                  AICompositionSelectionImage
+            }
+            className={S("selection-block__image")}
+          />
           <div className={S("selection-block__text")}>
             <div className={S("selection-block__title")}>
               Create Compositions with AI
@@ -372,6 +624,21 @@ const CompositionSelection = observer(() => {
             <div className={S("selection-block__subtitle")}>
               Let AI give you a head start on highlight compositions.
             </div>
+            {
+              !defaultType ? null :
+                <div role="button"
+                  onClick={event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    setSkipDefaultType(true);
+                    setType("ai");
+                  }}
+                  className={S("selection-block__options")}
+                >
+                  More Options
+                </div>
+            }
           </div>
         </button>
       </div>
@@ -379,6 +646,7 @@ const CompositionSelection = observer(() => {
         !type ? null :
           <Modal
             withCloseButton={false}
+            closeOnEscape={false}
             alwaysOpened
             centered
             size={600}
@@ -387,6 +655,7 @@ const CompositionSelection = observer(() => {
           >
             <CompositionCreationModal
               type={type}
+              defaultProfileType={skipDefaultType ? undefined : defaultType}
               Cancel={() => setType(undefined)}
             />
           </Modal>

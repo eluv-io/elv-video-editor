@@ -888,36 +888,35 @@ export const GroundTruthEntityForm = observer(({
               value={formData.description}
               onChange={event => setFormData({...formData, description: event.target.value})}
             />
+            {
+              Object.keys(attributeConfig).map(attributeKey =>
+                attributeConfig[attributeKey]?.options?.length > 0 ?
+                  <FormMultiSelect
+                    key={`attr-${attributeKey}`}
+                    label={attributeKey}
+                    value={(formData.meta[attributeKey] || "").split(",").map(s => s.trim()).filter(s => s)}
+                    options={attributeConfig[attributeKey].options}
+                    onChange={values => setFormData({
+                        ...formData,
+                        meta: {
+                          ...formData.meta,
+                          [attributeKey]: values.join(",")
+                        }
+                      }
+                    )}
+                  /> :
+                  <FormTextInput
+                    key={`attr-${attributeKey}`}
+                    label={attributeKey}
+                    value={formData.meta[attributeKey]}
+                    onChange={event => setFormData({
+                      ...formData,
+                      meta: {...formData.meta, [attributeKey]: event.target.value}
+                    })}
+                  />
+              )
+            }
           </>
-        }
-
-        {
-          Object.keys(attributeConfig).map(attributeKey =>
-            attributeConfig[attributeKey]?.options?.length > 0 ?
-              <FormMultiSelect
-                key={`attr-${attributeKey}`}
-                label={attributeKey}
-                value={(formData.meta[attributeKey] || "").split(",").map(s => s.trim()).filter(s => s)}
-                options={attributeConfig[attributeKey].options}
-                onChange={values => setFormData({
-                    ...formData,
-                    meta: {
-                      ...formData.meta,
-                      [attributeKey]: values.join(",")
-                    }
-                  }
-                )}
-              /> :
-              <FormTextInput
-                key={`attr-${attributeKey}`}
-                label={attributeKey}
-                value={formData.meta[attributeKey]}
-                onChange={event => setFormData({
-                  ...formData,
-                  meta: {...formData.meta, [attributeKey]: event.target.value}
-                })}
-              />
-          )
         }
 
         {

@@ -80,6 +80,8 @@ class VideoStore {
   clipInFrame;
   clipOutFrame;
 
+  myClips = [];
+
   get scaleMagnitude() { return this.scaleMax - this.scaleMin; }
 
   get scaleMinTime() { return this.duration ? this.ProgressToTime(this.scaleMin) : 0; }
@@ -200,6 +202,7 @@ class VideoStore {
     }
 
     this.thumbnailStore = new ThumbnailStore(this);
+    this.myClips = [];
   }
 
   ToggleVideoControls(enable) {
@@ -225,6 +228,8 @@ class VideoStore {
       const videoObject = yield LoadVideo({objectId, writeToken, preferredOfferingKey, channel: this.channel});
 
       this.videoObject = videoObject;
+
+      yield this.LoadMyClips();
 
       this.name = videoObject.name;
       this.versionHash = videoObject.versionHash;
@@ -587,6 +592,64 @@ class VideoStore {
     }));
 
     this.loading = false;
+  }
+
+  LoadMyClips = flow(function * () {
+    const objectId = this.videoObject.objectId;
+    const clips = yield this.rootStore.client.walletClient.ProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: `my-clips-${objectId}${this.rootStore.localhost ? "-dev" : ""}`
+    });
+
+    if(clips) {
+      this.myClips = yield Promise.all(
+        JSON.parse(this.rootStore.client.utils.FromB64(clips))
+          .filter(clip => clip)
+          .filter(clip => clip.objectId === objectId)
+          .sort((a, b) => a.addedAt < b.addedAt ? -1 : 1)
+          .map(clip => ({...clip, clipId: this.rootStore.NextId()}))
+      );
+    }
+  });
+
+  async SaveMyClips() {
+    const objectId = this.videoObject.objectId;
+
+    await this.rootStore.client.walletClient.SetProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: `my-clips-${objectId}${this.rootStore.localhost ? "-dev" : ""}`,
+      value: this.rootStore.client.utils.B64(
+        JSON.stringify(this.myClips)
+      )
+    });
+  }
+
+  AddMyClip(clip) {
+    this.myClips.push({
+      addedAt: Date.now(),
+      clipId: clip.clipId || this.rootStore.NextId(),
+      name: (clip.name || "Saved Clip").trim(),
+      libraryId: clip.libraryId,
+      objectId: clip.objectId,
+      offering: clip.offering,
+      versionHash: clip.versionHash,
+      clipInFrame: clip.clipInFrame || 0,
+      clipOutFrame: clip.clipOutFrame || this.totalFrames - 1
+    });
+
+    this.SaveMyClips();
+
+    return this.myClips.slice(-1)[0];
+  }
+
+  RemoveMyClip(clipId) {
+    this.myClips = this.myClips.filter(clip => clip.clipId !== clipId);
+
+    this.SaveMyClips();
   }
 
   ToggleTrack(label) {

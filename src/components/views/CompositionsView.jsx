@@ -21,10 +21,11 @@ const CompositionsView = observer(() => {
       compositionStore.SetCompositionFormOptions(undefined);
 
       if(objectId !== compositionStore.compositionObject?.objectId) {
-        compositionStore.LoadMyClips({objectId});
         compositionStore.SetCompositionObject({objectId, compositionKey, addToMyLibrary: true})
           .then(() => rootStore.SetSelectedObjectId(objectId, compositionStore.videoObject.name));
       }
+
+      compositionStore.LoadMyClips({objectId});
     }
   }, [objectId, compositionKey]);
 
