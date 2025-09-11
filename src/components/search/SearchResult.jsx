@@ -14,7 +14,7 @@ import {DownloadModal} from "@/components/download/Download.jsx";
 import {Tabs} from "@mantine/core";
 import {AISearchBar} from "@/components/nav/Browser.jsx";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
-import {SearchResults} from "@/components/search/SearchResults.jsx";
+import {GroupedSearchResults, SearchResults} from "@/components/search/SearchResults.jsx";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 import PlayIcon from "@/assets/icons/Play.svg";
@@ -390,10 +390,10 @@ const SearchResult = observer(() => {
   }
 
   // Try and get 16:9 default size for video
-  const contentRatio = 100 * ((window.innerHeight - 300) * 16 / 9) / (window.innerWidth - 85);
+  const contentRatio = 100 * ((window.innerHeight - 310) * 16 / 9) / (window.innerWidth - 85);
 
   return (
-    <div key={`result-${queryB58}-${resultIndex}`} className={S("browser-page")}>
+    <div className={S("browser-page")}>
       <div className={S("browser")}>
         <AISearchBar basePath="/" initialQuery={query} />
         <h1 className={S("browser__header")}>
@@ -406,7 +406,7 @@ const SearchResult = observer(() => {
           <span>Search Results</span>
           <span className={S("browser__header-chevron")}>▶</span>
           <Linkish to={UrlJoin("/", queryB58)}>
-            {query}
+            {query?.split("music:")[1] || query}
           </Linkish>
           <span className={S("browser__header-chevron")}>▶</span>
           <span className={S("browser__header-last")}>
@@ -420,10 +420,23 @@ const SearchResult = observer(() => {
         </h1>
         <PanelGroup direction="horizontal" className={S("result-page")}>
           <Panel id="side-panel" order={1} minSize={25}>
-            <SearchResults className={S("result-page__side-panel")} />
+            {
+              query.startsWith("music") ?
+                <GroupedSearchResults
+                  groupKey="f_music"
+                  small
+                  className={S("result-page__grouped-side-panel")}
+                  groupClassName={S("result-page__grouped-side-panel-list")}
+                /> :
+                <SearchResults
+                  key={`result-${queryB58}-${resultIndex}`}
+                  scrollPreservationKey="side-panel"
+                  className={S("result-page__side-panel")}
+                />
+            }
           </Panel>
           <PanelResizeHandle />
-          <Panel id="content" order={2} minSize={30} defaultSize={contentRatio} >
+          <Panel key={`result-${queryB58}-${resultIndex}`} id="content" order={2} minSize={30} defaultSize={contentRatio} >
               {
                 result.type === "video" ?
                   <ClipResultPanel result={result} /> :

@@ -58,10 +58,7 @@ const InfiniteScroll = observer(({
 
   useEffect(() => {
     if(!loaded && scrollPreservationKey && scrollPreservationInfo[scrollPreservationKey]?.scroll) {
-      setTimeout(() =>
-          ref.current.scrollTo(0, scrollPreservationInfo[scrollPreservationKey].scroll - 100),
-        100
-      );
+      setTimeout(() => ref.current?.scrollTo(0, scrollPreservationInfo[scrollPreservationKey].scroll - 100), 200);
     }
 
     if(loading || (!loaded && children?.length > 0)) {

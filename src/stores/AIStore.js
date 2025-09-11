@@ -359,11 +359,16 @@ class AIStore {
 
       if(!indexerInfo) { return; }
 
+      let musicSupported = false;
       const fuzzySearchFields = {};
       const eventTracks = [];
       const excludedFields = ["music", "action", "segment", "title_type", "asset_type"];
       Object.keys(indexerInfo.fields || {})
         .filter(field => {
+          if(field === "music") {
+            musicSupported = true;
+          }
+
           const isTextType = indexerInfo.fields[field].type === "text";
           const isNotExcluded = !excludedFields.some(exclusion => field.includes(exclusion));
           return isTextType && isNotExcluded;
@@ -396,6 +401,7 @@ class AIStore {
         fields: fuzzySearchFields,
         eventTracks,
         type: indexerInfo.document?.prefix,
+        musicSupported,
         versionHash
       };
     } catch(error) {
@@ -517,7 +523,7 @@ class AIStore {
 
   /* Search */
 
-  Search = flow(function * ({query, limit=10}) {
+  Search = flow(function * ({query="", limit=10}) {
     let start = 0;
     const resultsKey = `${this.searchIndex.versionHash}-${this.client.utils.B58(query)}`;
 
@@ -535,6 +541,9 @@ class AIStore {
       this.ClearSearchResults();
     }
 
+    const isMusic = query.startsWith("music:") && this.searchIndex.musicSupported;
+    query = query.split("music:")[1] || query;
+
     const type = this.searchIndex.type?.includes("assets") ? "image" : "video";
 
     let {results, contents, pagination} = (yield this.QueryAIAPI({
@@ -543,10 +552,13 @@ class AIStore {
       path: UrlJoin("search", "q", this.searchIndex.versionHash, "rep", "search"),
       queryParams: {
         terms: query,
-        searchFields: Object.keys(this.searchIndex.fields).join(","),
+        search_fields:
+          isMusic ? "f_music" :
+            Object.keys(this.searchIndex.fields).join(","),
+        sort: isMusic ? "f_music" : null,
         start,
         limit,
-        display_fields: "all",
+        display_fields: isMusic ? "f_music" : "all",
         clips: type === "video",
         clip_include_source_tags: true,
         debug: true,

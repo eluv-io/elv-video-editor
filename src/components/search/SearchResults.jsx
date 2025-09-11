@@ -17,7 +17,98 @@ import BackIcon from "@/assets/icons/v2/back.svg";
 const S = CreateModuleClassMatcher(BrowserStyles, SearchStyles);
 
 let batchSize = 36;
-export const SearchResults = observer(({showList, preserveScrollPosition, className=""}) => {
+export const GroupedSearchResults = observer(({
+  showList,
+  groupKey="f_music",
+  scrollPreservationKey,
+  small,
+  className="",
+  groupClassName=""
+}) => {
+  let {queryB58, resultIndex} = useParams();
+  const query = aiStore.client.utils.FromB58ToStr(queryB58);
+
+  if(!aiStore.searchIndex) { return null; }
+
+  resultIndex = typeof resultIndex === "undefined" ? undefined : parseInt(resultIndex);
+
+  let groups = [];
+  let groupContent = {};
+  aiStore.searchResults.results?.forEach(((result, index) => {
+    const group = result.sources?.[0]?.fields?.[groupKey]?.[0];
+
+    if(!group) {
+      return;
+    }
+
+    if(!groups.includes(group)) {
+      groups.push(group);
+      groupContent[group] = [{...result, resultIndex: index}];
+    } else {
+      groupContent[group].push({...result, resultIndex: index});
+    }
+  }));
+
+  let Component = showList ? EntityListItem : EntityCard;
+  return (
+    <InfiniteScroll
+      key={`scroll-${showList}-${aiStore.searchIndex?.versionHash}-${queryB58}`}
+      scrollPreservationKey={scrollPreservationKey ? `search-${aiStore.searchIndex?.versionHash}-${queryB58}-${scrollPreservationKey}` : undefined}
+      withLoader
+      watchList={[query, aiStore.selectedSearchIndexId]}
+      batchSize={
+        resultIndex ? Math.max(resultIndex + 10, batchSize) :
+          batchSize
+      }
+      Update={async () => await aiStore.Search({query, limit: batchSize})}
+      className={JoinClassNames(S("grouped-entity-list", small ? "grouped-entity-list--small" : ""), className)}
+    >
+      {
+        groups.map(groupName =>
+          <div key={`group-${groupName}`} className={S("grouped-entity-list__group")}>
+            <h2 className={S("grouped-entity-list__title")}>
+              { groupName }
+            </h2>
+            <div className={JoinClassNames(S(showList ? "entity-list" : "entity-grid"), groupClassName)}>
+              {
+                (groupContent[groupName] || []).map(result =>
+                  <Component
+                    listItem={showList}
+                    key={`result-${result.resultIndex}`}
+                    onRender={
+                      resultIndex !== result.resultIndex ? undefined :
+                        element => setTimeout(() =>
+                          element.parentElement.scrollTo({
+                            top: element.getBoundingClientRect().top - 200
+                          })
+                        , 100)
+                    }
+                    link={UrlJoin("/", queryB58, result.resultIndex.toString())}
+                    id={result.objectId}
+                    label={result.name}
+                    aspectRatio={aiStore.searchResults.type === "image" ? "square" : "landscape"}
+                    subtitle={result.subtitle}
+                    image={ScaleImage(result.imageUrl, 100)}
+                    badge={
+                      !result.score ? null :
+                        <div className={S("search-result__score")}>
+                          Score: {result.score}
+                        </div>
+                    }
+                    contain
+                    className={S("search-result", result.resultIndex === resultIndex ? "search-result--selected" : "")}
+                  />
+                )
+              }
+            </div>
+          </div>
+        )
+      }
+    </InfiniteScroll>
+  );
+});
+
+export const SearchResults = observer(({showList, scrollPreservationKey, className=""}) => {
   let {queryB58, resultIndex} = useParams();
   const query = aiStore.client.utils.FromB58ToStr(queryB58);
 
@@ -26,10 +117,11 @@ export const SearchResults = observer(({showList, preserveScrollPosition, classN
   resultIndex = typeof resultIndex === "undefined" ? undefined : parseInt(resultIndex);
 
   let Component = showList ? EntityListItem : EntityCard;
+
   return (
     <InfiniteScroll
       key={`scroll-${showList}-${aiStore.searchIndex?.versionHash}-${queryB58}`}
-      scrollPreservationKey={preserveScrollPosition ? `search-${aiStore.searchIndex?.versionHash}-${queryB58}` : undefined}
+      scrollPreservationKey={scrollPreservationKey ? `search-${aiStore.searchIndex?.versionHash}-${queryB58}-${scrollPreservationKey}` : undefined}
       withLoader
       watchList={[query, aiStore.selectedSearchIndexId]}
       batchSize={
@@ -65,10 +157,7 @@ export const SearchResults = observer(({showList, preserveScrollPosition, classN
                 </div>
             }
             contain
-            className={
-              index !== resultIndex ? null :
-                S("search-result--selected")
-            }
+            className={S("search-result", index === resultIndex ? "search-result--selected" : "")}
           />
         )
       }
@@ -110,7 +199,7 @@ const SearchResultsPage = observer(() => {
           </span>
           <span className={S("browser__header-chevron")}>▶</span>
           <span className={S("browser__header-last")}>
-            {query}
+            {query?.split("music:")[1] || query}
           </span>
           <CardDisplaySwitch
             showList={showList}
@@ -118,11 +207,20 @@ const SearchResultsPage = observer(() => {
           />
         </h1>
         <div className={S("list-page", "list-page--search")}>
-          <SearchResults
-            key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
-            preserveScrollPosition
-            showList={showList}
-          />
+          {
+            query.startsWith("music:") ?
+              <GroupedSearchResults
+                key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
+                groupKey="f_music"
+                scrollPreservationKey="main"
+                showList={showList}
+              /> :
+              <SearchResults
+                key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
+                scrollPreservationKey="main"
+                showList={showList}
+              />
+          }
         </div>
       </div>
     </div>
