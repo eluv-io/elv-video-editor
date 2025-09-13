@@ -549,10 +549,13 @@ export const FormTextInput = observer(({icon, iconOnClick, ...props}) =>
   <TextInput
     {...props}
     rightSection={
-      !icon ? null :
-        iconOnClick ?
-          <IconButton icon={icon} onClick={iconOnClick} className={S("form-input__icon")} /> :
-          <Icon icon={icon} className={S("form-input__icon")} />
+      props.rightSection ||
+      (
+        !icon ? null :
+          iconOnClick ?
+            <IconButton icon={icon} onClick={iconOnClick} className={S("form-input__icon")} /> :
+            <Icon icon={icon} className={S("form-input__icon")} />
+      )
     }
     classNames={{
       root: S("form-input"),
@@ -636,10 +639,13 @@ export const FormSelect = observer(({icon, iconOnClick, ...props}) =>
   <Select
     {...props}
     rightSection={
-      !icon ? null :
-        iconOnClick ?
-          <IconButton icon={icon} onClick={iconOnClick} className={S("form-input__icon", "form-input__icon-button")} /> :
-          <Icon icon={icon} className={S("form-input__icon")} />
+      props.rightSection ||
+      (
+        !icon ? null :
+          iconOnClick ?
+            <IconButton icon={icon} onClick={iconOnClick} className={S("form-input__icon", "form-input__icon-button")} /> :
+            <Icon icon={icon} className={S("form-input__icon")} />
+      )
     }
     allowDeselect={false}
     data={props.options || props.data}
@@ -681,7 +687,7 @@ export const SMPTEInput = observer(({store, value, onChange, formInput=false, hi
       setSMPTEInput(originalValue);
       return { frame: store.SMPTEToFrame(originalValue) , smpte: originalValue };
     }
-};
+  };
 
   let Component = formInput ? FormTextInput : Input;
 
