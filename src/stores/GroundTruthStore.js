@@ -964,7 +964,7 @@ class GroundTruthStore {
     });
   });
 
-  RebuildGroundTruthPool = flow(function * ({poolId, model="vgg"}) {
+  RebuildGroundTruthPool = flow(function * ({poolId, model="vgg", wait=true}) {
     const response = yield this.rootStore.aiStore.QueryAIAPI({
       method: "POST",
       path: UrlJoin("/ground-truth", "q", poolId, "rep", "generate_embed_entities"),
@@ -979,6 +979,25 @@ class GroundTruthStore {
         "embedding_model": model
       }
     });
+
+    let status;
+    do {
+      yield new Promise(resolve => setTimeout(resolve, 2000));
+
+      status = yield this.rootStore.aiStore.QueryAIAPI({
+        method: "GET",
+        path: UrlJoin("/ground-truth", "q", poolId, "rep", "embed_entities_status"),
+        objectId: poolId,
+        channelAuth: true,
+        headers: {
+          "Content-Type": "application/json",
+        }
+      });
+
+      if(status.error) {
+        throw status.error;
+      }
+    } while(status.status !== "finished");
 
     this.pools[poolId].embeddingsBuilt = true;
 
