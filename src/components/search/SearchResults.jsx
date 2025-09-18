@@ -199,7 +199,7 @@ const SearchResultsPage = observer(() => {
           </span>
           <span className={S("browser__header-chevron")}>▶</span>
           <span className={S("browser__header-last")}>
-            {query?.split("music:")[1] || query}
+            {query.startsWith("music:") ? query?.split("music:")[1] || "All Results" : query}
           </span>
           <CardDisplaySwitch
             showList={showList}

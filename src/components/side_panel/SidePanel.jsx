@@ -25,6 +25,7 @@ import UpdateIndexIcon from "@/assets/icons/v2/reload.svg";
 import SourcesIcon from "@/assets/icons/v2/folder.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import CaretDownIcon from "@/assets/icons/v2/caret-down.svg";
+import SearchIcon from "@/assets/icons/v2/search.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -124,7 +125,7 @@ export const SearchIndexSelection = observer(({position="bottom-middle", classNa
           <Tooltip disabled={showMenu} label="Select Search Index" openDelay={500}>
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className={JoinClassNames(S("search__button", showMenu ? "search__button--active" : ""), className)}
+              className={JoinClassNames(S("search__index-button", showMenu ? "search__index-button--active" : ""), className)}
             >
               {
                 typeof indexUpdateProgress === "undefined" ?
@@ -369,15 +370,8 @@ const SourceSelection = observer(() => {
   );
 });
 
-let filterTimeout;
-const SidebarFilter = observer(({store, label, sideContent, rightSideContent, afterContent, delay=100, className=""}) => {
+const SidebarFilter = observer(({store, label, sideContent, rightSideContent, afterContent, className=""}) => {
   const [filter, setFilter] = useState(store.filter);
-
-  useEffect(() => {
-    clearTimeout(filterTimeout);
-
-    filterTimeout = setTimeout(() => store.SetFilter(filter), delay);
-  }, [filter]);
 
   return (
     <div className={JoinClassNames(S("search"), className)}>
@@ -386,6 +380,9 @@ const SidebarFilter = observer(({store, label, sideContent, rightSideContent, af
         h={35}
         value={filter}
         onChange={event => setFilter(event.currentTarget.value)}
+        onKeyDown={async event =>
+          event.key === "Enter" && store.SetFilter(filter)
+        }
         aria-label={label}
         className={S("search__input", sideContent ? "search__input--with-side-content" : "")}
         leftSection={
@@ -395,6 +392,11 @@ const SidebarFilter = observer(({store, label, sideContent, rightSideContent, af
         }
         rightSection={
           <div className={S("search__buttons")}>
+            <IconButton
+              noHover
+              icon={SearchIcon}
+              onClick={() => store.SetFilter(filter)}
+            />
             {
               !filter ? null :
                 <IconButton
@@ -410,7 +412,8 @@ const SidebarFilter = observer(({store, label, sideContent, rightSideContent, af
           </div>
 
         }
-        rightSectionWidth={rightSideContent ? "max-content" : undefined}
+        leftSectionWidth="max-content"
+        rightSectionWidth="max-content"
       />
       { afterContent }
     </div>
@@ -651,8 +654,7 @@ export const CompositionSidePanel = observer(() => {
     <div className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
         <SidebarFilter
-          delay={1500}
-          sideContent={<SearchIndexSelection />}
+          sideContent={<SearchIndexSelection className={S("search__index-button--side-panel")} />}
           afterContent={<SourceSelection />}
           store={compositionStore}
           label="Search"

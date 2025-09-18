@@ -137,17 +137,22 @@
     }
   }
 
-  &__button {
+  &__index-button {
     align-items: center;
     color: var(--text-tertiary);
     display: flex;
-    height: 20px;
     justify-content: center;
-    position: absolute;
-    width: 20px;
 
     &--active {
       color: var(--text-highlight);
+
+      * {
+        color: var(--text-highlight);
+      }
+    }
+
+    &--side-panel {
+      margin-left: 10px;
     }
   }
 

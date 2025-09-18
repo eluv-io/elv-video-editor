@@ -542,9 +542,11 @@ class AIStore {
     }
 
     const isMusic = query.startsWith("music:") && this.searchIndex.musicSupported;
-    query = query.split("music:")[1] || query;
+    query = query.split("music:")[1] || "";
 
     const type = this.searchIndex.type?.includes("assets") ? "image" : "video";
+
+    this.searchResults.key = resultsKey;
 
     let {results, contents, pagination} = (yield this.QueryAIAPI({
       update: true,
@@ -566,6 +568,11 @@ class AIStore {
         select: "/public/asset_metadata/title,/public/name,public/asset_metadata/display_title"
       }
     })) || {};
+
+    if(this.searchResults.key !== resultsKey) {
+      // A different search has been performed while this query was made, throw away the result
+      return;
+    }
 
     results = results || contents;
 

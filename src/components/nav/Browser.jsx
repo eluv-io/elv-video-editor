@@ -337,7 +337,7 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery=""}) => 
   const [,navigate] = useLocation();
 
   const Submit = async (searchMusic) => {
-    if(!input) { return; }
+    if(!input && !searchMusic) { return; }
 
     if(["ilib", "iq__", "hq__", "0x"].find(prefix => input.trim().startsWith(prefix))) {
       const item = await browserStore.LookupContent(input);
@@ -367,7 +367,7 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery=""}) => 
           placeholder="Search within content by phrase or keyword"
           onChange={event => setInput(event.target.value)}
           onKeyDown={async event => {
-            if(!input || event.key !== "Enter") { return; }
+            if(event.key !== "Enter") { return; }
 
             Submit(searchMusic);
             //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));

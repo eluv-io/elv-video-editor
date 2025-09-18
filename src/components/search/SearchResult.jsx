@@ -406,7 +406,7 @@ const SearchResult = observer(() => {
           <span>Search Results</span>
           <span className={S("browser__header-chevron")}>▶</span>
           <Linkish to={UrlJoin("/", queryB58)}>
-            {query?.split("music:")[1] || query}
+            {query.startsWith("music:") ? query?.split("music:")[1] || "All Results" : query}
           </Linkish>
           <span className={S("browser__header-chevron")}>▶</span>
           <span className={S("browser__header-last")}>
