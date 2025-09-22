@@ -73,7 +73,7 @@ class AIStore {
   // Load search indexes and highlight profiles
   Initialize = flow(function * () {
     yield this.LoadSearchIndexes();
-    yield this.LoadHighlightProfiles();
+    this.LoadHighlightProfiles();
   });
 
   QueryAIAPI = flow(function * ({

@@ -263,8 +263,6 @@
   &__source-menu {
     background-color: var(--background-secondary);
     border-radius: 5px;
-    display: flex;
-    flex-direction: column;
     gap: 3px;
     max-height: 400px;
     overflow-y: auto;
@@ -293,6 +291,11 @@
     text-align: left;
     transition: background-color 0.15s ease, color 0.15s ease;
     width: 100%;
+    min-height: 50px;
+
+    &:not(:last-child) {
+      margin-bottom: 3px;
+    }
 
     &:hover {
       &:not(.search__source-option--active) {
@@ -310,12 +313,12 @@
   }
 
   &__source-text {
-    max-width: 325px;
+    max-width: 400px;
   }
 
   &__source-option-name {
     color: var(--text-primary);
-    max-width: 290px;
+    max-width: 390px;
   }
 
   &__source-option-id {

@@ -331,7 +331,7 @@ const SourceSelection = observer(() => {
                 >
                   <Tooltip label={name}>
                     <div className={S("search__source-text")}>
-                      <div className={S("search__source-option-name", "ellipsis")}>
+                      <div className={S("search__source-option-name")}>
                         {name}
                       </div>
                       <div className={S("search__source-option-id", "ellipsis")}>
@@ -654,7 +654,10 @@ export const CompositionSidePanel = observer(() => {
     <div className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
         <SidebarFilter
-          sideContent={<SearchIndexSelection className={S("search__index-button--side-panel")} />}
+          sideContent={
+            aiStore.searchIndexes.length === 0 ? null :
+              <SearchIndexSelection className={S("search__index-button--side-panel")} />
+          }
           afterContent={<SourceSelection />}
           store={compositionStore}
           label="Search"

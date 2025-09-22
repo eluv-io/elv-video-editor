@@ -1065,7 +1065,10 @@ const BrowserPage = observer(({Component}) => {
 
   return (
     <div className={S("browser-page")}>
-      <AISearchBar />
+      {
+        aiStore.searchIndexes.length === 0 ? null :
+          <AISearchBar />
+      }
       <div className={S("browser-page__filters")}>
         <Tabs value={location} onChange={navigate} color="var(--text-secondary)">
           <Tabs.List fz={24} fw={800}>
