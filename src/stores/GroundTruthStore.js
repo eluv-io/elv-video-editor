@@ -980,6 +980,10 @@ class GroundTruthStore {
       }
     });
 
+    if(!wait) {
+      return response;
+    }
+
     let status;
     do {
       yield new Promise(resolve => setTimeout(resolve, 2000));

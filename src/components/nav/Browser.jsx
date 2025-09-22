@@ -2,21 +2,24 @@ import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 
 import React, {useState, useEffect} from "react";
 import {observer} from "mobx-react-lite";
-import {rootStore, browserStore, compositionStore, editStore, groundTruthStore, videoStore} from "@/stores";
+import {rootStore, browserStore, compositionStore, editStore, groundTruthStore, videoStore, aiStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {
   AsyncButton,
-  Confirm, CopyableField,
+  Confirm,
+  CopyableField,
   FormSelect,
-  FormTextInput, Icon,
+  FormTextInput,
+  Icon,
   IconButton,
   Linkish,
-  Loader, StyledButton
+  Loader,
+  StyledButton
 } from "@/components/common/Common";
 import SVG from "react-inlinesvg";
-import {Redirect, Route, Switch, useParams, useLocation, useSearchParams} from "wouter";
+import {Redirect, Route, useParams, Switch, useLocation, useSearchParams} from "wouter";
 import UrlJoin from "url-join";
-import {Select, Tabs, Tooltip} from "@mantine/core";
+import {Select, Tabs, Tooltip, Switch as SwitchInput} from "@mantine/core";
 import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
 import {SearchIndexSelection} from "@/components/side_panel/SidePanel.jsx";
 
@@ -39,6 +42,7 @@ import SearchArrowIcon from "@/assets/icons/v2/search-arrow.svg";
 import SearchIcon from "@/assets/icons/v2/search.svg";
 import AssetIcon from "@/assets/icons/v2/asset.svg";
 import PinIcon from "@/assets/icons/v2/pin.svg";
+import MusicIcon from "@/assets/icons/v2/music.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -158,35 +162,37 @@ export const SearchBar = observer(({
 
   return (
     <div className={JoinClassNames(S("search-bar-container"), className)}>
-      <input
-        value={input}
-        placeholder={placeholder || "Title, Content ID, Version Hash"}
-        onChange={event => setInput(event.target.value)}
-        onKeyDown={async event => {
-          if(event.key !== "Enter") { return; }
+      <div className={S("search-input-container")}>
+        <input
+          value={input}
+          placeholder={placeholder || "Title, Content ID, Version Hash"}
+          onChange={event => setInput(event.target.value)}
+          onKeyDown={async event => {
+            if(event.key !== "Enter") { return; }
 
-          Submit(input);
-        }}
-        className={S("search-bar")}
-      />
-      <div className={S("search-bar-container__right-buttons")}>
-        <IconButton
-          label="Filter Results"
-          icon={SearchIcon}
-          onClick={() => Submit(input)}
+            Submit(input);
+          }}
+          className={S("search-bar")}
         />
+        <div className={S("search-input-container__right-buttons")}>
+          <IconButton
+            label="Filter Results"
+            icon={SearchIcon}
+            onClick={() => Submit(input)}
+          />
 
-        {
-          !input ? null :
-            <IconButton
-              label="Clear Filter"
-              icon={XIcon}
-              onClick={() => {
-                setInput("");
-                Submit("");
-              }}
-            />
-        }
+          {
+            !input ? null :
+              <IconButton
+                label="Clear Filter"
+                icon={XIcon}
+                onClick={() => {
+                  setInput("");
+                  Submit("");
+                }}
+              />
+          }
+        </div>
       </div>
     </div>
   );
@@ -326,11 +332,12 @@ export const CardDisplaySwitch = observer(({showList, setShowList}) => {
 });
 
 export const AISearchBar = observer(({basePath="~/search", initialQuery=""}) => {
-  const [input, setInput] = useState(initialQuery);
+  const [input, setInput] = useState(initialQuery.startsWith("music:") ? initialQuery.split("music:")[1] || "" : initialQuery);
+  const [searchMusic, setSearchMusic] = useState(initialQuery.startsWith("music:"));
   const [,navigate] = useLocation();
 
-  const Submit = async () => {
-    if(!input) { return; }
+  const Submit = async (searchMusic) => {
+    if(!input && !searchMusic) { return; }
 
     if(["ilib", "iq__", "hq__", "0x"].find(prefix => input.trim().startsWith(prefix))) {
       const item = await browserStore.LookupContent(input);
@@ -340,36 +347,69 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery=""}) => 
       }
     }
 
-    navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
+    let term = input;
+    if(searchMusic) {
+      term = `music:${input.trim()}`;
+    }
+
+    navigate(UrlJoin(basePath, rootStore.client.utils.B58(term)));
   };
 
   return (
-    <div className={S("search-bar-container", "search-bar-container--ai")}>
+    <div className={S("search-bar-container")}>
       <div className={S("search-bar-container__search-icon")}>
         <Icon icon={SearchIcon} />
       </div>
-      <SearchIndexSelection position="bottom-start" className={S("search-bar-container__button-left")} />
-      <input
-        value={input}
-        placeholder="Search within content by phrase or keyword"
-        onChange={event => setInput(event.target.value)}
-        onKeyDown={async event => {
-          if(!input || event.key !== "Enter") { return; }
+      <div className={S("search-input-container", "search-input-container--ai")}>
+        <SearchIndexSelection position="bottom-start" className={S("search-input-container__button-left")} />
+        <input
+          value={input}
+          placeholder="Search within content by phrase or keyword"
+          onChange={event => setInput(event.target.value)}
+          onKeyDown={async event => {
+            if(event.key !== "Enter") { return; }
 
-          Submit();
-          //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
-        }}
-        className={S("search-bar", "search-bar--ai")}
-      />
-      <div className={S("search-bar-container__right-buttons")}>
-        <IconButton
-          label="Search"
-          icon={SearchArrowIcon}
-          noHover
-          //onClick={() => input && navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)))}
-          onClick={Submit}
+            Submit(searchMusic);
+            //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
+          }}
+          className={S("search-bar", "search-bar--ai")}
         />
+        <div className={S("search-input-container__right-buttons")}>
+          <IconButton
+            label="Search"
+            icon={SearchArrowIcon}
+            noHover
+            //onClick={() => input && navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)))}
+            onClick={() => Submit(searchMusic)}
+          />
+        </div>
       </div>
+      {
+        !aiStore.searchIndex?.musicSupported ? null :
+          <SwitchInput
+            ml={5}
+            size="xl"
+            label="Search by Music"
+            checked={searchMusic}
+            onChange={event => {
+              setSearchMusic(event.currentTarget.checked);
+
+              if(input) {
+                Submit(event.currentTarget.checked);
+              }
+            }}
+            thumbIcon={
+              <Icon
+                icon={MusicIcon}
+                className={S("search-bar-container__music-switch-icon", searchMusic ? "search-bar-container__music-switch-icon--active" : "")}
+              />
+            }
+            className={S("search-bar-container__music-switch", `search-bar-container__music-switch--${searchMusic ? "active" : "inactive"}`)}
+            classNames={{
+              label: S("search-bar-container__music-switch-label"),
+            }}
+          />
+      }
     </div>
   );
 });
@@ -1025,7 +1065,10 @@ const BrowserPage = observer(({Component}) => {
 
   return (
     <div className={S("browser-page")}>
-      <AISearchBar />
+      {
+        aiStore.searchIndexes.length === 0 ? null :
+          <AISearchBar />
+      }
       <div className={S("browser-page__filters")}>
         <Tabs value={location} onChange={navigate} color="var(--text-secondary)">
           <Tabs.List fz={24} fw={800}>

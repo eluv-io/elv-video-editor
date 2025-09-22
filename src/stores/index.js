@@ -177,9 +177,11 @@ class RootStore {
     }
 
     this.client = client;
-    this.initialized = true;
 
     yield this.aiStore.Initialize();
+
+    this.initialized = true;
+
     yield this.compositionStore.Initialize();
   });
 
