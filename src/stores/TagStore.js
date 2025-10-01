@@ -113,10 +113,6 @@ class TagStore {
     this.ClearFilter();
   }
 
-  TimeToSMPTE(time) {
-    return this.rootStore.videoStore.TimeToSMPTE(time);
-  }
-
   SetFilter(filter) {
     this.filter = filter;
   }

@@ -3,12 +3,16 @@ import DownloadStyles from "@/assets/stylesheets/modules/download.module.scss";
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {
-  AsyncButton, Confirm, CopyableField,
+  AsyncButton,
+  Confirm,
+  CopyableField,
   FormDateTimeInput,
-  FormSelect, FormTextArea,
+  FormSelect,
+  FormTextArea,
   FormTextInput,
   Icon,
-  IconButton, Loader,
+  IconButton,
+  Loader,
   Modal
 } from "@/components/common/Common.jsx";
 import {Copy, CreateModuleClassMatcher, ValidEmail} from "@/utils/Utils.js";
@@ -360,7 +364,7 @@ const ShareCreateForm = observer(({
   );
 });
 
-const Share = observer(({share, setEditingShare, setSelectedShare, Reload}) => {
+const Share = observer(({store, share, setEditingShare, setSelectedShare, Reload}) => {
   const jobStatus = downloadStore.shareDownloadJobStatus[share.downloadJobId];
 
   const active = !(share.revoked || share.expired);
@@ -377,7 +381,11 @@ const Share = observer(({share, setEditingShare, setSelectedShare, Reload}) => {
         {
           !share.clipDetails.isClipped ? null :
             <div className={S("recipient__clip-info")}>
-              {share.clipDetails.string}
+              {
+                store.showTimecodeOffset ?
+                  share.clipDetails.offsetString :
+                  share.clipDetails.string
+              }
             </div>
         }
         <div className={S("recipient__expiration")}>
@@ -504,6 +512,7 @@ const Shares = observer(({store, setSelectedShare, setEditingShare}) => {
             .map(share =>
               <Share
                 key={`share-${share.share_id}`}
+                store={store}
                 share={share}
                 setSelectedShare={setSelectedShare}
                 setEditingShare={setEditingShare}
@@ -750,13 +759,13 @@ const ShareDetails = observer(({store, selectedShare, Back, Close}) => {
                     <div className={S("share-details__detail")}>
                       <label>Start Time:</label>
                       <span className="monospace">
-                        {store.FrameToSMPTE(selectedShare.clipDetails.clipInFrame || 0)}
+                        {store.FrameToSMPTE(selectedShare.clipDetails.clipInFrame || 0, true)}
                       </span>
                     </div>
                     <div className={S("share-details__detail")}>
                       <label>End Time:</label>
                       <span className="monospace">
-                        {store.FrameToSMPTE(selectedShare.clipDetails.clipOutFrame || store.totalFrames - 1)}
+                        {store.FrameToSMPTE(selectedShare.clipDetails.clipOutFrame || store.totalFrames - 1, true)}
                       </span>
                     </div>
                     <div className={S("share-details__detail")}>

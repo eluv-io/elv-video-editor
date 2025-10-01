@@ -260,6 +260,7 @@ const TagForm = observer(() => {
             </div>
             <div className={S("form__input-container")}>
               <SMPTEInput
+                store={videoStore}
                 label="Start Time"
                 value={videoStore.TimeToSMPTE(tag.startTime)}
                 formInput
@@ -284,6 +285,7 @@ const TagForm = observer(() => {
             </div>
             <div className={S("form__input-container")}>
               <SMPTEInput
+                store={videoStore}
                 label="End Time"
                 value={videoStore.TimeToSMPTE(tag.endTime)}
                 formInput
@@ -308,7 +310,7 @@ const TagForm = observer(() => {
             </div>
             <div className={S("form__input-note")}>
               <label>Duration:</label>
-              <span>{videoStore.TimeToString(duration, true)}</span>
+              <span>{videoStore.TimeToString({time: duration, includeFractionalSeconds: true})}</span>
             </div>
           </div>
         </FocusTrap>
@@ -368,15 +370,15 @@ export const TagDetails = observer(() => {
           </div>
           <div className={S("tag-details__detail")}>
             <label>Start Time:</label>
-            <span className="monospace">{videoStore.TimeToSMPTE(tag.startTime)}</span>
+            <span className="monospace">{videoStore.TimeToSMPTE(tag.startTime, true)}</span>
           </div>
           <div className={S("tag-details__detail")}>
             <label>End Time:</label>
-            <span className="monospace">{videoStore.TimeToSMPTE(tag.endTime)}</span>
+            <span className="monospace">{videoStore.TimeToSMPTE(tag.endTime, true)}</span>
           </div>
           <div className={S("tag-details__detail")}>
             <label>Duration:</label>
-            <span>{videoStore.TimeToString(duration, true)}</span>
+            <span>{videoStore.TimeToString({time: duration, includeFractionalSeconds: true})}</span>
           </div>
         </div>
       </div>
@@ -422,8 +424,8 @@ const Tag = observer(({track, tag, setTagRef}) => {
         setTagRef?.(ref);
       }}
       onClick={() => tagStore.SetTags(track.trackId, tag.tagId, tag.startTime)}
-      onMouseEnter={() => tagStore.SetHoverTags([tag.tagId], track.trackId, videoStore.TimeToSMPTE(tag.startTime))}
-      onMouseLeave={() => tagStore.SetHoverTags([], track.trackId, videoStore.TimeToSMPTE(tag.startTime))}
+      onMouseEnter={() => tagStore.SetHoverTags([tag.tagId], track.trackId, videoStore.TimeToSMPTE(tag.startTime, true))}
+      onMouseLeave={() => tagStore.SetHoverTags([], track.trackId, videoStore.TimeToSMPTE(tag.startTime, true))}
       className={
         S(
           "tag",
@@ -471,7 +473,7 @@ const Tag = observer(({track, tag, setTagRef}) => {
             {track.label}
           </div>
           <div className={S("tag__time")}>
-            <span>{videoStore.TimeToSMPTE(tag.startTime)}</span> | <span>{videoStore.TimeToString(parseFloat((tag.endTime - tag.startTime)), true)}</span>
+            <span>{videoStore.TimeToSMPTE(tag.startTime, true)}</span> | <span>{videoStore.TimeToString({time: parseFloat((tag.endTime - tag.startTime)), includeFractionalSeconds: true})}</span>
           </div>
         </div>
       <div className={S("tag__actions")}>

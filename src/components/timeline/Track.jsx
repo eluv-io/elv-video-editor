@@ -40,7 +40,7 @@ const Click = ({canvas, clientX, trackId}) => {
   const time = TimeAt({canvas, clientX});
   const tags = Search({trackId, time});
 
-  tagStore.SetTags(trackId, tags, videoStore.TimeToSMPTE(time));
+  tagStore.SetTags(trackId, tags, videoStore.TimeToSMPTE(time, true));
 };
 
 const Hover = ({canvas, clientX, trackId}) => {
@@ -62,7 +62,7 @@ const Hover = ({canvas, clientX, trackId}) => {
     }
   }
 
-  tagStore.SetHoverTags(tags, trackId, videoStore.TimeToSMPTE(TimeAt({canvas, clientX})));
+  tagStore.SetHoverTags(tags, trackId, videoStore.TimeToSMPTE(TimeAt({canvas, clientX}), true));
 };
 
 const ClearHover = () => {
@@ -280,7 +280,7 @@ const TooltipOverlay = observer(({trackId, ...props}) => {
       return (
         <div className={S("tooltip__item")} key={`tag-${tag.tagId}`}>
           <div className={S("tooltip__timestamps")}>
-            {`${tagStore.TimeToSMPTE(tag.startTime)} - ${tagStore.TimeToSMPTE(tag.endTime)}`}
+            {`${videoStore.TimeToSMPTE(tag.startTime, true)} - ${videoStore.TimeToSMPTE(tag.endTime, true)}`}
           </div>
           <div className={S("tooltip__content")}>
             {tag.content ? <pre>{JSON.stringify(tag.content, null, 2)}</pre> : <p>{tag.text}</p>}

@@ -8,7 +8,7 @@ import {
   AudioControls,
   PlaybackRateControl,
   PlayCurrentClipButton, QualityControls,
-  SubtitleControls,
+  SubtitleControls, TimecodeOffsetToggle,
 } from "@/components/video/VideoControls";
 import Video from "@/components/video/Video";
 import MarkedSlider from "@/components/common/MarkedSlider.jsx";
@@ -185,7 +185,7 @@ const ClipSeekBar = observer(() => {
       topMarks
       nMarks={store.sliderMarks}
       majorMarksEvery={store.majorMarksEvery}
-      RenderText={progress => store.ProgressToSMPTE(progress)}
+      RenderText={progress => store.ProgressToSMPTE(progress, true)}
       RenderHover={
         !store.thumbnailStore.thumbnailStatus.available ? undefined :
           progress => (
@@ -552,7 +552,7 @@ const CompositionVideoSection = observer(({store, blank=false, clipView=false}) 
               ));
 
               if(!clipView && compositionStore.startFrame) {
-                const time = store.videoHandler.FrameToTime(Math.max(0, Math.min(store.totalFrames - 1, compositionStore.startFrame)));
+                const time = store.FrameToTime(Math.max(0, Math.min(store.totalFrames - 1, compositionStore.startFrame)));
                 let seeked = false;
                 video.addEventListener(
                   "durationchange",
@@ -581,6 +581,7 @@ const CompositionVideoSection = observer(({store, blank=false, clipView=false}) 
             <>
               <div className={S("toolbar__spacer")}/>
               <div className={S("toolbar__controls-group")}>
+                <TimecodeOffsetToggle store={store} />
                 <PlaybackRateControl store={store}/>
                 {
                   !clipView ? null :

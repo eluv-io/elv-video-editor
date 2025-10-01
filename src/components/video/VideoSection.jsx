@@ -11,7 +11,7 @@ import {
   OfferingControls,
   PlaybackRateControl,
   QualityControls,
-  SubtitleControls,
+  SubtitleControls, TimecodeOffsetToggle,
 } from "@/components/video/VideoControls";
 import Video from "@/components/video/Video";
 import SVG from "react-inlinesvg";
@@ -89,6 +89,7 @@ const VideoSection = observer(({showOverlay, showSave}) => {
         </Tooltip>
         <div className={S("toolbar__spacer")} />
         <div className={S("toolbar__controls-group", "toolbar__controls-group--tight")}>
+          <TimecodeOffsetToggle store={videoStore} />
           <PlaybackRateControl store={videoStore} />
           <FrameRateControls store={videoStore} />
           <DropFrameControls store={videoStore} />

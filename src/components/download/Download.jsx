@@ -152,15 +152,15 @@ const JobStatusTable = observer(({store, jobs, setConfirming, Reload}) => (
                   <div className={S("job-details")}>
                     <div className={S("job-details__detail")}>
                       <label>Start Time:</label>
-                      <span className="monospace">{store.FrameToSMPTE(startFrame)}</span>
+                      <span className="monospace">{store.FrameToSMPTE(startFrame, true)}</span>
                     </div>
                     <div className={S("job-details__detail")}>
                       <label>End Time:</label>
-                      <span className="monospace">{store.FrameToSMPTE(endFrame)}</span>
+                      <span className="monospace">{store.FrameToSMPTE(endFrame, true)}</span>
                     </div>
                     <div className={S("job-details__detail")}>
                       <label>Duration:</label>
-                      <span>{store.videoHandler.FrameToString({frame: endFrame - startFrame})}</span>
+                      <span>{store.FrameToString({frame: endFrame - startFrame})}</span>
                     </div>
                     <div className={S("job-details__detail")}>
                       <label>Offering:</label>
@@ -232,7 +232,7 @@ const DownloadHistory = ({store, highlightedJobId, setConfirming}) => {
           ...downloadStore.downloadJobInfo[jobId],
           highlighted: jobId === highlightedJobId,
           jobId,
-          duration: store.videoHandler.FrameToString({
+          duration: store.FrameToString({
             frame: downloadStore.downloadJobInfo[jobId].clipOutFrame - downloadStore.downloadJobInfo[jobId].clipInFrame
           })
         }))

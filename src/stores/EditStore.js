@@ -812,16 +812,16 @@ class EditStore {
     // Start/end time clip
     const {startTime, endTime} = this.rootStore.trackStore.ClipInfo();
 
-    const startFrame = this.rootStore.videoStore.videoHandler.TimeToFrame(startTime);
+    const startFrame = this.rootStore.videoStore.TimeToFrame(startTime);
     const endFrame = Math.min(
-      this.rootStore.videoStore.videoHandler.TimeToFrame(endTime),
+      this.rootStore.videoStore.TimeToFrame(endTime),
       this.rootStore.videoStore.totalFrames - 1
     );
 
     const startTimeRat = startFrame === 0 ? null :
-      this.rootStore.videoStore.videoHandler.FrameToRat(startFrame);
+      this.rootStore.videoStore.FrameToRat(startFrame);
     const endTimeRat = endFrame >= this.rootStore.videoStore.totalFrames - 1 ? null :
-      this.rootStore.videoStore.videoHandler.FrameToRat(endFrame);
+      this.rootStore.videoStore.FrameToRat(endFrame);
 
     const offering = this.rootStore.videoStore.metadata.offerings[this.rootStore.videoStore.offeringKey];
 

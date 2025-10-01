@@ -130,7 +130,7 @@ const PreviewThumbnail = observer(({
       {
         !showDuration ? null :
           <div className={S("preview-thumbnail__duration")}>
-            {store.videoHandler.FrameToString({frame: endFrame - startFrame})}
+            {store.FrameToString({frame: endFrame - startFrame})}
           </div>
       }
     </div>

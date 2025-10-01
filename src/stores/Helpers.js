@@ -37,6 +37,7 @@ export const LoadVideo = async ({
         //"offerings/*/media_struct/streams/*/sources",
         "offerings/*/media_struct/streams/*/label",
         "offerings/*/media_struct/streams/*/default_for_media_type",
+        "offerings/*/media_struct/streams/*/tags/timecode",
         "offerings/*/playout/streams/*/representations",
         "offerings/*/playout/playout_formats",
         "channel",
@@ -167,6 +168,8 @@ export const LoadVideo = async ({
         metadata.offerings[videoObject.offeringKey].media_struct.streams[videoObject.streamKey].duration.rat
       );
 
+      videoObject.timecode = metadata.offerings[videoObject.offeringKey].media_struct.streams[videoObject.streamKey].tags?.timecode;
+
       // Specify playout for full, untrimmed content
       const playoutMethods = videoObject.availableOfferings[offeringKey].playoutMethods["hls"].playoutMethods;
 
@@ -235,8 +238,8 @@ export const Cue = ({store, tagType, tagId, label, startTime, endTime, text, tag
   const isSMPTE = typeof startTime === "string" && startTime.split(":").length > 1;
 
   if(isSMPTE) {
-    startTime = store.videoHandler.SMPTEToTime(startTime);
-    endTime = store.videoHandler.SMPTEToTime(endTime);
+    startTime = store.SMPTEToTime(startTime);
+    endTime = store.SMPTEToTime(endTime);
   }
 
   let content;

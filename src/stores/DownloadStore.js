@@ -38,8 +38,8 @@ class DownloadStore {
     }
 
     if(clipInFrame || (clipOutFrame && clipOutFrame < store.totalFrames - 1)) {
-      const startTime = store.videoHandler.FrameToString({frame: clipInFrame}).replaceAll(" ", "");
-      const endTime = store.videoHandler.FrameToString({frame: clipOutFrame || store.totalFrames}).replaceAll(" ", "");
+      const startTime = store.FrameToString({frame: clipInFrame}).replaceAll(" ", "");
+      const endTime = store.FrameToString({frame: clipOutFrame || store.totalFrames}).replaceAll(" ", "");
       filename = `${filename} (${startTime} - ${endTime})`;
     }
 
@@ -456,7 +456,7 @@ class DownloadStore {
 
     clipDetails.durationFrames = (clipDetails.clipOutFrame || store.totalFrames - 1) - (clipDetails.clipInFrame || 0);
     clipDetails.duration = store.FrameToTime(clipDetails.durationFrames);
-    clipDetails.durationString = store.TimeToString(clipDetails.duration);
+    clipDetails.durationString = store.TimeToString({time: clipDetails.duration});
 
     if(share.attributes?.audioTrackLabel) {
       share.audioTrackLabel = share.attributes.audioTrackLabel[0];
@@ -489,7 +489,8 @@ class DownloadStore {
     }
 
     if(clipDetails.isClipped) {
-      clipDetails.string = `${store.FrameToSMPTE(clipDetails.clipInFrame || 0)} - ${store.FrameToSMPTE(clipDetails.clipOutFrame || store.totalFrames - 1)} (${store.TimeToString(clipDetails.duration)})`;
+      clipDetails.string = `${store.FrameToSMPTE(clipDetails.clipInFrame || 0)} - ${store.FrameToSMPTE(clipDetails.clipOutFrame || store.totalFrames - 1)} (${store.TimeToString({time: clipDetails.duration})})`;
+      clipDetails.offsetString = `${store.FrameToSMPTE(clipDetails.clipInFrame || 0, true)} - ${store.FrameToSMPTE(clipDetails.clipOutFrame || store.totalFrames - 1, true)} (${store.TimeToString({time: clipDetails.duration})})`;
     }
 
     if(share.attributes?.composition) {

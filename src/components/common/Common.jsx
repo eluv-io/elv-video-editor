@@ -673,14 +673,18 @@ export const FormMultiSelect = observer(props =>
   />
 );
 
-export const SMPTEInput = observer(({store, value, onChange, formInput=false, highlight,  ...props}) => {
+export const SMPTEInput = observer(({store, value, onChange, formInput=false, highlight, minFrame, maxFrame, ...props}) => {
+  const offset = store.showTimecodeOffset ? store.timecodeOffsetFrames : 0;
   const [smpteInput, setSMPTEInput] = useState(value);
 
   const FormatSMPTE = ({originalValue, smpte, setSMPTEInput}) => {
     store = store || videoStore;
 
     try {
-      const frame = store.SMPTEToFrame(smpte);
+      const frame = Math.max(minFrame || 1, Math.min(maxFrame || store.totalFrames - 1, store.SMPTEToFrame(smpte) - offset));
+      smpte = store.FrameToSMPTE(frame);
+
+      setSMPTEInput(store.FrameToSMPTE(frame + offset));
 
       return { frame, smpte };
     } catch(error) {
@@ -692,8 +696,14 @@ export const SMPTEInput = observer(({store, value, onChange, formInput=false, hi
   let Component = formInput ? FormTextInput : Input;
 
   useEffect(() => {
-    setSMPTEInput(value);
-  }, [value]);
+    let smpte = value;
+    if(offset) {
+      const frame = store.SMPTEToFrame(smpte);
+      smpte = store.FrameToSMPTE(frame + offset);
+    }
+
+    setSMPTEInput(smpte);
+  }, [value, store.showTimecodeOffset]);
 
   return (
     <Component
@@ -705,11 +715,11 @@ export const SMPTEInput = observer(({store, value, onChange, formInput=false, hi
           onChange?.(FormatSMPTE({originalValue: value, smpte: smpteInput, setSMPTEInput}));
         } else if(event.key === "ArrowUp") {
           const { frame } = FormatSMPTE({originalValue: value, smpte: smpteInput, setSMPTEInput});
-          const newSMPTE = store.FrameToSMPTE(Math.min(frame + 1, store.totalFrames));
+          const newSMPTE = store.FrameToSMPTE(Math.min(frame + 1 + offset, store.totalFrames + offset));
           onChange?.(FormatSMPTE({originalValue: value, smpte: newSMPTE, setSMPTEInput}));
         } else if(event.key === "ArrowDown") {
           const { frame } = FormatSMPTE({originalValue: value, smpte: smpteInput, setSMPTEInput});
-          const newSMPTE = store.FrameToSMPTE(Math.max(frame - 1, 0));
+          const newSMPTE = store.FrameToSMPTE(Math.max(frame - 1 + offset, offset));
           onChange?.(FormatSMPTE({originalValue: value, smpte: newSMPTE, setSMPTEInput}));
         }
       }}
@@ -768,14 +778,14 @@ export const ClipTimeInfo = observer(({store, clipInFrame, clipOutFrame, classNa
   return (
     <div className={JoinClassNames(S("clip-time"), className)}>
       <span>
-        {store.videoHandler.FrameToSMPTE(clipInFrame)}
+        {store.FrameToSMPTE(clipInFrame, true)}
       </span>
       <span>-</span>
       <span>
-        {store.videoHandler.FrameToSMPTE(clipOutFrame)}
+        {store.FrameToSMPTE(clipOutFrame, true)}
       </span>
       <span>
-        ({store.videoHandler.FrameToString({frame: clipOutFrame - clipInFrame})})
+        ({store.FrameToString({frame: clipOutFrame - clipInFrame})})
       </span>
     </div>
   );

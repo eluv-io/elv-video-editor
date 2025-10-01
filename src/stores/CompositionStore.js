@@ -628,17 +628,17 @@ class CompositionStore {
     const store = this.clipStores[key];
 
     if(clipInTime) {
-      clipInFrame = store.videoHandler.TimeToFrame(clipInTime);
+      clipInFrame = store.TimeToFrame(clipInTime);
     }
 
     if(clipOutTime) {
-      clipOutFrame = store.videoHandler.TimeToFrame(clipOutTime);
+      clipOutFrame = store.TimeToFrame(clipOutTime);
     }
 
     const imageUrl = new URL(this.compositionObject.baseImageUrl);
     imageUrl.searchParams.set(
       "t",
-      store.videoHandler.FrameToTime(source ? Math.floor(((clipOutFrame || store.totalFrames) - (clipInFrame || 0)) / 2) : clipInFrame).toFixed(2)
+      store.FrameToTime(source ? Math.floor(((clipOutFrame || store.totalFrames) - (clipInFrame || 0)) / 2) : clipInFrame).toFixed(2)
     );
 
     clipId = clipId || this.rootStore.NextId();
@@ -881,7 +881,7 @@ class CompositionStore {
         const store = this.clipStores[clip.storeKey];
 
         // Actual duration may be lower than what the video element projects
-        const sourceEndFrame = store.videoHandler.RatToFrame(store.metadata.offerings[clip.offering].media_struct.duration_rat);
+        const sourceEndFrame = store.RatToFrame(store.metadata.offerings[clip.offering].media_struct.duration_rat);
 
         let clipOutFrame = Math.min(clip.clipOutFrame, sourceEndFrame - 1);
 
@@ -899,9 +899,9 @@ class CompositionStore {
         return {
           display_name: clip.name || "Clip",
           source: sourceLink,
-          slice_start_rat: store.videoHandler.FrameToRat(clip.clipInFrame || 0),
-          slice_end_rat: store.videoHandler.FrameToRat(clipOutFrame || store.totalFrames - 1),
-          duration_rat: store.videoHandler.FrameToRat((clipOutFrame || store.totalFrames - 1) - (clip.clipInFrame || 0)),
+          slice_start_rat: store.FrameToRat(clip.clipInFrame || 0),
+          slice_end_rat: store.FrameToRat(clipOutFrame || store.totalFrames - 1),
+          duration_rat: store.FrameToRat((clipOutFrame || store.totalFrames - 1) - (clip.clipInFrame || 0)),
           type: "mez_vod"
         };
       });
@@ -1284,8 +1284,8 @@ class CompositionStore {
 
       let aiClipIds = [];
       for(const clip of highlights) {
-        const clipInFrame = store.videoHandler.TimeToFrame(clip.start_time / 1000);
-        const clipOutFrame = store.videoHandler.TimeToFrame(clip.end_time / 1000);
+        const clipInFrame = store.TimeToFrame(clip.start_time / 1000);
+        const clipOutFrame = store.TimeToFrame(clip.end_time / 1000);
         const clipId = this.rootStore.NextId();
         this.clips[clipId] = {
           clipId,

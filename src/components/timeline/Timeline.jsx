@@ -118,6 +118,7 @@ const TimelineTopBar = observer(({simple}) => {
         <div className={S("jump-to")}>
           <label>Jump to</label>
           <SMPTEInput
+            store={videoStore}
             label="Jump to"
             aria-label="Jump to"
             value={videoStore.smpte}
@@ -143,15 +144,19 @@ const TimelineTopBar = observer(({simple}) => {
           onClick={() => videoStore.SetClipMark({inFrame: videoStore.frame})}
         />
         <SMPTEInput
+          store={videoStore}
           highlight
           label="Clip Start"
+          maxFrame={videoStore.clipOutFrame}
           value={videoStore.FrameToSMPTE(videoStore.clipInFrame) || "00:00:00:00"}
           onChange={({frame}) => videoStore.SetClipMark({inFrame: frame})}
         />
         <PlayCurrentClipButton store={videoStore}/>
         <SMPTEInput
+          store={videoStore}
           highlight
           label="Clip End"
+          minFrame={videoStore.clipInFrame}
           value={videoStore.FrameToSMPTE(videoStore.clipOutFrame) || "00:00:00:00"}
           onChange={({frame}) => videoStore.SetClipMark({outFrame: frame})}
         />
@@ -309,7 +314,7 @@ const TimelineSeekBar = observer(({hoverSeek}) => {
         topMarks
         nMarks={videoStore.sliderMarks}
         majorMarksEvery={videoStore.majorMarksEvery}
-        RenderText={progress => videoStore.ProgressToSMPTE(progress)}
+        RenderText={progress => videoStore.ProgressToSMPTE(progress, true)}
         onChange={progress => {
           videoStore.Seek(videoStore.ProgressToFrame(progress));
           tagStore.SetScrollSeekTime(videoStore.ProgressToTime(progress));
@@ -368,7 +373,7 @@ const TimelineScaleBar = observer(({hoverSeek}) => {
          topMarks
          nMarks={videoStore.sliderMarks}
          majorMarksEvery={videoStore.majorMarksEvery}
-         RenderText={progress => videoStore.ProgressToSMPTE(progress)}
+         RenderText={progress => videoStore.ProgressToSMPTE(progress, true)}
          onChange={values => videoStore.SetScale(values[0], values[1])}
          onSlide={diff => videoStore.SetScale(videoStore.scaleMin + diff, videoStore.scaleMax + diff, true)}
          className={S("scale-bar")}

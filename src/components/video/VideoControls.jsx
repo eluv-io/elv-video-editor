@@ -6,6 +6,8 @@ import {CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
 import {IconButton, Input, SelectInput} from "@/components/common/Common";
 import Fraction from "fraction.js";
 import SVG from "react-inlinesvg";
+import {FrameRates} from "@/utils/FrameAccurateVideo";
+import {Tooltip} from "@mantine/core";
 
 const S = CreateModuleClassMatcher(VideoStyles);
 
@@ -17,7 +19,6 @@ import PauseIcon from "@/assets/icons/Pause.svg";
 import FrameIcon from "@/assets/icons/picture.svg";
 import FullscreenIcon from "@/assets/icons/Maximize.svg";
 import MinimizeIcon from "@/assets/icons/Minimize.svg";
-import {FrameRates} from "@/utils/FrameAccurateVideo";
 import FrameBack10 from "@/assets/icons/v2/frame-back-10.svg";
 import FrameBack1 from "@/assets/icons/v2/frame-back-1.svg";
 import FrameForward1 from "@/assets/icons/v2/frame-forward-1.svg";
@@ -150,6 +151,24 @@ export const PlaybackRateControl = observer(({store}) => {
   );
 });
 
+export const TimecodeOffsetToggle = observer(({store}) => {
+  if(!store.timecodeOffset) { return null; }
+
+  return (
+    <Tooltip
+      label={store.showTimecodeOffset ? `Hide Timecode Offset (${store.timecodeOffset})` : `Show Timecode Offset (${store.timecodeOffset})`}
+    >
+      <button
+        key={`fullscreen-button-${store.fullScreen}`}
+        onClick={() => store.ToggleTimecodeOffset(!store.showTimecodeOffset)}
+        className={S("video-controls__timecode-offset", store.showTimecodeOffset ? "video-controls__timecode-offset--active" : "")}
+      >
+        { store.showTimecodeOffset ? store.timecodeOffset : store.FrameToSMPTE(0) }
+      </button>
+    </Tooltip>
+  );
+});
+
 export const FullscreenButton = observer(({store}) => {
   return (
     <IconButton
@@ -179,13 +198,21 @@ export const VideoTime = observer(({store}) => {
   return (
     <div className={S("video-time")}>
       <span className={S("video-time__time", "video-time__time--current")}>
-        {store.smpte}
+        {
+          store.showTimecodeOffset ?
+            store.offsetSMPTE :
+            store.smpte
+        }
       </span>
       <span className={S("video-time__separator")}>
         /
       </span>
       <span className={S("video-time__time", "video-time__time--total")}>
-        {store.durationSMPTE}
+        {
+          store.showTimecodeOffset ?
+            store.offsetDurationSMPTE :
+            store.durationSMPTE
+        }
       </span>
     </div>
   );
@@ -309,11 +336,22 @@ export const FrameForward10Button = observer(({store}) => {
 });
 
 export const FrameDisplay = observer(({store}) => {
-  const [frameInput, setFrameInput] = useState(store.frame);
+  const offset = !store.showTimecodeOffset ? 0 : store.timecodeOffsetFrames;
+  const [frameInput, setFrameInput] = useState(store.frame + offset);
 
   useEffect(() => {
     setFrameInput(store.frame);
-  }, [store.frame]);
+  }, [store.frame, store.showTimecodeOffset]);
+
+  const Update = () => {
+    const frame = Math.max(0, Math.min(store.totalFrames, parseInt(frameInput)));
+
+    setFrameInput(frame);
+
+    if(store.frame !== frame) {
+      store.Seek(frame);
+    }
+  };
 
   return (
     <div className={S("frame-display")}>
@@ -322,18 +360,18 @@ export const FrameDisplay = observer(({store}) => {
         monospace
         disabled={store.playing}
         type="number"
-        min={0}
-        max={store.totalFrames}
+        min={0 + offset}
+        max={store.totalFrames + offset}
         step={1}
         w={100}
-        value={frameInput}
+        value={frameInput + offset}
         onKeyDown={event => {
           if(event.key !== "Enter") { return; }
 
-          store.Seek(frameInput);
+          Update();
         }}
-        onChange={event => setFrameInput(parseInt(event.target.value) || 0)}
-        onBlur={() => frameInput !== store.frame && store.Seek(frameInput)}
+        onChange={event => setFrameInput((parseInt(event.target.value) || 0) - offset)}
+        onBlur={() => Update()}
       />
     </div>
   );

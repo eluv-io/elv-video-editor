@@ -539,7 +539,7 @@ class TrackStore {
         });
 
         if(parsedTag.startTime >= parsedTag.endTime) {
-          parsedTag.endTime = parsedTag.startTime + this.rootStore.videoStore.videoHandler.FrameToTime(1);
+          parsedTag.endTime = parsedTag.startTime + this.rootStore.videoStore.FrameToTime(1);
         }
 
         tags[parsedTag.tagId] = parsedTag;

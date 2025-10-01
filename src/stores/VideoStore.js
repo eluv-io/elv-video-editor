@@ -22,6 +22,10 @@ class VideoStore {
   metadata = {};
   name;
 
+  timecodeOffset;
+  timecodeOffsetFrames = 0;
+  showTimecodeOffset = false;
+
   availableOfferings = {};
   downloadOfferingKeys = [];
   offeringKey = "default";
@@ -58,6 +62,7 @@ class VideoStore {
   frame = 0;
   totalFrames = 0;
   smpte = "00:00:00:00";
+  offsetSMPTE;
 
   duration;
   durationSMPTE;
@@ -171,10 +176,15 @@ class VideoStore {
     this.frameRateRat = `${FrameRateNumerator["NTSC"]}/${FrameRateDenominator["NTSC"]}`;
     this.frameRateSpecified = false;
 
+    this.showTimecodeOffset = false;
+    this.timecodeOffset = undefined;
+    this.timecodeOffsetFrames = 0;
+
     this.currentTime = 0;
     this.frame = 0;
     this.totalFrames = 0;
     this.smpte = "00:00:00:00";
+    this.offsetSMPTE = "00:00:00:00";
     this.showVideoControls = true;
 
     this.playing = false;
@@ -253,6 +263,8 @@ class VideoStore {
       this.offeringKey = videoObject.offeringKey;
       this.thumbnailTrackUrl = videoObject.thumbnailTrackUrl;
       this.hasAssets = videoObject.metadata.assets;
+      this.timecodeOffset = videoObject.timecode;
+      this.showTimecodeOffset = !!this.timecodeOffset;
 
       if(this.isVideo) {
         let downloadOfferingKeys = Object.keys(videoObject.availableOfferings)
@@ -316,6 +328,10 @@ class VideoStore {
         dropFrame: this.dropFrame,
         duration: this.duration || 1
       });
+
+      if(this.timecodeOffset) {
+        this.timecodeOffsetFrames = this.videoHandler.SMPTEToFrame(this.timecodeOffset);
+      }
 
       if(this.duration) {
         this.durationSMPTE = this.videoHandler?.TimeToSMPTE(this.duration);
@@ -780,10 +796,16 @@ class VideoStore {
     return this.videoHandler.ProgressToTime(seek / 100, this.duration);
   }
 
-  ProgressToSMPTE(seek) {
+  ProgressToSMPTE(seek, withTimecodeOffset) {
     if(!this.videoHandler) { return; }
 
-    return this.videoHandler.ProgressToSMPTE(seek / 100, this.duration);
+    const smpte = this.videoHandler.ProgressToSMPTE(seek / 100, this.duration);
+
+    if(!withTimecodeOffset || !this.showTimecodeOffset) {
+      return smpte;
+    }
+
+    return this.videoHandler.FrameToSMPTE(this.videoHandler.SMPTEToFrame(smpte) + this.timecodeOffsetFrames);
   }
 
   ProgressToFrame(seek) {
@@ -792,10 +814,16 @@ class VideoStore {
     return this.TimeToFrame(this.ProgressToTime(seek));
   }
 
-  TimeToSMPTE(time) {
+  TimeToSMPTE(time, withTimecodeOffset) {
     if(!this.videoHandler) { return; }
 
-    return this.videoHandler.TimeToSMPTE(time);
+    const smpte = this.videoHandler.TimeToSMPTE(time);
+
+    if(!withTimecodeOffset || !this.showTimecodeOffset) {
+      return smpte;
+    }
+
+    return this.videoHandler.FrameToSMPTE(this.videoHandler.SMPTEToFrame(smpte) + this.timecodeOffsetFrames);
   }
 
   TimeToFrame(time, round=false) {
@@ -827,17 +855,34 @@ class VideoStore {
       Number((result + 0.00051).toFixed(3));
   }
 
-  FrameToSMPTE(frame) {
+  FrameToSMPTE(frame, withTimecodeOffset) {
     if(!this.videoHandler) { return; }
 
-    return this.videoHandler.FrameToSMPTE(frame);
+    return this.videoHandler.FrameToSMPTE(frame + (withTimecodeOffset && this.showTimecodeOffset ? this.timecodeOffsetFrames : 0));
   }
 
-  TimeToString(time, includeFractionalSeconds) {
+  FrameToRat(frame) {
+    if(!this.videoHandler) { return "0"; }
+
+    return this.videoHandler.FrameToRat(frame);
+  }
+
+  RatToFrame(rat) {
     if(!this.videoHandler) { return 0; }
 
-    // Pad number to ensure its rounded up
-    return this.videoHandler.TimeToString({time, includeFractionalSeconds});
+    return this.videoHandler.RatToFrame(rat);
+  }
+
+  TimeToString({time, includeFractionalSeconds, format="description"}) {
+    if(!this.videoHandler) { return 0; }
+
+    return this.videoHandler.TimeToString({time, includeFractionalSeconds, format});
+  }
+
+  FrameToString({frame, includeFractionalSeconds}) {
+    if(!this.videoHandler) { return ""; }
+
+    return this.videoHandler.FrameToString({frame, includeFractionalSeconds});
   }
 
   Update({frame, smpte}) {
@@ -848,11 +893,13 @@ class VideoStore {
     this.durationSMPTE = this.videoHandler?.TimeToSMPTE(this.duration);
     this.videoHandler.duration = this.video.duration;
     this.totalFrames = this.totalFrames || this.videoHandler?.TotalFrames(this.duration);
+    this.offsetDurationSMPTE = this.videoHandler?.FrameToSMPTE(this.totalFrames + this.timecodeOffsetFrames);
     if(this.clipOutFrame >= this.totalFrames - 2) {
       // Minor shift in duration from channels may cause unset clip out point to show
       this.clipOutFrame = this.totalFrames - 1;
     }
     this.smpte = smpte;
+    this.offsetSMPTE = this.videoHandler.FrameToSMPTE(frame + this.timecodeOffsetFrames);
     this.seek = 100 * frame / (this.totalFrames || 1);
     this.currentTime = this.video.currentTime;
 
@@ -1132,6 +1179,10 @@ class VideoStore {
         videoContainer.msRequestFullscreen();
       }
     }
+  }
+
+  ToggleTimecodeOffset(show) {
+    this.showTimecodeOffset = show;
   }
 
   async GetFrame({maxHeight, maxWidth, bounds}={}) {
