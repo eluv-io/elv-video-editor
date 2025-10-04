@@ -9,7 +9,7 @@ class ThumbnailStore {
   thumbnailImages = {};
   intervalTree;
   generating = false;
-
+  maxInterval = 10;
 
   constructor(parentStore) {
     // Parent store is a video store
@@ -28,7 +28,7 @@ class ThumbnailStore {
     if(!this.thumbnailStatus.available) { return []; }
 
     if(typeof endTime === "undefined") {
-      endTime = startTime + 6;
+      endTime = startTime + (this.maxInterval || 10);
     }
 
     let thumbnailIndexes = this.intervalTree?.search(startTime, endTime);
@@ -90,9 +90,17 @@ class ThumbnailStore {
 
     let tags = yield ParseVTTTrack({track: {label: "Thumbnails", vttData}, store: this.parentStore});
 
-    Object.keys(tags || {}).forEach(key =>
-      tags[key].endTime = tags[key].startTime
-    );
+    let maxInterval = 0;
+    let lastStartTime = 0;
+    Object.keys(tags || {}).forEach(key => {
+      tags[key].endTime = tags[key].startTime;
+
+      maxInterval = Math.max(maxInterval, tags[key].startTime - lastStartTime);
+      lastStartTime = tags[key].startTime;
+    });
+
+    // Determine the maximum time between thumbnails
+    this.maxInterval = Math.ceil(maxInterval);
 
     let imageUrls = {};
     Object.keys(tags).map(id => {
