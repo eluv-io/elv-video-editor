@@ -286,12 +286,12 @@
     display: flex;
     font-size: 14px;
     gap: 10px;
+    min-height: 50px;
     overflow: hidden;
     padding: 10px;
     text-align: left;
     transition: background-color 0.15s ease, color 0.15s ease;
     width: 100%;
-    min-height: 50px;
 
     &:not(:last-child) {
       margin-bottom: 3px;

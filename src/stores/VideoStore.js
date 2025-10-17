@@ -51,6 +51,7 @@ class VideoStore {
   playoutUrl;
   baseUrl = undefined;
   baseStateChannelUrl = undefined;
+  baseImageUrl = undefined;
 
   dropFrame = false;
   frameRateKey = "NTSC";
@@ -206,6 +207,10 @@ class VideoStore {
     this.clipInFrame = undefined;
     this.clipOutFrame = undefined;
 
+    this.baseUrl = undefined;
+    this.baseStateChannelUrl = undefined;
+    this.baseImageUrl = undefined;
+
     if(this.tags) {
       this.rootStore.tagStore.ClearTags();
       this.rootStore.trackStore.Reset();
@@ -346,6 +351,12 @@ class VideoStore {
       if(this.thumbnails) {
         this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl);
       }
+
+      this.baseImageUrl = yield this.rootStore.client.Rep({
+        versionHash: videoObject.versionHash,
+        rep: UrlJoin("frame", videoObject.offeringKey, "video"),
+        channelAuth: true
+      });
 
       if(addToMyLibrary) {
         this.rootStore.browserStore.AddMyLibraryItem({

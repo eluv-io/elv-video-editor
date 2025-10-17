@@ -635,11 +635,14 @@ class CompositionStore {
       clipOutFrame = store.TimeToFrame(clipOutTime);
     }
 
-    const imageUrl = new URL(this.compositionObject.baseImageUrl);
-    imageUrl.searchParams.set(
-      "t",
-      store.FrameToTime(source ? Math.floor(((clipOutFrame || store.totalFrames) - (clipInFrame || 0)) / 2) : clipInFrame).toFixed(2)
-    );
+    let imageUrl = store.baseImageUrl;
+    if(imageUrl) {
+      imageUrl = new URL(imageUrl);
+      imageUrl.searchParams.set(
+        "t",
+        store.FrameToTime(source ? Math.floor(((clipOutFrame || store.totalFrames) - (clipInFrame || 0)) / 2) : clipInFrame).toFixed(2)
+      );
+    }
 
     clipId = clipId || this.rootStore.NextId();
     this.clips[clipId] = {
@@ -1621,13 +1624,17 @@ class CompositionStore {
       const clipInFrame = store.TimeToFrame(clip.start_time / 1000);
       const clipOutFrame = store.TimeToFrame(clip.end_time / 1000);
       const clipId = this.rootStore.NextId();
+      const storeKey = `${objectId}-default`;
 
-      const imageUrl = new URL(this.compositionObject.baseImageUrl);
-      imageUrl.pathname = clip.image_url.split("?")[0];
+      let imageUrl = this.clipStores[storeKey]?.baseImageUrl;
+      if(imageUrl) {
+        imageUrl = new URL(imageUrl);
+        imageUrl.pathname = clip.image_url.split("?")[0];
 
-      const params = new URLSearchParams(clip.image_url.split("?")[1]);
-      params.keys().forEach((key, value) => imageUrl.searchParams.set(key, value));
-      imageUrl.searchParams.set("t", (clip.start_time / 1000).toFixed(2));
+        const params = new URLSearchParams(clip.image_url.split("?")[1]);
+        params.keys().forEach((key, value) => imageUrl.searchParams.set(key, value));
+        imageUrl.searchParams.set("t", (clip.start_time / 1000).toFixed(2));
+      }
 
       this.clips[clipId] = {
         clipId,
@@ -1639,7 +1646,7 @@ class CompositionStore {
         clipInFrame,
         clipOutFrame,
         imageUrl,
-        storeKey: `${objectId}-default`,
+        storeKey,
         clipKey: `${objectId}-default-${clipInFrame}-${clipOutFrame}`
       };
 
