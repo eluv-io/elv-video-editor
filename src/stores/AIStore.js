@@ -542,7 +542,9 @@ class AIStore {
     }
 
     const isMusic = query.startsWith("music:") && this.searchIndex.musicSupported;
-    query = query.split("music:")[1] || "";
+    if(isMusic) {
+      query = query.split("music:")[1] || "";
+    }
 
     const type = this.searchIndex.type?.includes("assets") ? "image" : "video";
 
