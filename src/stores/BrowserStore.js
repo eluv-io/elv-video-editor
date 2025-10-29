@@ -135,6 +135,7 @@ class BrowserStore {
       versionHash = yield this.rootStore.client.LatestVersionHash({objectId});
     }
 
+    let libraryId;
     objectId = this.rootStore.client.utils.DecodeVersionHash(versionHash).objectId;
 
     return yield this.rootStore.LoadResource({
@@ -145,8 +146,6 @@ class BrowserStore {
       bind: this,
       Load: flow(function * () {
         yield this.rootStore.compositionStore.LoadMyCompositions();
-
-        const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
 
         // Try and retrieve video duration
         let
@@ -164,6 +163,7 @@ class BrowserStore {
           vods;
 
         try {
+          libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
           metadata = yield this.rootStore.client.ContentObjectMetadata({
             versionHash: versionHash,
             select: [

@@ -344,6 +344,11 @@
     justify-content: center;
   }
 
+  &--empty {
+    min-height: 200px;
+    color: var(--text-tertiary);
+  }
+
   &--with-active-item {
     min-height: calc(9 * var(--row-height));
   }
