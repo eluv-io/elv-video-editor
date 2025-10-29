@@ -1,6 +1,6 @@
 import {flow, makeAutoObservable, runInAction} from "mobx";
 import UrlJoin from "url-join";
-import {ConvertColor, Unproxy} from "@/utils/Utils.js";
+import {ConvertColor, ObjectsEqual, Unproxy} from "@/utils/Utils.js";
 import ABRProfileLiveToVod from "@eluvio/elv-client-js/src/abr_profiles/abr_profile_live_to_vod.js";
 
 class EditStore {
@@ -258,6 +258,7 @@ class EditStore {
     this.saveProgress = { tags: 0, overlay: 0, aggregation: 0 };
 
     yield this.SaveTags();
+    yield this.SaveClips();
 
     this.saveProgress.tags = 1;
 
@@ -301,7 +302,6 @@ class EditStore {
   SaveTrackSettings = flow(function * () {
     const objectId = this.rootStore.videoStore.videoObject.objectId;
     const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
-    const writeToken = yield this.rootStore.editStore.InitializeWrite({objectId});
 
     yield Promise.all(
       ["metadata", "clip"].map(async type => {
@@ -316,13 +316,23 @@ class EditStore {
           }
         );
 
-        await this.client.ReplaceMetadata({
+        const currentSettings = await this.client.ContentObjectMetadata({
           libraryId,
           objectId,
-          writeToken,
           metadataSubtree: UrlJoin("/", type === "clip" ? "clips" : "video_tags", "evie", "tracks"),
-          metadata: Unproxy(trackSettings)
         });
+
+        if(!ObjectsEqual(currentSettings, trackSettings)) {
+          // Only save if different
+          const writeToken = await this.rootStore.editStore.InitializeWrite({objectId});
+          await this.client.ReplaceMetadata({
+            libraryId,
+            objectId,
+            writeToken,
+            metadataSubtree: UrlJoin("/", type === "clip" ? "clips" : "video_tags", "evie", "tracks"),
+            metadata: Unproxy(trackSettings)
+          });
+        }
       })
     );
   });
@@ -337,54 +347,16 @@ class EditStore {
     if(actions.length === 0) { return; }
 
     const objectId = this.rootStore.videoStore.videoObject.objectId;
-    const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
 
-    let modifiedFiles = {};
-    let fileHashes = {};
-    const LoadTagFile = async linkKey => {
-      if(modifiedFiles[linkKey]) { return; }
-
-      // Clips are not actually saved into a file, but into metadata
-      if(linkKey === "clips") {
-        modifiedFiles[linkKey] = await this.client.ContentObjectMetadata({
-          libraryId,
-          objectId,
-          metadataSubtree: "/clips",
-          remove: "overlay_tags"
-        });
-      } else {
-        modifiedFiles[linkKey] = await this.client.LinkData({
-          libraryId,
-          objectId,
-          linkPath: UrlJoin("video_tags", "metadata_tags", linkKey),
-          format: "json"
-        });
-      }
-
-      if(!modifiedFiles[linkKey] || modifiedFiles[linkKey]?.errors || !modifiedFiles[linkKey]?.metadata_tags) {
-        modifiedFiles[linkKey] = {
-          version: 1,
-          new: true,
-          metadata_tags: {}
-        };
-      }
-
-      // Hash the content so we can determine if the file was actually changed
-      fileHashes[linkKey] = await this.CreateHash(JSON.stringify(modifiedFiles[linkKey]));
-    };
-
-    const linkInfo = (yield this.client.ContentObjectMetadata({
-      libraryId,
-      objectId,
-      metadataSubtree: "/video_tags/metadata_tags"
-    })) || {};
-
-    const formattedActions = this.FormatActions(actions, ["tag", "clip", "track"]);
+    const formattedActions = this.FormatActions(actions, ["tag", "track"]);
 
     if(formattedActions.length === 0) { return; }
 
+    let tagsToAdd = {};
     for(const action of formattedActions) {
       if(action.type === "track") {
+        // TODO: Need track API
+        /*
         const track = action.modifiedItem;
 
         // All of the files that need modification
@@ -428,6 +400,8 @@ class EditStore {
             break;
         }
 
+         */
+
         // End of track handling
         continue;
       }
@@ -440,28 +414,154 @@ class EditStore {
         return;
       }
 
-      const tagOrigin = action.modifiedItem.o;
-      let linkKey = tagOrigin ? tagOrigin.lk :
-        action.type === "tag" ? "user" : "clips";
+      switch(action.action) {
+        // Create new tag
+        case "create":
+          if(!tagsToAdd[tag.trackKey]) {
+            tagsToAdd[tag.trackKey] = [];
+          }
 
-      yield LoadTagFile(linkKey);
+          tagsToAdd[tag.trackKey].push(tag);
+
+          break;
+
+        case "modify":
+          yield this.rootStore.aiStore.QueryAIAPI({
+            objectId,
+            path: UrlJoin("/tagstore", objectId, "tags", tag.tagId),
+            channelAuth: true,
+            method: "PATCH",
+            body: {
+              start_time: Math.floor(tag.startTime * 1000),
+              end_time: Math.ceil(tag.endTime * 1000),
+              tag: tag.text
+            }
+          });
+
+          break;
+
+        case "delete":
+          yield this.rootStore.aiStore.QueryAIAPI({
+            objectId,
+            path: UrlJoin("/tagstore", objectId, "tags", tag.tagId),
+            channelAuth: true,
+            method: "DELETE"
+          });
+
+          break;
+      }
+    }
+
+    const userAddress = yield this.rootStore.client.CurrentAccountAddress();
+
+    yield Promise.all(
+      Object.keys(tagsToAdd).map(async trackKey => {
+        await this.rootStore.aiStore.QueryAIAPI({
+          objectId,
+          path: UrlJoin("/tagstore", objectId, "tags"),
+          channelAuth: true,
+          method: "POST",
+          format: "JSON",
+          body: {
+            author: userAddress,
+            track: trackKey,
+            tags: tagsToAdd[trackKey].map(tag => ({
+              start_time: Math.floor(tag.startTime * 1000),
+              end_time: Math.ceil(tag.endTime * 1000),
+              tag: tag.text
+            }))
+          }
+        });
+      })
+    );
+  });
+
+
+  SaveClips = flow(function * () {
+    // Most recent actions first so older actions can be ignored
+    const actions = [
+      ...this.rootStore.editStore.editInfo.tags.actionStack,
+      ...this.rootStore.editStore.editInfo.clips.actionStack
+    ].reverse();
+
+    if(actions.length === 0) { return; }
+
+    const objectId = this.rootStore.videoStore.videoObject.objectId;
+    const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
+
+    const clips = (yield this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      metadataSubtree: "/clips/metadata_tags"
+    })) || {};
+
+    console.log(clips)
+
+    const formattedActions = this.FormatActions(actions, ["clip"]);
+
+    if(formattedActions.length === 0) { return; }
+
+    for(const action of formattedActions) {
+      if(action.type === "track") {
+        const track = action.modifiedItem;
+
+        // Track modified
+        switch(action.action) {
+          case "create":
+          case "modify":
+            // Label or color changed
+            if(!track.requiresSave) {
+              console.log("no save", action)
+              // Only color changed, no need to modify files
+              continue;
+            }
+
+            if(!clips?.[track.key]) {
+              console.log("init");
+              clips[track.key] = { metadata_tags: [] };
+            }
+
+            clips[track.key].label = track.label || "";
+            clips[track.key].description = track.description || "";
+
+            console.log("done", track.label);
+            break;
+
+          case "delete":
+            // Track deleted
+            if(clips?.[track.key]) {
+              delete clips[track.key];
+            }
+
+            break;
+        }
+
+        // End of track handling
+        continue;
+      }
+
+      // Tag modified
+      const tag = action.modifiedItem;
+      const tagOrigin = tag.o || {};
+
+      if(tag.trackKey === "primary-content") {
+        // Primary content is handled elsewhere
+        return;
+      }
 
       switch(action.action) {
         // Create new tag
         case "create":
-          linkKey = action.type === "tag" ? "user" : "clips";
-          yield LoadTagFile(linkKey);
-
           // Ensure track is present in file
-          if(!modifiedFiles[linkKey].metadata_tags[tag.trackKey]) {
-            modifiedFiles[linkKey].metadata_tags[tag.trackKey] = {
+          if(!clips[tag.trackKey]) {
+            clips[tag.trackKey] = {
               label: this.rootStore.trackStore.Track(tag.trackKey).label,
               tags: [],
               version: 1
             };
           }
 
-          modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags.push({
+          clips[tag.trackKey].tags.push({
             id: tag.tagId,
             text: tag.text,
             start_time: Math.floor(tag.startTime * 1000),
@@ -471,9 +571,9 @@ class EditStore {
           break;
 
         case "modify":
-          modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags[tagOrigin.ti] = {
+          clips[tag.trackKey].tags[tagOrigin.ti] = {
             tagId: tag.tagId,
-            ...modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags[tagOrigin.ti],
+            ...clips[tag.trackKey].tags[tagOrigin.ti],
             text: tag.text,
             start_time: Math.floor(tag.startTime * 1000),
             end_time: Math.ceil(tag.endTime * 1000),
@@ -482,8 +582,8 @@ class EditStore {
           break;
 
         case "delete":
-          modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags =
-            modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags
+          clips[tag.trackKey].tags =
+            clips[tag.trackKey].tags
               .filter((_, i) => i !== tagOrigin.ti);
 
           break;
@@ -492,72 +592,13 @@ class EditStore {
 
     const writeToken = yield this.rootStore.editStore.InitializeWrite({objectId});
 
-    let fileInfo = [];
-    yield Promise.all(
-      Object.keys(modifiedFiles).map(async linkKey => {
-        if(!modifiedFiles[linkKey].new && fileHashes[linkKey] === await this.CreateHash(JSON.stringify(modifiedFiles[linkKey]))) {
-          return;
-        }
-
-        // Save clips to metadata
-        if(linkKey === "clips") {
-          delete modifiedFiles[linkKey].new;
-
-          await this.client.ReplaceMetadata({
-            libraryId,
-            objectId,
-            writeToken,
-            metadataSubtree: "/clips/metadata_tags",
-            metadata: Unproxy(modifiedFiles[linkKey]?.metadata_tags)
-          });
-
-          return;
-        }
-
-        const filePath = linkKey === "user" ?
-          "/video_tags/source_tags/user/user-tags.json" :
-          UrlJoin("/video_tags", linkInfo[linkKey]["/"].split("/").slice(-1)[0]);
-
-        if(modifiedFiles[linkKey].new) {
-          await this.client.ReplaceMetadata({
-            libraryId,
-            objectId,
-            writeToken,
-            metadataSubtree: UrlJoin("/video_tags", "metadata_tags", linkKey),
-            metadata: {
-              "/": UrlJoin("./files/", filePath)
-            }
-          });
-        }
-
-        delete modifiedFiles[linkKey].new;
-
-        const data = new TextEncoder().encode(JSON.stringify(modifiedFiles[linkKey])).buffer;
-        fileInfo.push({
-          mime_type: "application/json",
-          path: filePath,
-          size: data.byteLength,
-          data
-        });
-      })
-    );
-
-    if(fileInfo.length > 0) {
-      yield this.client.UploadFiles({
-        libraryId,
-        objectId,
-        writeToken,
-        fileInfo,
-        callback: fileProgress => {
-          const uploaded = Object.keys(fileProgress).map(filename => fileProgress[filename].uploaded)
-            .reduce((acc, value) => acc + value, 0);
-          const total = Object.keys(fileProgress).map(filename => fileProgress[filename].total)
-            .reduce((acc, value) => acc + value, 0);
-
-          runInAction(() => this.saveProgress.tags = uploaded / total);
-        }
-      });
-    }
+    yield this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: "/clips/metadata_tags",
+      metadata: Unproxy(clips)
+    });
   });
 
   SaveOverlayTags = flow(function * () {

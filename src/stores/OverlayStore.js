@@ -84,7 +84,7 @@ class OverlayStore {
     });
   }
 
-  AddOverlayTracks = flow(function * () {
+  AddOverlayTracks = flow(function * (overlayTags) {
     try {
       const metadata = this.rootStore.videoStore.metadata;
 
@@ -129,10 +129,15 @@ class OverlayStore {
         this.clipOverlayTags = overlayTags;
       }
 
-      if(!metadata.video_tags || !metadata.video_tags.overlay_tags) {
+      if(!overlayTags) {
         this.overlayEnabled = true;
         return;
       }
+
+      this.metadataOverlayTags = overlayTags;
+      this.overlayEnabled = true;
+      return;
+
 
       const tagFileLinks = Object.keys(metadata.video_tags.overlay_tags);
       for(let i = 0; i < tagFileLinks.length; i++) {
@@ -143,6 +148,7 @@ class OverlayStore {
         });
 
         let overlayTags = tagInfo.overlay_tags?.frame_level_tags || {};
+        console.log(overlayTags);
         Object.keys(overlayTags).forEach(frame =>
           Object.keys(overlayTags[frame]).forEach(trackKey => {
             if(typeof overlayTags[frame][trackKey] !== "object") {

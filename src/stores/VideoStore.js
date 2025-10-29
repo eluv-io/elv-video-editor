@@ -380,6 +380,8 @@ class VideoStore {
         this.initialized = true;
         this.ready = true;
       } else {
+        /*
+        console.time("LOAD FROM FILES")
         // Load and merge tag files
         const tagData = yield this.rootStore.client.utils.LimitedMap(
           5,
@@ -396,6 +398,55 @@ class VideoStore {
 
         const metadataTags = FormatTags({tagData});
 
+        console.timeEnd("LOAD FROM FILES")
+
+
+         */
+        console.time("LOAD FROM API")
+        let apiTags = yield this.rootStore.aiStore.QueryAIAPI({
+          objectId,
+          path: UrlJoin("/tagstore", objectId, "tags"),
+          channelAuth: true,
+          queryParams: {limit: 1000000},
+          format: "JSON"
+        });
+
+        let formattedTags = {};
+        let overlayTags = [];
+        apiTags.tags.forEach(tag => {
+          if(!formattedTags[tag.track]) {
+            formattedTags[tag.track] = {
+              label: tag.track,
+              tags: []
+            };
+          }
+
+          if(tag.frame_tags) {
+            console.log({...tag.frame_tags});
+            Object.keys(tag.frame_tags).forEach(frame => {
+              frame = parseInt(frame);
+              overlayTags.push({
+                ...tag.frame_tags[frame],
+                frame,
+                trackKey: tag.track,
+                sourceTagId: tag.id,
+                text: tag.tag
+              });
+            });
+
+            delete tag.frame_tags;
+          }
+
+          formattedTags[tag.track].tags.push({
+            ...tag,
+            start_time: tag.start_time / 1000,
+            end_time: tag.end_time / 1000,
+            text: tag.tag
+          });
+        });
+
+        console.timeEnd("LOAD FROM API")
+
         let clipTags;
         if(videoObject.metadata?.clips?.metadata_tags) {
           clipTags = FormatTags({
@@ -404,9 +455,21 @@ class VideoStore {
               tags: videoObject.metadata?.clips
             }]
           });
+
+          console.log("CLIPS");
+          console.log(clipTags);
         }
 
-        yield this.rootStore.trackStore.InitializeTracks(videoObject.metadata, metadataTags, clipTags);
+        console.log(formattedTags);
+
+        console.log(JSON.stringify(Object.keys(formattedTags).sort(), null, 2))
+
+        yield this.rootStore.trackStore.InitializeTracks({
+          metadata: videoObject.metadata,
+          metadataTags: formattedTags,
+          metadataOverlayTags: overlayTags,
+          clipTags
+        });
 
         this.ready = true;
       }

@@ -517,7 +517,7 @@ class TrackStore {
           if(!tag) { return; }
         }
 
-        let tagId;
+        let tagId = tag.id;
         if(tag?.lk === "user" && tag.id) {
           // Ensure user tags have UUID tag IDs
           tagId = this.rootStore.NextId(true);
@@ -696,7 +696,7 @@ class TrackStore {
   }
 
 
-  InitializeTracks = flow(function * (metadata, metadataTags, clipTags) {
+  InitializeTracks = flow(function * ({metadata, metadataTags, metadataOverlayTags=[], clipTags}) {
     if(this.initialized) { return; }
 
     // Get saved track settings from metadata
@@ -710,7 +710,30 @@ class TrackStore {
 
     this.initialized = true;
 
-    this.rootStore.overlayStore.AddOverlayTracks();
+    let trackIds = {};
+    this.tracks.forEach(track => trackIds[track.trackKey] = track.trackId);
+
+    console.log(metadataOverlayTags)
+    let overlayTags = {};
+    metadataOverlayTags.forEach(tag => {
+      if(!overlayTags[tag.frame]) {
+        overlayTags[tag.frame] = {};
+      }
+
+      if(!overlayTags[tag.frame][tag.trackKey]) {
+        overlayTags[tag.frame][tag.trackKey] = { tags: [] };
+      }
+
+      overlayTags[tag.frame][tag.trackKey].tags.push({
+        ...tag,
+        trackId: trackIds[tag.trackKey],
+        o: {}
+      });
+    });
+
+    console.log(overlayTags)
+
+    this.rootStore.overlayStore.AddOverlayTracks(overlayTags);
   });
 
   /* User Actions */

@@ -899,7 +899,7 @@ const ContentBrowserSelect = ({item, navigate}) => {
     } else if(!item.isVideo) {
       path = UrlJoin("~/", item.objectId, "assets");
     } else if(item.hasChannels) {
-      path = UrlJoin(path, item.objectId);
+      path = UrlJoin("~/browse", path, item.objectId);
     } else {
       path = UrlJoin("~/", item.objectId);
     }
