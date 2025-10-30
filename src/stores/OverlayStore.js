@@ -84,6 +84,7 @@ class OverlayStore {
     });
   }
 
+  // eslint-disable-next-line require-yield
   AddOverlayTracks = flow(function * (overlayTags) {
     try {
       const metadata = this.rootStore.videoStore.metadata;
@@ -129,16 +130,13 @@ class OverlayStore {
         this.clipOverlayTags = overlayTags;
       }
 
-      if(!overlayTags) {
-        this.overlayEnabled = true;
-        return;
+      if(overlayTags) {
+        this.metadataOverlayTags = overlayTags;
       }
 
-      this.metadataOverlayTags = overlayTags;
       this.overlayEnabled = true;
-      return;
 
-
+      /* Read from tag files
       const tagFileLinks = Object.keys(metadata.video_tags.overlay_tags);
       for(let i = 0; i < tagFileLinks.length; i++) {
         const tagInfo = yield this.rootStore.client.LinkData({
@@ -148,7 +146,6 @@ class OverlayStore {
         });
 
         let overlayTags = tagInfo.overlay_tags?.frame_level_tags || {};
-        console.log(overlayTags);
         Object.keys(overlayTags).forEach(frame =>
           Object.keys(overlayTags[frame]).forEach(trackKey => {
             if(typeof overlayTags[frame][trackKey] !== "object") {
@@ -187,6 +184,8 @@ class OverlayStore {
 
         this.overlayEnabled = true;
       }
+
+       */
     } catch(error) {
       console.error("Failed to load overlay tracks:");
       console.error(error);

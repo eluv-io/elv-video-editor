@@ -355,6 +355,8 @@ class EditStore {
     let tagsToAdd = {};
     for(const action of formattedActions) {
       if(action.type === "track") {
+        // eslint-disable-next-line no-console
+        console.warn("Warning: Track modification not yet supported in tagstore API. Changes have not been saved.");
         // TODO: Need track API
         /*
         const track = action.modifiedItem;
@@ -495,8 +497,6 @@ class EditStore {
       metadataSubtree: "/clips/metadata_tags"
     })) || {};
 
-    console.log(clips)
-
     const formattedActions = this.FormatActions(actions, ["clip"]);
 
     if(formattedActions.length === 0) { return; }
@@ -511,20 +511,17 @@ class EditStore {
           case "modify":
             // Label or color changed
             if(!track.requiresSave) {
-              console.log("no save", action)
               // Only color changed, no need to modify files
               continue;
             }
 
             if(!clips?.[track.key]) {
-              console.log("init");
               clips[track.key] = { metadata_tags: [] };
             }
 
             clips[track.key].label = track.label || "";
             clips[track.key].description = track.description || "";
 
-            console.log("done", track.label);
             break;
 
           case "delete":
@@ -609,6 +606,10 @@ class EditStore {
     ].reverse();
 
     if(actions.length === 0) { return; }
+
+    // eslint-disable-next-line no-console
+    console.warn("Warning: Overlay tag saving not yet supported in tagstore API. Changes have not been saved");
+    return;
 
     const objectId = this.rootStore.videoStore.videoObject.objectId;
     const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});

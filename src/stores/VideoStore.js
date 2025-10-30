@@ -402,7 +402,7 @@ class VideoStore {
 
 
          */
-        console.time("LOAD FROM API")
+        console.time("Load Tags");
         let apiTags = yield this.rootStore.aiStore.QueryAIAPI({
           objectId,
           path: UrlJoin("/tagstore", objectId, "tags"),
@@ -422,7 +422,6 @@ class VideoStore {
           }
 
           if(tag.frame_tags) {
-            console.log({...tag.frame_tags});
             Object.keys(tag.frame_tags).forEach(frame => {
               frame = parseInt(frame);
               overlayTags.push({
@@ -445,7 +444,7 @@ class VideoStore {
           });
         });
 
-        console.timeEnd("LOAD FROM API")
+        console.timeEnd("Load Tags");
 
         let clipTags;
         if(videoObject.metadata?.clips?.metadata_tags) {
@@ -455,14 +454,7 @@ class VideoStore {
               tags: videoObject.metadata?.clips
             }]
           });
-
-          console.log("CLIPS");
-          console.log(clipTags);
         }
-
-        console.log(formattedTags);
-
-        console.log(JSON.stringify(Object.keys(formattedTags).sort(), null, 2))
 
         yield this.rootStore.trackStore.InitializeTracks({
           metadata: videoObject.metadata,

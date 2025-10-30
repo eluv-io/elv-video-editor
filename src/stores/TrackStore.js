@@ -713,7 +713,6 @@ class TrackStore {
     let trackIds = {};
     this.tracks.forEach(track => trackIds[track.trackKey] = track.trackId);
 
-    console.log(metadataOverlayTags)
     let overlayTags = {};
     metadataOverlayTags.forEach(tag => {
       if(!overlayTags[tag.frame]) {
@@ -730,8 +729,6 @@ class TrackStore {
         o: {}
       });
     });
-
-    console.log(overlayTags)
 
     this.rootStore.overlayStore.AddOverlayTracks(overlayTags);
   });
