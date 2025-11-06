@@ -581,7 +581,10 @@ class AIStore {
     const baseUrl = yield this.client.Rep({
       versionHash: this.searchIndex.versionHash,
       rep: "frame",
-      channelAuth: true
+      channelAuth: true,
+      queryParams: {
+        ignore_trimming: true
+      }
     });
 
     this.searchResults = {

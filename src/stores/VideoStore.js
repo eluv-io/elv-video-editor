@@ -355,7 +355,10 @@ class VideoStore {
       this.baseImageUrl = yield this.rootStore.client.Rep({
         versionHash: videoObject.versionHash,
         rep: UrlJoin("frame", videoObject.offeringKey, "video"),
-        channelAuth: true
+        channelAuth: true,
+        queryParams: {
+          ignore_trimming: true
+        }
       });
 
       if(addToMyLibrary) {
