@@ -12,6 +12,7 @@ import BackIcon from "@/assets/icons/v2/back.svg";
 import XIcon from "@/assets/icons/X.svg";
 import TrashIcon from "@/assets/icons/trash.svg";
 import CheckmarkIcon from "@/assets/icons/check-circle.svg";
+import DownloadIcon from "@/assets/icons/download.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -50,25 +51,36 @@ const TrackActions = observer(({track}) => {
               onClick={() => tagStore.ClearEditing()}
             /> :
             track.trackType === "primary-content" ? null :
-              <>
+              track.key.endsWith("-synthetic") ?
                 <IconButton
-                  label="Edit Category"
-                  icon={EditIcon}
-                  onClick={() => tagStore.SetEditing({id: track.trackId, type: "track"})}
-                />
-                <IconButton
-                  label="Remove Category"
-                  icon={TrashIcon}
-                  onClick={async () => await Confirm({
-                    title: "Remove Category",
-                    text: "Are you sure you want to remove this category?",
-                    onConfirm: () => {
-                      tagStore.DeleteTrack({trackId: track.trackId});
-                      tagStore.ClearSelectedTrack();
-                    }
-                  })}
-                />
-              </>
+                  label="Download Tags"
+                  icon={DownloadIcon}
+                  onClick={() => tagStore.DownloadTrackTags(track.trackId)}
+                /> :
+                <>
+                  <IconButton
+                    label="Edit Category"
+                    icon={EditIcon}
+                    onClick={() => tagStore.SetEditing({id: track.trackId, type: "track"})}
+                  />
+                  <IconButton
+                    label="Download Tags"
+                    icon={DownloadIcon}
+                    onClick={() => tagStore.DownloadTrackTags(track.trackId)}
+                  />
+                  <IconButton
+                    label="Remove Category"
+                    icon={TrashIcon}
+                    onClick={async () => await Confirm({
+                      title: "Remove Category",
+                      text: "Are you sure you want to remove this category?",
+                      onConfirm: () => {
+                        tagStore.DeleteTrack({trackId: track.trackId});
+                        tagStore.ClearSelectedTrack();
+                      }
+                    })}
+                  />
+                </>
         }
       </div>
     </div>
@@ -151,10 +163,13 @@ export const TrackDetails = observer(() => {
             <label>Category:</label>
             <span>{track.label || track.key}</span>
           </div>
-          <div className={S("tag-details__detail")}>
-            <label>Metadata Key:</label>
-            <span className={S("ellipsis")}>{track.key}</span>
-          </div>
+          {
+            track.key.endsWith("-synthetic") ? null :
+              <div className={S("tag-details__detail")}>
+                <label>Metadata Key:</label>
+                <span className={S("ellipsis")}>{track.key}</span>
+              </div>
+          }
           {
             !track.description ? null :
               <div className={S("tag-details__detail")}>

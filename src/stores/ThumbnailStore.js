@@ -10,6 +10,8 @@ class ThumbnailStore {
   intervalTree;
   generating = false;
   maxInterval = 10;
+  offsetFrames = 0;
+  offsetTime = 0;
 
   constructor(parentStore) {
     // Parent store is a video store
@@ -69,9 +71,11 @@ class ThumbnailStore {
     });
   }
 
-  LoadThumbnails = flow(function * (thumbnailTrackUrl) {
+  LoadThumbnails = flow(function * (thumbnailTrackUrl, primaryContentClipPoints) {
     this.thumbnailTrackUrl = thumbnailTrackUrl;
     this.generating = localStorage.getItem(`regenerate-thumbnails-${this.parentStore.videoObject?.objectId}`);
+    this.offsetFrames = primaryContentClipPoints.clipInFrame || 0;
+    this.offsetTime = primaryContentClipPoints.clipInTime || 0;
 
     if(!thumbnailTrackUrl) {
       this.thumbnailStatus = {
@@ -142,7 +146,7 @@ class ThumbnailStore {
 
     this.thumbnailImages = imageUrls;
     this.thumbnails = tags;
-    this.intervalTree = CreateTrackIntervalTree(tags, "Thumbnails");
+    this.intervalTree = CreateTrackIntervalTree(tags, "Thumbnails", this.offsetTime);
     this.thumbnailStatus = { loaded: true, available: true };
 
     if(this.generating) {

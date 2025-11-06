@@ -105,6 +105,22 @@ class VideoStore {
     return this.FrameToSMPTE(frame - 1, this.dropFrame);
   }
 
+  get primaryContentClipPoints() {
+    const offeringInfo = this.metadata?.offerings?.[this.offeringKey];
+
+    if(!offeringInfo || !this.videoHandler) { return { clipInFrame: 0, clipOutFrame: this.totalFrames - 1 }; }
+
+    const clipInFrame = offeringInfo.entry_point_rat ? this.videoHandler.RatToFrame(offeringInfo.entry_point_rat) : 0;
+    const clipOutFrame = offeringInfo.exit_point_rat ? this.videoHandler.RatToFrame(offeringInfo.exit_point_rat) : this.totalFrames - 1;
+
+    return {
+      clipInFrame,
+      clipInTime: this.videoHandler.FrameToTime(clipInFrame),
+      clipOutFrame,
+      clipOutTime: this.videoHandler.FrameToTime(clipOutFrame),
+    };
+  }
+
   DebounceControl({name, delay, Action}) {
     if(this[`${name}LastFired`] && Date.now() - this[`${name}LastFired`] < delay) {
       clearTimeout(this[`${name}Debounce`]);
@@ -349,7 +365,7 @@ class VideoStore {
       }
 
       if(this.thumbnails) {
-        this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl);
+        this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl, this.primaryContentClipPoints);
       }
 
       this.baseImageUrl = yield this.rootStore.client.Rep({
@@ -441,7 +457,7 @@ class VideoStore {
     });
 
     this.thumbnailTrackUrl = videoObject.thumbnailTrackUrl;
-    this.thumbnailStore.LoadThumbnails(videoObject.thumbnailTrackUrl);
+    this.thumbnailStore.LoadThumbnails(videoObject.thumbnailTrackUrl, this.primaryContentClipPoints);
   });
 
   ReloadMetadata = flow(function * () {

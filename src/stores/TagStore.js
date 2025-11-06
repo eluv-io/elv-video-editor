@@ -1,5 +1,5 @@
 import {makeAutoObservable} from "mobx";
-import {Unproxy} from "@/utils/Utils.js";
+import {DownloadFromUrl, Unproxy} from "@/utils/Utils.js";
 import {Cue} from "@/stores/Helpers.js";
 
 class TagStore {
@@ -840,6 +840,24 @@ class TagStore {
         box
       }
     });
+  }
+
+  async DownloadTrackTags(trackId) {
+    const track = this.rootStore.trackStore.Track(trackId);
+    const tags = Object.values(this.rootStore.trackStore.TrackTags(trackId))
+      .map(tag => ({
+        start_time: tag.tag?.start_time || Math.floor(tag.startTime * 1000),
+        end_time: tag.tag?.end_time || Math.floor(tag.endTime * 1000),
+        text: tag.text
+      }))
+      .sort((a, b) => a.start_time < b.start_time ? -1 : 1);
+
+    const blob = new Blob([JSON.stringify(tags)], { type: "text/json" });
+
+    DownloadFromUrl(
+      window.URL.createObjectURL(blob),
+      `${rootStore.videoStore.videoObject.objectId} - ${track.label} Tags.json`
+    );
   }
 
   UpdateEditedTrack(track) {
