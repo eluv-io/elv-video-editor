@@ -499,7 +499,7 @@ class TrackStore {
 
     return {
       ...tag,
-      trackKey: `${trackKey}_aggregated`,
+      trackKey: `${trackKey}_aggregated-synthetic`,
       text
     };
   }
@@ -517,7 +517,7 @@ class TrackStore {
           const ttsKeys = Object.keys(tag?.text || {}).filter(key => key?.toLowerCase()?.includes("speech to text"));
 
           tags = ttsKeys.map(key => {
-            const aggregatedKey = `${key}_aggregated`;
+            const aggregatedKey = `${key}_aggregated-synthetic`;
             trackTags[aggregatedKey] = trackTags[aggregatedKey] || {};
             trackTags[aggregatedKey].tags = trackTags[aggregatedKey].tags || {};
             trackTags[aggregatedKey].label = trackTags[aggregatedKey].label || `${key} (Aggregated)`;
@@ -538,7 +538,7 @@ class TrackStore {
 
           let parsedTag = Cue({
             tagId,
-            trackKey: key,
+            trackKey: tag.trackKey || key,
             tagType: type,
             startTime: millis ? (tag.start_time / 1000) : tag.start_time,
             endTime: millis ? (tag.end_time / 1000) : tag.end_time,
@@ -563,7 +563,7 @@ class TrackStore {
 
       Object.keys(trackTags).forEach(trackKey => {
         metadataTracks.push({
-          label: trackKey.endsWith("_aggregated") ? trackTags[trackKey].label : metadataTags[key].label,
+          label: trackKey.endsWith("_aggregated-synthetic") ? trackTags[trackKey].label : metadataTags[key].label,
           trackType: type,
           key: trackKey,
           tags: trackTags[trackKey].tags

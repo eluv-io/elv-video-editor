@@ -128,7 +128,7 @@ const TagActions = observer(({tag, track}) => {
             /> :
             <>
               {
-                tag.trackKey === "shot_tags" ? null :
+                tag.trackKey.endsWith("-synthetic") ? null :
                   <IconButton
                     label="Edit Tag"
                     icon={EditIcon}
@@ -136,7 +136,7 @@ const TagActions = observer(({tag, track}) => {
                   />
               }
               {
-                track.trackType === "primary-content" ? null :
+                tag.trackKey.endsWith("-synthetic") || track.trackType === "primary-content" ? null :
                   <IconButton
                     label="Remove Tag"
                     icon={TrashIcon}
@@ -478,7 +478,7 @@ const Tag = observer(({track, tag, setTagRef}) => {
         </div>
       <div className={S("tag__actions")}>
         {
-          tag.trackKey === "shot_tags" ? null :
+          tag.trackKey.endsWith("-synthetic") ? null :
             <IconButton
               label="Edit Tag"
               icon={EditIcon}
