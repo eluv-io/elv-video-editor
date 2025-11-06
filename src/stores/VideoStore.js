@@ -369,9 +369,10 @@ class VideoStore {
         });
       }
 
+      this.initialized = true;
+      this.ready = true;
+
       if(!this.tags) {
-        this.initialized = true;
-        this.ready = true;
         return;
       }
 

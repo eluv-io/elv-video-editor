@@ -490,15 +490,16 @@ class TrackStore {
 
   /* Subtitles and Metadata */
 
-  FormatAggregatedSpeechToTextTag(tag) {
-    if(!tag.text?.["Speech to Text"]) {
+  FormatAggregatedSpeechToTextTag(tag, trackKey) {
+    if(!tag.text?.[trackKey]) {
       return;
     }
 
-    const text = tag.text["Speech to Text"].map(({text}) => text).join(" ");
+    const text = tag.text[trackKey].map(({text}) => text).join(" ");
 
     return {
       ...tag,
+      trackKey: `${trackKey}_aggregated`,
       text
     };
   }
@@ -508,48 +509,65 @@ class TrackStore {
 
     let metadataTracks = [];
     Object.keys(metadataTags).forEach(key => {
-      let tags = {};
+      let trackTags = {};
       const millis = type === "clip" || metadataTags[key].version > 0;
       metadataTags[key].tags.forEach(tag => {
+        let tags = [tag];
         if(key === "shot_tags") {
-          tag = this.FormatAggregatedSpeechToTextTag(tag);
+          const ttsKeys = Object.keys(tag?.text || {}).filter(key => key?.toLowerCase()?.includes("speech to text"));
 
-          if(!tag) { return; }
+          tags = ttsKeys.map(key => {
+            const aggregatedKey = `${key}_aggregated`;
+            trackTags[aggregatedKey] = trackTags[aggregatedKey] || {};
+            trackTags[aggregatedKey].tags = trackTags[aggregatedKey].tags || {};
+            trackTags[aggregatedKey].label = trackTags[aggregatedKey].label || `${key} (Aggregated)`;
+            return this.FormatAggregatedSpeechToTextTag(tag, key);
+          });
         }
 
-        let tagId;
-        if(tag?.lk === "user" && tag.id) {
-          // Ensure user tags have UUID tag IDs
-          tagId = this.rootStore.NextId(true);
-        }
-
-        let parsedTag = Cue({
-          tagId,
-          trackKey: key,
-          tagType: type,
-          startTime: millis ? (tag.start_time / 1000) : tag.start_time,
-          endTime: millis ? (tag.end_time / 1000) : tag.end_time,
-          text: tag.text,
-          tag: Unproxy(tag),
-          o: {
-            lk: tag.lk,
-            tk: tag.tk,
-            ti: tag.ti
+        tags.forEach(tag => {
+          if(!tag) {
+            return;
           }
+
+          let tagId;
+          if(tag?.lk === "user" && tag.id) {
+            // Ensure user tags have UUID tag IDs
+            tagId = this.rootStore.NextId(true);
+          }
+
+          let parsedTag = Cue({
+            tagId,
+            trackKey: key,
+            tagType: type,
+            startTime: millis ? (tag.start_time / 1000) : tag.start_time,
+            endTime: millis ? (tag.end_time / 1000) : tag.end_time,
+            text: tag.text,
+            tag: Unproxy(tag),
+            o: {
+              lk: tag.lk,
+              tk: tag.tk,
+              ti: tag.ti
+            }
+          });
+
+          if(parsedTag.startTime >= parsedTag.endTime) {
+            parsedTag.endTime = parsedTag.startTime + this.rootStore.videoStore.FrameToTime(1);
+          }
+
+          trackTags[tag.trackKey || key] = trackTags[tag.trackKey || key] || {};
+          trackTags[tag.trackKey || key].tags = trackTags[tag.trackKey || key].tags || {};
+          trackTags[tag.trackKey || key].tags[parsedTag.tagId] = parsedTag;
         });
-
-        if(parsedTag.startTime >= parsedTag.endTime) {
-          parsedTag.endTime = parsedTag.startTime + this.rootStore.videoStore.FrameToTime(1);
-        }
-
-        tags[parsedTag.tagId] = parsedTag;
       });
 
-      metadataTracks.push({
-        label: key === "shot_tags" ? "Speech to Text (Aggregated)" : metadataTags[key].label,
-        trackType: type,
-        key,
-        tags
+      Object.keys(trackTags).forEach(trackKey => {
+        metadataTracks.push({
+          label: trackKey.endsWith("_aggregated") ? trackTags[trackKey].label : metadataTags[key].label,
+          trackType: type,
+          key: trackKey,
+          tags: trackTags[trackKey].tags
+        });
       });
     });
 
