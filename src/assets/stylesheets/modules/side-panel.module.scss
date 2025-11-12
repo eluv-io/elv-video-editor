@@ -340,7 +340,8 @@
   color: var(--text-tertiary);
   display: flex;
   font-size: 10px;
-  margin-left: 15px
+  justify-content: space-between;
+  margin-inline: 15px;
 }
 
 .track-options {

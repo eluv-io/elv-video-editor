@@ -3,7 +3,7 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {tagStore, trackStore, videoStore} from "@/stores/index.js";
-import {FocusTrap, Tooltip} from "@mantine/core";
+import {Checkbox, FocusTrap, Tooltip} from "@mantine/core";
 import {
   Confirm,
   FormSelect,
@@ -15,6 +15,7 @@ import {
 } from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
+import {useDebouncedState} from "@mantine/hooks";
 
 import EditIcon from "@/assets/icons/Edit.svg";
 import PlayIcon from "@/assets/icons/Play.svg";
@@ -26,7 +27,6 @@ import MarkOutIcon from "@/assets/icons/marker-out.svg";
 import XIcon from "@/assets/icons/X.svg";
 import TrashIcon from "@/assets/icons/trash.svg";
 import CheckmarkIcon from "@/assets/icons/check-circle.svg";
-import {useDebouncedState} from "@mantine/hooks";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -509,14 +509,16 @@ export const TagsList = observer(({mode="tags"}) => {
   const ref = useRef(null);
   const [loading, setLoading] = useState(true);
   const [scrollRef, setScrollRef] = useState(undefined);
-  const perPage = 10;
   const [pages, setPages] = useDebouncedState({previous: 1, next: 1}, 250);
   const [update, setUpdate] = useDebouncedState(0, 250);
-  const [key, setKey] = useDebouncedState(0, 250);
+  const [key] = useDebouncedState(0, 250);
   const [scrollTagId, setScrollTagId] = useState(undefined);
   const [scrolled, setScrolled] = useState(false);
   const [tags, setTags] = useState([]);
   const [pageInfo, setPageInfo] = useState({min: 0, max: 0, center: 0, total: 0});
+  const [playheadFrame, setPlayheadFrame] = useState(null);
+  const [showTagsFromPlayhead, setShowTagsFromPlayhead] = useState(false);
+  const perPage = 10;
 
   let tracks = {};
 
@@ -529,7 +531,7 @@ export const TagsList = observer(({mode="tags"}) => {
   const CheckUpdate = () => {
     if(!ref?.current || loading) { return; }
 
-    if(pageInfo.min > 0 && ref.current.scrollTop < ref.current.scrollHeight * 0.23) {
+    if(!showTagsFromPlayhead && pageInfo.min > 0 && ref.current.scrollTop < ref.current.scrollHeight * 0.23) {
       // Top infinite scroll
       setPages({...pages, previous: pages.previous + 1});
       //setLimit(limit + batchSize);
@@ -542,13 +544,13 @@ export const TagsList = observer(({mode="tags"}) => {
   };
 
   useEffect(() => {
-    setLoading(true);
+    //setLoading(true);
     // Reset limit when tag content changes
     setPages({previous: 1, next: 1});
     setScrolled(false);
     setScrollTagId(tagStore.scrollTagId);
     setUpdate(update + 1);
-    setKey(key + 1);
+    //setKey(key + 1);
   }, [
     videoStore.scaleMin,
     videoStore.scaleMax,
@@ -561,13 +563,21 @@ export const TagsList = observer(({mode="tags"}) => {
     trackStore.showPrimaryContent,
     tagStore.editPosition,
     tagStore.scrollTagId,
-    tagStore.scrollSeekTime
+    tagStore.scrollSeekTime,
+    videoStore.playing,
+    playheadFrame,
+    showTagsFromPlayhead
   ]);
+
+  useEffect(() => {
+    if(!showTagsFromPlayhead || videoStore.frame - playheadFrame < videoStore.frameRate ) { return; }
+    setPlayheadFrame(videoStore.frame);
+  }, [videoStore.frame, tags]);
 
   useEffect(() => {
     const { tags, centerTagId, ...info } = tagStore.Tags({
       mode,
-      startFrame: videoStore.scaleMinFrame,
+      startFrame: showTagsFromPlayhead ? videoStore.frame : videoStore.scaleMinFrame,
       endFrame: videoStore.scaleMaxFrame,
       pages,
       perPage,
@@ -577,8 +587,11 @@ export const TagsList = observer(({mode="tags"}) => {
     });
 
     setPageInfo(info);
-    setScrollTagId(centerTagId);
     setTags(tags);
+
+    if(!showTagsFromPlayhead) {
+      setScrollTagId(centerTagId);
+    }
 
     if(!scrollTagId) {
       setTimeout(() => setLoading(false), 500);
@@ -610,7 +623,17 @@ export const TagsList = observer(({mode="tags"}) => {
       {
         !videoStore?.initialized || pageInfo.total === 0 ? null :
           <div className={S("count")}>
-            Showing {pageInfo.min} - {pageInfo.max} of {pageInfo.total}
+            <div>
+              Showing {pageInfo.min || 1} - {pageInfo.max} of {pageInfo.total}
+            </div>
+            <Checkbox
+              size="xs"
+              fz="xl"
+              labelPosition="left"
+              label="Show from Playhead"
+              checked={showTagsFromPlayhead}
+              onChange={event => setShowTagsFromPlayhead(event.currentTarget.checked)}
+            />
           </div>
       }
       <div
@@ -620,14 +643,16 @@ export const TagsList = observer(({mode="tags"}) => {
         className={S("tags")}
       >
         {
-          tags.map(tag =>
-            <Tag
-              key={`tag-${tag.tagId}`}
-              setTagRef={tag.tagId === scrollTagId ? setScrollRef : undefined}
-              track={tracks[tag.trackKey]}
-              tag={tag}
-            />
-          )
+          tags
+            //.filter(tag => !showTagsFromPlayhead || tag.endTime >= videoStore.currentTime)
+            .map(tag =>
+              <Tag
+                key={`tag-${tag.tagId}`}
+                setTagRef={tag.tagId === scrollTagId ? setScrollRef : undefined}
+                track={tracks[tag.trackKey]}
+                tag={tag}
+              />
+            )
         }
       </div>
       {

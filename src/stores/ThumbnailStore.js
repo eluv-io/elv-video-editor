@@ -7,6 +7,7 @@ class ThumbnailStore {
   thumbnails = false;
   thumbnailStatus = { loaded: false };
   thumbnailImages = {};
+  thumbnailUrls = {};
   intervalTree;
   generating = false;
   maxInterval = 10;
@@ -21,7 +22,9 @@ class ThumbnailStore {
       this,
       {
         intervalTree: false,
-        thumbnails: false
+        thumbnails: false,
+        thumbnailImages: false,
+        thumbnailUrls: false
       }
     );
   }
@@ -54,20 +57,24 @@ class ThumbnailStore {
         return;
       }
 
-      if(!this.thumbnailCanvas) {
-        this.thumbnailCanvas = document.createElement("canvas");
+      if(!this.thumbnailUrls[thumbnailIndex]) {
+        if(!this.thumbnailCanvas) {
+          this.thumbnailCanvas = document.createElement("canvas");
+        }
+
+        const image = this.thumbnailImages[tag?.imageUrl];
+
+        if(image) {
+          const [x, y, w, h] = tag.thumbnailPosition;
+          this.thumbnailCanvas.height = h;
+          this.thumbnailCanvas.width = w;
+          const context = this.thumbnailCanvas.getContext("2d");
+          context.drawImage(image, x, y, w, h, 0, 0, w, h);
+          this.thumbnailUrls[thumbnailIndex] = this.thumbnailCanvas.toDataURL("image/png");
+        }
       }
 
-      const image = this.thumbnailImages[tag?.imageUrl];
-
-      if(image) {
-        const [x, y, w, h] = tag.thumbnailPosition;
-        this.thumbnailCanvas.height = h;
-        this.thumbnailCanvas.width = w;
-        const context = this.thumbnailCanvas.getContext("2d");
-        context.drawImage(image, x, y, w, h, 0, 0, w, h);
-        return this.thumbnailCanvas.toDataURL("image/png");
-      }
+      return this.thumbnailUrls[thumbnailIndex];
     });
   }
 
