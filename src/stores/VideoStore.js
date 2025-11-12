@@ -368,14 +368,16 @@ class VideoStore {
         this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl, this.primaryContentClipPoints);
       }
 
-      this.baseImageUrl = yield this.rootStore.client.Rep({
-        versionHash: videoObject.versionHash,
-        rep: UrlJoin("frame", videoObject.offeringKey, "video"),
-        channelAuth: true,
-        queryParams: {
-          ignore_trimming: true
-        }
-      });
+      if(videoObject?.offeringKey) {
+        this.baseImageUrl = yield this.rootStore.client.Rep({
+          versionHash: videoObject.versionHash,
+          rep: UrlJoin("frame", videoObject.offeringKey, "video"),
+          channelAuth: true,
+          queryParams: {
+            ignore_trimming: true
+          }
+        });
+      }
 
       if(addToMyLibrary) {
         this.rootStore.browserStore.AddMyLibraryItem({
