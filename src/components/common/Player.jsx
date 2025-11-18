@@ -48,6 +48,9 @@ const Player = forwardRef(function VideoComponent({
             playoutParameters: {
               objectId,
               versionHash,
+              options: {
+                ignore_trimming: true,
+              },
               ...playoutParameters,
             },
           },

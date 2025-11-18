@@ -11,6 +11,7 @@ import {AISearchBar, CardDisplaySwitch} from "@/components/nav/Browser.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import UrlJoin from "url-join";
 import {EntityCard, EntityListItem} from "@/components/common/EntityLists.jsx";
+import {Checkbox} from "@mantine/core";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 
@@ -55,7 +56,7 @@ export const GroupedSearchResults = observer(({
       key={`scroll-${showList}-${aiStore.searchIndex?.versionHash}-${queryB58}`}
       scrollPreservationKey={scrollPreservationKey ? `search-${aiStore.searchIndex?.versionHash}-${queryB58}-${scrollPreservationKey}` : undefined}
       withLoader
-      watchList={[query, aiStore.selectedSearchIndexId]}
+      watchList={[query, aiStore.selectedSearchIndexId, aiStore.filterLowQualitySearchResults]}
       batchSize={
         resultIndex ? Math.max(resultIndex + 10, batchSize) :
           batchSize
@@ -123,7 +124,7 @@ export const SearchResults = observer(({showList, scrollPreservationKey, classNa
       key={`scroll-${showList}-${aiStore.searchIndex?.versionHash}-${queryB58}`}
       scrollPreservationKey={scrollPreservationKey ? `search-${aiStore.searchIndex?.versionHash}-${queryB58}-${scrollPreservationKey}` : undefined}
       withLoader
-      watchList={[query, aiStore.selectedSearchIndexId]}
+      watchList={[query, aiStore.selectedSearchIndexId, aiStore.filterLowQualitySearchResults]}
       batchSize={
         resultIndex ? Math.max(resultIndex + 10, batchSize) :
           batchSize
@@ -201,6 +202,20 @@ const SearchResultsPage = observer(() => {
           <span className={S("browser__header-last")}>
             {query.startsWith("music:") ? query?.split("music:")[1] || "All Results" : query}
           </span>
+          <div className={S("browser__action--right")}>
+            <Checkbox
+              mr={10}
+              fz="sm"
+              sz="sm"
+              value={aiStore.filterLowQualitySearchResults}
+              onChange={event => {
+                aiStore.SetSearchQualityFilter(event.target.checked);
+                aiStore.ClearSearchResults();
+              }}
+              labelPosition="left"
+              label="Filter Low Quality Results"
+            />
+          </div>
           <CardDisplaySwitch
             showList={showList}
             setShowList={setShowList}

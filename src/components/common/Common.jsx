@@ -240,6 +240,7 @@ export const IconButton = ({
   openDelay=500,
   highlight,
   faded,
+  large,
   small,
   withinPortal=true,
   noHover,
@@ -311,6 +312,7 @@ export const IconButton = ({
               faded ? "icon-button--faded" : "",
               highlight ? "icon-button--highlight" : "",
               small ? "icon-button--small" : "",
+              large ? "icon-button--large" : "",
               noHover ? "icon-button--no-hover" : ""
             ),
           props.className || ""

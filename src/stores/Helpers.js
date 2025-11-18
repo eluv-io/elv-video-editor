@@ -326,12 +326,12 @@ export const ParseVTTTrack = async ({track, store}) => {
   return cues;
 };
 
-export const CreateTrackIntervalTree = (tags, label) => {
+export const CreateTrackIntervalTree = (tags, label, offset=0) => {
   const intervalTree = new IntervalTree();
 
   Object.values(tags).forEach(tag => {
     try {
-      intervalTree.insert(tag.startTime, tag.endTime, tag.tagId);
+      intervalTree.insert(tag.startTime + offset, tag.endTime + offset, tag.tagId);
     } catch(error) {
       // eslint-disable-next-line no-console
       console.warn(`Invalid tag in track '${label}'`);

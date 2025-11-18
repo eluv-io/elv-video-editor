@@ -517,7 +517,7 @@ class TrackStore {
           if(!tag) { return; }
         }
 
-        let tagId = tag.id;
+        let tagId;
         if(tag?.lk === "user" && tag.id) {
           // Ensure user tags have UUID tag IDs
           tagId = this.rootStore.NextId(true);

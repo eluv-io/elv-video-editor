@@ -200,7 +200,7 @@ export const Slugify = str =>
 export const ScaleImage = (url, width) => {
   if(!url) { return ""; }
 
-  if(url.includes(".svg")) {
+  if(url.includes(".svg") || url.startsWith("blob")) {
     return url;
   }
 

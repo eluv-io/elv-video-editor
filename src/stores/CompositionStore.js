@@ -1057,7 +1057,10 @@ class CompositionStore {
     const baseImageUrl = yield this.client.Rep({
       versionHash,
       rep: UrlJoin("frame", sourceOfferingKey, "video"),
-      channelAuth: true
+      channelAuth: true,
+      queryParams: {
+        ignore_trimming: true
+      }
     });
 
     this.compositionObject = {

@@ -208,6 +208,14 @@
     width: 100%;
   }
 
+  &__input-with-button {
+    --icon-size: 50px;
+
+    align-items: center;
+    display: flex;
+    gap: 10px;
+  }
+
   &__input-container-loader {
     border-radius: 10px;
   }
@@ -294,14 +302,14 @@
   user-select: none;
 
   &__image {
-    width: 200px;
+    width: 250px;
   }
 
   &__time,
   &__text {
     font-size: 12px;
-    max-height: 150px;
-    max-width: 200px;
+    max-height: 250px;
+    max-width: 250px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: pre-wrap;

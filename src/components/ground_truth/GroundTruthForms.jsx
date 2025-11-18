@@ -71,12 +71,20 @@ const EntityOption = ({option, checked}) => {
     >
       <div className={S("entity-option", checked ? "entity-option--selected" : "")}>
         <div className={S("entity-option__image-container")}>
-          <LoaderImage
-            lazy
-            src={imageUrl}
-            className={S("entity-option__image", option.value === "automatic" ? "entity-option__image--automatic" : "")}
-            showWithoutSource
-          />
+          {
+            imageUrl?.startsWith("blob") ?
+              <img
+                src={imageUrl}
+                className={S("entity-option__image", ["add", "automatic"].includes(option.value) ? "entity-option__image--automatic" : "")}
+              /> :
+              <LoaderImage
+                lazy
+                src={imageUrl}
+                className={S("entity-option__image", ["add", "automatic"].includes(option.value) ? "entity-option__image--automatic" : "")}
+                showWithoutSource
+              />
+          }
+
         </div>
         <div className={S("entity-option__text")}>
           { entity?.label || option.label }
@@ -86,8 +94,9 @@ const EntityOption = ({option, checked}) => {
   );
 };
 
-export const EntitySelect = ({poolId, entityId, showAutoOption, setEntityId, loading=false, ...props}) => {
+export const EntitySelect = ({poolId, entityId, showAutoOption, setEntityId, loading=false, showAddOption=false,...props}) => {
   const [selectedEntityId, setSelectedEntityId] = useState(entityId);
+  const [showNewEntityModal, setShowNewEntityModal] = useState(false);
   const pool = groundTruthStore.pools[poolId];
 
   useEffect(() => {
@@ -103,35 +112,62 @@ export const EntitySelect = ({poolId, entityId, showAutoOption, setEntityId, loa
   }
 
   return (
-    <div key={poolId} className={S("form__input-container")}>
-      <LoadingOverlay visible={loading} className={S("form__input-container-loader")} />
-      <FormSelect
-        searchable
-        limit={100}
-        label="Entity"
-        value={selectedEntityId}
-        onChange={value => setSelectedEntityId(value)}
-        options={
-          [
-            showAutoOption ? {label: "<Automatic>", value: "automatic", poolId} : undefined,
-            ...(
-              Object.keys(pool?.metadata?.entities || {})
-                .map(entityId =>
-                  ({
-                    label: pool?.metadata?.entities[entityId].label || entityId,
-                    value: entityId,
-                    poolId
-                  })
-                )
-            )
-          ].filter(option => option)
-        }
-        renderOption={EntityOption}
-        classNames={{
-          option: S("entity-option-wrapper")
-        }}
-        { ...props }
-      />
+    <div className={S("form__input-with-button")}>
+      <div key={poolId} className={S("form__input-container")}>
+        <LoadingOverlay visible={loading} className={S("form__input-container-loader")} />
+        <FormSelect
+          searchable
+          limit={100}
+          label="Entity"
+          value={selectedEntityId}
+          onChange={value => setSelectedEntityId(value)}
+          options={
+            [
+              showAutoOption ? {label: "<Automatic>", value: "automatic", poolId} : undefined,
+              showAddOption ? {label: "<Add New Entity>", value: "add", poolId} : undefined,
+              ...(
+                Object.keys(pool?.metadata?.entities || {})
+                  .map(entityId =>
+                    ({
+                      label: pool?.metadata?.entities[entityId].label || entityId,
+                      value: entityId,
+                      poolId
+                    })
+                  )
+              )
+            ].filter(option => option)
+          }
+          renderOption={EntityOption}
+          classNames={{
+            option: S("entity-option-wrapper")
+          }}
+          { ...props }
+        />
+      </div>
+      {
+        !showAddOption ? null :
+          <IconButton
+            icon={AddIcon}
+            large
+            title="Add New Entity"
+            onClick={() => setShowNewEntityModal(true)}
+          />
+      }
+      {
+        !showNewEntityModal ? null :
+          <GroundTruthEntityForm
+            title="Create Ground Truth Entity"
+            poolId={poolId}
+            showForm
+            Close={entityId => {
+              if(entityId) {
+                setEntityId(entityId);
+              }
+
+              setShowNewEntityModal(false);
+            }}
+          />
+      }
     </div>
   );
 };
