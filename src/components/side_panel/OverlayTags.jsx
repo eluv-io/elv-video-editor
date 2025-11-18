@@ -153,6 +153,7 @@ export const GroundTruthAssetFromOverlayForm = observer(() => {
                 <>
                   <EntitySelect
                     loading={entityLoading}
+                    showAddOption
                     key={`entity-select-${asset.poolId}`}
                     poolId={asset.poolId}
                     entityId={asset.entityId}

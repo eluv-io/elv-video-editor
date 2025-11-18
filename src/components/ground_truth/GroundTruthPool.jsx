@@ -279,7 +279,9 @@ const GroundTruthPool = observer(() => {
             >
               Add New Ground Truth Assets
             </StyledButton>
-            <CardDisplaySwitch showList={showList} setShowList={setShowList} />
+            <div className={S("browser__action--right")}>
+              <CardDisplaySwitch showList={showList} setShowList={setShowList}/>
+            </div>
           </div>
           {
             !pool?.metadata ?

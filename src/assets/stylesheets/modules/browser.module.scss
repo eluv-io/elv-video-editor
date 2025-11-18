@@ -49,7 +49,7 @@
     position: relative;
     width: 100%;
 
-    * {
+    & > * {
       min-width: max-content;
       overflow: hidden;
       white-space: nowrap;
@@ -87,8 +87,7 @@
     font-size: 14px;
     font-weight: 400;
     gap: 10px;
-    position: absolute;
-    right: 0;
+    margin-left: auto;
   }
 
   &__id {
@@ -105,8 +104,7 @@
   }
 
   &__action--right {
-    position: absolute;
-    right: 0;
+    margin-left: auto;
   }
 }
 
@@ -115,7 +113,7 @@
   border: 1px solid var(--color-border);
   border-radius: 5px;
   display: flex;
-  height: 100%;
+  height: 30px;
   overflow: hidden;
 
   &__button {

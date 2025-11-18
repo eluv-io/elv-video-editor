@@ -13,6 +13,7 @@ class AIStore {
   tagAggregationProgress = 0;
   highlightProfiles;
   defaultHighlightProfileKey;
+  filterLowQualitySearchResults = !!localStorage.getItem("search-quality-filter");
 
   searchResults = {};
 
@@ -523,9 +524,19 @@ class AIStore {
 
   /* Search */
 
+  SetSearchQualityFilter(filter) {
+    this.filterLowQualitySearchResults = filter;
+
+    if(this.filterLowQualitySearchResults) {
+      localStorage.setItem("search-quality-filter", "true");
+    } else {
+      localStorage.removeItem("search-quality-filter");
+    }
+  }
+
   Search = flow(function * ({query="", limit=10}) {
     let start = 0;
-    const resultsKey = `${this.searchIndex.versionHash}-${this.client.utils.B58(query)}`;
+    const resultsKey = `${this.searchIndex.versionHash}-${this.client.utils.B58(query)}-${this.filterLowQualitySearchResults}`;
 
     if(this.searchResults.key === resultsKey) {
       // Continuation of same query
@@ -567,6 +578,7 @@ class AIStore {
         clip_include_source_tags: true,
         debug: true,
         max_total: 100,
+        min_score: this.filterLowQualitySearchResults ? 0.55 : 0,
         select: "/public/asset_metadata/title,/public/name,public/asset_metadata/display_title"
       }
     })) || {};

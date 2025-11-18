@@ -312,7 +312,7 @@ const LiveToVodForm = observer(() => {
 
 export const CardDisplaySwitch = observer(({showList, setShowList}) => {
   return (
-    <div className={S("display-switch", "browser__action--right")}>
+    <div className={S("display-switch")}>
       <Linkish
         label="List View"
         className={S("display-switch__button", showList ? "display-switch__button--active" : "")}

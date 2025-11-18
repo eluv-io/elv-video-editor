@@ -919,7 +919,7 @@ class GroundTruthStore {
     };
   });
 
-  LookupImage = flow(function * ({poolId, url, imageBlob, key, model="insight", force}) {
+  LookupImage = flow(function * ({poolId, url, imageBlob, key, model="vgg", force}) {
     key = key || url;
 
     return yield this.rootStore.LoadResource({
