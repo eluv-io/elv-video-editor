@@ -420,6 +420,8 @@ class GroundTruthStore {
       label: `Add Entity ${entity.label}`,
       type: "entity",
       action: "create",
+      page: "groundTruth",
+      subpage: poolId,
       modifiedItem: entity,
       Action: () => {
         this.pools[poolId].metadata.entities[entityId] = entity;
@@ -465,6 +467,8 @@ class GroundTruthStore {
       label: `Modify Entity ${entity.label}`,
       type: "entity",
       action: "modify",
+      page: "groundTruth",
+      subpage: poolId,
       modifiedItem: entity,
       Action: () => {
         this.pools[poolId].metadata.entities[entityId] = entity;

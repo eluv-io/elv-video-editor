@@ -395,7 +395,7 @@ class TagStore {
     } else if(type === "groundTruthAsset") {
       this.rootStore.videoStore.ToggleVideoControls(false);
       this.editedGroundTruthAsset = {
-        poolId: undefined,
+        poolId: sessionStorage.getItem("last-selected-pool-id") || undefined,
         entityId: undefined,
         label: item?.label || "",
         description: "",
@@ -901,6 +901,10 @@ class TagStore {
   }
 
   ClearEditedGroundTruthAsset() {
+    if(this.editedGroundTruthAsset?.poolId) {
+      sessionStorage.setItem("last-selected-pool-id", this.editedGroundTruthAsset.poolId);
+    }
+
     this.editedGroundTruthAsset = undefined;
     this.rootStore.videoStore.ToggleVideoControls(this.selectedOverlayTagIds.length === 0);
   }

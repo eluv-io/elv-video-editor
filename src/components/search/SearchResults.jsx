@@ -11,7 +11,6 @@ import {AISearchBar, CardDisplaySwitch} from "@/components/nav/Browser.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import UrlJoin from "url-join";
 import {EntityCard, EntityListItem} from "@/components/common/EntityLists.jsx";
-import {Checkbox} from "@mantine/core";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 
@@ -203,18 +202,20 @@ const SearchResultsPage = observer(() => {
             {query.startsWith("music:") ? query?.split("music:")[1] || "All Results" : query}
           </span>
           <div className={S("browser__action--right")}>
-            <Checkbox
-              mr={10}
-              fz="sm"
-              sz="sm"
-              value={aiStore.filterLowQualitySearchResults}
-              onChange={event => {
-                aiStore.SetSearchQualityFilter(event.target.checked);
+            <button
+              key={aiStore.filterLowQualitySearchResults}
+              className={S("browser__toggle-button")}
+              onClick={() => {
+                aiStore.SetSearchQualityFilter(!aiStore.filterLowQualitySearchResults);
                 aiStore.ClearSearchResults();
               }}
-              labelPosition="left"
-              label="Filter Low Quality Results"
-            />
+            >
+              {
+                aiStore.filterLowQualitySearchResults ?
+                  "Show All Results" :
+                  "Show Only High Score Results"
+              }
+            </button>
           </div>
           <CardDisplaySwitch
             showList={showList}

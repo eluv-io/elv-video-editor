@@ -106,6 +106,14 @@
   &__action--right {
     margin-left: auto;
   }
+
+  &__toggle-button {
+    animation: var(--animation-fadein) 0.55s ease-out;
+    font-size: 14px;
+    font-weight: 400;
+    margin-right: 10px;
+    text-decoration: underline;
+  }
 }
 
 .display-switch {
