@@ -461,7 +461,7 @@ class BrowserStore {
           console.error("Error retrieving my library item:");
           console.error(error);
 
-          if(typeof error === "string" && error.includes("deleted")) {
+          if((typeof error === "string" && error.includes("deleted")) || error.status === 404) {
             objectDetails[objectId] = "deleted";
           }
         }
