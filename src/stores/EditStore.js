@@ -430,7 +430,7 @@ class EditStore {
         case "modify":
           yield this.rootStore.aiStore.QueryAIAPI({
             objectId,
-            path: UrlJoin("/tagstore", objectId, "tags", tag.tagId),
+            path: UrlJoin("/tagstore", objectId, "tags", tag.tagId?.toString()),
             channelAuth: true,
             method: "PATCH",
             body: {
@@ -445,7 +445,7 @@ class EditStore {
         case "delete":
           yield this.rootStore.aiStore.QueryAIAPI({
             objectId,
-            path: UrlJoin("/tagstore", objectId, "tags", tag.tagId),
+            path: UrlJoin("/tagstore", objectId, "tags", tag.tagId?.toString()),
             channelAuth: true,
             method: "DELETE"
           });
