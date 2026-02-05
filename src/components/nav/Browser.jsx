@@ -126,31 +126,41 @@ export const SearchBar = observer(({
   className=""
 }) => {
   const [location] = useLocation();
+  const [inputError, setInputError] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [input, setInput] = useState(decodeURIComponent(searchParams.get(filterQueryParam) || ""));
 
   const Submit = async (input) => {
-    if(Select && ["ilib", "iq__", "hq__", "0x"].find(prefix => input.trim().startsWith(prefix))) {
-      const result = await browserStore.LookupContent(input);
-      Select(result);
+    try {
+      if(Select && ["ilib", "iq__", "hq__", "0x"].find(prefix => input.trim().startsWith(prefix))) {
+        const result = await browserStore.LookupContent(input);
 
-      if(saveByLocation) {
-        delete savedFilters[location];
-      }
-    } else {
-      setSearchParams(prev => {
-        if(input) {
-          prev.set(filterQueryParam, encodeURIComponent(input.trim()));
-        } else {
-          prev.delete(filterQueryParam);
+        if(!result) {
+          throw "Not Found";
         }
+
+        Select(result);
 
         if(saveByLocation) {
-          savedFilters[location] = input.trim();
+          delete savedFilters[location];
         }
+      } else {
+        setSearchParams(prev => {
+          if(input) {
+            prev.set(filterQueryParam, encodeURIComponent(input.trim()));
+          } else {
+            prev.delete(filterQueryParam);
+          }
 
-        return Object.fromEntries(prev);
-      });
+          if(saveByLocation) {
+            savedFilters[location] = input.trim();
+          }
+
+          return Object.fromEntries(prev);
+        });
+      }
+    } catch(error) {
+      setInputError(true);
     }
   };
 
@@ -166,13 +176,18 @@ export const SearchBar = observer(({
         <input
           value={input}
           placeholder={placeholder || "Title, Content ID, Version Hash"}
-          onChange={event => setInput(event.target.value)}
+          onFocus={() => setInputError(false)}
+          onBlur={() => setInputError(false)}
+          onChange={event => {
+            setInput(event.target.value);
+            setInputError(false);
+          }}
           onKeyDown={async event => {
             if(event.key !== "Enter") { return; }
 
             Submit(input);
           }}
-          className={S("search-bar")}
+          className={S("search-bar", inputError ? "search-bar--error" : "")}
         />
         <div className={S("search-input-container__right-buttons")}>
           <IconButton

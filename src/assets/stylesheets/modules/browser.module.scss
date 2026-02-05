@@ -247,6 +247,10 @@
   &--ai {
     padding-left: 60px;
   }
+
+  &--error {
+    box-shadow: 0 0 10px #800!important;
+  }
 }
 
 .active-item {

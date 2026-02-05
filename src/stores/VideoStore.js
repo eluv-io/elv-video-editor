@@ -425,46 +425,51 @@ class VideoStore {
 
          */
         console.time("Load Tags");
-        let apiTags = yield this.rootStore.aiStore.QueryAIAPI({
-          objectId,
-          path: UrlJoin("/tagstore", objectId, "tags"),
-          channelAuth: true,
-          queryParams: {limit: 1000000},
-          format: "JSON"
-        });
-
         let formattedTags = {};
         let overlayTags = [];
-        apiTags.tags.forEach(tag => {
-          if(!formattedTags[tag.track]) {
-            formattedTags[tag.track] = {
-              label: tag.track,
-              tags: []
-            };
-          }
-
-          if(tag.frame_tags) {
-            Object.keys(tag.frame_tags).forEach(frame => {
-              frame = parseInt(frame);
-              overlayTags.push({
-                ...tag.frame_tags[frame],
-                frame,
-                trackKey: tag.track,
-                sourceTagId: tag.id,
-                text: tag.tag
-              });
-            });
-
-            delete tag.frame_tags;
-          }
-
-          formattedTags[tag.track].tags.push({
-            ...tag,
-            start_time: tag.start_time / 1000,
-            end_time: tag.end_time / 1000,
-            text: tag.tag
+        try {
+          let apiTags = yield this.rootStore.aiStore.QueryAIAPI({
+            objectId,
+            path: UrlJoin("/tagstore", objectId, "tags"),
+            channelAuth: true,
+            queryParams: {limit: 1000000},
+            format: "JSON"
           });
-        });
+
+          apiTags.tags.forEach(tag => {
+            if(!formattedTags[tag.track]) {
+              formattedTags[tag.track] = {
+                label: tag.track,
+                tags: []
+              };
+            }
+
+            if(tag.frame_tags) {
+              Object.keys(tag.frame_tags).forEach(frame => {
+                frame = parseInt(frame);
+                overlayTags.push({
+                  ...tag.frame_tags[frame],
+                  frame,
+                  trackKey: tag.track,
+                  sourceTagId: tag.id,
+                  text: tag.tag
+                });
+              });
+
+              delete tag.frame_tags;
+            }
+
+            formattedTags[tag.track].tags.push({
+              ...tag,
+              start_time: tag.start_time / 1000,
+              end_time: tag.end_time / 1000,
+              text: tag.tag
+            });
+          });
+        } catch(error) {
+          console.error("Error loading tags");
+          console.error(error);
+        }
 
         console.timeEnd("Load Tags");
 
@@ -699,22 +704,29 @@ class VideoStore {
   }
 
   LoadMyClips = flow(function * () {
-    const objectId = this.videoObject.objectId;
-    const clips = yield this.rootStore.client.walletClient.ProfileMetadata({
-      type: "app",
-      appId: "video-editor",
-      mode: "private",
-      key: `my-clips-${objectId}${this.rootStore.localhost ? "-dev" : ""}`
-    });
+    try {
+      const objectId = this.videoObject.objectId;
+      const clips = yield this.rootStore.client.walletClient.ProfileMetadata({
+        type: "app",
+        appId: "video-editor",
+        mode: "private",
+        key: `my-clips-${objectId}${this.rootStore.localhost ? "-dev" : ""}`
+      });
 
-    if(clips) {
-      this.myClips = yield Promise.all(
-        JSON.parse(this.rootStore.client.utils.FromB64(clips))
-          .filter(clip => clip)
-          .filter(clip => clip.objectId === objectId)
-          .sort((a, b) => a.addedAt < b.addedAt ? -1 : 1)
-          .map(clip => ({...clip, clipId: this.rootStore.NextId()}))
-      );
+      if(clips) {
+        this.myClips = yield Promise.all(
+          JSON.parse(this.rootStore.client.utils.FromB64(clips))
+            .filter(clip => clip)
+            .filter(clip => clip.objectId === objectId)
+            .sort((a, b) => a.addedAt < b.addedAt ? -1 : 1)
+            .map(clip => ({...clip, clipId: this.rootStore.NextId()}))
+        );
+      }
+    } catch(error) {
+      console.error("Error loading my clips:");
+      console.error(error);
+
+      this.myClips = [];
     }
   });
 

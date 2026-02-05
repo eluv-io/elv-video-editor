@@ -330,7 +330,7 @@ export const CompositionBrowser = observer(() => {
     if(selectedObjectId) {
       setLoading(true);
       browserStore.LookupContent(selectedObjectId)
-        .then(info => setSelectedObjectInfo(info))
+        .then(info => setSelectedObjectInfo(info || {}))
         .finally(() => setLoading(false));
     }
   }, [selectedObjectId, deleting]);
