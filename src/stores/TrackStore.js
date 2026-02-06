@@ -140,9 +140,7 @@ class TrackStore {
 
   TrackColor(key, type) {
     let savedTrackInfo;
-    if(type === "metadata") {
-      savedTrackInfo = this.tagTrackSettings?.[key];
-    } else if(type === "clip") {
+    if(type === "clip") {
       savedTrackInfo = this.clipTrackSettings?.[key];
     }
 
@@ -216,7 +214,6 @@ class TrackStore {
     // Rebuild interval tree in case tag start/end times changed
     this.intervalTrees[trackId] = CreateTrackIntervalTree(
       this.TrackTags(trackId),
-      trackId,
       track.label || track.key
     );
 
@@ -307,6 +304,10 @@ class TrackStore {
   });
 
   AddTrack({trackId, label, key, type, tags={}, color, ...additional}) {
+    if(color && typeof color === "string") {
+      color = ConvertColor({hex: color, alpha: this.trackAlpha});
+    }
+
     trackId = trackId || this.rootStore.NextId();
 
     let updatedTags = {};
@@ -339,6 +340,9 @@ class TrackStore {
     delete this.intervalTrees[trackId];
 
     delete this.activeTracks[trackKey];
+
+    this.ResetActiveClipTracks();
+    this.ResetActiveTracks();
   }
 
   TrackTags(trackId) {
@@ -508,8 +512,9 @@ class TrackStore {
 
     let metadataTracks = [];
     Object.keys(metadataTags).forEach(key => {
+      const track = metadataTags[key];
       let tags = {};
-      const millis = type === "clip" || metadataTags[key].version > 0;
+      const millis = type === "clip";
       metadataTags[key].tags.forEach(tag => {
         if(key === "shot_tags") {
           tag = this.FormatAggregatedSpeechToTextTag(tag);
@@ -517,7 +522,7 @@ class TrackStore {
           if(!tag) { return; }
         }
 
-        let tagId;
+        let tagId = tag.id;
         if(tag?.lk === "user" && tag.id) {
           // Ensure user tags have UUID tag IDs
           tagId = this.rootStore.NextId(true);
@@ -546,6 +551,7 @@ class TrackStore {
       });
 
       metadataTracks.push({
+        ...track,
         label: key === "shot_tags" ? "Speech to Text (Aggregated)" : metadataTags[key].label,
         trackType: type,
         key,
@@ -599,6 +605,7 @@ class TrackStore {
         this.totalTags += Object.keys(track.tags).length;
 
         this.AddTrack({
+          ...track,
           label: track.label,
           key: track.key,
           type,
@@ -700,7 +707,6 @@ class TrackStore {
     if(this.initialized) { return; }
 
     // Get saved track settings from metadata
-    this.tagTrackSettings = metadata?.video_tags?.evie?.tracks;
     this.clipTrackSettings = metadata?.clips?.evie?.tracks;
 
     this.AddPrimaryContentTrack();

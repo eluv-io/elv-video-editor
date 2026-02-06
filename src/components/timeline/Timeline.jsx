@@ -83,7 +83,10 @@ const TimelineTopBar = observer(({simple}) => {
                   label={`Add New ${rootStore.page === "tags" ? "Tag" : "Clip"}`}
                   onClick={() =>
                     tagStore.AddTag({
-                      trackId: tagStore.selectedTrackId,
+                      trackId: trackStore.selectedTrackId ||
+                      rootStore.page === "clips" ?
+                        trackStore.visibleClipTracks[0]?.trackId :
+                        trackStore.visibleMetadataTracks[0]?.trackId,
                       text: "<New Tag>",
                       tagType: rootStore.page === "clips" ? "clip" : "metadata"
                     })

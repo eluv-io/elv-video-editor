@@ -845,6 +845,8 @@ export const ProgressModal = observer(({title, progress, error, Close}) => {
               Something went wrong, please try again.
             </div>
             <div className={S("progress__actions")}>
+              {
+                /*
               <StyledButton
                 color="--background-active"
                 icon={CopyIcon}
@@ -852,6 +854,9 @@ export const ProgressModal = observer(({title, progress, error, Close}) => {
               >
                 Copy Error Details
               </StyledButton>
+
+                 */
+              }
               <StyledButton onClick={Close}>
                 Close
               </StyledButton>

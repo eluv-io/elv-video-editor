@@ -67,7 +67,9 @@ const TagsAndClipsView = observer(({mode}) => {
               30 * editStore.saveProgress.overlay +
               30 * editStore.saveProgress.aggregation
             }
+            error={editStore.saveError}
             title="Saving changes..."
+            Close={() => editStore.ClearSaveError()}
           />
       }
       <PanelGroup direction="vertical" className="panel-group">

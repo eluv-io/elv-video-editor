@@ -428,6 +428,21 @@ class VideoStore {
         let formattedTags = {};
         let overlayTags = [];
         try {
+          let apiTracks = (yield this.rootStore.aiStore.QueryAIAPI({
+            objectId,
+            path: UrlJoin("/tagstore", objectId, "tracks"),
+            channelAuth: true,
+            queryParams: {limit: 1000000},
+            format: "JSON"
+          }))?.tracks || [];
+
+          apiTracks.forEach(track =>
+            formattedTags[track.name] = {
+              ...track,
+              tags: []
+            }
+          );
+
           let apiTags = yield this.rootStore.aiStore.QueryAIAPI({
             objectId,
             path: UrlJoin("/tagstore", objectId, "tags"),
@@ -436,12 +451,12 @@ class VideoStore {
             format: "JSON"
           });
 
+          console.log(apiTags);
+
           apiTags.tags.forEach(tag => {
             if(!formattedTags[tag.track]) {
-              formattedTags[tag.track] = {
-                label: tag.track,
-                tags: []
-              };
+              console.error("Tag for unknown track:", tag);
+              return;
             }
 
             if(tag.frame_tags) {
@@ -473,7 +488,7 @@ class VideoStore {
 
         console.timeEnd("Load Tags");
 
-        let clipTags;
+        let clipTags = {};
         if(videoObject.metadata?.clips?.metadata_tags) {
           clipTags = FormatTags({
             tagData: [{
@@ -482,6 +497,14 @@ class VideoStore {
             }]
           });
         }
+
+        Object.keys(videoObject.metadata.clips?.evie?.tracks).forEach(trackKey =>
+          clipTags[trackKey] = {
+            ...videoObject.metadata.clips.evie.tracks[trackKey],
+            ...clipTags[trackKey],
+            tags: clipTags[trackKey]?.tags || []
+          }
+        );
 
         yield this.rootStore.trackStore.InitializeTracks({
           metadata: videoObject.metadata,
