@@ -43,6 +43,11 @@ class OverlayStore {
   AddTag({frame, trackKey, tag}) {
     frame = frame.toString();
 
+    tag.start_time = this.rootStore.videoStore.FrameToTime(frame);
+    tag.end_time = this.rootStore.videoStore.FrameToTime(frame);
+    tag.trackKey = trackKey;
+    tag.trackId = this.rootStore.trackStore.Track(trackKey)?.trackId;
+
     if(!this[this.tagField][frame]) {
       this[this.tagField][frame] = {
         // timestamp sec is actually ms??
@@ -65,6 +70,9 @@ class OverlayStore {
     frame = frame.toString();
 
     if(!trackKey) { return; }
+
+    modifiedTag.start_time = this.rootStore.videoStore.FrameToTime(frame);
+    modifiedTag.end_time = this.rootStore.videoStore.FrameToTime(frame);
 
     this[this.tagField][frame][trackKey].tags = this[this.tagField][frame][trackKey].tags
       .map(tag =>
@@ -135,57 +143,6 @@ class OverlayStore {
       }
 
       this.overlayEnabled = true;
-
-      /* Read from tag files
-      const tagFileLinks = Object.keys(metadata.video_tags.overlay_tags);
-      for(let i = 0; i < tagFileLinks.length; i++) {
-        const tagInfo = yield this.rootStore.client.LinkData({
-          versionHash: this.rootStore.videoStore.versionHash,
-          linkPath: `video_tags/overlay_tags/${tagFileLinks[i]}`,
-          format: "json"
-        });
-
-        let overlayTags = tagInfo.overlay_tags?.frame_level_tags || {};
-        Object.keys(overlayTags).forEach(frame =>
-          Object.keys(overlayTags[frame]).forEach(trackKey => {
-            if(typeof overlayTags[frame][trackKey] !== "object") {
-              return;
-            }
-
-            if(!trackIdMap[trackKey]) {
-              trackIdMap[trackKey] = this.rootStore.trackStore.AddTrack({
-                key: trackKey,
-                label: trackKey.split("_").map(Capitalize).join(" "),
-                type: "metadata",
-                tags: []
-              });
-            }
-
-            overlayTags[frame][trackKey].tags = (overlayTags[frame][trackKey]?.tags || [])
-              .map((tag, tagIndex) => ({
-                ...tag,
-                tagId: tag.id || this.rootStore.NextId(),
-                frame: parseInt(frame),
-                trackId: trackIdMap[trackKey],
-                o: {
-                  tk: trackKey,
-                  ti: tagIndex,
-                  lk: tagFileLinks[i]
-                }
-              }));
-          })
-        );
-
-        this.metadataOverlayTags = {
-          ...this.metadataOverlayTags,
-          ...overlayTags,
-          version: tagInfo.version || this.metadataOverlayTags?.version || 0,
-        };
-
-        this.overlayEnabled = true;
-      }
-
-       */
     } catch(error) {
       console.error("Failed to load overlay tracks:");
       console.error(error);

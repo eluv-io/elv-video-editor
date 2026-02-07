@@ -702,8 +702,7 @@ class TrackStore {
     });
   }
 
-
-  InitializeTracks = flow(function * ({metadata, metadataTags, metadataOverlayTags=[], clipTags}) {
+  InitializeTracks = flow(function * ({metadata, metadataTags, clipTags}) {
     if(this.initialized) { return; }
 
     // Get saved track settings from metadata
@@ -718,25 +717,6 @@ class TrackStore {
 
     let trackIds = {};
     this.tracks.forEach(track => trackIds[track.trackKey] = track.trackId);
-
-    let overlayTags = {};
-    metadataOverlayTags.forEach(tag => {
-      if(!overlayTags[tag.frame]) {
-        overlayTags[tag.frame] = {};
-      }
-
-      if(!overlayTags[tag.frame][tag.trackKey]) {
-        overlayTags[tag.frame][tag.trackKey] = { tags: [] };
-      }
-
-      overlayTags[tag.frame][tag.trackKey].tags.push({
-        ...tag,
-        trackId: trackIds[tag.trackKey],
-        o: {}
-      });
-    });
-
-    this.rootStore.overlayStore.AddOverlayTracks(overlayTags);
   });
 
   /* User Actions */

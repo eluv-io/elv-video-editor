@@ -447,11 +447,9 @@ class VideoStore {
             objectId,
             path: UrlJoin("/tagstore", objectId, "tags"),
             channelAuth: true,
-            queryParams: {limit: 1000000},
+            queryParams: {limit: 1000000, has_frame_info: false},
             format: "JSON"
           });
-
-          console.log(apiTags);
 
           apiTags.tags.forEach(tag => {
             if(!formattedTags[tag.track]) {
@@ -459,26 +457,14 @@ class VideoStore {
               return;
             }
 
-            if(tag.frame_tags) {
-              Object.keys(tag.frame_tags).forEach(frame => {
-                frame = parseInt(frame);
-                overlayTags.push({
-                  ...tag.frame_tags[frame],
-                  frame,
-                  trackKey: tag.track,
-                  sourceTagId: tag.id,
-                  text: tag.tag
-                });
-              });
-
-              delete tag.frame_tags;
-            }
-
             formattedTags[tag.track].tags.push({
               ...tag,
               start_time: tag.start_time / 1000,
               end_time: tag.end_time / 1000,
-              text: tag.tag
+              text: tag.tag,
+              o: {
+                api: true
+              }
             });
           });
         } catch(error) {
@@ -498,7 +484,7 @@ class VideoStore {
           });
         }
 
-        Object.keys(videoObject.metadata.clips?.evie?.tracks).forEach(trackKey =>
+        Object.keys(videoObject.metadata.clips?.evie?.tracks || {}).forEach(trackKey =>
           clipTags[trackKey] = {
             ...videoObject.metadata.clips.evie.tracks[trackKey],
             ...clipTags[trackKey],
@@ -513,6 +499,8 @@ class VideoStore {
           clipTags
         });
 
+        this.LoadOverlayTags({objectId});
+
         this.ready = true;
       }
     } catch(error) {
@@ -523,6 +511,61 @@ class VideoStore {
     } finally {
       this.loading = false;
     }
+  });
+
+  LoadOverlayTags = flow(function * ({objectId}) {
+    try {
+      console.time("Load Overlay Tags");
+      let apiTags = (yield this.rootStore.aiStore.QueryAIAPI({
+        objectId,
+        path: UrlJoin("/tagstore", objectId, "tags"),
+        channelAuth: true,
+        queryParams: {limit: 1000000, has_frame_info: true},
+        format: "JSON"
+      }))?.tags || [];
+
+      let trackIds = {};
+      this.rootStore.trackStore.tracks.forEach(track =>
+        trackIds[track.key] = track.trackId
+      );
+      
+      let overlayTags = {};
+      apiTags.forEach(tag => {
+        const frame = parseInt(tag.frame_info?.frame_idx);
+
+        if(isNaN(frame) || typeof frame === "undefined" || !tag.frame_info?.box) {
+          console.error("Invalid frame tag", tag);
+        }
+
+        if(!overlayTags[frame]) {
+          overlayTags[frame] = {};
+        }
+
+        if(!overlayTags[frame][tag.track]) {
+          overlayTags[frame][tag.track] = { tags: [] };
+        }
+
+        overlayTags[frame][tag.track].tags.push({
+          tagId: tag.id,
+          box: tag.frame_info.box,
+          frame,
+          trackKey: tag.track,
+          trackId: trackIds[tag.track],
+          text: tag.tag,
+          o: {
+            api: true
+          }
+        });
+      });
+
+      this.rootStore.overlayStore.AddOverlayTracks(overlayTags);
+    } catch(error) {
+      console.error("Error loading overlay tags");
+      console.error(error);
+    }
+
+    console.timeEnd("Load Overlay Tags");
+
   });
 
   Reload = flow(function * () {
