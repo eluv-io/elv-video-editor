@@ -338,7 +338,6 @@ class VideoStore {
           }
         }
       } catch(error) {
-
         console.error("Unable to determine frame rate");
       }
 
@@ -349,6 +348,8 @@ class VideoStore {
         dropFrame: this.dropFrame,
         duration: this.duration || 1
       });
+
+      this.SetDropFrame(Math.floor(this.frameRate) !== this.frameRate);
 
       if(this.timecodeOffset) {
         this.timecodeOffsetFrames = this.videoHandler.SMPTEToFrame(this.timecodeOffset);
@@ -528,7 +529,7 @@ class VideoStore {
       this.rootStore.trackStore.tracks.forEach(track =>
         trackIds[track.key] = track.trackId
       );
-      
+
       let overlayTags = {};
       apiTags.forEach(tag => {
         const frame = parseInt(tag.frame_info?.frame_idx);
