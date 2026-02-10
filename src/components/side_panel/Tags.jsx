@@ -598,8 +598,9 @@ export const TagsList = observer(({mode="tags"}) => {
     }
   }, [update]);
 
+  /*
   useEffect(() => {
-    if(!scrollRef || scrolled) { return; }
+    if(!scrollRef || scrolled || !showTagsFromPlayhead) { return; }
 
     scrollRef.scrollIntoView();
     setScrolled(true);
@@ -607,6 +608,8 @@ export const TagsList = observer(({mode="tags"}) => {
 
     setScrollTagId(undefined);
   }, [scrollRef, scrolled]);
+
+   */
 
   useEffect(() => {
     if(!ref.current) { return; }
