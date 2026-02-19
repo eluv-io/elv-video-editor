@@ -47,7 +47,7 @@ const VideoSection = observer(({showOverlay, showSave}) => {
                 if(videoStore.thumbnailStore?.generating) {
                   let cancelled = false;
                   await Confirm({
-                    title: "Publish Changes",
+                    title: "Save Changes",
                     text: "Warning: Thumbnails are currently generating for this content. If you don't finalize the thumbnails before saving your changes, the thumbnails will be lost and thumbnail generation will have to be restarted. Do you want to proceed?",
                     onConfirm: async () => await videoStore.thumbnailStore?.RemoveThumbnailJob({
                       objectId: videoStore.videoObject?.objectId

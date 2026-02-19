@@ -6,6 +6,7 @@ import {compositionStore, editStore, rootStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Confirm, IconButton} from "@/components/common/Common";
 import UrlJoin from "url-join";
+import {useLocation} from "wouter";
 
 import SourceIcon from "@/assets/icons/v2/folder.svg";
 import TagIcon from "@/assets/icons/v2/tag.svg";
@@ -18,10 +19,11 @@ import PinIcon from "@/assets/icons/v2/pin.svg";
 const S = CreateModuleClassMatcher(NavStyles);
 
 const Nav = observer(() => {
+  const [, navigate] = useLocation();
   const objectId = rootStore.selectedObjectId;
   const compositionObject = compositionStore.compositionObject;
 
-  const pages = [
+  let pages = [
     !objectId ? undefined :
       {
         label: `Active: ${rootStore.selectedObjectName || rootStore.selectedObjectId}`,
@@ -91,6 +93,42 @@ const Nav = observer(() => {
     }
   ]
     .filter(item => item);
+
+  // Deal with navigating away from unsaved tag changes
+  if(["tags", "clips"].includes(rootStore.page) && (editStore.HasUnsavedChanges("tags") || editStore.HasUnsavedChanges("clips"))) {
+    pages = pages.map(item => ({
+      ...item,
+      to: item.key === "tags" ? item.to : undefined,
+      onClick: item.key === "tags" ? item.onclick :
+        async () => {
+          await Confirm({
+            title: "Save Changes",
+            text: "You have unsaved changes. Would you like to save before navigating away from this page?",
+            labels: {confirm: "Save Changes", cancel: "Continue"},
+            onCancel: () => navigate(item.to),
+            onConfirm: async () => {
+              if(videoStore.thumbnailStore?.generating) {
+                let cancelled = false;
+                await Confirm({
+                  title: "Save Changes",
+                  text: "Warning: Thumbnails are currently generating for this content. If you don't finalize the thumbnails before saving your changes, the thumbnails will be lost and thumbnail generation will have to be restarted. Do you want to proceed?",
+                  onConfirm: async () => await videoStore.thumbnailStore?.RemoveThumbnailJob({
+                    objectId: videoStore.videoObject?.objectId
+                  }),
+                  onCancel: () => cancelled = true
+                });
+
+                if(cancelled) {
+                  return;
+                }
+              }
+
+              await editStore.Save();
+            }
+          });
+        }
+    }));
+  }
 
   return (
     <nav className={S("nav")}>
