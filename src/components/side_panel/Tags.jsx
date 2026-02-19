@@ -393,7 +393,6 @@ export const TagDetails = observer(() => {
 });
 
 const Tag = observer(({track, tag, setTagRef}) => {
-   
   const [ref, setRef] = useState(null);
   const visible = useIsVisible(ref, 5000);
 
@@ -564,7 +563,7 @@ export const TagsList = observer(({mode="tags"}) => {
     tagStore.editPosition,
     //tagStore.scrollTagId,
     //tagStore.scrollSeekTime,
-    showTagsFromPlayhead
+    showTagsFromPlayhead && Math.ceil(videoStore.currentTime)
   ]);
 
   useEffect(() => {
