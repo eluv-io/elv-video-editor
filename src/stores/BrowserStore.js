@@ -625,8 +625,6 @@ class BrowserStore {
       console.error("Failed to look up ID:");
       console.error(error);
     }
-
-    return {};
   });
 }
 

@@ -338,7 +338,6 @@ class VideoStore {
           }
         }
       } catch(error) {
-
         console.error("Unable to determine frame rate");
       }
 
@@ -349,6 +348,8 @@ class VideoStore {
         dropFrame: this.dropFrame,
         duration: this.duration || 1
       });
+
+      this.SetDropFrame(Math.floor(this.frameRate) !== this.frameRate);
 
       if(this.timecodeOffset) {
         this.timecodeOffsetFrames = this.videoHandler.SMPTEToFrame(this.timecodeOffset);
@@ -402,6 +403,8 @@ class VideoStore {
         this.initialized = true;
         this.ready = true;
       } else {
+        /*
+        console.time("LOAD FROM FILES")
         // Load and merge tag files
         const tagData = yield this.rootStore.client.utils.LimitedMap(
           5,
@@ -418,7 +421,61 @@ class VideoStore {
 
         const metadataTags = FormatTags({tagData});
 
-        let clipTags;
+        console.timeEnd("LOAD FROM FILES")
+
+
+         */
+        console.time("Load Tags");
+        let formattedTags = {};
+        let overlayTags = [];
+        try {
+          let apiTracks = (yield this.rootStore.aiStore.QueryAIAPI({
+            objectId,
+            path: UrlJoin("/tagstore", objectId, "tracks"),
+            channelAuth: true,
+            queryParams: {limit: 1000000},
+            format: "JSON"
+          }))?.tracks || [];
+
+          apiTracks.forEach(track =>
+            formattedTags[track.name] = {
+              ...track,
+              tags: []
+            }
+          );
+
+          let apiTags = yield this.rootStore.aiStore.QueryAIAPI({
+            objectId,
+            path: UrlJoin("/tagstore", objectId, "tags"),
+            channelAuth: true,
+            queryParams: {limit: 1000000, has_frame_info: false},
+            format: "JSON"
+          });
+
+          apiTags.tags.forEach(tag => {
+            if(!formattedTags[tag.track]) {
+              console.error("Tag for unknown track:", tag);
+              return;
+            }
+
+            formattedTags[tag.track].tags.push({
+              ...tag,
+              start_time: tag.start_time / 1000,
+              end_time: tag.end_time / 1000,
+              text: tag.tag,
+              o: {
+                api: true
+              }
+            });
+          });
+        } catch(error) {
+          console.error("Error loading tags");
+          console.error(error);
+        }
+
+        console.timeEnd("Load Tags");
+
+        let clipTags = {};
         if(videoObject.metadata?.clips?.metadata_tags) {
           clipTags = FormatTags({
             tagData: [{
@@ -428,7 +485,22 @@ class VideoStore {
           });
         }
 
-        yield this.rootStore.trackStore.InitializeTracks(videoObject.metadata, metadataTags, clipTags);
+        Object.keys(videoObject.metadata.clips?.evie?.tracks || {}).forEach(trackKey =>
+          clipTags[trackKey] = {
+            ...videoObject.metadata.clips.evie.tracks[trackKey],
+            ...clipTags[trackKey],
+            tags: clipTags[trackKey]?.tags || []
+          }
+        );
+
+        yield this.rootStore.trackStore.InitializeTracks({
+          metadata: videoObject.metadata,
+          metadataTags: formattedTags,
+          metadataOverlayTags: overlayTags,
+          clipTags
+        });
+
+        this.LoadOverlayTags({objectId});
 
         this.ready = true;
       }
@@ -440,6 +512,61 @@ class VideoStore {
     } finally {
       this.loading = false;
     }
+  });
+
+  LoadOverlayTags = flow(function * ({objectId}) {
+    try {
+      console.time("Load Overlay Tags");
+      let apiTags = (yield this.rootStore.aiStore.QueryAIAPI({
+        objectId,
+        path: UrlJoin("/tagstore", objectId, "tags"),
+        channelAuth: true,
+        queryParams: {limit: 1000000, has_frame_info: true},
+        format: "JSON"
+      }))?.tags || [];
+
+      let trackIds = {};
+      this.rootStore.trackStore.tracks.forEach(track =>
+        trackIds[track.key] = track.trackId
+      );
+
+      let overlayTags = {};
+      apiTags.forEach(tag => {
+        const frame = parseInt(tag.frame_info?.frame_idx);
+
+        if(isNaN(frame) || typeof frame === "undefined" || !tag.frame_info?.box) {
+          console.error("Invalid frame tag", tag);
+        }
+
+        if(!overlayTags[frame]) {
+          overlayTags[frame] = {};
+        }
+
+        if(!overlayTags[frame][tag.track]) {
+          overlayTags[frame][tag.track] = { tags: [] };
+        }
+
+        overlayTags[frame][tag.track].tags.push({
+          tagId: tag.id,
+          box: tag.frame_info.box,
+          frame,
+          trackKey: tag.track,
+          trackId: trackIds[tag.track],
+          text: tag.tag,
+          o: {
+            api: true
+          }
+        });
+      });
+
+      this.rootStore.overlayStore.AddOverlayTracks(overlayTags);
+    } catch(error) {
+      console.error("Error loading overlay tags");
+      console.error(error);
+    }
+
+    console.timeEnd("Load Overlay Tags");
+
   });
 
   Reload = flow(function * () {
@@ -644,22 +771,29 @@ class VideoStore {
   }
 
   LoadMyClips = flow(function * () {
-    const objectId = this.videoObject.objectId;
-    const clips = yield this.rootStore.client.walletClient.ProfileMetadata({
-      type: "app",
-      appId: "video-editor",
-      mode: "private",
-      key: `my-clips-${objectId}${this.rootStore.localhost ? "-dev" : ""}`
-    });
+    try {
+      const objectId = this.videoObject.objectId;
+      const clips = yield this.rootStore.client.walletClient.ProfileMetadata({
+        type: "app",
+        appId: "video-editor",
+        mode: "private",
+        key: `my-clips-${objectId}${this.rootStore.localhost ? "-dev" : ""}`
+      });
 
-    if(clips) {
-      this.myClips = yield Promise.all(
-        JSON.parse(this.rootStore.client.utils.FromB64(clips))
-          .filter(clip => clip)
-          .filter(clip => clip.objectId === objectId)
-          .sort((a, b) => a.addedAt < b.addedAt ? -1 : 1)
-          .map(clip => ({...clip, clipId: this.rootStore.NextId()}))
-      );
+      if(clips) {
+        this.myClips = yield Promise.all(
+          JSON.parse(this.rootStore.client.utils.FromB64(clips))
+            .filter(clip => clip)
+            .filter(clip => clip.objectId === objectId)
+            .sort((a, b) => a.addedAt < b.addedAt ? -1 : 1)
+            .map(clip => ({...clip, clipId: this.rootStore.NextId()}))
+        );
+      }
+    } catch(error) {
+      console.error("Error loading my clips:");
+      console.error(error);
+
+      this.myClips = [];
     }
   });
 

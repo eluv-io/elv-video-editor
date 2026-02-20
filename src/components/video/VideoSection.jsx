@@ -16,7 +16,7 @@ import {
 import Video from "@/components/video/Video";
 import SVG from "react-inlinesvg";
 import {Tooltip} from "@mantine/core";
-import {AsyncButton, Confirm, Icon} from "@/components/common/Common.jsx";
+import {Confirm, StyledButton} from "@/components/common/Common.jsx";
 
 import SaveIcon from "@/assets/icons/Save.svg";
 import DescriptionIcon from "@/assets/icons/v2/description.svg";
@@ -38,13 +38,10 @@ const VideoSection = observer(({showOverlay, showSave}) => {
         </div>
         {
           !showSave ? null :
-            <AsyncButton
-              color="gray.5"
-              variant="outline"
-              autoContrast
-              h={30}
-              px="xs"
-              tooltip="Save Changes"
+            <StyledButton
+              small
+              icon={SaveIcon}
+              title="Save Changes"
               disabled={!editStore.HasUnsavedChanges("tags") && !editStore.HasUnsavedChanges("clips")}
               onClick={async () => {
                 if(videoStore.thumbnailStore?.generating) {
@@ -70,11 +67,8 @@ const VideoSection = observer(({showOverlay, showSave}) => {
                 });
               }}
             >
-              <Icon style={{height: 18}} icon={SaveIcon}/>
-              <span style={{marginLeft: 5}}>
-                Save
-              </span>
-            </AsyncButton>
+              Publish
+            </StyledButton>
         }
       </h1>
       <Video store={videoStore} showOverlay={showOverlay} showFrameDownload />

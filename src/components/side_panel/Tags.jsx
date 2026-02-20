@@ -13,7 +13,7 @@ import {
   LoaderImage,
   SMPTEInput
 } from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, useIsVisible} from "@/utils/Utils.js";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import {useDebouncedState} from "@mantine/hooks";
 
@@ -393,9 +393,8 @@ export const TagDetails = observer(() => {
 });
 
 const Tag = observer(({track, tag, setTagRef}) => {
-  // eslint-disable-next-line no-unused-vars
   const [ref, setRef] = useState(null);
-  const visible = true; // useIsVisible(ref, 5000);
+  const visible = useIsVisible(ref, 5000);
 
   if(!track || !tag) {
     return null;
@@ -518,7 +517,7 @@ export const TagsList = observer(({mode="tags"}) => {
   const [pageInfo, setPageInfo] = useState({min: 0, max: 0, center: 0, total: 0});
   const [playheadFrame, setPlayheadFrame] = useState(null);
   const [showTagsFromPlayhead, setShowTagsFromPlayhead] = useState(false);
-  const perPage = 10;
+  const perPage = 20;
 
   let tracks = {};
 
@@ -556,18 +555,25 @@ export const TagsList = observer(({mode="tags"}) => {
     videoStore.scaleMax,
     trackStore.tracks.length,
     tagStore.filter,
-    tagStore.selectedTagIds,
+    //tagStore.selectedTagIds,
     tagStore.isolatedTag,
     Object.keys(trackStore.activeTracks).length,
     Object.keys(trackStore.visibleClipTracks).length,
     trackStore.showPrimaryContent,
     tagStore.editPosition,
-    tagStore.scrollTagId,
-    tagStore.scrollSeekTime,
-    videoStore.playing,
-    playheadFrame,
-    showTagsFromPlayhead
+    //tagStore.scrollTagId,
+    //tagStore.scrollSeekTime,
+    showTagsFromPlayhead && Math.ceil(videoStore.currentTime)
   ]);
+
+  useEffect(() => {
+    if(!showTagsFromPlayhead) { return; }
+
+    setPages({previous: 1, next: 1});
+    setScrolled(false);
+    setScrollTagId(tagStore.scrollTagId);
+    setUpdate(update + 1);
+  }, [playheadFrame, showTagsFromPlayhead]);
 
   useEffect(() => {
     if(!showTagsFromPlayhead || videoStore.frame - playheadFrame < videoStore.frameRate ) { return; }
@@ -598,8 +604,9 @@ export const TagsList = observer(({mode="tags"}) => {
     }
   }, [update]);
 
+  /*
   useEffect(() => {
-    if(!scrollRef || scrolled) { return; }
+    if(!scrollRef || scrolled || !showTagsFromPlayhead) { return; }
 
     scrollRef.scrollIntoView();
     setScrolled(true);
@@ -607,6 +614,8 @@ export const TagsList = observer(({mode="tags"}) => {
 
     setScrollTagId(undefined);
   }, [scrollRef, scrolled]);
+
+   */
 
   useEffect(() => {
     if(!ref.current) { return; }

@@ -140,9 +140,7 @@ class TrackStore {
 
   TrackColor(key, type) {
     let savedTrackInfo;
-    if(type === "metadata") {
-      savedTrackInfo = this.tagTrackSettings?.[key];
-    } else if(type === "clip") {
+    if(type === "clip") {
       savedTrackInfo = this.clipTrackSettings?.[key];
     }
 
@@ -216,7 +214,6 @@ class TrackStore {
     // Rebuild interval tree in case tag start/end times changed
     this.intervalTrees[trackId] = CreateTrackIntervalTree(
       this.TrackTags(trackId),
-      trackId,
       track.label || track.key
     );
 
@@ -307,6 +304,10 @@ class TrackStore {
   });
 
   AddTrack({trackId, label, key, type, tags={}, color, ...additional}) {
+    if(color && typeof color === "string") {
+      color = ConvertColor({hex: color, alpha: this.trackAlpha});
+    }
+
     trackId = trackId || this.rootStore.NextId();
 
     let updatedTags = {};
@@ -339,6 +340,9 @@ class TrackStore {
     delete this.intervalTrees[trackId];
 
     delete this.activeTracks[trackKey];
+
+    this.ResetActiveClipTracks();
+    this.ResetActiveTracks();
   }
 
   TrackTags(trackId) {
@@ -490,16 +494,15 @@ class TrackStore {
 
   /* Subtitles and Metadata */
 
-  FormatAggregatedSpeechToTextTag(tag, trackKey) {
-    if(!tag.text?.[trackKey]) {
+  FormatAggregatedSpeechToTextTag(tag) {
+    if(!tag.text?.["Speech to Text"]) {
       return;
     }
 
-    const text = tag.text[trackKey].map(({text}) => text).join(" ");
+    const text = tag.text["Speech to Text"].map(({text}) => text).join(" ");
 
     return {
       ...tag,
-      trackKey: `${trackKey}_aggregated-synthetic`,
       text
     };
   }
@@ -509,65 +512,50 @@ class TrackStore {
 
     let metadataTracks = [];
     Object.keys(metadataTags).forEach(key => {
-      let trackTags = {};
-      const millis = type === "clip" || metadataTags[key].version > 0;
+      const track = metadataTags[key];
+      let tags = {};
+      const millis = type === "clip";
       metadataTags[key].tags.forEach(tag => {
-        let tags = [tag];
         if(key === "shot_tags") {
-          const ttsKeys = Object.keys(tag?.text || {}).filter(key => key?.toLowerCase()?.includes("speech to text"));
+          tag = this.FormatAggregatedSpeechToTextTag(tag);
 
-          tags = ttsKeys.map(key => {
-            const aggregatedKey = `${key}_aggregated-synthetic`;
-            trackTags[aggregatedKey] = trackTags[aggregatedKey] || {};
-            trackTags[aggregatedKey].tags = trackTags[aggregatedKey].tags || {};
-            trackTags[aggregatedKey].label = trackTags[aggregatedKey].label || `${key} (Aggregated)`;
-            return this.FormatAggregatedSpeechToTextTag(tag, key);
-          });
+          if(!tag) { return; }
         }
 
-        tags.forEach(tag => {
-          if(!tag) {
-            return;
+        let tagId = tag.id;
+        if(tag?.lk === "user" && tag.id) {
+          // Ensure user tags have UUID tag IDs
+          tagId = this.rootStore.NextId(true);
+        }
+
+        let parsedTag = Cue({
+          tagId,
+          trackKey: key,
+          tagType: type,
+          startTime: millis ? (tag.start_time / 1000) : tag.start_time,
+          endTime: millis ? (tag.end_time / 1000) : tag.end_time,
+          text: tag.text,
+          tag: Unproxy(tag),
+          o: {
+            lk: tag.lk,
+            tk: tag.tk,
+            ti: tag.ti
           }
-
-          let tagId;
-          if(tag?.lk === "user" && tag.id) {
-            // Ensure user tags have UUID tag IDs
-            tagId = this.rootStore.NextId(true);
-          }
-
-          let parsedTag = Cue({
-            tagId,
-            trackKey: tag.trackKey || key,
-            tagType: type,
-            startTime: millis ? (tag.start_time / 1000) : tag.start_time,
-            endTime: millis ? (tag.end_time / 1000) : tag.end_time,
-            text: tag.text,
-            tag: Unproxy(tag),
-            o: {
-              lk: tag.lk,
-              tk: tag.tk,
-              ti: tag.ti
-            }
-          });
-
-          if(parsedTag.startTime >= parsedTag.endTime) {
-            parsedTag.endTime = parsedTag.startTime + this.rootStore.videoStore.FrameToTime(1);
-          }
-
-          trackTags[tag.trackKey || key] = trackTags[tag.trackKey || key] || {};
-          trackTags[tag.trackKey || key].tags = trackTags[tag.trackKey || key].tags || {};
-          trackTags[tag.trackKey || key].tags[parsedTag.tagId] = parsedTag;
         });
+
+        if(parsedTag.startTime >= parsedTag.endTime) {
+          parsedTag.endTime = parsedTag.startTime + this.rootStore.videoStore.FrameToTime(1);
+        }
+
+        tags[parsedTag.tagId] = parsedTag;
       });
 
-      Object.keys(trackTags).forEach(trackKey => {
-        metadataTracks.push({
-          label: trackKey.endsWith("_aggregated-synthetic") ? trackTags[trackKey].label : metadataTags[key].label,
-          trackType: type,
-          key: trackKey,
-          tags: trackTags[trackKey].tags
-        });
+      metadataTracks.push({
+        ...track,
+        label: key === "shot_tags" ? "Speech to Text (Aggregated)" : metadataTags[key].label,
+        trackType: type,
+        key,
+        tags
       });
     });
 
@@ -617,6 +605,7 @@ class TrackStore {
         this.totalTags += Object.keys(track.tags).length;
 
         this.AddTrack({
+          ...track,
           label: track.label,
           key: track.key,
           type,
@@ -713,12 +702,10 @@ class TrackStore {
     });
   }
 
-
-  InitializeTracks = flow(function * (metadata, metadataTags, clipTags) {
+  InitializeTracks = flow(function * ({metadata, metadataTags, clipTags}) {
     if(this.initialized) { return; }
 
     // Get saved track settings from metadata
-    this.tagTrackSettings = metadata?.video_tags?.evie?.tracks;
     this.clipTrackSettings = metadata?.clips?.evie?.tracks;
 
     this.AddPrimaryContentTrack();
@@ -728,7 +715,8 @@ class TrackStore {
 
     this.initialized = true;
 
-    this.rootStore.overlayStore.AddOverlayTracks();
+    let trackIds = {};
+    this.tracks.forEach(track => trackIds[track.trackKey] = track.trackId);
   });
 
   /* User Actions */

@@ -2,11 +2,10 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
-import {groundTruthStore, rootStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
+import {groundTruthStore, tagStore, trackStore, videoStore} from "@/stores/index.js";
 import {FocusTrap, Tooltip} from "@mantine/core";
 import {
   Confirm,
-  FormNumberInput,
   FormSelect,
   FormTextArea,
   FormTextInput,
@@ -14,7 +13,7 @@ import {
   Loader,
   StyledButton
 } from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher, FormatConfidence, Round} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {BoxToPolygon, BoxToRectangle} from "@/utils/Geometry.js";
 
 import EditIcon from "@/assets/icons/Edit.svg";
@@ -304,16 +303,6 @@ const OverlayTagForm = observer(() => {
                 onChange={event => tagStore.UpdateEditedOverlayTag({...tag, text: event.target.value})}
               />
             </div>
-            {
-              rootStore.page !== "tags" ? null :
-                <div className={S("form__input-container")}>
-                  <FormNumberInput
-                    label="Confidence"
-                    value={Round((tag.confidence || 1) * 100, 0)}
-                    onChange={value => tagStore.UpdateEditedOverlayTag({...tag, confidence: Round(value / 100, 4)})}
-                  />
-                </div>
-            }
             <div className={S("form__input-container")}>
               <FormSelect
                 label="Draw Mode"
@@ -376,13 +365,6 @@ export const OverlayTagDetails = observer(() => {
           <pre className={S("tag-details__text", tag.content ? "tag-details__text--json" : "")}>
             {tag.text}
           </pre>
-          {
-            rootStore.page !== "tags" ? null :
-              <div className={S("tag-details__detail")}>
-                <label>Confidence:</label>
-                <span>{FormatConfidence(tag.confidence)}</span>
-              </div>
-          }
           <StyledButton
             small
             style={{marginTop: 30}}
@@ -442,12 +424,6 @@ const OverlayTag = observer(({track, tag}) => {
           </Tooltip>
           <div className={S("tag__track")}>
             {track.label}
-          </div>
-          <div className={S("tag__time")}>
-            {
-              !tag.confidence ? "100% Confidence" :
-                `${FormatConfidence(tag.confidence)} Confidence`
-            }
           </div>
         </div>
       </div>

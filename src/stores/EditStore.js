@@ -8,6 +8,7 @@ class EditStore {
   writeInfo = {};
   editInfo = {};
   liveToVodProgress = {};
+  saveError = undefined;
   saveProgress = {
     tags: 0,
     clips: 0,
@@ -217,30 +218,9 @@ class EditStore {
     });
 
     // Remove unnecessary delete of new tags and convert modification of ML tag to delete + create user tag
-    return formattedActions.map(action => {
-      if(action.type === "track") { return action; }
-
-      if(action.action === "delete" && !action.modifiedItem.o) {
-        // Deletion of newly created tag
-        return;
-      }
-
-      if(action.action !== "modify" || !action.modifiedItem.o || action.modifiedItem.o.lk === "user") {
-        return action;
-      }
-
-      // Modification of ML tag
-      return [
-        {
-          ...action,
-          action: "create"
-        },
-        {
-          ...action,
-          action: "delete"
-        }
-      ];
-    })
+    return formattedActions
+      // Deletion of newly created tag is not necessary
+      .filter(action => !(action.action === "delete" && !action.modifiedItem.o))
       .flat()
       .filter(a => a)
       // Sort modifications by highest index first so deletes will not interfere with indices of other actions
@@ -249,186 +229,196 @@ class EditStore {
 
   // Save tags and clips
   Save = flow(function * () {
-    this.rootStore.tagStore.ClearEditing();
+    try {
+      this.rootStore.tagStore.ClearEditing();
+      this.saveError = undefined;
+      this.saving = true;
 
-    this.saving = true;
+      const objectId = this.rootStore.videoStore.videoObject.objectId;
+      let tagsUpdated = false;
 
-    const objectId = this.rootStore.videoStore.videoObject.objectId;
+      this.saveProgress = {tags: 0, overlay: 0, aggregation: 0};
 
-    this.saveProgress = { tags: 0, overlay: 0, aggregation: 0 };
+      yield this.SaveClips();
+      tagsUpdated = yield this.SaveTags();
 
-    yield this.SaveTags();
+      this.saveProgress.tags = 1;
 
-    this.saveProgress.tags = 1;
+      tagsUpdated = yield this.SaveOverlayTags() || tagsUpdated;
 
-    yield this.SaveOverlayTags();
+      if(tagsUpdated) {
+        yield this.WriteAPITags();
+      }
 
-    this.saveProgress.overlay = 1;
+      this.saveProgress.overlay = 1;
 
-    yield this.SavePrimaryClip();
+      yield this.SavePrimaryClip();
 
-    yield this.SaveTrackSettings();
+      this.saveProgress.aggregation = 1;
 
-    /*
-    // Show some progress while aggregation is running
-    const progressInterval = setInterval(() =>
-      runInAction(() => this.saveProgress.aggregation = Math.min(1, this.saveProgress.aggregation + 0.05)),
-      1000
-    );
+      yield this.Finalize({
+        objectId,
+        commitMessage: "EVIE - Update tags"
+      });
 
-    yield this.rootStore.aiStore.AggregateUserTags({
-      objectId,
-      writeToken: yield this.rootStore.editStore.InitializeWrite({objectId})
-    });
+      this.saving = false;
 
-    clearInterval(progressInterval);
-
-     */
-    this.saveProgress.aggregation = 1;
-
-    yield this.Finalize({
-      objectId,
-      commitMessage: "EVIE - Update tags"
-    });
-
-    this.saving = false;
-
-    this.ResetPage("tags");
-    this.ResetPage("clips");
-    this.rootStore.videoStore.Reload();
+      this.ResetPage("tags");
+      this.ResetPage("clips");
+      this.rootStore.videoStore.Reload();
+    } catch(error) {
+      console.error(error);
+      this.saveError = error;
+    }
   });
 
-  SaveTrackSettings = flow(function * () {
+  ClearSaveError() {
+    this.rootStore.tagStore.ClearEditing();
+    this.saveError = undefined;
+    this.saving = false;
+  }
+
+  WriteAPITags = flow(function * () {
     const objectId = this.rootStore.videoStore.videoObject.objectId;
-    const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
     const writeToken = yield this.rootStore.editStore.InitializeWrite({objectId});
 
-    yield Promise.all(
-      ["metadata", "clip"].map(async type => {
-        const tracks = this.rootStore.trackStore.tracks.filter(track => track.trackType === type);
-        let trackSettings = {};
+    yield this.rootStore.aiStore.QueryAIAPI({
+      objectId,
+      path: UrlJoin("/tagstore", objectId, "write"),
+      update: true,
+      method: "POST",
+      queryParams: {
+        write_token: writeToken
+      }
+    });
+  });
 
-        tracks.forEach(track =>
-          trackSettings[track.key] = {
-            key: track.key,
-            label: track.label,
-            color: ConvertColor({rgb: track.color})
-          }
-        );
+  SaveClips = flow(function * () {
+    if(this.editInfo.clips.actionStack.length === 0) {
+      return;
+    }
 
-        await this.client.ReplaceMetadata({
-          libraryId,
-          objectId,
-          writeToken,
-          metadataSubtree: UrlJoin("/", type === "clip" ? "clips" : "video_tags", "evie", "tracks"),
-          metadata: Unproxy(trackSettings)
-        });
-      })
+    const objectId = this.rootStore.videoStore.videoObject.objectId;
+    const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
+
+    const tracks = this.rootStore.trackStore.tracks.filter(track => track.trackType === "clip");
+
+    let trackSettings = {};
+    tracks.forEach(track =>
+      trackSettings[track.key] = {
+        key: track.key,
+        label: track.label,
+        description: track.description || "",
+        color: ConvertColor({rgb: track.color})
+      }
     );
+
+    const writeToken = yield this.rootStore.editStore.InitializeWrite({objectId});
+    yield this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: "/clips/evie/tracks",
+      metadata: Unproxy(trackSettings)
+    });
+
+    let tags = {};
+    tracks.forEach(track => {
+      const clips = this.rootStore.trackStore.TrackTags(track.trackId);
+
+      tags[track.key] = {
+        key: track.key,
+        label: track.label,
+        description: track.description || "",
+        color: ConvertColor({rgb: track.color}),
+        version: 2,
+        tags: Object.keys(clips || {}).map(clipId => ({
+          id: clips[clipId].tagId,
+          start_time: Math.floor(clips[clipId].startTime * 1000),
+          end_time: Math.floor(clips[clipId].endTime * 1000),
+          text: clips[clipId].text
+        }))
+      };
+    });
+
+    yield this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: "/clips/metadata_tags",
+      metadata: Unproxy(tags)
+    });
+
+    let overlayTags = Unproxy(this.rootStore.overlayStore.clipOverlayTags);
+    Object.keys(overlayTags || {}).forEach(frame =>
+      Object.keys(overlayTags[frame] || {}).forEach(trackKey =>
+        !overlayTags[frame][trackKey]?.tags ? null :
+          overlayTags[frame][trackKey].tags = (
+            overlayTags[frame][trackKey].tags?.map(tag => ({
+              frame: parseInt(frame),
+              text: tag.text,
+              box: tag.box
+            }))
+          ) || []
+      )
+    );
+
+    yield this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: "/clips/overlay_tags/frame_level_tags",
+      metadata: overlayTags
+    });
   });
 
   SaveTags = flow(function * () {
     // Most recent actions first so older actions can be ignored
     const actions = [
-      ...this.rootStore.editStore.editInfo.tags.actionStack,
-      ...this.rootStore.editStore.editInfo.clips.actionStack
+      ...this.rootStore.editStore.editInfo.tags.actionStack
     ].reverse();
 
     if(actions.length === 0) { return; }
 
     const objectId = this.rootStore.videoStore.videoObject.objectId;
-    const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
 
-    let modifiedFiles = {};
-    let fileHashes = {};
-    const LoadTagFile = async linkKey => {
-      if(modifiedFiles[linkKey]) { return; }
-
-      // Clips are not actually saved into a file, but into metadata
-      if(linkKey === "clips") {
-        modifiedFiles[linkKey] = await this.client.ContentObjectMetadata({
-          libraryId,
-          objectId,
-          metadataSubtree: "/clips",
-          remove: "overlay_tags"
-        });
-      } else {
-        modifiedFiles[linkKey] = await this.client.LinkData({
-          libraryId,
-          objectId,
-          linkPath: UrlJoin("video_tags", "metadata_tags", linkKey),
-          format: "json"
-        });
-      }
-
-      if(!modifiedFiles[linkKey] || modifiedFiles[linkKey]?.errors || !modifiedFiles[linkKey]?.metadata_tags) {
-        modifiedFiles[linkKey] = {
-          version: 1,
-          new: true,
-          metadata_tags: {}
-        };
-      }
-
-      // Hash the content so we can determine if the file was actually changed
-      fileHashes[linkKey] = await this.CreateHash(JSON.stringify(modifiedFiles[linkKey]));
-    };
-
-    const linkInfo = (yield this.client.ContentObjectMetadata({
-      libraryId,
-      objectId,
-      metadataSubtree: "/video_tags/metadata_tags"
-    })) || {};
-
-    const formattedActions = this.FormatActions(actions, ["tag", "clip", "track"]);
+    const formattedActions = this.FormatActions(actions, ["tag", "track"]);
 
     if(formattedActions.length === 0) { return; }
 
+    let tagsToAdd = {};
     for(const action of formattedActions) {
       if(action.type === "track") {
         const track = action.modifiedItem;
-
-        // All of the files that need modification
-        const linkKeys = action.page === "clips" ? ["clips"] : [...Object.keys(linkInfo), "user"];
-
-        // Track modified
         switch(action.action) {
-          // When tracks are changed, we must go into *all* files and modify it
+          // Create or update track
           case "create":
           case "modify":
-            // Label or color changed
-            if(!track.requiresSave) {
-              // Only color changed, no need to modify files
-              continue;
-            }
-
-            yield Promise.all(
-              linkKeys.map(async linkKey => {
-                await LoadTagFile(linkKey);
-
-                if(modifiedFiles[linkKey]?.metadata_tags?.[track.key]) {
-                  modifiedFiles[linkKey].metadata_tags[track.key].label = track.label;
-                  modifiedFiles[linkKey].metadata_tags[track.key].description = track.description;
-                }
-              })
-            );
+            yield this.rootStore.aiStore.QueryAIAPI({
+              objectId,
+              path: UrlJoin("/tagstore", objectId, "tracks", track.key),
+              channelAuth: true,
+              method: action.action === "modify" ? "PATCH" : "POST",
+              body: {
+                label: track.label || track.key,
+                color: ConvertColor({rgb: track.color}),
+                description: track.description || ""
+              }
+            });
 
             break;
 
           case "delete":
-            // Track deleted
-            yield Promise.all(
-              linkKeys.map(async linkKey => {
-                await LoadTagFile(linkKey);
+            yield this.rootStore.aiStore.QueryAIAPI({
+              objectId,
+              path: UrlJoin("/tagstore", objectId, "tracks", track.key),
+              channelAuth: true,
+              method: "DELETE"
+            });
 
-                if(modifiedFiles[linkKey]?.metadata_tags?.[track.key]) {
-                  delete modifiedFiles[linkKey].metadata_tags[track.key];
-                }
-              })
-            );
             break;
         }
 
-        // End of track handling
         continue;
       }
 
@@ -440,372 +430,164 @@ class EditStore {
         return;
       }
 
-      const tagOrigin = action.modifiedItem.o;
-      let linkKey = tagOrigin ? tagOrigin.lk :
-        action.type === "tag" ? "user" : "clips";
-
-      yield LoadTagFile(linkKey);
-
       switch(action.action) {
         // Create new tag
         case "create":
-          linkKey = action.type === "tag" ? "user" : "clips";
-          yield LoadTagFile(linkKey);
-
-          // Ensure track is present in file
-          if(!modifiedFiles[linkKey].metadata_tags[tag.trackKey]) {
-            modifiedFiles[linkKey].metadata_tags[tag.trackKey] = {
-              label: this.rootStore.trackStore.Track(tag.trackKey).label,
-              tags: [],
-              version: 1
-            };
+          if(!tagsToAdd[tag.trackKey]) {
+            tagsToAdd[tag.trackKey] = [];
           }
 
-          modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags.push({
-            id: tag.tagId,
-            text: tag.text,
-            start_time: Math.floor(tag.startTime * 1000),
-            end_time: Math.ceil(tag.endTime * 1000),
-          });
+          tagsToAdd[tag.trackKey].push(tag);
 
           break;
 
         case "modify":
-          modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags[tagOrigin.ti] = {
-            tagId: tag.tagId,
-            ...modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags[tagOrigin.ti],
-            text: tag.text,
-            start_time: Math.floor(tag.startTime * 1000),
-            end_time: Math.ceil(tag.endTime * 1000),
-          };
+          yield this.rootStore.aiStore.QueryAIAPI({
+            objectId,
+            path: UrlJoin("/tagstore", objectId, "tags", tag.tagId?.toString()),
+            channelAuth: true,
+            method: "PATCH",
+            body: {
+              start_time: Math.floor(tag.startTime * 1000),
+              end_time: Math.ceil(tag.endTime * 1000),
+              tag: tag.text
+            }
+          });
 
           break;
 
         case "delete":
-          modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags =
-            modifiedFiles[linkKey].metadata_tags[tag.trackKey].tags
-              .filter((_, i) => i !== tagOrigin.ti);
+          yield this.rootStore.aiStore.QueryAIAPI({
+            objectId,
+            path: UrlJoin("/tagstore", objectId, "tags", tag.tagId?.toString()),
+            channelAuth: true,
+            method: "DELETE"
+          });
 
           break;
       }
     }
 
-    const writeToken = yield this.rootStore.editStore.InitializeWrite({objectId});
+    const userAddress = yield this.rootStore.client.CurrentAccountAddress();
 
-    let fileInfo = [];
     yield Promise.all(
-      Object.keys(modifiedFiles).map(async linkKey => {
-        if(!modifiedFiles[linkKey].new && fileHashes[linkKey] === await this.CreateHash(JSON.stringify(modifiedFiles[linkKey]))) {
-          return;
-        }
-
-        // Save clips to metadata
-        if(linkKey === "clips") {
-          delete modifiedFiles[linkKey].new;
-
-          await this.client.ReplaceMetadata({
-            libraryId,
-            objectId,
-            writeToken,
-            metadataSubtree: "/clips/metadata_tags",
-            metadata: Unproxy(modifiedFiles[linkKey]?.metadata_tags)
-          });
-
-          return;
-        }
-
-        const filePath = linkKey === "user" ?
-          "/video_tags/source_tags/user/user-tags.json" :
-          UrlJoin("/video_tags", linkInfo[linkKey]["/"].split("/").slice(-1)[0]);
-
-        if(modifiedFiles[linkKey].new) {
-          await this.client.ReplaceMetadata({
-            libraryId,
-            objectId,
-            writeToken,
-            metadataSubtree: UrlJoin("/video_tags", "metadata_tags", linkKey),
-            metadata: {
-              "/": UrlJoin("./files/", filePath)
-            }
-          });
-        }
-
-        delete modifiedFiles[linkKey].new;
-
-        const data = new TextEncoder().encode(JSON.stringify(modifiedFiles[linkKey])).buffer;
-        fileInfo.push({
-          mime_type: "application/json",
-          path: filePath,
-          size: data.byteLength,
-          data
+      Object.keys(tagsToAdd).map(async trackKey => {
+        await this.rootStore.aiStore.QueryAIAPI({
+          objectId,
+          path: UrlJoin("/tagstore", objectId, "tags"),
+          channelAuth: true,
+          method: "POST",
+          format: "JSON",
+          body: {
+            author: userAddress,
+            track: trackKey,
+            tags: tagsToAdd[trackKey].map(tag => ({
+              start_time: Math.floor(tag.startTime * 1000),
+              end_time: Math.ceil(tag.endTime * 1000),
+              tag: tag.text
+            }))
+          }
         });
       })
     );
 
-    if(fileInfo.length > 0) {
-      yield this.client.UploadFiles({
-        libraryId,
-        objectId,
-        writeToken,
-        fileInfo,
-        callback: fileProgress => {
-          const uploaded = Object.keys(fileProgress).map(filename => fileProgress[filename].uploaded)
-            .reduce((acc, value) => acc + value, 0);
-          const total = Object.keys(fileProgress).map(filename => fileProgress[filename].total)
-            .reduce((acc, value) => acc + value, 0);
-
-          runInAction(() => this.saveProgress.tags = uploaded / total);
-        }
-      });
-    }
+    return true;
   });
 
   SaveOverlayTags = flow(function * () {
     // Most recent actions first so older actions can be ignored
     const actions = [
-      ...this.rootStore.editStore.editInfo.tags.actionStack,
-      ...this.rootStore.editStore.editInfo.clips.actionStack
+      ...this.rootStore.editStore.editInfo.tags.actionStack
     ].reverse();
 
     if(actions.length === 0) { return; }
 
     const objectId = this.rootStore.videoStore.videoObject.objectId;
-    const libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
 
-    let modifiedFiles = {};
-    let fileHashes = {};
-    const LoadTagFile = async linkKey => {
-      if(modifiedFiles[linkKey]) {
-        return;
-      }
-
-      if(linkKey === "clips") {
-        // Clip tags are saved to metadata
-        modifiedFiles[linkKey] = await this.client.ContentObjectMetadata({
-          libraryId,
-          objectId,
-          metadataSubtree: "/clips",
-          remove: "metadata_tags"
-        });
-      } else {
-        modifiedFiles[linkKey] = await this.client.LinkData({
-          libraryId,
-          objectId,
-          linkPath: UrlJoin("video_tags", "overlay_tags", linkKey),
-          format: "json"
-        });
-      }
-
-      if(!modifiedFiles[linkKey] || modifiedFiles[linkKey]?.errors || !modifiedFiles[linkKey]?.overlay_tags) {
-        modifiedFiles[linkKey] = {
-          version: 1,
-          new: true,
-          overlay_tags: {
-            frame_level_tags: {}
-          }
-        };
-      }
-
-      // Hash the content so we can determine if the file was actually changed
-      fileHashes[linkKey] = await this.CreateHash(JSON.stringify(modifiedFiles[linkKey]));
-    };
-
-    const formattedActions = this.FormatActions(actions, ["overlay", "track"]);
+    const formattedActions = this.FormatActions(actions, ["overlay"]);
 
     if(formattedActions.length === 0) { return; }
 
-    const linkInfo = (yield this.client.ContentObjectMetadata({
-      libraryId,
-      objectId,
-      metadataSubtree: "/video_tags/overlay_tags"
-    })) || {};
-
+    let tagsToAdd = {};
     for(const action of formattedActions) {
-      if(action.type === "track") {
-        const track = action.modifiedItem;
+      // Tag modified
+      const tag = action.modifiedItem;
 
-        // All of the files that need modification
-        const linkKeys = action.page === "clips" ? ["clips"] : [...Object.keys(linkInfo), "user"];
-
-        // Track modified
-        switch(action.action) {
-          // No action needed for create - tracks are created automatically via adding tags
-          // No action needed for modify - overlay tags don't carry any track info
-
-          // When tracks deleted, we must go into *all* files and remove them
-          case "delete":
-            // Track deleted
-            yield Promise.all(
-              linkKeys.map(async linkKey => {
-                await LoadTagFile(linkKey);
-
-                Object.keys(modifiedFiles[linkKey]?.overlay_tags?.frame_level_tags || {}).forEach(frame => {
-                  // Delete track
-                  delete modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][track.key];
-
-                  // Prune empty frame
-                  if(
-                    // Nothing left
-                    Object.keys(modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame]).length === 0 ||
-                    (
-                      // or only timestamp_sec left
-                      Object.keys(modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame]).length === 1 &&
-                      modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame].timestamp_sec
-                    )
-                  ) {
-                    // Delete frame
-                    delete modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame];
-                  }
-                });
-              })
-            );
-            break;
-        }
-
-        // End track handling
-        continue;
+      if(tag.trackKey === "primary-content") {
+        // Primary content is handled elsewhere
+        return;
       }
 
-      const tag = action.modifiedItem;
-      const tagOrigin = action.modifiedItem.o;
-      let linkKey = tagOrigin ? tagOrigin.lk :
-        action.page === "clips" ? "clips" : "user";
-      const frame = tag.frame.toString();
-      const trackKey = this.rootStore.trackStore.Track(tag.trackId).key;
-
-      yield LoadTagFile(linkKey);
-
       switch(action.action) {
-        // Create new overlay tag
+        // Create new tag
         case "create":
-          linkKey = action.page === "clips" ? "clips" : "user";
-          yield LoadTagFile(linkKey);
-
-          // Ensure frame and track are initialized
-          if(!modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame]) {
-            modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame] = {
-              timestamp_sec: this.rootStore.videoStore.FrameToTime(parseInt(frame))
-            };
+          if(!tagsToAdd[tag.trackKey]) {
+            tagsToAdd[tag.trackKey] = [];
           }
 
-          if(!modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey]) {
-            modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey] = {
-              tags: []
-            };
-          }
-
-          modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey].tags.push({
-            id: tag.tagId,
-            text: tag.text,
-            box: tag.box,
-            confidence: tag.confidence
-          });
+          tagsToAdd[tag.trackKey].push(tag);
 
           break;
 
         case "modify":
-          modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey].tags[tagOrigin.ti] = {
-            id: tag.tagId,
-            ...modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey].tags[tagOrigin.ti],
-            text: tag.text,
-            box: tag.box,
-            confidence: tag.confidence
-          };
+          yield this.rootStore.aiStore.QueryAIAPI({
+            objectId,
+            path: UrlJoin("/tagstore", objectId, "tags", tag.tagId?.toString()),
+            channelAuth: true,
+            method: "PATCH",
+            body: {
+              start_time: Math.floor(tag.start_time || 0),
+              end_time: Math.floor(tag.end_time || 0),
+              tag: tag.text,
+              frame_info: {
+                frame_idx: tag.frame,
+                box: tag.box
+              }
+            }
+          });
 
           break;
 
         case "delete":
-          modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey].tags =
-            modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey].tags
-              .filter((_, i) => i !== tagOrigin.ti);
+          yield this.rootStore.aiStore.QueryAIAPI({
+            objectId,
+            path: UrlJoin("/tagstore", objectId, "tags", tag.tagId?.toString()),
+            channelAuth: true,
+            method: "DELETE"
+          });
 
-          // Prune empty track
-          if(modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey].tags.length === 0) {
-            delete modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame][trackKey];
-          }
-
-          // Prune empty frame
-          if(
-            // Nothing left
-            Object.keys(modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame]).length === 0 ||
-            (
-              // or only timestamp_sec left
-              Object.keys(modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame]).length === 1 &&
-              modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame].timestamp_sec
-            )
-          ) {
-            // Delete frame
-            delete modifiedFiles[linkKey].overlay_tags.frame_level_tags[frame];
-          }
           break;
       }
     }
 
-    const writeToken = yield this.rootStore.editStore.InitializeWrite({objectId});
+    const userAddress = yield this.rootStore.client.CurrentAccountAddress();
 
-    let fileInfo = [];
     yield Promise.all(
-      Object.keys(modifiedFiles).map(async linkKey => {
-        if(fileHashes[linkKey] === await this.CreateHash(JSON.stringify(modifiedFiles[linkKey]))) {
-          return;
-        }
-
-        if(linkKey === "clips") {
-          await this.client.ReplaceMetadata({
-            libraryId,
-            objectId,
-            writeToken,
-            metadataSubtree: "/clips/overlay_tags",
-            metadata: Unproxy(modifiedFiles[linkKey]?.overlay_tags)
-          });
-
-          return;
-        }
-
-        const filePath = linkKey === "user" ?
-          "/video_tags/source_tags/user/user-tags-overlay.json" :
-          UrlJoin("/video_tags", linkInfo[linkKey]["/"].split("/").slice(-1)[0]);
-
-        if(modifiedFiles[linkKey].new) {
-          await this.client.ReplaceMetadata({
-            libraryId,
-            objectId,
-            writeToken,
-            metadataSubtree: UrlJoin("/video_tags", "overlay_tags", linkKey),
-            metadata: {
-              "/": UrlJoin("./files/", filePath)
-            }
-          });
-        }
-
-        delete modifiedFiles[linkKey].new;
-
-        const data = new TextEncoder().encode(JSON.stringify(modifiedFiles[linkKey])).buffer;
-        fileInfo.push({
-          mime_type: "application/json",
-          path: filePath,
-          size: data.byteLength,
-          data
+      Object.keys(tagsToAdd).map(async trackKey => {
+        await this.rootStore.aiStore.QueryAIAPI({
+          objectId,
+          path: UrlJoin("/tagstore", objectId, "tags"),
+          channelAuth: true,
+          method: "POST",
+          format: "JSON",
+          body: {
+            author: userAddress,
+            track: trackKey,
+            tags: tagsToAdd[trackKey].map(tag => ({
+              start_time: Math.floor(tag.start_time || 0),
+              end_time: Math.floor(tag.end_time || 0),
+              tag: tag.text,
+              frame_info: {
+                frame_idx: tag.frame,
+                box: tag.box
+              }
+            }))
+          }
         });
       })
     );
 
-    if(fileInfo.length > 0) {
-      yield this.client.UploadFiles({
-        libraryId,
-        objectId,
-        writeToken,
-        fileInfo,
-        callback: fileProgress => {
-          const uploaded = Object.keys(fileProgress).map(filename => fileProgress[filename].uploaded)
-            .reduce((acc, value) => acc + value, 0);
-          const total = Object.keys(fileProgress).map(filename => fileProgress[filename].total)
-            .reduce((acc, value) => acc + value, 0);
-
-          runInAction(() => this.saveProgress.overlay = uploaded / total);
-        }
-      });
-    }
+    return true;
   });
 
   SavePrimaryClip = flow(function * () {

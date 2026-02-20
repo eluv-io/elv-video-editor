@@ -329,6 +329,24 @@ export const StripFabricLinkUrls = (metadata, depth=1) => {
   return metadata;
 };
 
+export const ObjectsEqual = (o1, o2) => {
+  if(typeof o1 !== typeof o2) { return false; }
+
+  if(typeof o1 !== "object") {
+    return o1 === o2;
+  }
+
+  if(Object.keys(o1).length !== Object.keys(o2).length) {
+    return false;
+  }
+
+  if(Array.isArray(o1)) {
+    return !o1.find((item, index) => !ObjectsEqual(item, o2[index]));
+  }
+
+  return !Object.keys(o1).find(key => !ObjectsEqual(o1[key], o2[key]));
+};
+
 // Stop propegation - useful in submenus of links
 export const SP = fn =>
   fn?.constructor?.name === "AsyncFunction" ?

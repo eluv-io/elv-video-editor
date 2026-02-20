@@ -205,8 +205,6 @@ export const FormatTags = ({tagData}) => {
   tagData.forEach(({tags, linkKey}) => {
     if(!tags) { return; }
 
-    const tagVersion = tags.version || 0;
-
     // Record file, group and index of tags so that they can be individually modified
     if(tags.metadata_tags) {
       Object.keys(tags.metadata_tags).forEach(trackKey => {
@@ -223,8 +221,6 @@ export const FormatTags = ({tagData}) => {
             tags: trackTags
           };
         }
-
-        metadataTags[trackKey].version = tagVersion;
       });
     }
   });
