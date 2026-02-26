@@ -15,6 +15,7 @@ import FileBrowserStore from "./FileBrowserStore.js";
 import CompositionStore from "@/stores/CompositionStore.js";
 import DownloadStore from "@/stores/DownloadStore.js";
 import AIStore from "@/stores/AIStore.js";
+import AITaggingStore from "@/stores/AITaggingStore.js";
 import GroundTruthStore from "@/stores/GroundTruthStore.js";
 
 
@@ -65,6 +66,7 @@ class RootStore {
     makeAutoObservable(this);
 
     this.aiStore = new AIStore(this);
+    this.aiTaggingStore = new AITaggingStore(this);
     this.assetStore = new AssetStore(this);
     this.browserStore = new BrowserStore(this);
     this.compositionStore = new CompositionStore(this);
@@ -369,6 +371,7 @@ const root = new RootStore();
 export const rootStore = root;
 
 export const aiStore = rootStore.aiStore;
+export const aiTaggingStore = rootStore.aiTaggingStore;
 export const assetStore = rootStore.assetStore;
 export const browserStore = rootStore.browserStore;
 export const compositionStore = rootStore.compositionStore;

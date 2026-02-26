@@ -1173,14 +1173,52 @@ export const GroundTruthPoolBrowser = observer(() => {
   );
 });
 
+export const TaggingJobBrowser = observer(() => {
+  const [queryParams] = useSearchParams();
+  const filter = decodeURIComponent(queryParams.get("q") || "");
+  const [redirect, setRedirect] = useState(undefined);
+
+  if(redirect) {
+    return <Redirect to={redirect} />;
+  }
+
+  const Select = ({id, objectId}) => {
+    //const pool = groundTruthStore.pools[id] || groundTruthStore.pools[objectId];
+
+    //if(!pool) { return; }
+
+    // TODO: Look up job
+    return;
+
+    setRedirect(UrlJoin("/", id || objectId));
+  };
+
+  return (
+    <div className={S("browser-page")}>
+      <div className={S("browser", "browser--ground-truth")}>
+        <SearchBar saveByLocation Select={Select}/>
+        <h1 className={S("browser__header")}>AI Runtime</h1>
+        <div className={S("browser__actions")}>
+          <StyledButton
+            icon={CreateIcon}
+            to="/new"
+          >
+            New Job(s)
+          </StyledButton>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 const BrowserRoutes = observer(() => {
   return (
     <Switch>
       <Route exact path="/my-library">
-        <BrowserPage Component={MyLibraryBrowser} />
+        <BrowserPage Component={MyLibraryBrowser}/>
       </Route>
       <Route exact path="/:libraryId?/:objectId?">
-        <BrowserPage Component={ContentBrowser} />
+        <BrowserPage Component={ContentBrowser}/>
       </Route>
     </Switch>
   );
