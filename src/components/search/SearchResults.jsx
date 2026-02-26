@@ -60,7 +60,7 @@ export const GroupedSearchResults = observer(({
         resultIndex ? Math.max(resultIndex + 10, batchSize) :
           batchSize
       }
-      Update={async () => await aiStore.Search({query, limit: batchSize})}
+      Update={async (limit, initial) => await aiStore.Search({query, limit: batchSize, initial})}
       className={JoinClassNames(S("grouped-entity-list", small ? "grouped-entity-list--small" : ""), className)}
     >
       {
@@ -128,7 +128,7 @@ export const SearchResults = observer(({showList, scrollPreservationKey, classNa
         resultIndex ? Math.max(resultIndex + 10, batchSize) :
           batchSize
       }
-      Update={async () => await aiStore.Search({query, limit: batchSize})}
+      Update={async (limit, initial) => await aiStore.Search({query, limit: batchSize, initial})}
       className={JoinClassNames(S(showList ? "entity-list" : "entity-grid"), className)}
     >
       {
@@ -172,7 +172,7 @@ const SearchResultsPage = observer(() => {
   const query = aiStore.client.utils.FromB58ToStr(queryB58);
 
   useEffect(() => {
-    if(aiStore.searchResults.key !== `${aiStore.searchIndex?.versionHash}-${queryB58}`) {
+    if(aiStore.searchResults.key !== `${aiStore.searchIndex?.versionHash}-${queryB58}-${aiStore.filterLowQualitySearchResults}`) {
       aiStore.ClearSearchResults();
     }
   }, [queryB58, aiStore.searchIndex?.versionHash]);

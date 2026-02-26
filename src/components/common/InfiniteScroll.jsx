@@ -24,6 +24,7 @@ const InfiniteScroll = observer(({
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [update, setUpdate] = useDebouncedState(0, 250);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [limit, setLimit] = useDebouncedState(
     (scrollPreservationKey && scrollPreservationInfo[scrollPreservationKey]?.limit) || batchSize,
     250
@@ -69,10 +70,11 @@ const InfiniteScroll = observer(({
     const updateTimeout = setTimeout(async () => {
       setLoading(true);
 
-      await Update(limit);
+      await Update(limit, !initialLoadComplete);
 
       setLoading(false);
       setLoaded(true);
+      setInitialLoadComplete(true);
     }, 500);
 
     return () => clearTimeout(updateTimeout);

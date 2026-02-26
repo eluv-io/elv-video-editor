@@ -534,13 +534,16 @@ class AIStore {
     }
   }
 
-  Search = flow(function * ({query="", limit=10}) {
+  Search = flow(function * ({query="", limit=10, initial}) {
     let start = 0;
     const resultsKey = `${this.searchIndex.versionHash}-${this.client.utils.B58(query)}-${this.filterLowQualitySearchResults}`;
 
     if(this.searchResults.key === resultsKey) {
       // Continuation of same query
-      if((this.searchResults.pagination.start + this.searchResults.pagination.limit) >= this.searchResults.pagination.total) {
+      if(
+        initial ||
+        (this.searchResults.pagination.start + this.searchResults.pagination.limit) >= this.searchResults.pagination.total
+      ) {
         // Exhausted results
         return this.searchResults;
       }
