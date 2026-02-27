@@ -2,7 +2,7 @@ import {observer} from "mobx-react-lite";
 import React, {useEffect} from "react";
 import {keyboardControlsStore, rootStore} from "@/stores/index.js";
 import {Redirect, Route, Switch, useParams} from "wouter";
-import {TaggingJobBrowser} from "@/components/nav/Browser.jsx";
+import {TaggingContentBrowser, TaggingJobBrowser} from "@/components/nav/Browser.jsx";
 import TaggingForm from "@/components/tagging/TaggingForm.jsx";
 
 const Wrapper = observer(({children}) => {
@@ -28,9 +28,9 @@ const TaggingView = observer(() => {
           <TaggingJobBrowser />
         </Wrapper>
       </Route>
-      <Route path="/new" exact>
+      <Route path="/new/:libraryId?" exact>
         <Wrapper>
-          <TaggingForm />
+          <TaggingContentBrowser />
         </Wrapper>
       </Route>
       <Route>

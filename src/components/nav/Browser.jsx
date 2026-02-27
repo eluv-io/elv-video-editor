@@ -2,7 +2,16 @@ import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 
 import React, {useState, useEffect} from "react";
 import {observer} from "mobx-react-lite";
-import {rootStore, browserStore, compositionStore, editStore, groundTruthStore, videoStore, aiStore} from "@/stores";
+import {
+  rootStore,
+  browserStore,
+  compositionStore,
+  editStore,
+  groundTruthStore,
+  videoStore,
+  aiStore,
+  aiTaggingStore
+} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {
   AsyncButton,
@@ -492,6 +501,7 @@ export const BrowserTable = observer(({
           S(
             "browser-table",
             `browser-table--${contentType}`,
+            Actions || Delete ? `browser-table--${contentType}--with-actions` : "",
             hasActiveItem ? "browser-table--with-active-item" : "",
             noDuration ? `browser-table--${contentType}--no-duration` : ""
           )
@@ -806,6 +816,7 @@ export const ObjectBrowser = observer(({
   libraryId,
   title,
   withFilterBar,
+  filter,
   filterQueryParam="q",
   Select,
   Path,
@@ -814,10 +825,11 @@ export const ObjectBrowser = observer(({
   videoOnly,
   frameRate,
   noDuration,
+  Actions,
   className=""
 }) => {
   const [queryParams] = useSearchParams();
-  const filter = decodeURIComponent(queryParams.get(filterQueryParam) || "");
+  filter = filter || decodeURIComponent(queryParams.get(filterQueryParam) || "");
 
   useEffect(() => {
     // Ensure libraries are loaded
@@ -840,9 +852,21 @@ export const ObjectBrowser = observer(({
           onClick={Back}
           className={S("browser__header-back")}
         />
-        <span className={S("browser__header-last")}>
-          {title || `Content Libraries / ${library?.name || libraryId}`}
-        </span>
+        {
+          title ?
+            <span className={S("browser__header-last")}>
+              {title}
+            </span> :
+            <>
+              <Linkish onClick={Back}>
+                Content Libraries
+              </Linkish>
+              <span className={S("browser__header-chevron")}>▶</span>
+              <span className={S("browser__header-last")}>
+                {library?.name || libraryId}
+              </span>
+            </>
+        }
       </h1>
       <BrowserTable
         filter={filter}
@@ -854,6 +878,7 @@ export const ObjectBrowser = observer(({
         Path={Path}
         Select={Select}
         Load={async args => await browserStore.ListObjects({libraryId, ...args})}
+        Actions={Actions}
       />
     </div>
   );
@@ -861,6 +886,7 @@ export const ObjectBrowser = observer(({
 
 export const LibraryBrowser = observer(({
   title,
+  filter,
   withFilterBar="",
   filterQueryParam="q",
   Path,
@@ -868,7 +894,7 @@ export const LibraryBrowser = observer(({
   className=""
 }) => {
   const [queryParams] = useSearchParams();
-  const filter = decodeURIComponent(queryParams.get(filterQueryParam) || "");
+  filter = filter || decodeURIComponent(queryParams.get(filterQueryParam) || "");
 
   return (
     <div className={JoinClassNames(S("browser", "browser--library"), className)}>
@@ -1168,6 +1194,138 @@ export const GroundTruthPoolBrowser = observer(() => {
           })}
           Load={async args => await browserStore.ListGroundTruthPools(args)}
         />
+      </div>
+    </div>
+  );
+});
+
+export const TaggingSelection = observer(() => {
+  const content = aiTaggingStore.selectedContent;
+  return (
+    <div className={S("tagging-selection")}>
+      <div className={S("tagging-selection__title")}>
+        New Job
+      </div>
+      <div className={S("tagging-selection__content")}>
+        {
+          content.length === 0 ?
+            <div className={S("tagging-selection__empty")}>
+              No Content Selected
+            </div> :
+            content.map(({objectId, name}) =>
+              <div key={objectId} className={S("tagging-item")}>
+                <div className={S("tagging-item__text")}>
+                  <div className={S("tagging-item__title")}>
+                    {name}
+                  </div>
+                  <CopyableField value={objectId} className={S("tagging-item__id")}>
+                    {objectId}
+                  </CopyableField>
+                </div>
+                <div className={S("tagging-item__actions")}>
+                  <IconButton
+                    icon={DeleteIcon}
+                    label={`Remove ${name}`}
+                    onClick={() => aiTaggingStore.RemoveSelectedContent({objectId})}
+                    className={S("tagging-item__action")}
+                  />
+                </div>
+              </div>
+            )
+        }
+      </div>
+      <div className={S("tagging-selection__count")}>
+        { content.length } content object{content.length === 1 ? "" : "s"} selected
+      </div>
+    </div>
+  );
+});
+
+export const TaggingContentBrowser = observer(() => {
+  const {libraryId} = useParams();
+  const [, navigate] = useLocation();
+
+  const Select = ({objectId, name}) => {
+    aiTaggingStore.selectedContent.find(other => other.objectId === objectId) ?
+      aiTaggingStore.RemoveSelectedContent({objectId}) :
+      aiTaggingStore.AddSelectedContent({objectId, name});
+  };
+
+  return (
+    <div className={S("browser-page")}>
+      <SearchBar
+        filterQueryParam={`q${libraryId || ""}`}
+        saveByLocation
+        Select={Select}
+      />
+      <h1 className={S("browser__header")}>
+        <IconButton
+          icon={BackIcon}
+          label="Back to Jobs List"
+          to="/"
+          className={S("browser__header-back")}
+        />
+        <Linkish to="/">
+          AI Runtime
+        </Linkish>
+        <span className={S("browser__header-chevron")}>▶</span>
+        <span>
+          New Job
+        </span>
+        <span className={S("browser__header-chevron")}>▶</span>
+        <span className={S("browser__header-last")}>
+          Select Content
+        </span>
+      </h1>
+      <div className={S("browser__header-note")}>
+        Select the video content object(s) you want to process with AI RunTime.
+      </div>
+      <div className={S("tagging-browser")}>
+        {
+          libraryId ?
+            <ObjectBrowser
+              className={S("browser--tagging")}
+              filterQueryParam={`q${libraryId}`}
+              libraryId={libraryId}
+              videoOnly
+              Actions={({objectId}) => {
+                const isActive = !!aiTaggingStore.selectedContent.find(other => other.objectId === objectId);
+                return (
+                  <div
+                    key={isActive}
+                    className={S("browser-table__action")}
+                  >
+                    { isActive ? "- Remove" : "+ Add" }
+                  </div>
+                );
+              }}
+              Back={() => navigate("/new")}
+              Select={({objectId, name}) => Select({objectId, name})}
+            /> :
+            <LibraryBrowser
+              title="Content Libraries"
+              className={S("browser--tagging")}
+              Select={({libraryId, objectId, name}) => {
+                if(objectId) {
+                  Select({objectId, name});
+                } else {
+                  navigate(UrlJoin("/", "new", libraryId));
+                }
+              }}
+            />
+        }
+        <TaggingSelection />
+      </div>
+      <div className={S("tagging-actions")}>
+        <StyledButton to="/" variant="outline">
+          Back
+        </StyledButton>
+        <StyledButton
+          disabled={aiTaggingStore.selectedContent.length === 0}
+          to="/new/configure"
+        >
+          Continue
+        </StyledButton>
       </div>
     </div>
   );

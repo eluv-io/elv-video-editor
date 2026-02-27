@@ -1,11 +1,9 @@
-import {flow, makeAutoObservable, runInAction} from "mobx";
+import {flow, makeAutoObservable} from "mobx";
 import UrlJoin from "url-join";
-import {Slugify, Unproxy} from "@/utils/Utils.js";
-import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
-
-const GLOBAL_PROFILE_OBJECT_ID = "iq__3MVS3kjshtnAodRv4qLebBvH3oXb";
 
 class AITaggingStore {
+  selectedContent = [];
+
   constructor(rootStore) {
     this.rootStore = rootStore;
 
@@ -14,6 +12,19 @@ class AITaggingStore {
 
   get client() {
     return this.rootStore.client;
+  }
+
+  AddSelectedContent({objectId, name}) {
+    this.selectedContent.push({objectId, name});
+  }
+
+  RemoveSelectedContent({objectId}) {
+    this.selectedContent = this.selectedContent
+      .filter(item => item.objectId !== objectId);
+  }
+
+  ClearSelectedContent() {
+    this.selectedContent = [];
   }
 
   Jobs = flow(function * ({objectId}) {
