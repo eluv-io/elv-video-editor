@@ -28,7 +28,7 @@ import {
 import SVG from "react-inlinesvg";
 import {Redirect, Route, useParams, Switch, useLocation, useSearchParams} from "wouter";
 import UrlJoin from "url-join";
-import {Select, Tabs, Tooltip, Switch as SwitchInput} from "@mantine/core";
+import {Select, Tabs, Tooltip, Switch as SwitchInput, Progress} from "@mantine/core";
 import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
 import {SearchIndexSelection} from "@/components/side_panel/SidePanel.jsx";
 
@@ -52,6 +52,8 @@ import SearchIcon from "@/assets/icons/v2/search.svg";
 import AssetIcon from "@/assets/icons/v2/asset.svg";
 import PinIcon from "@/assets/icons/v2/pin.svg";
 import MusicIcon from "@/assets/icons/v2/music.svg";
+import PauseIcon from "@/assets/icons/Pause.svg";
+import PlayIcon from "@/assets/icons/Play.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -132,6 +134,7 @@ export const SearchBar = observer(({
   filterQueryParam="q",
   saveByLocation=false,
   Select,
+  onSubmit,
   className=""
 }) => {
   const [location] = useLocation();
@@ -140,6 +143,8 @@ export const SearchBar = observer(({
   const [input, setInput] = useState(decodeURIComponent(searchParams.get(filterQueryParam) || ""));
 
   const Submit = async (input) => {
+    onSubmit?.(input);
+
     try {
       if(Select && ["ilib", "iq__", "hq__", "0x"].find(prefix => input.trim().startsWith(prefix))) {
         const result = await browserStore.LookupContent(input);
@@ -1333,28 +1338,58 @@ export const TaggingContentBrowser = observer(() => {
 
 export const TaggingJobBrowser = observer(() => {
   const [queryParams] = useSearchParams();
-  const filter = decodeURIComponent(queryParams.get("q") || "");
-  const [redirect, setRedirect] = useState(undefined);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState(decodeURIComponent(queryParams.get("q") || ""));
+  const [jobList, setJobList] = useState([]);
 
-  if(redirect) {
-    return <Redirect to={redirect} />;
-  }
+  const perPage = 5;
+  const [page, setPage] = useState(1);
 
-  const Select = ({id, objectId}) => {
-    //const pool = groundTruthStore.pools[id] || groundTruthStore.pools[objectId];
+  useEffect(() => {
+    if(!aiTaggingStore.initialized) { return; }
 
-    //if(!pool) { return; }
+    setLoading(true);
+    aiTaggingStore.ListTaggingJobs({
+      start: (page - 1) * perPage,
+      limit: perPage,
+      filter
+    })
+      .then(setJobList)
+      .finally(() => setLoading(false));
+  }, [aiTaggingStore.initialized, filter, page, perPage]);
 
-    // TODO: Look up job
-    return;
+  useEffect(() => {
+    if(!jobList) { return; }
 
-    setRedirect(UrlJoin("/", id || objectId));
-  };
+    const interval = setInterval(() => {
+      const objectIds = jobList
+        .filter(job =>
+          // Filter completed jobs
+          !["completed", "stopped", "failed"].includes(aiTaggingStore.jobStatus[job.job_id]?.status?.toLowerCase())
+        )
+        .map(job => job.objectId)
+        .filter((x, i, a) => a.indexOf(x) === i);
+
+      objectIds.forEach(objectId => aiTaggingStore.GetObjectJobStatus({objectId}));
+    }, 10001);
+
+    return () => clearInterval(interval);
+  }, [jobList]);
+
+  // Get job status
+  const jobs = jobList.map(job => ({
+    ...job,
+    ...(aiTaggingStore.jobStatus[job.job_id] || {})
+  }));
 
   return (
     <div className={S("browser-page")}>
       <div className={S("browser", "browser--ground-truth")}>
-        <SearchBar saveByLocation Select={Select}/>
+        <SearchBar
+          placeholder="Title, Model, Content ID"
+          saveByLocation
+          onSubmit={value => setFilter(value)}
+        />
         <h1 className={S("browser__header")}>AI Runtime</h1>
         <div className={S("browser__actions")}>
           <StyledButton
@@ -1364,6 +1399,134 @@ export const TaggingJobBrowser = observer(() => {
             New Job(s)
           </StyledButton>
         </div>
+        <div className={S("browser-table-container")}>
+          {
+            loading ?
+              <div className={S("browser-table", "browser-table--loading")}>
+                <Loader/>
+              </div> :
+              <div className={S("browser-table", "browser-table--tagging")}>
+                <div className={S("browser-table__row", "browser-table__row--header")}>
+                  <div className={S("browser-table__cell", "browser-table__cell--header")}>
+                    Name
+                  </div>
+                  <div className={S("browser-table__cell", "browser-table__cell--header")}>
+                    Track
+                  </div>
+                  <div className={S("browser-table__cell", "browser-table__cell--header")}>
+                    Start Time
+                  </div>
+                  <div className={S("browser-table__cell", "browser-table__cell--header")}>
+                    Progress
+                  </div>
+                  <div className={S("browser-table__cell", "browser-table__cell--header")}>
+                    Status
+                  </div>
+                  <div className={S("browser-table__cell", "browser-table__cell--header")} />
+                </div>
+                {
+                  jobs.map(job =>
+                    <div key={`job-${job.job_id}`} className={S("browser-table__row")}>
+                      <div className={S("browser-table__cell")}>
+                        <div className={S("browser-table__row-title")}>
+                          <Tooltip
+                            position="top-start"
+                            label={
+                              <div className={S("tooltip")}>
+                                <div className={S("tooltip__item")}>
+                                  {job.objectName}
+                                </div>
+                              </div>
+                            }
+                            openDelay={500}
+                          >
+                            <div className={S("browser-table__row-title-main")}>
+                              <span className={S("ellipsis")}>
+                                {job.objectName || job.objectId}
+                              </span>
+                            </div>
+                          </Tooltip>
+                          <div className={S("browser-table__row-title-id")}>
+                            <CopyableField value={job.objectId} showOnHover>
+                              {job.objectId}
+                            </CopyableField>
+                          </div>
+                        </div>
+                      </div>
+                      <div className={S("browser-table__cell")}>
+                        {aiTaggingStore.modelNames[job.model]}
+                      </div>
+                      <div className={S("browser-table__cell")}>
+                        {new Date(job.createdAt).toLocaleString()}
+                      </div>
+                      <div className={S("browser-table__cell", "browser-table__cell--progress")}>
+                        {
+                          ["completed", "failed"].includes(job?.status?.toLowerCase()) ? null :
+                            <>
+                              <Progress
+                                value={job?.progress || 0}
+                                max={100}
+                                transitionDuration={1000}
+                                w="100%"
+                              />
+                              <div className={S("percent")}>
+                                {(job?.progress || 0).toFixed(0)}%
+                              </div>
+                            </>
+                        }
+                      </div>
+                      <div className={S("browser-table__cell")}>
+                        {job?.status}
+                      </div>
+                      <div className={S("browser-table__cell")}>
+                        {
+                          ["completed", "stopped", "failed"].includes(job?.status?.toLowerCase()) ? null :
+                            <IconButton
+                              icon={PauseIcon}
+                              label="Pause Job"
+                              onClick={async () => await Confirm({
+                                title: "Pause Tagging Job",
+                                text: "Are you sure you want to pause this job?",
+                                onConfirm: async () => {
+                                  await aiTaggingStore.PauseTaggingJob({
+                                    objectId: job.objectId,
+                                    model: job.model
+                                  });
+                                }
+                              })
+                              }
+                            />
+                        }
+                        {
+                          job?.status?.toLowerCase() !== "stopped" ? null :
+                            <IconButton
+                              icon={PlayIcon}
+                              label="Restart Job"
+                              onClick={async () => await Confirm({
+                                title: "Restart Tagging Job",
+                                text: "Are you sure you want to restart this job?",
+                                onConfirm: async () => {
+                                  await aiTaggingStore.RestartTaggingJob({
+                                    objectId: job.objectId,
+                                    model: job.model
+                                  });
+                                }
+                              })
+                              }
+                            />
+                        }
+                      </div>
+                    </div>
+                  )
+                }
+              </div>
+          }
+        </div>
+        <PageControls
+          currentPage={page}
+          pages={Math.max(1, Math.ceil(aiTaggingStore.allRequestedJobs.length / perPage))}
+          SetPage={setPage}
+        />
       </div>
     </div>
   );

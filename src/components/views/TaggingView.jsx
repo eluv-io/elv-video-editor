@@ -28,6 +28,16 @@ const TaggingView = observer(() => {
           <TaggingJobBrowser />
         </Wrapper>
       </Route>
+      <Route path="/new/configure" exact>
+        <Wrapper>
+          <TaggingForm />
+        </Wrapper>
+      </Route>
+      <Route path="/new/summary" exact>
+        <Wrapper>
+          <TaggingForm />
+        </Wrapper>
+      </Route>
       <Route path="/new/:libraryId?" exact>
         <Wrapper>
           <TaggingContentBrowser />

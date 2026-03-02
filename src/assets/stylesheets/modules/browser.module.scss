@@ -362,6 +362,12 @@
     }
   }
 
+  &--tagging {
+    .browser-table__row {
+      grid-template-columns: 1fr 200px 200px 150px 150px 150px;
+    }
+  }
+
   &--loading,
   &--empty {
     align-items: center;
@@ -420,6 +426,7 @@
     display: flex;
     gap: 10px;
     overflow: hidden;
+    padding-right: 10px;
     text-overflow: ellipsis;
     white-space: nowrap;
     width: 100%;
@@ -453,6 +460,17 @@
 
     &--padded {
       padding-inline: 20px;
+    }
+
+    &--progress {
+      padding-right: 20px;
+
+      .percent {
+        font-size: 12px;
+        font-weight: 800;
+        text-align: center;
+        width: 50px;
+      }
     }
   }
 
@@ -537,7 +555,7 @@
 
 .tagging-actions {
   display: flex;
-  gap: 10px;
+  gap: 20px;
   justify-content: flex-end;
   margin-top: 20px;
 }
@@ -553,7 +571,7 @@
 
   &__title {
     border-bottom: 1px solid var(--table-border-color);
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 600;
     padding-bottom: 10px;
   }
