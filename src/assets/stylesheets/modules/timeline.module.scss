@@ -248,6 +248,8 @@
   &__preview {
     border-radius: 10px;
     margin-bottom: 5px;
+    width: 100%;
+    object-fit: contain;
   }
 
   &__title {

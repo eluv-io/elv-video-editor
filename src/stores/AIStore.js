@@ -6,6 +6,7 @@ import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 const GLOBAL_PROFILE_OBJECT_ID = "iq__3MVS3kjshtnAodRv4qLebBvH3oXb";
 
 class AIStore {
+  selectedTitleIds = [];
   searchIndexes = [];
   customSearchIndexIds = [];
   selectedSearchIndexId;
@@ -71,11 +72,28 @@ class AIStore {
     return profiles;
   }
 
+  get searchSettingsKey() {
+    return this.SearchKey({
+      versionHash: this.searchIndex?.versionHash,
+      query: this.searchResults?.query || "",
+      filterLowQualitySearchResults: this.filterLowQualitySearchResults,
+      selectedTitleIds: this.selectedTitleIds
+    });
+  }
+
+  SearchKey({versionHash, query="", filterLowQualitySearchResults, selectedTitleIds=[]}) {
+    return `${versionHash}-${this.client.utils.B58(query || "")}-${filterLowQualitySearchResults}-${selectedTitleIds.join("-")}`;
+  }
+
   // Load search indexes and highlight profiles
   Initialize = flow(function * () {
     yield this.LoadSearchIndexes();
     this.LoadHighlightProfiles();
   });
+
+  SetSelectedTitleIds(objectIds) {
+    this.selectedTitleIds = objectIds;
+  }
 
   QueryAIAPI = flow(function * ({
     server="ai",
@@ -342,12 +360,54 @@ class AIStore {
     return status;
   });
 
+  GetObjectName = flow(function * ({objectId}) {
+    return yield this.rootStore.LoadResource({
+      key: "object-name",
+      id: objectId,
+      Load: async () => {
+        const metadata = await this.client.ContentObjectMetadata({
+          versionHash: await this.client.LatestVersionHash({objectId}),
+          metadataSubtree: "public",
+          select: [
+            "name",
+            "asset_metadata/title",
+            "asset_metadata/display_title"
+          ]
+        });
+
+        return (
+          metadata?.asset_metadata?.display_title ||
+          metadata?.asset_metadata?.title ||
+          metadata?.name ||
+          objectId
+        );
+      }
+    });
+  });
+
   // Search indexes
   GetSearchFields = flow(function * ({id}) {
     if(!id) { return; }
 
     try {
       const versionHash = yield this.client.LatestVersionHash({objectId: id});
+
+      const indexedTitleIds = (yield this.client.ContentObjectMetadata({
+        versionHash,
+        metadataSubtree: "indexer/permissions/sorted_ids"
+      }));
+
+      const indexedTitles = (
+        yield this.client.utils.LimitedMap(
+          5,
+          indexedTitleIds,
+          async objectId => ({
+            objectId,
+            name: await this.GetObjectName({objectId})
+          })
+        )
+      )
+        .sort((a, b) => a.name?.toLowerCase() < b.name?.toLowerCase() ? -1 : 1);
 
       const indexerInfo = yield this.client.ContentObjectMetadata({
         versionHash,
@@ -403,7 +463,8 @@ class AIStore {
         eventTracks,
         type: indexerInfo.document?.prefix,
         musicSupported,
-        versionHash
+        versionHash,
+        indexedTitles
       };
     } catch(error) {
       console.error("Unable to load search fields", error);
@@ -465,6 +526,7 @@ class AIStore {
   });
 
   SetSelectedSearchIndex(id) {
+    this.selectedTitleIds = [];
     this.selectedSearchIndexId = id;
     localStorage.setItem(`search-index-${this.rootStore.tenantContractId}`, id);
   }
@@ -536,12 +598,25 @@ class AIStore {
 
   Search = flow(function * ({query="", limit=10, initial}) {
     let start = 0;
-    const resultsKey = `${this.searchIndex.versionHash}-${this.client.utils.B58(query)}-${this.filterLowQualitySearchResults}`;
+
+    const resultsKey = this.SearchKey({
+      versionHash: this.searchIndex?.versionHash,
+      query,
+      filterLowQualitySearchResults: this.filterLowQualitySearchResults,
+      selectedTitleIds: this.selectedTitleIds
+    });
 
     if(this.searchResults.key === resultsKey) {
+      if(initial) {
+        while(this.searchResults.loading) {
+          yield new Promise(resolve => setTimeout(resolve, 250));
+        }
+
+        return this.searchResults;
+      }
+
       // Continuation of same query
       if(
-        initial ||
         (this.searchResults.pagination.start + this.searchResults.pagination.limit) >= this.searchResults.pagination.total
       ) {
         // Exhausted results
@@ -563,109 +638,132 @@ class AIStore {
     const type = this.searchIndex.type?.includes("assets") ? "image" : "video";
 
     this.searchResults.key = resultsKey;
+    this.searchResults.loading = true;
 
-    let {results, contents, pagination} = (yield this.QueryAIAPI({
-      update: true,
-      objectId: this.searchIndex.id,
-      path: UrlJoin("search", "q", this.searchIndex.versionHash, "rep", "search"),
-      queryParams: {
-        terms: query,
-        search_fields:
-          isMusic ? "f_music" :
-            Object.keys(this.searchIndex.fields).join(","),
-        sort: isMusic ? "f_music" : null,
-        start,
-        limit,
-        display_fields: isMusic ? "f_music" : "all",
-        clips: type === "video",
-        clip_include_source_tags: true,
-        debug: true,
-        max_total: 100,
-        min_score: this.filterLowQualitySearchResults ? 0.55 : 0,
-        select: "/public/asset_metadata/title,/public/name,public/asset_metadata/display_title"
+    try {
+      let {results, contents, pagination} = (yield this.QueryAIAPI({
+        update: true,
+        objectId: this.searchIndex.id,
+        path: UrlJoin("search", "q", this.searchIndex.versionHash, "rep", "search"),
+        queryParams: {
+          terms: query,
+          search_fields:
+            isMusic ? "f_music" :
+              Object.keys(this.searchIndex.fields).join(","),
+          sort: isMusic ? "f_music" : null,
+          start,
+          limit,
+          display_fields: isMusic ? "f_music" : "all",
+          clips: type === "video",
+          clip_include_source_tags: true,
+          get_chunks: true,
+          max_total: 100,
+          min_score: this.filterLowQualitySearchResults ? 0.55 : 0,
+          select: "/public/asset_metadata/title,/public/name,public/asset_metadata/display_title",
+          filters: this.selectedTitleIds.map(objectId => `id:${objectId}`)
+        }
+      })) || {};
+
+      if(this.searchResults.key !== resultsKey) {
+        // A different search has been performed while this query was made, throw away the result
+        return;
       }
-    })) || {};
 
-    if(this.searchResults.key !== resultsKey) {
-      // A different search has been performed while this query was made, throw away the result
-      return;
-    }
+      results = results || contents;
 
-    results = results || contents;
+      const baseUrl = yield this.client.Rep({
+        versionHash: this.searchIndex.versionHash,
+        rep: "frame",
+        channelAuth: true,
+        queryParams: {
+          ignore_trimming: true
+        }
+      });
 
-    const baseUrl = yield this.client.Rep({
-      versionHash: this.searchIndex.versionHash,
-      rep: "frame",
-      channelAuth: true,
-      queryParams: {
-        ignore_trimming: true
-      }
-    });
+      this.searchResults = {
+        key: resultsKey,
+        query,
+        indexHash: this.searchIndex.versionHash,
+        pagination: pagination || {},
+        type,
+        loading: false,
+        results: [
+          ...(this.searchResults.results || []),
+          ...(results || []).map(result => {
+            let imageUrl;
+            if(result.image_url || result.prefix) {
+              imageUrl = new URL(baseUrl);
 
-    this.searchResults = {
-      key: resultsKey,
-      query,
-      indexHash: this.searchIndex.versionHash,
-      pagination: pagination || {},
-      type,
-      results: [
-        ...(this.searchResults.results || []),
-        ...(results || []).map(result => {
-          let imageUrl;
-          if(result.image_url || result.prefix) {
-            imageUrl = new URL(baseUrl);
+              if(type === "image") {
+                imageUrl.pathname = UrlJoin("q", result.hash, "files", result.prefix);
+              } else {
+                imageUrl.pathname = result.image_url.split("?")[0];
 
-            if(type === "image") {
-              imageUrl.pathname = UrlJoin("q", result.hash, "files", result.prefix);
-            } else {
-              imageUrl.pathname = result.image_url.split("?")[0];
-
-              const params = new URLSearchParams(result.image_url.split("?")[1]);
-              params.keys().forEach((key, value) => imageUrl.searchParams.set(key, value));
+                const params = new URLSearchParams(result.image_url.split("?")[1]);
+                params.keys().forEach((key, value) => imageUrl.searchParams.set(key, value));
+              }
             }
-          }
 
-          let startTime, endTime, subtitle;
-          if(type === "video") {
-            startTime = (result.start_time || 0) / 1000;
-            endTime = result.end_time ? result.end_time / 1000 : undefined;
+            let startTime, endTime, subtitle, chunkStartTime;
+            if(type === "video") {
+              startTime = (result.start_time || 0) / 1000;
+              endTime = result.end_time ? result.end_time / 1000 : undefined;
 
-            if(startTime || endTime) {
-              subtitle = FrameAccurateVideo.TimeToString({time: startTime, format: "smpte", includeFractionalSeconds: true});
+              chunkStartTime = result.sources?.[0]?.chunks?.[0]?.start_time;
 
-              if(endTime) {
-                subtitle += " - " + FrameAccurateVideo.TimeToString({time: endTime, format: "smpte", includeFractionalSeconds: true});
-                subtitle = `${subtitle} (${FrameAccurateVideo.TimeToString({time: endTime - startTime})})`;
+              if(startTime || endTime) {
+                subtitle = FrameAccurateVideo.TimeToString({
+                  time: startTime,
+                  format: "smpte",
+                  includeFractionalSeconds: true
+                });
+
+                if(endTime) {
+                  subtitle += " - " + FrameAccurateVideo.TimeToString({
+                    time: endTime,
+                    format: "smpte",
+                    includeFractionalSeconds: true
+                  });
+                  subtitle = `${subtitle} (${FrameAccurateVideo.TimeToString({time: endTime - startTime})})`;
+                }
+
+                imageUrl.searchParams.set("t", startTime.toFixed(2));
               }
 
-              imageUrl.searchParams.set("t", startTime.toFixed(2));
+              if(chunkStartTime) {
+                imageUrl.searchParams.set("t", (chunkStartTime / 1000).toFixed(2));
+              }
             }
-          }
 
-          let score = result.score;
-          // Score is provided as an array of scores
-          if(!score) {
-            score = Math.max(...(result?.sources?.map(source => source.score) || []));
-          }
+            let score = result.score;
+            // Score is provided as an array of scores
+            if(!score) {
+              score = Math.max(...(result?.sources?.map(source => source.score) || []));
+            }
 
-          return {
-            libraryId: result.qlib_id,
-            objectId: result.id,
-            versionHash: result.hash,
-            imageUrl: imageUrl?.toString(),
-            filePath: type === "image" ? result.prefix : undefined,
-            startTime,
-            endTime,
-            sources: result.sources,
-            name: result.meta?.public?.asset_metadata?.title || result.meta?.public?.name,
-            subtitle,
-            score: score ? (score * 100).toFixed(1) : "",
-            type,
-            result
-          };
-        })
-      ]
-    };
+            return {
+              libraryId: result.qlib_id,
+              objectId: result.id,
+              versionHash: result.hash,
+              imageUrl: imageUrl?.toString(),
+              filePath: type === "image" ? result.prefix : undefined,
+              startTime,
+              endTime,
+              firstChunkStartTime: chunkStartTime,
+              sources: result.sources,
+              name: result.meta?.public?.asset_metadata?.title || result.meta?.public?.name,
+              subtitle,
+              score: score ? (score * 100).toFixed(1) : "",
+              type,
+              result
+            };
+          })
+        ]
+      };
+    } catch(error) {
+      this.searchResults.loading = false;
+      throw error;
+    }
 
     return this.searchResults;
   });

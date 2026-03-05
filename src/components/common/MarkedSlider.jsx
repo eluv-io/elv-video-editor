@@ -155,8 +155,8 @@ const MarkedSlider = observer(({
     const resizeObserver = new ResizeObserver(() => {
       setWidths({
         slider: sliderRef.current.getBoundingClientRect().width,
-        container: sliderRef.current.parentElement.getBoundingClientRect().width,
-        parent: sliderRef.current.parentElement.parentElement.getBoundingClientRect().width,
+        container: sliderRef.current.parentElement?.getBoundingClientRect().width,
+        parent: sliderRef.current.parentElement?.parentElement.getBoundingClientRect().width,
       });
     });
 

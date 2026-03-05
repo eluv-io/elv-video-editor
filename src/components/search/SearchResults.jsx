@@ -11,6 +11,7 @@ import {AISearchBar, CardDisplaySwitch} from "@/components/nav/Browser.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import UrlJoin from "url-join";
 import {EntityCard, EntityListItem} from "@/components/common/EntityLists.jsx";
+import {Select} from "@mantine/core";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 
@@ -55,7 +56,7 @@ export const GroupedSearchResults = observer(({
       key={`scroll-${showList}-${aiStore.searchIndex?.versionHash}-${queryB58}`}
       scrollPreservationKey={scrollPreservationKey ? `search-${aiStore.searchIndex?.versionHash}-${queryB58}-${scrollPreservationKey}` : undefined}
       withLoader
-      watchList={[query, aiStore.selectedSearchIndexId, aiStore.filterLowQualitySearchResults]}
+      watchList={[query, aiStore.searchSettingsKey]}
       batchSize={
         resultIndex ? Math.max(resultIndex + 10, batchSize) :
           batchSize
@@ -78,7 +79,7 @@ export const GroupedSearchResults = observer(({
                     onRender={
                       resultIndex !== result.resultIndex ? undefined :
                         element => setTimeout(() =>
-                          element.parentElement.scrollTo({
+                          element?.parentElement?.scrollTo({
                             top: element.getBoundingClientRect().top - 200
                           })
                         , 100)
@@ -120,10 +121,10 @@ export const SearchResults = observer(({showList, scrollPreservationKey, classNa
 
   return (
     <InfiniteScroll
-      key={`scroll-${showList}-${aiStore.searchIndex?.versionHash}-${queryB58}`}
+      key={`scroll-${showList}-${aiStore.searchResults?.key}`}
       scrollPreservationKey={scrollPreservationKey ? `search-${aiStore.searchIndex?.versionHash}-${queryB58}-${scrollPreservationKey}` : undefined}
       withLoader
-      watchList={[query, aiStore.selectedSearchIndexId, aiStore.filterLowQualitySearchResults]}
+      watchList={[query, aiStore.searchSettingsKey]}
       batchSize={
         resultIndex ? Math.max(resultIndex + 10, batchSize) :
           batchSize
@@ -139,7 +140,7 @@ export const SearchResults = observer(({showList, scrollPreservationKey, classNa
             onRender={
               resultIndex !== index ? undefined :
                 element => setTimeout(() =>
-                  element.parentElement.scrollTo({
+                  element?.parentElement?.scrollTo({
                     top: element.getBoundingClientRect().top - 200
                   })
                 , 100)
@@ -172,10 +173,10 @@ const SearchResultsPage = observer(() => {
   const query = aiStore.client.utils.FromB58ToStr(queryB58);
 
   useEffect(() => {
-    if(aiStore.searchResults.key !== `${aiStore.searchIndex?.versionHash}-${queryB58}-${aiStore.filterLowQualitySearchResults}`) {
+    if(aiStore.searchResults.key !== aiStore.searchSettingsKey) {
       aiStore.ClearSearchResults();
     }
-  }, [queryB58, aiStore.searchIndex?.versionHash]);
+  }, [queryB58, aiStore.searchSettingsKey]);
 
   useEffect(() => {
     showList ?
@@ -216,6 +217,24 @@ const SearchResultsPage = observer(() => {
                   "Show Only High Score Results"
               }
             </button>
+            {
+              (aiStore.searchIndex?.indexedTitles || [])?.length === 0 ? null :
+                <Select
+                  fz={14}
+                  w={350}
+                  searchable
+                  clearable
+                  value={(aiStore.selectedTitleIds || [])[0] || ""}
+                  data={[
+                    {label: "All Titles", value: ""},
+                    ...aiStore.searchIndex.indexedTitles.map(title => ({
+                      label: title.name,
+                      value: title.objectId
+                    }))
+                  ]}
+                  onChange={value => aiStore.SetSelectedTitleIds(value ? [value] : [])}
+                />
+            }
           </div>
           <CardDisplaySwitch
             showList={showList}

@@ -10,7 +10,9 @@ import {
   FormTextArea,
   Icon,
   IconButton,
-  Modal, StyledButton
+  LoaderImage,
+  Modal,
+  StyledButton
 } from "@/components/common/Common.jsx";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import {Button, Checkbox, Tooltip} from "@mantine/core";
@@ -319,17 +321,20 @@ export const CompositionClipModalButton = observer(({clip}) => {
   );
 });
 
-export const ClipModalButton = observer(() => {
-  const [showModal, setShowModal] = useState(false);
-  const [showMyClipsModal, setShowMyClipsModal] = useState(false);
-  const [highlightedClipId, setHighlightedClipId] = useState(undefined);
-  const [name, setName] = useState("");
+export const AddMyClipModal = observer(({
+  initialName="<New Clip>",
+  store,
+  thumbnailImageUrl,
+  libraryId,
+  objectId,
+  versionHash,
+  clipInFrame,
+  clipOutFrame,
+  offeringKey,
+  Close
+}) => {
+  const [name, setName] = useState(initialName);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    setName("");
-    setSubmitting(false);
-  }, [showModal]);
 
   const Submit = async () => {
     if(!name) { return; }
@@ -338,20 +343,93 @@ export const ClipModalButton = observer(() => {
 
     const clip = await videoStore.AddMyClip({
       name,
-      libraryId: videoStore.videoObject.libraryId,
-      objectId: videoStore.videoObject.objectId,
-      versionHash: videoStore.videoObject.versionHash,
-      offering: videoStore.offeringKey,
-      clipInFrame: videoStore.clipInFrame || 0,
-      clipOutFrame: videoStore.clipOutFrame || videoStore.totalFrames - 1
+      libraryId,
+      objectId,
+      versionHash,
+      offering: offeringKey,
+      clipInFrame: clipInFrame || 0,
+      clipOutFrame
     });
 
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    setShowModal(false);
-    setShowMyClipsModal(true);
-    setHighlightedClipId(clip.clipId);
+    Close(clip.clipId);
   };
+
+  return (
+    <Modal
+      title={<div className={S("form__title")}>Save to My Clips</div>}
+      opened
+      centered
+      onClose={() => Close()}
+    >
+      <div className={S("form", "clip-form")}>
+        {
+          store?.thumbnailStore.thumbnailStatus?.loaded ?
+            <PreviewThumbnail
+              store={store}
+              startFrame={clipInFrame}
+              endFrame={clipOutFrame}
+              className={S("clip-form__preview")}
+            /> :
+            thumbnailImageUrl ?
+              <LoaderImage
+                loaderAspectRatio={16/9}
+                src={thumbnailImageUrl}
+                className={S("clip-form__preview")}
+              /> : null
+        }
+        <div className={S("form__inputs")}>
+          <div className={S("clip-form__title")}>
+            {name}
+          </div>
+          <ClipTimeInfo
+            store={store}
+            clipInFrame={clipInFrame}
+            clipOutFrame={clipOutFrame}
+            className={S("clip-form__details")}
+          />
+          <div className={S("clip-form__offering")}>
+            Offering: {offeringKey === "default" ? "Default" : offeringKey}
+          </div>
+          <FormTextArea
+            autoFocus
+            label="Clip Name"
+            autosize
+            value={name}
+            onChange={event => setName(event.target.value)}
+            className={S("clip-form__description")}
+          />
+          <div className={S("form__actions")}>
+            <Button
+              w={150}
+              color="gray.5"
+              onClick={() => Close()}
+              variant="subtle"
+            >
+              Cancel
+            </Button>
+            <Button
+              w={150}
+              loading={submitting}
+              autoContrast
+              color="gray.5"
+              disabled={!name}
+              onClick={Submit}
+            >
+              Submit
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+});
+
+export const ClipModalButton = observer(() => {
+  const [showModal, setShowModal] = useState(false);
+  const [showMyClipsModal, setShowMyClipsModal] = useState(false);
+  const [highlightedClipId, setHighlightedClipId] = useState(undefined);
 
   return (
     <>
@@ -366,63 +444,23 @@ export const ClipModalButton = observer(() => {
       }
       {
         !showModal ? null :
-          <Modal
-            title={<div className={S("form__title")}>Save to My Clips</div>}
-            opened
-            centered
-            onClose={() => setShowModal(false)}
-          >
-            <div className={S("form", "clip-form")}>
-              <PreviewThumbnail
-                store={videoStore}
-                startFrame={videoStore.clipInFrame}
-                endFrame={videoStore.clipOutFrame}
-                className={S("clip-form__preview")}
-              />
-              <div className={S("form__inputs")}>
-                <div className={S("clip-form__title")}>
-                  {videoStore.name}
-                </div>
-                <ClipTimeInfo
-                  store={videoStore}
-                  clipInFrame={videoStore.clipInFrame}
-                  clipOutFrame={videoStore.clipOutFrame}
-                  className={S("clip-form__details")}
-                />
-                <div className={S("clip-form__offering")}>
-                  Offering: {videoStore.offeringKey === "default" ? "Default" : videoStore.offeringKey}
-                </div>
-                <FormTextArea
-                  autoFocus
-                  label="Clip Name"
-                  autosize
-                  value={name}
-                  onChange={event => setName(event.target.value)}
-                  className={S("clip-form__description")}
-                />
-                <div className={S("form__actions")}>
-                  <Button
-                    w={150}
-                    color="gray.5"
-                    onClick={() => setShowModal(false)}
-                    variant="subtle"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    w={150}
-                    loading={submitting}
-                    autoContrast
-                    color="gray.5"
-                    disabled={!name}
-                    onClick={Submit}
-                  >
-                    Submit
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </Modal>
+          <AddMyClipModal
+            store={videoStore}
+            libraryId={videoStore.videoObject.libraryId}
+            objectId={videoStore.videoObject.objectId}
+            versionHash={videoStore.videoObject.versionHash}
+            offeringKey={videoStore.offeringKey}
+            clipInFrame={videoStore.clipInFrame || 0}
+            clipOutFrame={videoStore.clipOutFrame || videoStore.totalFrames - 1}
+            Close={clipId => {
+              setShowModal(false);
+
+              if(clipId) {
+                setShowMyClipsModal(true);
+                setHighlightedClipId(clipId);
+              }
+            }}
+          />
       }
       <IconButton
         icon={ClipIcon}
