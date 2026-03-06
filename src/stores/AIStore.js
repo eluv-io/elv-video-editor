@@ -664,6 +664,7 @@ class AIStore {
           max_total: 100,
           min_score: this.filterLowQualitySearchResults ? 0.55 : 0,
           select: "/public/asset_metadata/title,/public/name,public/asset_metadata/display_title",
+          //(id:iq_1234)OR(id:iq_2345)
           filters: this.selectedTitleIds.map(objectId => `id:${objectId}`)
         }
       })) || {};

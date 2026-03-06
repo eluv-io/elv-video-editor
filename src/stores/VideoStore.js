@@ -87,6 +87,7 @@ class VideoStore {
   clipOutFrame;
 
   myClips = [];
+  myClipObjectIds = [];
 
   get scaleMagnitude() { return this.scaleMax - this.scaleMin; }
 
@@ -770,6 +771,26 @@ class VideoStore {
     this.loading = false;
   }
 
+  LoadMyClipObjects = flow(function * () {
+    try {
+      this.myClipObjectIds = JSON.parse(
+        this.rootStore.client.utils.FromB64(
+          (yield this.rootStore.client.walletClient.ProfileMetadata({
+            type: "app",
+            appId: "video-editor",
+            mode: "private",
+            key: `my-clips-object-ids${this.rootStore.localhost ? "-dev" : ""}`
+          }))
+        ) || "[]"
+      );
+    } catch(error) {
+      console.error("Error loading my clips:");
+      console.error(error);
+
+      this.myClipObjectIds = [];
+    }
+  });
+
   LoadMyClips = flow(function * ({objectId}) {
     this.myClips = [];
 
@@ -826,6 +847,22 @@ class VideoStore {
       key: `my-clips-${objectId}${this.rootStore.localhost ? "-dev" : ""}`,
       value: this.rootStore.client.utils.B64(
         JSON.stringify(this.myClips)
+      )
+    });
+
+    this.myClipObjectIds = [
+      ...(this.myClipObjectIds || []),
+      objectId
+    ]
+      .filter((x, i, a) => a.indexOf(x) === i);
+
+    await this.rootStore.client.walletClient.SetProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: `my-clips-object-ids${this.rootStore.localhost ? "-dev" : ""}`,
+      value: this.rootStore.client.utils.B64(
+        JSON.stringify(this.myClipObjectIds)
       )
     });
   }

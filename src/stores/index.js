@@ -81,7 +81,8 @@ class RootStore {
     this.videoStore = new VideoStore(this);
     this.searchVideoStore = new VideoStore(this, {tags: false, thumbnails: false});
 
-    this.InitializeClient();
+    this.InitializeClient()
+      .then(() => this.videoStore.LoadMyClipObjects());
 
     if(this.logTiming) {
       sessionStorage.setItem("log-timing", "true");
