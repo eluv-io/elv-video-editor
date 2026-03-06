@@ -260,7 +260,7 @@ class VideoStore {
 
       this.videoObject = videoObject;
 
-      yield this.LoadMyClips();
+      yield this.LoadMyClips({objectId});
 
       this.name = videoObject.name;
       this.versionHash = videoObject.versionHash;
@@ -770,9 +770,8 @@ class VideoStore {
     this.loading = false;
   }
 
-  LoadMyClips = flow(function * () {
+  LoadMyClips = flow(function * ({objectId}) {
     try {
-      const objectId = this.videoObject.objectId;
       const clips = yield this.rootStore.client.walletClient.ProfileMetadata({
         type: "app",
         appId: "video-editor",
@@ -797,8 +796,26 @@ class VideoStore {
     }
   });
 
-  async SaveMyClips() {
-    const objectId = this.videoObject.objectId;
+  FrameImageUrl({time, frame}) {
+    if(!this.baseImageUrl) { return; }
+
+    let imageUrl = this.baseImageUrl;
+    if(imageUrl) {
+      imageUrl = new URL(imageUrl);
+      imageUrl.searchParams.set(
+        "t",
+        (
+          typeof time !== "undefined" ? time :
+            this.FrameToTime(frame || 0)
+        ).toFixed(2)
+      );
+    }
+
+    return imageUrl;
+  }
+
+  async SaveMyClips({objectId}) {
+    if(!objectId) { return; }
 
     await this.rootStore.client.walletClient.SetProfileMetadata({
       type: "app",
@@ -824,7 +841,7 @@ class VideoStore {
       clipOutFrame: clip.clipOutFrame || this.totalFrames - 1
     });
 
-    this.SaveMyClips();
+    this.SaveMyClips({objectId: clip.objectId});
 
     return this.myClips.slice(-1)[0];
   }
@@ -837,14 +854,18 @@ class VideoStore {
       this.myClips[index].clipInFrame = clip.clipInFrame || this.myClips[index].clipInFrame;
       this.myClips[index].clipOutFrame = clip.clipOutFrame || this.myClips[index].clipOutFrame;
 
-      this.SaveMyClips();
+      this.SaveMyClips({objectId: clip.objectId});
     }
   }
 
   RemoveMyClip(clipId) {
+    const clip = this.myClips.find(otherClip => otherClip.clipId == clipId);
+
+    if(!clip) { return; }
+
     this.myClips = this.myClips.filter(clip => clip.clipId !== clipId);
 
-    this.SaveMyClips();
+    this.SaveMyClips({objectId: clip.objectId});
   }
 
   ToggleTrack(label) {

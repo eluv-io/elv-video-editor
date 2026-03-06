@@ -9,7 +9,7 @@ const SimpleView = observer(() => {
   useEffect(() => {
     rootStore.SetPage("simple");
     keyboardControlsStore.SetActiveStore(videoStore);
-    videoStore.LoadMyClips();
+    videoStore.LoadMyClips({objectId: videoStore.videoObject?.objectId});
   }, []);
 
   useEffect(() => {

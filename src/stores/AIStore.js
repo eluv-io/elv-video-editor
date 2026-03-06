@@ -397,17 +397,21 @@ class AIStore {
         metadataSubtree: "indexer/permissions/sorted_ids"
       }));
 
-      const indexedTitles = (
-        yield this.client.utils.LimitedMap(
-          5,
-          indexedTitleIds,
-          async objectId => ({
-            objectId,
-            name: await this.GetObjectName({objectId})
-          })
+      // TODO: Better way of getting title names
+      let indexedTitles = [];
+      if(indexedTitleIds.length < 20) {
+        indexedTitles = (
+          yield this.client.utils.LimitedMap(
+            5,
+            indexedTitleIds,
+            async objectId => ({
+              objectId,
+              name: await this.GetObjectName({objectId})
+            })
+          )
         )
-      )
-        .sort((a, b) => a.name?.toLowerCase() < b.name?.toLowerCase() ? -1 : 1);
+          .sort((a, b) => a.name?.toLowerCase() < b.name?.toLowerCase() ? -1 : 1);
+      }
 
       const indexerInfo = yield this.client.ContentObjectMetadata({
         versionHash,

@@ -37,17 +37,24 @@ const PreviewThumbnail = observer(({
       return;
     }
 
-    setThumbnails(
-      store.thumbnailStore.ThumbnailImages(
-        store.FrameToTime(startFrame),
-        store.FrameToTime(endFrame),
-        maxThumbnails
-      )
+    const thumbnails = store.thumbnailStore.ThumbnailImages(
+      store.FrameToTime(startFrame),
+      store.FrameToTime(endFrame),
+      maxThumbnails
     );
+
+    if(thumbnails?.length > 0) {
+      setThumbnails(thumbnails);
+    } else {
+      // No thumbnails, get a frame in the middle of the range
+      setThumbnails([
+        store.FrameImageUrl({frame: (endFrame - startFrame) / 2})
+      ]);
+    }
   }, [store?.thumbnailStore.thumbnailStatus.available]);
 
   useEffect(() => {
-    if(!ref) { return; }
+    if(!ref || (thumbnails || []).length < 2) { return; }
 
     if(clientX < 0) {
       setHoverInfo({
