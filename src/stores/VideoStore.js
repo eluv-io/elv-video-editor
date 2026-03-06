@@ -771,6 +771,8 @@ class VideoStore {
   }
 
   LoadMyClips = flow(function * ({objectId}) {
+    this.myClips = [];
+
     try {
       const clips = yield this.rootStore.client.walletClient.ProfileMetadata({
         type: "app",
