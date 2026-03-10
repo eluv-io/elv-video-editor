@@ -2,7 +2,6 @@ import {flow, makeAutoObservable} from "mobx";
 import UrlJoin from "url-join";
 
 class AITaggingStore {
-  initialized = false;
   selectedContent = [];
   jobStatus = {};
   objectNames = {};
@@ -46,12 +45,6 @@ class AITaggingStore {
   get client() {
     return this.rootStore.client;
   }
-
-  Initialize = flow(function * () {
-    yield this.LoadTaggingJobInfo();
-
-    this.initialized = true;
-  });
 
   AddSelectedContent({objectId, name}) {
     this.selectedContent.push({objectId, name});

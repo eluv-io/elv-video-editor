@@ -186,7 +186,6 @@ class RootStore {
     this.initialized = true;
 
     yield this.compositionStore.Initialize();
-    yield this.aiTaggingStore.Initialize();
   });
 
 
