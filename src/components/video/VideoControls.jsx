@@ -270,7 +270,7 @@ export const VolumeControls = observer(({store}) => {
         <progress
           max={1}
           value={store.muted ? 0 : store.volume}
-          className={S("volume-controls__slider-progress")}
+          className={S("progress", "volume-controls__slider-progress")}
         />
       </div>
     </div>

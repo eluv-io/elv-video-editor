@@ -12,7 +12,7 @@ import {
   aiStore,
   aiTaggingStore
 } from "@/stores";
-import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
+import {Capitalize, CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {
   AsyncButton,
   Confirm,
@@ -308,7 +308,7 @@ const LiveToVodForm = observer(() => {
               <progress
                 value={editStore.liveToVodProgress[browserStore.liveToVodFormFields.liveStreamId]}
                 max={100}
-                className={S("ltv-form__progress")}
+                className={S("progress", "ltv-form__progress")}
               /> :
               <AsyncButton
                 w={150}
@@ -1449,7 +1449,7 @@ export const TaggingJobBrowser = observer(() => {
                 {label: "Queued", value: "queued"},
                 {label: "Succeeded", value: "succeeded"},
                 {label: "Failed", value: "failed"},
-                {label: "Cancelled", value: "cancelled"},
+                {label: "Paused", value: "cancelled"},
               ]}
             />
           </div>
@@ -1519,7 +1519,7 @@ export const TaggingJobBrowser = observer(() => {
                           ["succeeded", "failed", "cancelled"].includes(job?.status?.toLowerCase()) ? null :
                             <>
                               <Progress
-                                value={job?.progress || 0}
+                                value={job?.progress || 50}
                                 max={100}
                                 transitionDuration={1000}
                                 w="100%"
@@ -1531,7 +1531,7 @@ export const TaggingJobBrowser = observer(() => {
                         }
                       </div>
                       <div className={S("browser-table__cell")}>
-                        {job?.status}
+                        {job?.status?.toLowerCase() === "cancelled" ? "Paused" : Capitalize(job?.status)}
                       </div>
                       <div className={S("browser-table__cell", "browser-table__cell--right")}>
                         {

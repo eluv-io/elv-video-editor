@@ -200,8 +200,11 @@ const ClipResultPanel = observer(({result}) => {
     setClipVideoStore(undefined);
 
     const clipStore = new VideoStore(rootStore, {tags: false, thumbnails: true});
-    clipStore.SetVideo({objectId: result.objectId})
-      .then(() => setClipVideoStore(clipStore));
+
+    setTimeout(() => {
+      clipStore.SetVideo({objectId: result.objectId})
+        .then(() => setClipVideoStore(clipStore));
+    }, 1000);
   }, [result.objectId]);
 
   const existingClip = clipVideoStore?.myClips?.find(clip =>
