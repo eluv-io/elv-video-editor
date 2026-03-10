@@ -1297,7 +1297,7 @@ export const TaggingContentBrowser = observer(() => {
         </span>
       </h1>
       <div className={S("browser__header-note")}>
-        Select the video content object(s) you want to process with AI RunTime.
+        Select the video content object(s) you would like to process.
       </div>
       <div className={S("tagging-browser")}>
         {
