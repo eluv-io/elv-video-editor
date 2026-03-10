@@ -4,7 +4,6 @@ import UrlJoin from "url-join";
 class AITaggingStore {
   selectedContent = [];
   jobStatus = {};
-  objectNames = {};
 
   modelNames = {
     "shot": "Shot Detection",
@@ -76,7 +75,7 @@ class AITaggingStore {
       jobs.map(async job => ({
         ...job,
         objectId: job.qid,
-        objectName: await this.ObjectName({objectId: job.qid})
+        objectName: await this.rootStore.GetObjectName({objectId: job.qid})
       }))
     );
 
@@ -102,7 +101,7 @@ class AITaggingStore {
 
         jobs.forEach(job => {
           job.objectId = objectId;
-          job.objectName = this.objectNames[objectId];
+          job.objectName = this.rootStore.objectNames[objectId];
           this.jobStatus[job.job_id] = job;
         });
       }).bind(this)
@@ -150,21 +149,6 @@ class AITaggingStore {
     });
 
     return jobs;
-  });
-
-  ObjectName = flow(function * ({objectId}) {
-    return yield this.rootStore.LoadResource({
-      key: "object-name",
-      id: objectId,
-      Load: flow(function * () {
-        this.objectNames[objectId] = yield this.client.ContentObjectMetadata({
-          versionHash: yield this.client.LatestVersionHash({objectId}),
-          metadataSubtree: "public/name"
-        });
-
-        return this.objectNames[objectId];
-      }).bind(this)
-    });
   });
 
   RestartTaggingJob = flow(function * ({objectId, model, options}) {

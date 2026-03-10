@@ -11,7 +11,6 @@ import {AISearchBar, CardDisplaySwitch} from "@/components/nav/Browser.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import UrlJoin from "url-join";
 import {EntityCard, EntityListItem} from "@/components/common/EntityLists.jsx";
-import {Select} from "@mantine/core";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 
@@ -56,7 +55,7 @@ export const GroupedSearchResults = observer(({
       key={`scroll-${showList}-${aiStore.searchIndex?.versionHash}-${queryB58}`}
       scrollPreservationKey={scrollPreservationKey ? `search-${aiStore.searchIndex?.versionHash}-${queryB58}-${scrollPreservationKey}` : undefined}
       withLoader
-      watchList={[query, aiStore.searchSettingsKey]}
+      watchList={[query, aiStore.searchSettings.key]}
       batchSize={
         resultIndex ? Math.max(resultIndex + 10, batchSize) :
           batchSize
@@ -124,7 +123,7 @@ export const SearchResults = observer(({showList, scrollPreservationKey, classNa
       key={`scroll-${showList}-${aiStore.searchResults?.key}`}
       scrollPreservationKey={scrollPreservationKey ? `search-${aiStore.searchIndex?.versionHash}-${queryB58}-${scrollPreservationKey}` : undefined}
       withLoader
-      watchList={[query, aiStore.searchSettingsKey]}
+      watchList={[query, aiStore.searchSettings.key]}
       batchSize={
         resultIndex ? Math.max(resultIndex + 10, batchSize) :
           batchSize
@@ -173,10 +172,10 @@ const SearchResultsPage = observer(() => {
   const query = aiStore.client.utils.FromB58ToStr(queryB58);
 
   useEffect(() => {
-    if(aiStore.searchResults.key !== aiStore.searchSettingsKey) {
+    if(aiStore.searchResults.key !== aiStore.searchSettings.key) {
       aiStore.ClearSearchResults();
     }
-  }, [queryB58, aiStore.searchSettingsKey]);
+  }, [queryB58, aiStore.searchSettings.key]);
 
   useEffect(() => {
     showList ?
@@ -202,40 +201,6 @@ const SearchResultsPage = observer(() => {
           <span className={S("browser__header-last")}>
             {query.startsWith("music:") ? query?.split("music:")[1] || "All Results" : query}
           </span>
-          <div className={S("browser__action--right")}>
-            <button
-              key={aiStore.filterLowQualitySearchResults}
-              className={S("browser__toggle-button")}
-              onClick={() => {
-                aiStore.SetSearchQualityFilter(!aiStore.filterLowQualitySearchResults);
-                aiStore.ClearSearchResults();
-              }}
-            >
-              {
-                aiStore.filterLowQualitySearchResults ?
-                  "Show All Results" :
-                  "Show Only High Score Results"
-              }
-            </button>
-            {
-              (aiStore.searchIndex?.indexedTitles || [])?.length === 0 ? null :
-                <Select
-                  fz={14}
-                  w={350}
-                  searchable
-                  clearable
-                  value={(aiStore.selectedTitleIds || [])[0] || ""}
-                  data={[
-                    {label: "All Titles", value: ""},
-                    ...aiStore.searchIndex.indexedTitles.map(title => ({
-                      label: title.name,
-                      value: title.objectId
-                    }))
-                  ]}
-                  onChange={value => aiStore.SetSelectedTitleIds(value ? [value] : [])}
-                />
-            }
-          </div>
           <CardDisplaySwitch
             showList={showList}
             setShowList={setShowList}

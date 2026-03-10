@@ -157,19 +157,40 @@
   padding: 5px 0;
 
   &__search-icon {
-    height: 20px;
-    margin-right: 10px;
-    max-height: 20px;
-    max-width: 20px;
-    min-height: 20px;
-    min-width: 20px;
-    width: 20px;
+    height: 30px;
+    margin-right: 5px;
+    max-height: 40px;
+    max-width: 40px;
+    min-height: 40px;
+    min-width: 40px;
+    width: 50px;
+
+    button,
+    svg {
+      height: 100%;
+      max-height: unset;
+      max-width: unset;
+      width: 100%;
+    }
+
+    button {
+      border-radius: 20px;
+      padding: 10px;
+    }
 
     * {
       fill: var(--text-tertiary);
       height: 20px;
       stroke: var(--text-tertiary);
+      transition: stroke 0.25s ease, fill 0.25s ease;
       width: 20px;
+    }
+
+    &--active {
+      * {
+        fill: var(--text-highlight);
+        stroke: var(--text-highlight);
+      }
     }
   }
 

@@ -1,12 +1,11 @@
 import {flow, makeAutoObservable, runInAction} from "mobx";
 import UrlJoin from "url-join";
-import {Slugify, Unproxy} from "@/utils/Utils.js";
+import {HashString, Slugify, Unproxy} from "@/utils/Utils.js";
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 
 const GLOBAL_PROFILE_OBJECT_ID = "iq__3MVS3kjshtnAodRv4qLebBvH3oXb";
 
 class AIStore {
-  selectedTitleIds = [];
   searchIndexes = [];
   customSearchIndexIds = [];
   selectedSearchIndexId;
@@ -14,7 +13,16 @@ class AIStore {
   tagAggregationProgress = 0;
   highlightProfiles;
   defaultHighlightProfileKey;
-  filterLowQualitySearchResults = !!localStorage.getItem("search-quality-filter");
+
+  DEFAULT_SEARCH_SETTINGS = {
+    objectIds: [],
+    clipDuration: 0,
+    confidenceMin: 0,
+    fields: [],
+    key: 0
+  };
+
+  searchSettings = this.DEFAULT_SEARCH_SETTINGS;
 
   searchResults = {};
 
@@ -72,17 +80,20 @@ class AIStore {
     return profiles;
   }
 
-  get searchSettingsKey() {
-    return this.SearchKey({
-      versionHash: this.searchIndex?.versionHash,
-      query: this.searchResults?.query || "",
-      filterLowQualitySearchResults: this.filterLowQualitySearchResults,
-      selectedTitleIds: this.selectedTitleIds
-    });
+  get customSearchSettingsActive() {
+    return (
+      HashString(JSON.stringify({...this.searchSettings, key: 0})) !==
+      HashString(JSON.stringify({...this.DEFAULT_SEARCH_SETTINGS, key: 0}))
+    );
   }
 
-  SearchKey({versionHash, query="", filterLowQualitySearchResults, selectedTitleIds=[]}) {
-    return `${versionHash}-${this.client.utils.B58(query || "")}-${filterLowQualitySearchResults}-${selectedTitleIds.join("-")}`;
+  SetSearchSettings(options) {
+    delete options.key;
+
+    this.searchSettings = {
+      ...options,
+      key: HashString(JSON.stringify(options))
+    };
   }
 
   // Load search indexes and highlight profiles
@@ -90,10 +101,6 @@ class AIStore {
     yield this.LoadSearchIndexes();
     this.LoadHighlightProfiles();
   });
-
-  SetSelectedTitleIds(objectIds) {
-    this.selectedTitleIds = objectIds;
-  }
 
   QueryAIAPI = flow(function * ({
     server="ai",
@@ -362,31 +369,6 @@ class AIStore {
     return status;
   });
 
-  GetObjectName = flow(function * ({objectId}) {
-    return yield this.rootStore.LoadResource({
-      key: "object-name",
-      id: objectId,
-      Load: async () => {
-        const metadata = await this.client.ContentObjectMetadata({
-          versionHash: await this.client.LatestVersionHash({objectId}),
-          metadataSubtree: "public",
-          select: [
-            "name",
-            "asset_metadata/title",
-            "asset_metadata/display_title"
-          ]
-        });
-
-        return (
-          metadata?.asset_metadata?.display_title ||
-          metadata?.asset_metadata?.title ||
-          metadata?.name ||
-          objectId
-        );
-      }
-    });
-  });
-
   // Search indexes
   GetSearchFields = flow(function * ({id}) {
     if(!id) { return; }
@@ -408,11 +390,13 @@ class AIStore {
             indexedTitleIds,
             async objectId => ({
               objectId,
-              name: await this.GetObjectName({objectId})
+              name: await this.rootStore.GetObjectName({objectId})
             })
           )
         )
           .sort((a, b) => a.name?.toLowerCase() < b.name?.toLowerCase() ? -1 : 1);
+      } else {
+        indexedTitles = indexedTitleIds.map(objectId => ({objectId, name: objectId}));
       }
 
       const indexerInfo = yield this.client.ContentObjectMetadata({
@@ -532,7 +516,7 @@ class AIStore {
   });
 
   SetSelectedSearchIndex(id) {
-    this.selectedTitleIds = [];
+    this.searchSettings = this.DEFAULT_SEARCH_SETTINGS;
     this.selectedSearchIndexId = id;
     localStorage.setItem(`search-index-${this.rootStore.tenantContractId}`, id);
   }
@@ -592,25 +576,10 @@ class AIStore {
 
   /* Search */
 
-  SetSearchQualityFilter(filter) {
-    this.filterLowQualitySearchResults = filter;
-
-    if(this.filterLowQualitySearchResults) {
-      localStorage.setItem("search-quality-filter", "true");
-    } else {
-      localStorage.removeItem("search-quality-filter");
-    }
-  }
-
   Search = flow(function * ({query="", limit=10, initial}) {
     let start = 0;
 
-    const resultsKey = this.SearchKey({
-      versionHash: this.searchIndex?.versionHash,
-      query,
-      filterLowQualitySearchResults: this.filterLowQualitySearchResults,
-      selectedTitleIds: this.selectedTitleIds
-    });
+    const resultsKey = `${this.searchSettings.key}-${query}`;
 
     if(this.searchResults.key === resultsKey) {
       if(initial) {
@@ -664,10 +633,10 @@ class AIStore {
           clip_include_source_tags: true,
           get_chunks: true,
           max_total: 100,
-          min_score: this.filterLowQualitySearchResults ? 0.55 : 0,
+          min_score: this.searchSettings.confidenceMin / 100,
           select: "/public/asset_metadata/title,/public/name,public/asset_metadata/display_title",
           //(id:iq_1234)OR(id:iq_2345)
-          filters: this.selectedTitleIds.map(objectId => `id:${objectId}`)
+          filters: this.searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR")
         }
       })) || {};
 

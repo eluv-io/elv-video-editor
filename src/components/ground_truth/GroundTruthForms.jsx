@@ -13,7 +13,8 @@ import {
   Linkish,
   LoaderImage,
   Modal,
-  ProgressModal, StyledButton
+  ProgressModal,
+  StyledButton
 } from "@/components/common/Common.jsx";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, CSVtoList, ScaleImage, SP} from "@/utils/Utils.js";

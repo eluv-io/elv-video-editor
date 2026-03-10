@@ -32,6 +32,7 @@ import {Select, Tabs, Tooltip, Switch as SwitchInput, Progress} from "@mantine/c
 import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
 import {SearchIndexSelection} from "@/components/side_panel/SidePanel.jsx";
 
+import SettingsIcon from "@/assets/icons/v2/settings.svg";
 import LibraryIcon from "@/assets/icons/v2/library.svg";
 import ObjectIcon from "@/assets/icons/file.svg";
 import VideoIcon from "@/assets/icons/v2/video.svg";
@@ -55,6 +56,7 @@ import MusicIcon from "@/assets/icons/v2/music.svg";
 import PauseIcon from "@/assets/icons/Pause.svg";
 import PlayIcon from "@/assets/icons/Play.svg";
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
+import SearchSettings from "@/components/search/SearchSettings.jsx";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -364,6 +366,7 @@ export const CardDisplaySwitch = observer(({showList, setShowList}) => {
 export const AISearchBar = observer(({basePath="~/search", initialQuery=""}) => {
   const [input, setInput] = useState(initialQuery.startsWith("music:") ? initialQuery.split("music:")[1] || "" : initialQuery);
   const [searchMusic, setSearchMusic] = useState(initialQuery.startsWith("music:"));
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [,navigate] = useLocation();
 
   const Submit = async (searchMusic) => {
@@ -386,61 +389,70 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery=""}) => 
   };
 
   return (
-    <div className={S("search-bar-container")}>
-      <div className={S("search-bar-container__search-icon")}>
-        <Icon icon={SearchIcon} />
-      </div>
-      <div className={S("search-input-container", "search-input-container--ai")}>
-        <SearchIndexSelection position="bottom-start" className={S("search-input-container__button-left")} />
-        <input
-          value={input}
-          placeholder="Search within content by phrase or keyword"
-          onChange={event => setInput(event.target.value)}
-          onKeyDown={async event => {
-            if(event.key !== "Enter") { return; }
-
-            Submit(searchMusic);
-            //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
-          }}
-          className={S("search-bar", "search-bar--ai")}
-        />
-        <div className={S("search-input-container__right-buttons")}>
+    <>
+      <div className={S("search-bar-container")}>
+        <div className={S("search-bar-container__search-icon", aiStore.customSearchSettingsActive ? "search-bar-container__search-icon--active" : "")}>
           <IconButton
-            label="Search"
-            icon={SearchArrowIcon}
-            noHover
-            //onClick={() => input && navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)))}
-            onClick={() => Submit(searchMusic)}
+            onClick={() => setShowSettingsModal(true)}
+            icon={SettingsIcon}
           />
         </div>
+        <div className={S("search-input-container", "search-input-container--ai")}>
+          <SearchIndexSelection position="bottom-start" className={S("search-input-container__button-left")} />
+          <input
+            value={input}
+            placeholder="Search within content by phrase or keyword"
+            onChange={event => setInput(event.target.value)}
+            onKeyDown={async event => {
+              if(event.key !== "Enter") { return; }
+
+              Submit(searchMusic);
+              //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
+            }}
+            className={S("search-bar", "search-bar--ai")}
+          />
+          <div className={S("search-input-container__right-buttons")}>
+            <IconButton
+              label="Search"
+              icon={SearchArrowIcon}
+              noHover
+              //onClick={() => input && navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)))}
+              onClick={() => Submit(searchMusic)}
+            />
+          </div>
+        </div>
+        {
+          !aiStore.searchIndex?.musicSupported ? null :
+            <SwitchInput
+              ml={5}
+              size="xl"
+              label="Search by Music"
+              checked={searchMusic}
+              onChange={event => {
+                setSearchMusic(event.currentTarget.checked);
+
+                if(input) {
+                  Submit(event.currentTarget.checked);
+                }
+              }}
+              thumbIcon={
+                <Icon
+                  icon={MusicIcon}
+                  className={S("search-bar-container__music-switch-icon", searchMusic ? "search-bar-container__music-switch-icon--active" : "")}
+                />
+              }
+              className={S("search-bar-container__music-switch", `search-bar-container__music-switch--${searchMusic ? "active" : "inactive"}`)}
+              classNames={{
+                label: S("search-bar-container__music-switch-label"),
+              }}
+            />
+        }
       </div>
       {
-        !aiStore.searchIndex?.musicSupported ? null :
-          <SwitchInput
-            ml={5}
-            size="xl"
-            label="Search by Music"
-            checked={searchMusic}
-            onChange={event => {
-              setSearchMusic(event.currentTarget.checked);
-
-              if(input) {
-                Submit(event.currentTarget.checked);
-              }
-            }}
-            thumbIcon={
-              <Icon
-                icon={MusicIcon}
-                className={S("search-bar-container__music-switch-icon", searchMusic ? "search-bar-container__music-switch-icon--active" : "")}
-              />
-            }
-            className={S("search-bar-container__music-switch", `search-bar-container__music-switch--${searchMusic ? "active" : "inactive"}`)}
-            classNames={{
-              label: S("search-bar-container__music-switch-label"),
-            }}
-          />
+        !showSettingsModal ? null :
+          <SearchSettings Close={() => setShowSettingsModal(false)} />
       }
-    </div>
+    </>
   );
 });
 

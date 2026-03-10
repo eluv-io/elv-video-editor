@@ -1,4 +1,4 @@
-import {configure, makeAutoObservable, flow} from "mobx";
+import {configure, makeAutoObservable, flow, runInAction} from "mobx";
 import Id from "@/utils/Id.js";
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
 import {v4 as UUID, parse as UUIDParse} from "uuid";
@@ -53,7 +53,7 @@ class RootStore {
 
   libraryIds = {};
   versionHashes = {};
-
+  objectNames = {};
   authTokens = {};
 
   selectedObjectId;
@@ -314,6 +314,36 @@ class RootStore {
 
       this.authTokens[objectId] = new URL(baseFileUrl).searchParams.get("authorization");
     }
+  });
+
+  GetObjectName = flow(function * ({objectId}) {
+    return yield this.LoadResource({
+      key: "object-name",
+      id: objectId,
+      bind: this,
+      Load: async () => {
+        const metadata = await this.client.ContentObjectMetadata({
+          versionHash: await this.client.LatestVersionHash({objectId}),
+          metadataSubtree: "public",
+          select: [
+            "name",
+            "asset_metadata/title",
+            "asset_metadata/display_title"
+          ]
+        });
+
+        runInAction(() =>
+          this.objectNames[objectId] = (
+            metadata?.asset_metadata?.display_title ||
+            metadata?.asset_metadata?.title ||
+            metadata?.name ||
+            objectId
+          )
+        );
+
+        return this.objectNames[objectId];
+      }
+    });
   });
 
   // Ensure the specified load method is called only once unless forced

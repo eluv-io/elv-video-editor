@@ -773,18 +773,23 @@ class VideoStore {
 
   LoadMyClipObjects = flow(function * () {
     try {
-      this.myClipObjectIds = JSON.parse(
-        this.rootStore.client.utils.FromB64(
-          (yield this.rootStore.client.walletClient.ProfileMetadata({
-            type: "app",
-            appId: "video-editor",
-            mode: "private",
-            key: `my-clips-object-ids${this.rootStore.localhost ? "-dev" : ""}`
-          }))
-        ) || "[]"
-      );
+      const data = (yield this.rootStore.client.walletClient.ProfileMetadata({
+        type: "app",
+        appId: "video-editor",
+        mode: "private",
+        key: `my-clips-object-ids${this.rootStore.localhost ? "-dev" : ""}`
+      }));
+
+
+      if(data) {
+        this.myClipObjectIds = JSON.parse(
+          this.rootStore.client.utils.FromB64(
+            data
+          )
+        );
+      }
     } catch(error) {
-      console.error("Error loading my clips:");
+      console.error("Error loading my clip objects:");
       console.error(error);
 
       this.myClipObjectIds = [];
