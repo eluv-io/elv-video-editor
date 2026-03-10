@@ -17,6 +17,21 @@ class AITaggingStore {
     "chapters": "Chapters"
   };
 
+  trackKeyToModelMapping = {
+    "shot_detection": "shot",
+    "audio_detection": "???",
+    "auto_captions": "???",
+    "celebrity_detection": "celeb",
+    "character": "???",
+    "llama-scout": "???",
+    "llava_caption": "caption",
+    "logo_detection": "logo",
+    "object_detection": "caption",
+    "optical_character_recognition": "ocr",
+    "scene_description": "llava",
+    "speech_to_text": "asr"
+  };
+
   segmentModels = [
     "asr",
     "caption",
@@ -45,7 +60,15 @@ class AITaggingStore {
     return this.rootStore.client;
   }
 
+  GetModelNameFromTrackKey(key) {
+    return this.trackKeyToModelMapping[key];
+  }
+
   AddSelectedContent({objectId, name}) {
+    if(this.selectedContent.find(item => item.objectId === objectId)) {
+      return;
+    }
+
     this.selectedContent.push({objectId, name});
   }
 
@@ -88,22 +111,32 @@ class AITaggingStore {
   });
 
   GetObjectJobStatus = flow(function * ({objectId, force}) {
-    yield this.rootStore.LoadResource({
+    return yield this.rootStore.LoadResource({
       key: "tagging-job-status",
       id: objectId,
       ttl: 10,
       force,
       Load: flow(function * () {
-        let {jobs} = (yield this.rootStore.aiStore.QueryAIAPI({
-          objectId: objectId,
-          path: UrlJoin("tagging-live", objectId, "job-status")
-        })) || {jobs: []};
+        try {
+          let {jobs} = (yield this.rootStore.aiStore.QueryAIAPI({
+            objectId: objectId,
+            path: UrlJoin("tagging-live", objectId, "job-status")
+          })) || {jobs: []};
 
-        jobs.forEach(job => {
-          job.objectId = objectId;
-          job.objectName = this.rootStore.objectNames[objectId];
-          this.jobStatus[job.job_id] = job;
-        });
+          return jobs.map(job => {
+            job.objectId = objectId;
+            job.objectName = this.rootStore.objectNames[objectId];
+            this.jobStatus[job.job_id] = job;
+
+            return job;
+          });
+        } catch(error) {
+          if(error?.status === 404) {
+            return [];
+          }
+
+          throw error;
+        }
       }).bind(this)
     });
   });

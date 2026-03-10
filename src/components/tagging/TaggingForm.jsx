@@ -227,7 +227,7 @@ const TaggingForm = observer(() => {
               }
           }
         >
-          Continue
+          { showSummary ? "Submit" : "Continue" }
         </StyledButton>
       </div>
     </div>

@@ -31,6 +31,8 @@ import UrlJoin from "url-join";
 import {Select, Tabs, Tooltip, Switch as SwitchInput, Progress} from "@mantine/core";
 import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
 import {SearchIndexSelection} from "@/components/side_panel/SidePanel.jsx";
+import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
+import SearchSettings from "@/components/search/SearchSettings.jsx";
 
 import SettingsIcon from "@/assets/icons/v2/settings.svg";
 import LibraryIcon from "@/assets/icons/v2/library.svg";
@@ -55,8 +57,7 @@ import PinIcon from "@/assets/icons/v2/pin.svg";
 import MusicIcon from "@/assets/icons/v2/music.svg";
 import PauseIcon from "@/assets/icons/Pause.svg";
 import PlayIcon from "@/assets/icons/Play.svg";
-import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
-import SearchSettings from "@/components/search/SearchSettings.jsx";
+import LinkIcon from "@/assets/icons/v2/external-link.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -1409,7 +1410,7 @@ export const TaggingJobBrowser = observer(() => {
 
   return (
     <div className={S("browser-page")}>
-      <div className={S("browser", "browser--ground-truth")}>
+      <div className={S("browser", "browser--tagging")}>
         <SearchBar
           placeholder="Title, Model, Content ID"
           saveByLocation
@@ -1532,10 +1533,11 @@ export const TaggingJobBrowser = observer(() => {
                       <div className={S("browser-table__cell")}>
                         {job?.status}
                       </div>
-                      <div className={S("browser-table__cell")}>
+                      <div className={S("browser-table__cell", "browser-table__cell--right")}>
                         {
                           ["succeeded", "cancelled", "failed"].includes(job?.status?.toLowerCase()) ? null :
                             <IconButton
+                              small
                               icon={PauseIcon}
                               label="Pause Job"
                               onClick={async () => await Confirm({
@@ -1554,6 +1556,7 @@ export const TaggingJobBrowser = observer(() => {
                         {
                           !["cancelled", "failed"].includes(job?.status?.toLowerCase()) ? null :
                             <IconButton
+                              small
                               icon={PlayIcon}
                               label="Restart Job"
                               onClick={async () => await Confirm({
@@ -1573,6 +1576,12 @@ export const TaggingJobBrowser = observer(() => {
                               }
                             />
                         }
+                        <IconButton
+                          small
+                          icon={LinkIcon}
+                          label={`Open ${job.objectName || job.objectId}`}
+                          to={UrlJoin("~/", job.objectId, "tags")}
+                        />
                       </div>
                     </div>
                   )
