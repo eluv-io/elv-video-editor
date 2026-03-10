@@ -78,7 +78,7 @@ class AITaggingStore {
     this.selectedContent = [];
   }
 
-  ListTaggingJobs = flow(function * ({start=0, limit=10, status, filter=""}={}) {
+  ListTaggingJobs = flow(function * ({start=0, limit=10, status, model, filter=""}={}) {
     const tenantId = yield this.rootStore.client.userProfileClient.TenantContractId();
     let {jobs, meta} = yield this.rootStore.aiStore.QueryAIAPI({
       path: UrlJoin("tagging-live", "job-status"),
@@ -86,7 +86,8 @@ class AITaggingStore {
         tenant: tenantId,
         start,
         limit,
-        status
+        status,
+        model
       }
     });
 
