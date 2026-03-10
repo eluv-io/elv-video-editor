@@ -197,7 +197,9 @@ const AIClips = observer(() => {
   const [clipSource, setClipSource] = useState("highlights");
   const clipIds = clipSource === "search" ?
     compositionStore.searchClipIds[compositionStore.selectedSourceId] || [] :
-    compositionStore.selectedSource?.highlightClipIds || [];
+    compositionStore.originalClips
+      .filter(clip => clip.objectId === compositionStore.selectedSourceId)
+      .map(clip => clip.clipId);
 
   useEffect(() => {
     if(!compositionStore.filter) {
@@ -225,10 +227,6 @@ const AIClips = observer(() => {
       });
   }, [compositionStore.filter, aiStore.selectedSearchIndexId, compositionStore.selectedSourceId]);
 
-  if(!aiStore.highlightsAvailable && !compositionStore.filter) {
-    return null;
-  }
-
   return  (
     <ClipGroup
       key={`ai-clips-${compositionStore.selectedSourceId}`}
@@ -238,7 +236,7 @@ const AIClips = observer(() => {
       title={compositionStore.filter ? "Results" : "Selected Candidates"}
       subtitle={!compositionStore.filter ? "Prompt" : ""}
       clipIds={clipIds}
-      loading={loading || compositionStore.sources[compositionStore.selectedSourceId]?.highlightsLoading}
+      loading={loading}
       showEmpty
     />
   );

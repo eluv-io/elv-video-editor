@@ -28,6 +28,7 @@ class CompositionStore {
 
   clips = {};
   clipIdList = [];
+  originalClipIdList = [];
   selectedClipId;
   selectedClipSource;
   originalSelectedClipId;
@@ -79,6 +80,7 @@ class CompositionStore {
     this.clips = {};
     this.secondarySourceIds = [];
     this.clipIdList = [];
+    this.originalClipIdList = [];
     this.aiClipIds = [];
     this.allMyClipIds = {};
     this.searchClipIds = {};
@@ -180,6 +182,12 @@ class CompositionStore {
 
   get selectedSource() {
     return this.sources[this.selectedSourceId];
+  }
+
+  get originalClips() {
+    return this.originalClipIdList
+      .map(clipId => this.clips[clipId])
+      .filter(clip => clip);
   }
 
   get myClipIds() {
@@ -1107,6 +1115,7 @@ class CompositionStore {
 
     // Determine secondary sources from explicit list in metadata and by looking at all item links
     let secondarySources = metadata.sources || [];
+    let originalClipsList = {};
     let updatedClipList = {};
     this.clipIdList = yield Promise.all(
       (metadata?.items || []).map(async item => {
@@ -1136,6 +1145,12 @@ class CompositionStore {
           //audioRepresentation: store.audioRepresentation,
         };
 
+        const originalClipId = this.rootStore.NextId();
+        originalClipsList[originalClipId] = {
+          ...updatedClipList[clipId],
+          clipId: originalClipId
+        };
+
         if(clipObjectId !== objectId && !secondarySources.includes(clipObjectId)) {
           secondarySources.push(clipObjectId);
         }
@@ -1143,6 +1158,8 @@ class CompositionStore {
         return clipId;
       })
     );
+
+    this.originalClipIdList = Object.values(originalClipsList).map(clip => clip.clipId);
 
     // Initialize secondary sources
     yield Promise.all(
@@ -1156,7 +1173,8 @@ class CompositionStore {
 
     this.clips = {
       ...this.clips,
-      ...updatedClipList
+      ...updatedClipList,
+      ...originalClipsList
     };
 
     this.videoStore.name = this.compositionObject.name;
@@ -1244,6 +1262,7 @@ class CompositionStore {
       clipIds: sourceClipIds
     };
 
+    /*
     this.LoadHighlights({
       store,
       objectId,
@@ -1251,6 +1270,8 @@ class CompositionStore {
       maxDuration: primary ? this.compositionObject.initialPromptDuration : undefined,
       profile: primary ? this.compositionObject.initialProfile : "",
     });
+
+     */
 
     yield this.LoadMyClips({objectId});
 
