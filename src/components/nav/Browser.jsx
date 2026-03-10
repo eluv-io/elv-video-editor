@@ -1350,8 +1350,6 @@ export const TaggingJobBrowser = observer(() => {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    if(!aiTaggingStore.initialized) { return; }
-
     setLoading(true);
     aiTaggingStore.ListTaggingJobs({
       start: (page - 1) * perPage,
@@ -1362,7 +1360,7 @@ export const TaggingJobBrowser = observer(() => {
     })
       .then(setJobList)
       .finally(() => setLoading(false));
-  }, [aiTaggingStore.initialized, filter, page, perPage, status, model, reloadKey]);
+  }, [filter, page, perPage, status, model, reloadKey]);
 
   useEffect(() => {
     if(loading) { return; }
