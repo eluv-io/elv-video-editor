@@ -19,16 +19,13 @@ class AITaggingStore {
 
   trackKeyToModelMapping = {
     "shot_detection": "shot",
-    "audio_detection": "???",
-    "auto_captions": "???",
+    "auto_captions": "asr",
     "celebrity_detection": "celeb",
-    "character": "???",
-    "llama-scout": "???",
-    "llava_caption": "caption",
+    "character": "character",
+    "llava_caption": "llava",
     "logo_detection": "logo",
     "object_detection": "caption",
     "optical_character_recognition": "ocr",
-    "scene_description": "llava",
     "speech_to_text": "asr"
   };
 
