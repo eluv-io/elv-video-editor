@@ -241,7 +241,8 @@ class AIStore {
             start_time: parseInt(startTime * 1000),
             end_time: parseInt(endTime * 1000),
             regenerate,
-            cache: cacheOnly ? "only" : undefined
+            cache: cacheOnly ? "only" : undefined,
+            engine: "summary_v2"
           }
         });
       })
@@ -258,6 +259,7 @@ class AIStore {
       queryParams: {
         start_time: parseInt(startTime * 1000),
         end_time: parseInt(endTime * 1000),
+        engine: "summary_v2"
       }
     });
 
