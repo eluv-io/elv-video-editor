@@ -32,6 +32,7 @@ class TrackStore {
   editingTrack = false;
   audioLoading = false;
   audioSupported = true;
+  subtitleTracksLoaded = false;
 
   showTags = true;
   showSegments = false;
@@ -128,6 +129,7 @@ class TrackStore {
     this.editingTrack = false;
     this.audioLoading = false;
     this.initialized = false;
+    this.subtitleTracksLoaded = false;
 
     this.tags = {};
     this.totalTags = 0;
@@ -563,16 +565,19 @@ class TrackStore {
   };
 
   AddSubtitleTracks = flow(function * () {
+    if(this.subtitleTracksLoaded) { return; }
+
     try {
       const subtitleTracks = yield this.SubtitleTracksFromHLSPlaylist();
 
+      let addedTagCount = 0;
       // Initialize video WebVTT tracks by fetching and parsing the VTT file
       yield Promise.all(
         subtitleTracks.map(async track => {
           try {
             const tags = await ParseVTTTrack({track, store: this.rootStore.videoStore});
 
-            this.totalTags += Object.keys(tags).length;
+            addedTagCount += Object.keys(tags).length;
 
             this.AddTrack({
               ...track,
@@ -586,6 +591,9 @@ class TrackStore {
           }
         })
       );
+
+      this.totalTags += addedTagCount;
+      this.subtitleTracksLoaded = true;
     } catch(error) {
       console.error("Failed to load subtitle tracks:");
       console.error(error);
@@ -709,7 +717,6 @@ class TrackStore {
     this.clipTrackSettings = metadata?.clips?.evie?.tracks;
 
     this.AddPrimaryContentTrack();
-    yield this.AddSubtitleTracks();
     yield this.AddMetadataTracks(metadataTags, "metadata");
     yield this.AddMetadataTracks(clipTags, "clip");
 
@@ -767,6 +774,10 @@ class TrackStore {
       setTimeout(() => runInAction(() => this.showAudio = visible), 1000);
     } else {
       this[`show${type}`] = visible;
+
+      if(type === "Subtitles" && !this.subtitleTracksLoaded) {
+        this.AddSubtitleTracks();
+      }
     }
 
     if(type === "Segments" && visible) {
