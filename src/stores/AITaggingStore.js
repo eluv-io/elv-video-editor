@@ -1,11 +1,9 @@
 import {flow, makeAutoObservable} from "mobx";
 import UrlJoin from "url-join";
-import LZString from "lz-string";
 
 class AITaggingStore {
   initialized = false;
   selectedContent = [];
-  requestedJobs = {};
   jobStatus = {};
   objectNames = {};
 
@@ -49,15 +47,6 @@ class AITaggingStore {
     return this.rootStore.client;
   }
 
-  get allRequestedJobs() {
-    return Object.keys(this.requestedJobs)
-      .map(objectId =>
-        Object.values(this.requestedJobs[objectId])
-      )
-      .flat()
-      .sort((a, b) => a.createdAt < b.createdAt ? -1 : 1);
-  }
-
   Initialize = flow(function * () {
     yield this.LoadTaggingJobInfo();
 
@@ -77,37 +66,33 @@ class AITaggingStore {
     this.selectedContent = [];
   }
 
-  ListTaggingJobs = flow(function * ({start=0, limit=10, filter=""}={}) {
-    // Ensure object names are all loaded
-    yield Promise.all(
-      Object.keys(this.requestedJobs).map(async objectId =>
-        await this.ObjectName({objectId})
-      )
+  ListTaggingJobs = flow(function * ({start=0, limit=10, status, filter=""}={}) {
+    const tenantId = yield this.rootStore.client.userProfileClient.TenantContractId();
+    let {jobs, meta} = yield this.rootStore.aiStore.QueryAIAPI({
+      path: UrlJoin("tagging-live", "job-status"),
+      queryParams: {
+        tenant: tenantId,
+        start,
+        limit,
+        status
+      }
+    });
+
+    // Load object name
+    jobs = yield Promise.all(
+      jobs.map(async job => ({
+        ...job,
+        objectId: job.qid,
+        objectName: await this.ObjectName({objectId: job.qid})
+      }))
     );
 
-    // Determine objects that need status requested
-    const jobs = this.allRequestedJobs
-      .filter(job =>
-        !filter ||
-        (job.objectName || "")?.toLowerCase()?.includes(filter?.toLowerCase()) ||
-        (job.objectId || "")?.toLowerCase()?.includes(filter?.toLowerCase()) ||
-        (this.modelNames[job.model] || "")?.toLowerCase()?.includes(filter?.toLowerCase())
-      )
-      .slice(start, start + limit);
+    for(const job of jobs) {
+      // Update job status
+      this.jobStatus[job.job_id] = job;
+    }
 
-    const objectIds = jobs
-      .map(job => job.objectId)
-      .filter((x, i, a) => a.indexOf(x) === i);
-
-    // Retrieve job status
-    yield Promise.all(
-      objectIds.map(async objectId =>
-        this.GetObjectJobStatus({objectId})
-      )
-    );
-
-    // Return jobs, which now have status
-    return jobs;
+    return { jobs, meta };
   });
 
   GetObjectJobStatus = flow(function * ({objectId, force}) {
@@ -125,7 +110,6 @@ class AITaggingStore {
         jobs.forEach(job => {
           job.objectId = objectId;
           job.objectName = this.objectNames[objectId];
-          job.createdAt = this.requestedJobs[objectId]?.[job.model]?.createdAt;
           this.jobStatus[job.job_id] = job;
         });
       }).bind(this)
@@ -156,7 +140,8 @@ class AITaggingStore {
     ]
       .filter(key => options[key])
       .map(key => ({
-        model: key
+        model: key,
+        ...(typeof options[key] === "object" ? options[key] : {})
       }));
 
     // TODO: Add params
@@ -171,22 +156,6 @@ class AITaggingStore {
       body: { jobs: params }
     });
 
-    if(!this.requestedJobs[objectId]) {
-      this.requestedJobs[objectId] = {};
-    }
-
-    jobs.forEach(job => {
-      this.requestedJobs[objectId][job.model] = {
-        job_id: job.job_id,
-        model: job.model,
-        objectId,
-        params: params.find(({model}) => job.model === model),
-        createdAt: Date.now()
-      };
-    });
-
-    this.SaveTaggingJobInfo();
-
     return jobs;
   });
 
@@ -199,16 +168,32 @@ class AITaggingStore {
           versionHash: yield this.client.LatestVersionHash({objectId}),
           metadataSubtree: "public/name"
         });
+
+        return this.objectNames[objectId];
       }).bind(this)
     });
   });
 
-  RestartTaggingJob = flow(function * ({objectId, model}) {
-    // TODO: Preserve options
+  RestartTaggingJob = flow(function * ({objectId, model, options}) {
+    if(options) {
+      options = {
+        model,
+        model_params: {
+          ...(options.run_config || {})
+        },
+        overrides: {
+          ...options
+        }
+      };
+
+      delete options.overrides.run_config;
+      delete options.overrides.feature;
+    }
+
     yield this.SubmitTaggingJob({
       objectId: objectId,
       options: {
-        [model]: true,
+        [model]: options || true
       }
     });
 
@@ -224,47 +209,10 @@ class AITaggingStore {
       path: UrlJoin("tagging-live", objectId, "stop", model)
     });
 
-    yield new Promise(resolve => setTimeout(resolve, 1000));
+    yield new Promise(resolve => setTimeout(resolve, 5000));
 
     yield this.GetObjectJobStatus({objectId, force: true});
   });
-
-  LoadTaggingJobInfo = flow(function * () {
-    const info = yield this.rootStore.client.walletClient.ProfileMetadata({
-      type: "app",
-      appId: "video-editor",
-      mode: "private",
-      key: "tagging-jobs"
-    });
-
-    if(info) {
-      try {
-        this.requestedJobs = JSON.parse(LZString.decompressFromUTF16(info));
-      } catch(error) {
-        console.error("Error loading tagging job info:");
-        console.error(error);
-      }
-    }
-  });
-
-  async SaveTaggingJobInfo() {
-    await this.rootStore.client.walletClient.SetProfileMetadata({
-      type: "app",
-      appId: "video-editor",
-      mode: "private",
-      key: "tagging-jobs",
-      value: LZString.compressToUTF16(JSON.stringify(this.requestedJobs))
-    });
-  }
-
-  async ClearTaggingJobInfo() {
-    await this.rootStore.client.walletClient.RemoveProfileMetadata({
-      type: "app",
-      appId: "video-editor",
-      mode: "private",
-      key: "tagging-jobs"
-    });
-  }
 }
 
 export default AITaggingStore;

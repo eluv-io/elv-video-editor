@@ -142,7 +142,7 @@ class AIStore {
       authToken = this._authTokens[objectId].channel;
     } else {
       if(!this._authTokens[objectId].signed) {
-        this._authTokens[objectId].signed = yield this.rootStore.client.CreateSignedToken({
+        this._authTokens[objectId].signed = yield this.rootStore.client.CreateAuthorizationToken({
           objectId,
           duration: 24 * 60 * 60 * 1000
         });
@@ -184,7 +184,7 @@ class AIStore {
       yield this.client.utils.ResponseToFormat(format, response);
   });
 
-  GenerateImageSummary = flow(function * ({objectId, filePath, regenerate=false, cacheOnly=false}) {
+  GenerateImageSummary = (function * ({objectId, filePath, regenerate=false, cacheOnly=false}) {
     return yield this.rootStore.LoadResource({
       key: "imageSummary",
       id: `${objectId}-${filePath}`,

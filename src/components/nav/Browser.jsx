@@ -54,6 +54,7 @@ import PinIcon from "@/assets/icons/v2/pin.svg";
 import MusicIcon from "@/assets/icons/v2/music.svg";
 import PauseIcon from "@/assets/icons/Pause.svg";
 import PlayIcon from "@/assets/icons/Play.svg";
+import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -1340,9 +1341,12 @@ export const TaggingJobBrowser = observer(() => {
   const [queryParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState(decodeURIComponent(queryParams.get("q") || ""));
-  const [jobList, setJobList] = useState([]);
+  const [jobList, setJobList] = useState({jobs: [], meta: {}});
+  const [status, setStatus] = useState("");
+  const [model, setModel] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const perPage = 5;
+  const perPage = 10;
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -1352,35 +1356,46 @@ export const TaggingJobBrowser = observer(() => {
     aiTaggingStore.ListTaggingJobs({
       start: (page - 1) * perPage,
       limit: perPage,
-      filter
+      filter,
+      status,
+      model
     })
       .then(setJobList)
       .finally(() => setLoading(false));
-  }, [aiTaggingStore.initialized, filter, page, perPage]);
+  }, [aiTaggingStore.initialized, filter, page, perPage, status, model, reloadKey]);
 
   useEffect(() => {
-    if(!jobList) { return; }
+    if(loading) { return; }
 
     const interval = setInterval(() => {
-      const objectIds = jobList
+      const objectIds = jobList.jobs
         .filter(job =>
           // Filter completed jobs
-          !["completed", "stopped", "failed"].includes(aiTaggingStore.jobStatus[job.job_id]?.status?.toLowerCase())
+          !["succeeded", "cancelled", "failed"].includes(
+            job.status?.toLowerCase() ||
+            aiTaggingStore.jobStatus[job.job_id]?.status?.toLowerCase()
+          )
         )
         .map(job => job.objectId)
         .filter((x, i, a) => a.indexOf(x) === i);
 
-      objectIds.forEach(objectId => aiTaggingStore.GetObjectJobStatus({objectId}));
+        objectIds.forEach(objectId => aiTaggingStore.GetObjectJobStatus({objectId}));
     }, 10001);
 
     return () => clearInterval(interval);
-  }, [jobList]);
+  }, [jobList, loading]);
 
   // Get job status
-  const jobs = jobList.map(job => ({
-    ...job,
-    ...(aiTaggingStore.jobStatus[job.job_id] || {})
-  }));
+  const jobs = jobList.jobs
+    .map(job => ({
+      ...job,
+      ...(aiTaggingStore.jobStatus[job.job_id] || {}),
+    }))
+    .map(job => ({
+      ...job,
+      progress: !job?.tag_details?.tagging_progress ? undefined :
+        FrameAccurateVideo.ParseRat(job.tag_details.tagging_progress) * 100
+    }));
 
   return (
     <div className={S("browser-page")}>
@@ -1398,6 +1413,35 @@ export const TaggingJobBrowser = observer(() => {
           >
             New Job(s)
           </StyledButton>
+          <div className={S("browser__action", "browser__action--right")}>
+            <Select
+              value={model}
+              onChange={value => setModel(value)}
+              clearable
+              data={[
+                {label: "Filter by Model", value: ""},
+                ...Object.keys(aiTaggingStore.modelNames)
+                  .sort((a, b) => aiTaggingStore.modelNames[a] < aiTaggingStore.modelNames[b] ? -1 : 1)
+                  .map(key => ({
+                    label: aiTaggingStore.modelNames[key],
+                    value: key,
+                  }))
+              ]}
+            />
+            <Select
+              value={status}
+              onChange={value => setStatus(value)}
+              clearable
+              data={[
+                {label: "Filter by Status", value: ""},
+                {label: "Running", value: "running"},
+                {label: "Queued", value: "queued"},
+                {label: "Succeeded", value: "succeeded"},
+                {label: "Failed", value: "failed"},
+                {label: "Cancelled", value: "cancelled"},
+              ]}
+            />
+          </div>
         </div>
         <div className={S("browser-table-container")}>
           {
@@ -1457,11 +1501,11 @@ export const TaggingJobBrowser = observer(() => {
                         {aiTaggingStore.modelNames[job.model]}
                       </div>
                       <div className={S("browser-table__cell")}>
-                        {new Date(job.createdAt).toLocaleString()}
+                        {new Date(job.created_at).toLocaleString()}
                       </div>
                       <div className={S("browser-table__cell", "browser-table__cell--progress")}>
                         {
-                          ["completed", "failed"].includes(job?.status?.toLowerCase()) ? null :
+                          ["succeeded", "failed", "cancelled"].includes(job?.status?.toLowerCase()) ? null :
                             <>
                               <Progress
                                 value={job?.progress || 0}
@@ -1480,7 +1524,7 @@ export const TaggingJobBrowser = observer(() => {
                       </div>
                       <div className={S("browser-table__cell")}>
                         {
-                          ["completed", "stopped", "failed"].includes(job?.status?.toLowerCase()) ? null :
+                          ["succeeded", "cancelled", "failed"].includes(job?.status?.toLowerCase()) ? null :
                             <IconButton
                               icon={PauseIcon}
                               label="Pause Job"
@@ -1498,7 +1542,7 @@ export const TaggingJobBrowser = observer(() => {
                             />
                         }
                         {
-                          job?.status?.toLowerCase() !== "stopped" ? null :
+                          !["cancelled", "failed"].includes(job?.status?.toLowerCase()) ? null :
                             <IconButton
                               icon={PlayIcon}
                               label="Restart Job"
@@ -1508,8 +1552,12 @@ export const TaggingJobBrowser = observer(() => {
                                 onConfirm: async () => {
                                   await aiTaggingStore.RestartTaggingJob({
                                     objectId: job.objectId,
-                                    model: job.model
+                                    model: job.model,
+                                    options: job.params
                                   });
+
+                                  setPage(1);
+                                  setReloadKey(reloadKey + 1);
                                 }
                               })
                               }
@@ -1524,7 +1572,7 @@ export const TaggingJobBrowser = observer(() => {
         </div>
         <PageControls
           currentPage={page}
-          pages={Math.max(1, Math.ceil(aiTaggingStore.allRequestedJobs.length / perPage))}
+          pages={Math.max(1, Math.ceil((jobList?.meta?.total || 0) / perPage))}
           SetPage={setPage}
         />
       </div>
