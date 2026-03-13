@@ -26,6 +26,8 @@ import SourcesIcon from "@/assets/icons/v2/folder.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import CaretDownIcon from "@/assets/icons/v2/caret-down.svg";
 import SearchIcon from "@/assets/icons/v2/search.svg";
+import SettingsIcon from "@/assets/icons/v2/settings.svg";
+import SearchSettings from "@/components/search/SearchSettings.jsx";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -370,11 +372,12 @@ const SourceSelection = observer(() => {
   );
 });
 
-const SidebarFilter = observer(({store, label, sideContent, rightSideContent, afterContent, className=""}) => {
+const SidebarFilter = observer(({store, label, sideContent, rightSideContent, beforeContent, afterContent, className=""}) => {
   const [filter, setFilter] = useState(store.filter);
 
   return (
     <div className={JoinClassNames(S("search"), className)}>
+      {beforeContent}
       <Input
         placeholder={label}
         h={35}
@@ -649,11 +652,36 @@ export const AssetSidePanel = observer(() => {
   );
 });
 
+export const CompositionSearchSettings = observer(() => {
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  return (
+    <>
+      <div
+        className={S("side-panel__search-icon", aiStore.customSearchSettingsActive ? "side-panel__search-icon--active" : "")}
+      >
+        <IconButton
+          onClick={() => setShowSettingsModal(true)}
+          icon={SettingsIcon}
+        />
+      </div>
+      {
+        !showSettingsModal ? null :
+          <SearchSettings
+            store={compositionStore}
+            singleObject
+            Close={() => setShowSettingsModal(false)}
+          />
+      }
+    </>
+  );
+});
+
 export const CompositionSidePanel = observer(() => {
   return (
     <div className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
         <SidebarFilter
+          beforeContent={<CompositionSearchSettings/>}
           sideContent={
             aiStore.searchIndexes.length === 0 ? null :
               <SearchIndexSelection className={S("search__index-button--side-panel")} />

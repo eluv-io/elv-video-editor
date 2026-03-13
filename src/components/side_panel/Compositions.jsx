@@ -225,7 +225,14 @@ const AIClips = observer(() => {
         setClipSource("search");
         setLoading(false);
       });
-  }, [compositionStore.filter, aiStore.selectedSearchIndexId, compositionStore.selectedSourceId]);
+  },
+    [
+      compositionStore.filter,
+      aiStore.selectedSearchIndexId,
+      compositionStore.selectedSourceId,
+      compositionStore.searchSettings.key
+    ]
+  );
 
   return  (
     <ClipGroup

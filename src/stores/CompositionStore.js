@@ -1,6 +1,6 @@
 import {flow, makeAutoObservable} from "mobx";
 import VideoStore from "@/stores/VideoStore.js";
-import {Unproxy} from "@/utils/Utils.js";
+import {HashString, Unproxy} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 import {ExtractHashFromLink} from "@/stores/Helpers.js";
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
@@ -51,6 +51,8 @@ class CompositionStore {
 
   saved = false;
 
+  searchSettings = {};
+
   _authTokens = {};
 
   _actionStack = [];
@@ -65,6 +67,7 @@ class CompositionStore {
     makeAutoObservable(this);
 
     this.rootStore = rootStore;
+    this.searchSettings = this.rootStore.aiStore.DEFAULT_SEARCH_SETTINGS;
 
     this.Reset();
   }
@@ -97,6 +100,7 @@ class CompositionStore {
     this.draggingClip = undefined;
     this.clipStores = {};
     this.saved = false;
+    this.searchSettings = this.rootStore.aiStore.DEFAULT_SEARCH_SETTINGS;
 
     this.rootStore.ClearResource({key: "composition-video-store"});
 
@@ -239,6 +243,22 @@ class CompositionStore {
 
   get sourceVideoStore() {
     return this.ClipStore({clipId: this.sourceFullClipId});
+  }
+
+  get customSearchSettingsActive() {
+    return (
+      HashString(JSON.stringify({...this.searchSettings, key: 0})) !==
+      HashString(JSON.stringify({...this.rootStore?.aiStore?.DEFAULT_SEARCH_SETTINGS, key: 0}))
+    );
+  }
+
+  SetSearchSettings(options) {
+    delete options.key;
+
+    this.searchSettings = {
+      ...options,
+      key: HashString(JSON.stringify(options))
+    };
   }
 
   SetCompositionName(name) {
@@ -1618,7 +1638,8 @@ class CompositionStore {
       !index ||
       (
         searchClipInfo.indexId === index.id &&
-        searchClipInfo.query === query
+        searchClipInfo.query === query &&
+        searchClipInfo.searchSettingsKey === this.searchSettings.key
       )
     ) { return; }
 
@@ -1632,11 +1653,16 @@ class CompositionStore {
       channelAuth: true,
       queryParams: {
         terms: query,
-        search_fields: Object.keys(index.fields || {}).join(","),
+        search_fields:
+          this.searchSettings.fields.length > 0 ?
+            this.searchSettings.fields.join(",") :
+            Object.keys(index.fields).join(","),
         clips: true,
         clips_include_source_tags: true,
+        get_chunks: true,
         debug: true,
         max_total: 100,
+        min_score: this.searchSettings.confidenceMin / 100,
         start: 0,
         limit: 100,
         filters: `id:${objectId}`
@@ -1687,6 +1713,7 @@ class CompositionStore {
     this.searchClipIds[objectId] = searchClipIds;
     this.searchClipInfo[objectId] = {
       query,
+      searchSettingsKey: this.searchSettings.key,
       indexId: this.rootStore.aiStore.selectedSearchIndexId
     };
   });

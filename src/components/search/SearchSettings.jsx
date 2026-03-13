@@ -148,9 +148,10 @@ const TitlesForm = observer(({options, setOptions}) => {
   );
 });
 
-const SearchSettings = observer(({Close}) => {
-  const [options, setOptions] = useState({...aiStore.searchSettings});
-  const [tab, setTab] = useState("titles");
+const SearchSettings = observer(({store, singleObject, Close}) => {
+  store = store || aiStore;
+  const [options, setOptions] = useState({...store.searchSettings});
+  const [tab, setTab] = useState(singleObject ? "confidence" : "titles");
 
   let form;
   switch(tab) {
@@ -206,12 +207,15 @@ const SearchSettings = observer(({Close}) => {
       </div>
       <div className={S("search-settings__content")}>
         <div className={S("search-settings__tabs")}>
-          <button
-            className={S("search-settings__tab", tab === "titles" ? "search-settings__tab--active" : "")}
-            onClick={() => setTab("titles")}
-          >
-            Titles
-          </button>
+          {
+            singleObject ? null :
+              <button
+                className={S("search-settings__tab", tab === "titles" ? "search-settings__tab--active" : "")}
+                onClick={() => setTab("titles")}
+              >
+                Titles
+              </button>
+          }
           <button
             className={S("search-settings__tab", tab === "confidence" ? "search-settings__tab--active" : "")}
             onClick={() => setTab("confidence")}
@@ -249,7 +253,7 @@ const SearchSettings = observer(({Close}) => {
           color="gray.5"
           w={150}
           onClick={() => {
-            aiStore.SetSearchSettings(options);
+            store.SetSearchSettings(options);
             Close();
           }}
         >

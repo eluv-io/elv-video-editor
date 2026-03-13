@@ -517,6 +517,7 @@ class AIStore {
 
   SetSelectedSearchIndex(id) {
     this.searchSettings = this.DEFAULT_SEARCH_SETTINGS;
+    this.rootStore.compositionStore.searchSettings =this.DEFAULT_SEARCH_SETTINGS;
     this.selectedSearchIndexId = id;
     localStorage.setItem(`search-index-${this.rootStore.tenantContractId}`, id);
   }

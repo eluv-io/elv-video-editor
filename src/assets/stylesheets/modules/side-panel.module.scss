@@ -19,6 +19,43 @@
   height: 100%;
   position: relative;
   width: 100%;
+
+  &__search-icon {
+    height: 30px;
+    max-height: 30px;
+    max-width: 30px;
+    min-height: 30px;
+    min-width: 30px;
+    width: 30px;
+
+    button,
+    svg {
+      height: 100%;
+      max-height: unset;
+      max-width: unset;
+      width: 100%;
+    }
+
+    button {
+      border-radius: 20px;
+      padding: 8px;
+    }
+
+    * {
+      fill: var(--text-tertiary);
+      height: 20px;
+      stroke: var(--text-tertiary);
+      transition: stroke 0.25s ease, fill 0.25s ease;
+      width: 20px;
+    }
+
+    &--active {
+      * {
+        fill: var(--text-highlight);
+        stroke: var(--text-highlight);
+      }
+    }
+  }
 }
 
 .side-panel-modal {
