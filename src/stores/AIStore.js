@@ -624,11 +624,14 @@ class AIStore {
           terms: query,
           search_fields:
             isMusic ? "f_music" :
-              Object.keys(this.searchIndex.fields).join(","),
+              this.searchSettings.fields.length > 0 ?
+                this.searchSettings.fields.join(",") :
+                Object.keys(this.searchIndex.fields).join(","),
           sort: isMusic ? "f_music" : null,
           start,
           limit,
-          display_fields: isMusic ? "f_music" : "all",
+          display_fields:
+            isMusic ? "f_music" : "all",
           clips: type === "video",
           clip_include_source_tags: true,
           get_chunks: true,

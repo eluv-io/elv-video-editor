@@ -13,33 +13,94 @@ import XIcon from "@/assets/icons/v2/x.svg";
 
 const S = CreateModuleClassMatcher(SearchStyles);
 
-const ConfidenceForm = observer(({options, setOptions}) => {
+const FieldsForm = observer(({options, setOptions}) => {
   return (
     <div className={S("search-settings__form")}>
-      <div className={S("search-settings__confidence-container")}>
-        <label htmlFor="confidenceMin">
-          Minimum Confidence: {options.confidenceMin}%
-        </label>
-        <Slider
-          name="confidenceMin"
-          label={number => `${number}%`}
-          value={options.confidenceMin}
-          onChange={value => setOptions({...options, confidenceMin: value})}
-          min={0}
-          step={5}
-          max={100}
-          maw={500}
-          marks={[
-            { value: 25, label: "25%" },
-            { value: 50, label: "50%" },
-            { value: 75, label: "75%" },
-          ]}
-          className={S("search-settings__confidence")}
-        />
+      <div className={S("search-settings__form-title")}>
+        Search Fields
+      </div>
+      <div className={S("search-settings__options-list")}>
+        {
+          Object.keys(aiStore.searchIndex.fields || []).map(fieldKey => {
+            const active = options.fields.includes(fieldKey);
+            const Toggle = () =>
+              !active ?
+                setOptions({...options, fields: [...options.fields, fieldKey]}) :
+                setOptions({...options, fields: options.fields.filter(otherKey => otherKey !== fieldKey)});
+
+            return (
+              <button
+                key={`option-${fieldKey}`}
+                onClick={Toggle}
+                className={S("search-settings__option")}
+              >
+                <Checkbox checked={active} onChange={Toggle}/>
+                <span>
+                  {aiStore.searchIndex.fields[fieldKey]?.label || fieldKey}
+                </span>
+              </button>
+            );
+          })
+        }
       </div>
     </div>
   );
 });
+
+const ConfidenceForm = observer(({options, setOptions}) => {
+  return (
+    <div className={S("search-settings__form")}>
+      <div className={S("search-settings__form-title")}>
+        Minimum Confidence: {options.confidenceMin}%
+      </div>
+      <Slider
+        name="confidenceMin"
+        label={number => `${number}%`}
+        value={options.confidenceMin}
+        onChange={value => setOptions({...options, confidenceMin: value})}
+        min={0}
+        step={5}
+        max={100}
+        maw={500}
+        marks={[
+          {value: 25, label: "25%"},
+          {value: 50, label: "50%"},
+          {value: 75, label: "75%"},
+        ]}
+        className={S("search-settings__confidence")}
+      />
+    </div>
+  );
+});
+
+/*
+const ClipDurationForm = observer(({options, setOptions}) => {
+  return (
+    <div className={S("search-settings__form")}>
+      <div className={S("search-settings__form-title")}>
+        Clip Duration: {options.confidenceMin}%
+      </div>
+      <Slider
+        name="confidenceMin"
+        label={number => `${number}%`}
+        value={options.confidenceMin}
+        onChange={value => setOptions({...options, confidenceMin: value})}
+        min={0}
+        step={5}
+        max={100}
+        maw={500}
+        marks={[
+          {value: 25, label: "25%"},
+          {value: 50, label: "50%"},
+          {value: 75, label: "75%"},
+        ]}
+        className={S("search-settings__confidence")}
+      />
+    </div>
+  );
+});
+
+ */
 
 const TitlesForm = observer(({options, setOptions}) => {
   const [filter, setFilter] = useState("");
@@ -52,7 +113,7 @@ const TitlesForm = observer(({options, setOptions}) => {
         placeholder="Search"
         className={S("search-settings__search")}
       />
-      <div className={S("search-settings__titles")}>
+      <div className={S("search-settings__options-list")}>
         {
           aiStore.searchIndex?.indexedTitles
             ?.filter(({name, objectId}) =>
@@ -72,11 +133,11 @@ const TitlesForm = observer(({options, setOptions}) => {
                 <button
                   key={`option-${objectId}`}
                   onClick={Toggle}
-                  className={S("search-settings__title")}
+                  className={S("search-settings__option")}
                 >
-                  <Checkbox checked={active} onChange={Toggle} />
+                  <Checkbox checked={active} onChange={Toggle}/>
                   <span>
-                    { name || objectId }
+                    {name || objectId}
                   </span>
                 </button>
               );
@@ -98,6 +159,9 @@ const SearchSettings = observer(({Close}) => {
       break;
     case "confidence":
       form = <ConfidenceForm options={options} setOptions={setOptions} />;
+      break;
+    case "fields":
+      form = <FieldsForm options={options} setOptions={setOptions} />;
       break;
     default:
       form = <div />;
@@ -147,12 +211,6 @@ const SearchSettings = observer(({Close}) => {
             onClick={() => setTab("titles")}
           >
             Titles
-          </button>
-          <button
-            className={S("search-settings__tab", tab === "duration" ? "search-settings__tab--active" : "")}
-            onClick={() => setTab("duration")}
-          >
-            Clip Duration
           </button>
           <button
             className={S("search-settings__tab", tab === "confidence" ? "search-settings__tab--active" : "")}

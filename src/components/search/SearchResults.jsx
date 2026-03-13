@@ -202,6 +202,22 @@ const SearchResultsPage = observer(() => {
             {query.startsWith("music:") ? query?.split("music:")[1] || "All Results" : query}
           </span>
           <div className={S("browser__action--right")}>
+            <button
+              key={aiStore.searchSettings.confidenceMin}
+              className={S("browser__toggle-button")}
+              onClick={() =>
+                aiStore.SetSearchSettings({
+                  ...aiStore.searchSettings,
+                  confidenceMin: aiStore.searchSettings.confidenceMin >= 55 ? 0 : 55
+                })
+              }
+            >
+              {
+                aiStore.searchSettings.confidenceMin >= 55 ?
+                  "Show All Results" :
+                  "Show Only High Score Results"
+              }
+            </button>
             <CardDisplaySwitch
               showList={showList}
               setShowList={setShowList}
