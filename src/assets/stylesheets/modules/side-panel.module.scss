@@ -925,6 +925,16 @@
     font-size: 12px;
   }
 
+  &__score {
+    background: var(--background-toolbar--active);
+    border-radius: 5px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 5px;
+    position: absolute
+  }
+
   &__offering,
   &__time {
     color: var(--text-tertiary);

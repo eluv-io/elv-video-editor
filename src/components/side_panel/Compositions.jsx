@@ -49,7 +49,9 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
         onDragEnd={() => compositionStore.EndDrag()}
         startFrame={clip.clipInFrame}
         endFrame={clip.clipOutFrame}
+        defaultFrame={clip.thumbnailFrame}
         style={!store? {} : {aspectRatio: store.aspectRatio}}
+        score={clip.score ? `Score: ${clip.score}` : null}
         className={S("clip__image")}
         loadingClassName={S("clip__image--loading")}
       />
