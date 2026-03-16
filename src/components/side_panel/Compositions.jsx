@@ -49,7 +49,9 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
         onDragEnd={() => compositionStore.EndDrag()}
         startFrame={clip.clipInFrame}
         endFrame={clip.clipOutFrame}
+        defaultFrame={clip.thumbnailFrame}
         style={!store? {} : {aspectRatio: store.aspectRatio}}
+        score={clip.score ? `Score: ${clip.score}` : null}
         className={S("clip__image")}
         loadingClassName={S("clip__image--loading")}
       />
@@ -197,7 +199,9 @@ const AIClips = observer(() => {
   const [clipSource, setClipSource] = useState("highlights");
   const clipIds = clipSource === "search" ?
     compositionStore.searchClipIds[compositionStore.selectedSourceId] || [] :
-    compositionStore.selectedSource?.highlightClipIds || [];
+    compositionStore.originalClips
+      .filter(clip => clip.objectId === compositionStore.selectedSourceId)
+      .map(clip => clip.clipId);
 
   useEffect(() => {
     if(!compositionStore.filter) {
@@ -223,11 +227,14 @@ const AIClips = observer(() => {
         setClipSource("search");
         setLoading(false);
       });
-  }, [compositionStore.filter, aiStore.selectedSearchIndexId, compositionStore.selectedSourceId]);
-
-  if(!aiStore.highlightsAvailable && !compositionStore.filter) {
-    return null;
-  }
+  },
+    [
+      compositionStore.filter,
+      aiStore.selectedSearchIndexId,
+      compositionStore.selectedSourceId,
+      compositionStore.searchSettings.key
+    ]
+  );
 
   return  (
     <ClipGroup
@@ -238,7 +245,7 @@ const AIClips = observer(() => {
       title={compositionStore.filter ? "Results" : "Selected Candidates"}
       subtitle={!compositionStore.filter ? "Prompt" : ""}
       clipIds={clipIds}
-      loading={loading || compositionStore.sources[compositionStore.selectedSourceId]?.highlightsLoading}
+      loading={loading}
       showEmpty
     />
   );

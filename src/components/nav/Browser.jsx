@@ -2,8 +2,17 @@ import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 
 import React, {useState, useEffect} from "react";
 import {observer} from "mobx-react-lite";
-import {rootStore, browserStore, compositionStore, editStore, groundTruthStore, videoStore, aiStore} from "@/stores";
-import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
+import {
+  rootStore,
+  browserStore,
+  compositionStore,
+  editStore,
+  groundTruthStore,
+  videoStore,
+  aiStore,
+  aiTaggingStore
+} from "@/stores";
+import {Capitalize, CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
 import {
   AsyncButton,
   Confirm,
@@ -19,10 +28,13 @@ import {
 import SVG from "react-inlinesvg";
 import {Redirect, Route, useParams, Switch, useLocation, useSearchParams} from "wouter";
 import UrlJoin from "url-join";
-import {Select, Tabs, Tooltip, Switch as SwitchInput} from "@mantine/core";
+import {Select, Tabs, Tooltip, Switch as SwitchInput, Progress} from "@mantine/core";
 import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
 import {SearchIndexSelection} from "@/components/side_panel/SidePanel.jsx";
+import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
+import SearchSettings from "@/components/search/SearchSettings.jsx";
 
+import SettingsIcon from "@/assets/icons/v2/settings.svg";
 import LibraryIcon from "@/assets/icons/v2/library.svg";
 import ObjectIcon from "@/assets/icons/file.svg";
 import VideoIcon from "@/assets/icons/v2/video.svg";
@@ -43,6 +55,9 @@ import SearchIcon from "@/assets/icons/v2/search.svg";
 import AssetIcon from "@/assets/icons/v2/asset.svg";
 import PinIcon from "@/assets/icons/v2/pin.svg";
 import MusicIcon from "@/assets/icons/v2/music.svg";
+import PauseIcon from "@/assets/icons/Pause.svg";
+import PlayIcon from "@/assets/icons/Play.svg";
+import LinkIcon from "@/assets/icons/v2/external-link.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -123,6 +138,7 @@ export const SearchBar = observer(({
   filterQueryParam="q",
   saveByLocation=false,
   Select,
+  onSubmit,
   className=""
 }) => {
   const [location] = useLocation();
@@ -131,6 +147,8 @@ export const SearchBar = observer(({
   const [input, setInput] = useState(decodeURIComponent(searchParams.get(filterQueryParam) || ""));
 
   const Submit = async (input) => {
+    onSubmit?.(input);
+
     try {
       if(Select && ["ilib", "iq__", "hq__", "0x"].find(prefix => input.trim().startsWith(prefix))) {
         const result = await browserStore.LookupContent(input);
@@ -290,7 +308,7 @@ const LiveToVodForm = observer(() => {
               <progress
                 value={editStore.liveToVodProgress[browserStore.liveToVodFormFields.liveStreamId]}
                 max={100}
-                className={S("ltv-form__progress")}
+                className={S("progress", "ltv-form__progress")}
               /> :
               <AsyncButton
                 w={150}
@@ -349,6 +367,7 @@ export const CardDisplaySwitch = observer(({showList, setShowList}) => {
 export const AISearchBar = observer(({basePath="~/search", initialQuery=""}) => {
   const [input, setInput] = useState(initialQuery.startsWith("music:") ? initialQuery.split("music:")[1] || "" : initialQuery);
   const [searchMusic, setSearchMusic] = useState(initialQuery.startsWith("music:"));
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [,navigate] = useLocation();
 
   const Submit = async (searchMusic) => {
@@ -371,61 +390,70 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery=""}) => 
   };
 
   return (
-    <div className={S("search-bar-container")}>
-      <div className={S("search-bar-container__search-icon")}>
-        <Icon icon={SearchIcon} />
-      </div>
-      <div className={S("search-input-container", "search-input-container--ai")}>
-        <SearchIndexSelection position="bottom-start" className={S("search-input-container__button-left")} />
-        <input
-          value={input}
-          placeholder="Search within content by phrase or keyword"
-          onChange={event => setInput(event.target.value)}
-          onKeyDown={async event => {
-            if(event.key !== "Enter") { return; }
-
-            Submit(searchMusic);
-            //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
-          }}
-          className={S("search-bar", "search-bar--ai")}
-        />
-        <div className={S("search-input-container__right-buttons")}>
+    <>
+      <div className={S("search-bar-container")}>
+        <div className={S("search-bar-container__search-icon", aiStore.customSearchSettingsActive ? "search-bar-container__search-icon--active" : "")}>
           <IconButton
-            label="Search"
-            icon={SearchArrowIcon}
-            noHover
-            //onClick={() => input && navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)))}
-            onClick={() => Submit(searchMusic)}
+            onClick={() => setShowSettingsModal(true)}
+            icon={SettingsIcon}
           />
         </div>
+        <div className={S("search-input-container", "search-input-container--ai")}>
+          <SearchIndexSelection position="bottom-start" className={S("search-input-container__button-left")} />
+          <input
+            value={input}
+            placeholder="Search within content by phrase or keyword"
+            onChange={event => setInput(event.target.value)}
+            onKeyDown={async event => {
+              if(event.key !== "Enter") { return; }
+
+              Submit(searchMusic);
+              //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
+            }}
+            className={S("search-bar", "search-bar--ai")}
+          />
+          <div className={S("search-input-container__right-buttons")}>
+            <IconButton
+              label="Search"
+              icon={SearchArrowIcon}
+              noHover
+              //onClick={() => input && navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)))}
+              onClick={() => Submit(searchMusic)}
+            />
+          </div>
+        </div>
+        {
+          !aiStore.searchIndex?.musicSupported ? null :
+            <SwitchInput
+              ml={5}
+              size="xl"
+              label="Search by Music"
+              checked={searchMusic}
+              onChange={event => {
+                setSearchMusic(event.currentTarget.checked);
+
+                if(input) {
+                  Submit(event.currentTarget.checked);
+                }
+              }}
+              thumbIcon={
+                <Icon
+                  icon={MusicIcon}
+                  className={S("search-bar-container__music-switch-icon", searchMusic ? "search-bar-container__music-switch-icon--active" : "")}
+                />
+              }
+              className={S("search-bar-container__music-switch", `search-bar-container__music-switch--${searchMusic ? "active" : "inactive"}`)}
+              classNames={{
+                label: S("search-bar-container__music-switch-label"),
+              }}
+            />
+        }
       </div>
       {
-        !aiStore.searchIndex?.musicSupported ? null :
-          <SwitchInput
-            ml={5}
-            size="xl"
-            label="Search by Music"
-            checked={searchMusic}
-            onChange={event => {
-              setSearchMusic(event.currentTarget.checked);
-
-              if(input) {
-                Submit(event.currentTarget.checked);
-              }
-            }}
-            thumbIcon={
-              <Icon
-                icon={MusicIcon}
-                className={S("search-bar-container__music-switch-icon", searchMusic ? "search-bar-container__music-switch-icon--active" : "")}
-              />
-            }
-            className={S("search-bar-container__music-switch", `search-bar-container__music-switch--${searchMusic ? "active" : "inactive"}`)}
-            classNames={{
-              label: S("search-bar-container__music-switch-label"),
-            }}
-          />
+        !showSettingsModal ? null :
+          <SearchSettings Close={() => setShowSettingsModal(false)} />
       }
-    </div>
+    </>
   );
 });
 
@@ -492,6 +520,7 @@ export const BrowserTable = observer(({
           S(
             "browser-table",
             `browser-table--${contentType}`,
+            Actions || Delete ? `browser-table--${contentType}--with-actions` : "",
             hasActiveItem ? "browser-table--with-active-item" : "",
             noDuration ? `browser-table--${contentType}--no-duration` : ""
           )
@@ -806,6 +835,7 @@ export const ObjectBrowser = observer(({
   libraryId,
   title,
   withFilterBar,
+  filter,
   filterQueryParam="q",
   Select,
   Path,
@@ -814,10 +844,11 @@ export const ObjectBrowser = observer(({
   videoOnly,
   frameRate,
   noDuration,
+  Actions,
   className=""
 }) => {
   const [queryParams] = useSearchParams();
-  const filter = decodeURIComponent(queryParams.get(filterQueryParam) || "");
+  filter = filter || decodeURIComponent(queryParams.get(filterQueryParam) || "");
 
   useEffect(() => {
     // Ensure libraries are loaded
@@ -840,9 +871,21 @@ export const ObjectBrowser = observer(({
           onClick={Back}
           className={S("browser__header-back")}
         />
-        <span className={S("browser__header-last")}>
-          {title || `Content Libraries / ${library?.name || libraryId}`}
-        </span>
+        {
+          title ?
+            <span className={S("browser__header-last")}>
+              {title}
+            </span> :
+            <>
+              <Linkish onClick={Back}>
+                Content Libraries
+              </Linkish>
+              <span className={S("browser__header-chevron")}>▶</span>
+              <span className={S("browser__header-last")}>
+                {library?.name || libraryId}
+              </span>
+            </>
+        }
       </h1>
       <BrowserTable
         filter={filter}
@@ -854,6 +897,7 @@ export const ObjectBrowser = observer(({
         Path={Path}
         Select={Select}
         Load={async args => await browserStore.ListObjects({libraryId, ...args})}
+        Actions={Actions}
       />
     </div>
   );
@@ -861,6 +905,7 @@ export const ObjectBrowser = observer(({
 
 export const LibraryBrowser = observer(({
   title,
+  filter,
   withFilterBar="",
   filterQueryParam="q",
   Path,
@@ -868,7 +913,7 @@ export const LibraryBrowser = observer(({
   className=""
 }) => {
   const [queryParams] = useSearchParams();
-  const filter = decodeURIComponent(queryParams.get(filterQueryParam) || "");
+  filter = filter || decodeURIComponent(queryParams.get(filterQueryParam) || "");
 
   return (
     <div className={JoinClassNames(S("browser", "browser--library"), className)}>
@@ -1173,14 +1218,395 @@ export const GroundTruthPoolBrowser = observer(() => {
   );
 });
 
+export const TaggingSelection = observer(() => {
+  const content = aiTaggingStore.selectedContent;
+  return (
+    <div className={S("tagging-selection")}>
+      <div className={S("tagging-selection__title")}>
+        New Job
+      </div>
+      <div className={S("tagging-selection__content")}>
+        {
+          content.length === 0 ?
+            <div className={S("tagging-selection__empty")}>
+              No Content Selected
+            </div> :
+            content.map(({objectId, name}) =>
+              <div key={objectId} className={S("tagging-item")}>
+                <div className={S("tagging-item__text")}>
+                  <div className={S("tagging-item__title")}>
+                    {name}
+                  </div>
+                  <CopyableField value={objectId} className={S("tagging-item__id")}>
+                    {objectId}
+                  </CopyableField>
+                </div>
+                <div className={S("tagging-item__actions")}>
+                  <IconButton
+                    icon={DeleteIcon}
+                    label={`Remove ${name}`}
+                    onClick={() => aiTaggingStore.RemoveSelectedContent({objectId})}
+                    className={S("tagging-item__action")}
+                  />
+                </div>
+              </div>
+            )
+        }
+      </div>
+      <div className={S("tagging-selection__count")}>
+        { content.length } content object{content.length === 1 ? "" : "s"} selected
+      </div>
+    </div>
+  );
+});
+
+export const TaggingContentBrowser = observer(() => {
+  const {libraryId} = useParams();
+  const [, navigate] = useLocation();
+
+  const Select = ({objectId, name}) => {
+    aiTaggingStore.selectedContent.find(other => other.objectId === objectId) ?
+      aiTaggingStore.RemoveSelectedContent({objectId}) :
+      aiTaggingStore.AddSelectedContent({objectId, name});
+  };
+
+  return (
+    <div className={S("browser-page")}>
+      <SearchBar
+        filterQueryParam={`q${libraryId || ""}`}
+        saveByLocation
+        Select={Select}
+      />
+      <h1 className={S("browser__header")}>
+        <IconButton
+          icon={BackIcon}
+          label="Back to Jobs List"
+          to="/"
+          className={S("browser__header-back")}
+        />
+        <Linkish to="/">
+          AI Runtime
+        </Linkish>
+        <span className={S("browser__header-chevron")}>▶</span>
+        <span>
+          New Job
+        </span>
+        <span className={S("browser__header-chevron")}>▶</span>
+        <span className={S("browser__header-last")}>
+          Select Content
+        </span>
+      </h1>
+      <div className={S("browser__header-note")}>
+        Select the video content object(s) you would like to process.
+      </div>
+      <div className={S("tagging-browser")}>
+        {
+          libraryId ?
+            <ObjectBrowser
+              className={S("browser--tagging")}
+              filterQueryParam={`q${libraryId}`}
+              libraryId={libraryId}
+              videoOnly
+              Actions={({objectId}) => {
+                const isActive = !!aiTaggingStore.selectedContent.find(other => other.objectId === objectId);
+                return (
+                  <div
+                    key={isActive}
+                    className={S("browser-table__action")}
+                  >
+                    { isActive ? "- Remove" : "+ Add" }
+                  </div>
+                );
+              }}
+              Back={() => navigate("/new")}
+              Select={({objectId, name}) => Select({objectId, name})}
+            /> :
+            <LibraryBrowser
+              title="Content Libraries"
+              className={S("browser--tagging")}
+              Select={({libraryId, objectId, name}) => {
+                if(objectId) {
+                  Select({objectId, name});
+                } else {
+                  navigate(UrlJoin("/", "new", libraryId));
+                }
+              }}
+            />
+        }
+        <TaggingSelection />
+      </div>
+      <div className={S("tagging-actions")}>
+        <StyledButton to="/" variant="outline">
+          Back
+        </StyledButton>
+        <StyledButton
+          disabled={aiTaggingStore.selectedContent.length === 0}
+          to="/new/configure"
+        >
+          Continue
+        </StyledButton>
+      </div>
+    </div>
+  );
+});
+
+export const TaggingJobBrowser = observer(() => {
+  const [queryParams] = useSearchParams();
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState(decodeURIComponent(queryParams.get("q") || ""));
+  const [jobList, setJobList] = useState({jobs: [], meta: {}});
+  const [status, setStatus] = useState("");
+  const [model, setModel] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const perPage = 10;
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setLoading(true);
+    aiTaggingStore.ListTaggingJobs({
+      start: (page - 1) * perPage,
+      limit: perPage,
+      filter,
+      status,
+      model
+    })
+      .then(setJobList)
+      .finally(() => setLoading(false));
+  }, [filter, page, perPage, status, model, reloadKey]);
+
+  useEffect(() => {
+    if(loading) { return; }
+
+    const interval = setInterval(() => {
+      const objectIds = jobList.jobs
+        .filter(job =>
+          // Filter completed jobs
+          !["succeeded", "cancelled", "failed"].includes(
+            job.status?.toLowerCase() ||
+            aiTaggingStore.jobStatus[job.job_id]?.status?.toLowerCase()
+          )
+        )
+        .map(job => job.objectId)
+        .filter((x, i, a) => a.indexOf(x) === i);
+
+        objectIds.forEach(objectId => aiTaggingStore.GetObjectJobStatus({objectId}));
+    }, 10001);
+
+    return () => clearInterval(interval);
+  }, [jobList, loading]);
+
+  // Get job status
+  const jobs = jobList.jobs
+    .map(job => ({
+      ...job,
+      ...(aiTaggingStore.jobStatus[job.job_id] || {}),
+    }))
+    .map(job => ({
+      ...job,
+      progress: !job?.tag_details?.tagging_progress ? undefined :
+        FrameAccurateVideo.ParseRat(job.tag_details.tagging_progress) * 100
+    }));
+
+  return (
+    <div className={S("browser-page")}>
+      <div className={S("browser", "browser--tagging")}>
+        <SearchBar
+          placeholder="Title, Model, Content ID"
+          saveByLocation
+          onSubmit={value => setFilter(value)}
+        />
+        <h1 className={S("browser__header")}>AI Runtime</h1>
+        <div className={S("browser__actions")}>
+          <StyledButton
+            icon={CreateIcon}
+            to="/new"
+          >
+            New Job(s)
+          </StyledButton>
+          <div className={S("browser__action", "browser__action--right")}>
+            <Select
+              value={model}
+              onChange={value => setModel(value)}
+              clearable
+              data={[
+                {label: "Filter by Model", value: ""},
+                ...Object.keys(aiTaggingStore.modelNames)
+                  .sort((a, b) => aiTaggingStore.modelNames[a] < aiTaggingStore.modelNames[b] ? -1 : 1)
+                  .map(key => ({
+                    label: aiTaggingStore.modelNames[key],
+                    value: key,
+                  }))
+              ]}
+            />
+            <Select
+              value={status}
+              onChange={value => setStatus(value)}
+              clearable
+              data={[
+                {label: "Filter by Status", value: ""},
+                {label: "Running", value: "running"},
+                {label: "Queued", value: "queued"},
+                {label: "Succeeded", value: "succeeded"},
+                {label: "Failed", value: "failed"},
+                {label: "Paused", value: "cancelled"},
+              ]}
+            />
+          </div>
+        </div>
+        <div className={S("browser-table-container")}>
+          {
+            loading ?
+              <div className={S("browser-table", "browser-table--loading")}>
+                <Loader/>
+              </div> :
+              <div className={S("browser-table", "browser-table--tagging")}>
+                <div className={S("browser-table__row", "browser-table__row--header")}>
+                  <div className={S("browser-table__cell", "browser-table__cell--header")}>
+                    Name
+                  </div>
+                  <div className={S("browser-table__cell", "browser-table__cell--header")}>
+                    Track
+                  </div>
+                  <div className={S("browser-table__cell", "browser-table__cell--header")}>
+                    Start Time
+                  </div>
+                  <div className={S("browser-table__cell", "browser-table__cell--header")}>
+                    Progress
+                  </div>
+                  <div className={S("browser-table__cell", "browser-table__cell--header")}>
+                    Status
+                  </div>
+                  <div className={S("browser-table__cell", "browser-table__cell--header")} />
+                </div>
+                {
+                  jobs.map(job =>
+                    <div key={`job-${job.job_id}`} className={S("browser-table__row")}>
+                      <div className={S("browser-table__cell")}>
+                        <div className={S("browser-table__row-title")}>
+                          <Tooltip
+                            position="top-start"
+                            label={
+                              <div className={S("tooltip")}>
+                                <div className={S("tooltip__item")}>
+                                  {job.objectName}
+                                </div>
+                              </div>
+                            }
+                            openDelay={500}
+                          >
+                            <div className={S("browser-table__row-title-main")}>
+                              <span className={S("ellipsis")}>
+                                {job.objectName || job.objectId}
+                              </span>
+                            </div>
+                          </Tooltip>
+                          <div className={S("browser-table__row-title-id")}>
+                            <CopyableField value={job.objectId} showOnHover>
+                              {job.objectId}
+                            </CopyableField>
+                          </div>
+                        </div>
+                      </div>
+                      <div className={S("browser-table__cell")}>
+                        {aiTaggingStore.modelNames[job.model]}
+                      </div>
+                      <div className={S("browser-table__cell")}>
+                        {new Date(job.created_at).toLocaleString()}
+                      </div>
+                      <div className={S("browser-table__cell", "browser-table__cell--progress")}>
+                        {
+                          ["succeeded", "failed", "cancelled"].includes(job?.status?.toLowerCase()) ? null :
+                            <>
+                              <Progress
+                                value={job?.progress || 50}
+                                max={100}
+                                transitionDuration={1000}
+                                w="100%"
+                              />
+                              <div className={S("percent")}>
+                                {(job?.progress || 0).toFixed(0)}%
+                              </div>
+                            </>
+                        }
+                      </div>
+                      <div className={S("browser-table__cell")}>
+                        {job?.status?.toLowerCase() === "cancelled" ? "Paused" : Capitalize(job?.status)}
+                      </div>
+                      <div className={S("browser-table__cell", "browser-table__cell--right")}>
+                        {
+                          ["succeeded", "cancelled", "failed"].includes(job?.status?.toLowerCase()) ? null :
+                            <IconButton
+                              small
+                              icon={PauseIcon}
+                              label="Pause Job"
+                              onClick={async () => await Confirm({
+                                title: "Pause Tagging Job",
+                                text: "Are you sure you want to pause this job?",
+                                onConfirm: async () => {
+                                  await aiTaggingStore.PauseTaggingJob({
+                                    objectId: job.objectId,
+                                    model: job.model
+                                  });
+                                }
+                              })
+                              }
+                            />
+                        }
+                        {
+                          !["cancelled", "failed"].includes(job?.status?.toLowerCase()) ? null :
+                            <IconButton
+                              small
+                              icon={PlayIcon}
+                              label="Restart Job"
+                              onClick={async () => await Confirm({
+                                title: "Restart Tagging Job",
+                                text: "Are you sure you want to restart this job?",
+                                onConfirm: async () => {
+                                  await aiTaggingStore.RestartTaggingJob({
+                                    objectId: job.objectId,
+                                    model: job.model,
+                                    options: job.params
+                                  });
+
+                                  setPage(1);
+                                  setReloadKey(reloadKey + 1);
+                                }
+                              })
+                              }
+                            />
+                        }
+                        <IconButton
+                          small
+                          icon={LinkIcon}
+                          label={`Open ${job.objectName || job.objectId}`}
+                          to={UrlJoin("~/", job.objectId, "tags")}
+                        />
+                      </div>
+                    </div>
+                  )
+                }
+              </div>
+          }
+        </div>
+        <PageControls
+          currentPage={page}
+          pages={Math.max(1, Math.ceil((jobList?.meta?.total || 0) / perPage))}
+          SetPage={setPage}
+        />
+      </div>
+    </div>
+  );
+});
+
 const BrowserRoutes = observer(() => {
   return (
     <Switch>
       <Route exact path="/my-library">
-        <BrowserPage Component={MyLibraryBrowser} />
+        <BrowserPage Component={MyLibraryBrowser}/>
       </Route>
       <Route exact path="/:libraryId?/:objectId?">
-        <BrowserPage Component={ContentBrowser} />
+        <BrowserPage Component={ContentBrowser}/>
       </Route>
     </Switch>
   );

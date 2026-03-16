@@ -2,7 +2,7 @@ import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
 
 import React, {useEffect, useRef, useState} from "react";
 import {observer} from "mobx-react-lite";
-import {editStore, groundTruthStore, rootStore, tagStore, trackStore, videoStore} from "@/stores";
+import {aiTaggingStore, editStore, groundTruthStore, rootStore, tagStore, trackStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
 import {
   Confirm,
@@ -32,6 +32,7 @@ import {
   LiveToVodButton,
   MyClipsButton
 } from "@/components/timeline/Controls.jsx";
+import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
@@ -47,6 +48,7 @@ import CheckmarkIcon from "@/assets/icons/check-circle.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
 import XIcon from "@/assets/icons/X.svg";
 import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
+import TaggingIcon from "@/assets/icons/tagging.svg";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -118,6 +120,23 @@ const TimelineTopBar = observer(({simple}) => {
               <div className={S("toolbar__separator")}/>
             </>
         }
+        {
+          /*
+            <IconButton
+              icon={TaggingIcon}
+              label="Start Tagging Jobs"
+              to="~/tagging/new/configure"
+              onClick={() => {
+                aiTaggingStore.AddSelectedContent({
+                  objectId: videoStore.videoObject?.objectId,
+                  name: videoStore.videoObject?.name
+                });
+              }}
+            />
+
+           */
+        }
+        <div className={S("toolbar__separator")}/>
         <div className={S("jump-to")}>
           <label>Jump to</label>
           <SMPTEInput
@@ -515,7 +534,7 @@ const TimelineThumbnailTrack = observer(() => {
   );
 });
 
-const TrackLabel = observer(({track}) => {
+const TrackLabel = observer(({track, taggingJob}) => {
   const toggleable = ["metadata", "clip"].includes(track.trackType);
   return (
     <div
@@ -574,6 +593,17 @@ const TrackLabel = observer(({track}) => {
           />
       }
       {
+        !taggingJob ||
+        !["queued", "running"].includes(taggingJob.status) ||
+        !taggingJob?.tag_details?.tagging_progress ? null :
+          <div className={S("timeline-row__progress")}>
+            <span>
+              {(FrameAccurateVideo.ParseRat(taggingJob.tag_details.tagging_progress) * 100).toFixed(0)}%
+            </span>
+            <div className={S("timeline-row__progress-indicator")} />
+          </div>
+      }
+      {
         track.trackType !== "primary-content" ? null :
           <IconButton
             withinPortal
@@ -587,6 +617,32 @@ const TrackLabel = observer(({track}) => {
 });
 
 const TagTimelineContent = observer(() => {
+  const [jobs, setJobs] = useState([]);
+
+  // Get tagging job status
+  useEffect(() => {
+    if(!videoStore.videoObject?.objectId) { return; }
+
+    let statusInterval;
+    const GetJobStatus = async () => {
+      const jobs = await aiTaggingStore.GetObjectJobStatus({
+        objectId: videoStore.videoObject?.objectId
+      });
+
+      setJobs(jobs);
+
+      if(!jobs.find(job => ["queued", "running"].includes(job.status))) {
+        clearInterval(statusInterval);
+      }
+    };
+
+    statusInterval = setInterval(GetJobStatus, 10001);
+
+    GetJobStatus();
+
+    return () => clearInterval(statusInterval);
+  }, [videoStore.videoObject?.objectId]);
+
   let tracks = [];
   if(trackStore.showTags) {
     tracks = trackStore.metadataTracks;
@@ -646,9 +702,12 @@ const TagTimelineContent = observer(() => {
             }
             className={S("timeline-row", track.trackId === tagStore.selectedTrackId ? "timeline-row--selected" : "")}
           >
-            <TrackLabel track={track} />
+            <TrackLabel
+              track={track}
+              taggingJob={jobs.find(job => job.model === aiTaggingStore.GetModelNameFromTrackKey(track.key))}
+            />
             <div className={S("timeline-row__content")}>
-              <Track track={track}/>
+              <Track track={track} />
             </div>
           </div>
         )

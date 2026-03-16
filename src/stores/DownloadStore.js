@@ -288,8 +288,9 @@ class DownloadStore {
     }
 
     if(clipInFrame > 0 || clipOutFrame <= store.totalFrames - 1) {
-      options.clipStart = store.FrameToTime(clipInFrame || 0);
-      options.clipEnd = store.FrameToTime(clipOutFrame || store.totalFrames - 1);
+      const offset = compositionKey && compositionKey !== "main" ? 0 : store.primaryContentClipPoints.clipInFrame || 0;
+      options.clipStart = store.FrameToTime((clipInFrame || 0) - offset);
+      options.clipEnd = store.FrameToTime((clipOutFrame || store.totalFrames - 1) - offset);
     }
 
     const url = new URL(

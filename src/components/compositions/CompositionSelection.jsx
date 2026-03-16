@@ -311,7 +311,7 @@ const CompositionCreationModal = observer(({type, defaultProfileType="", Cancel}
               <progress
                 value={parseInt(progress[0])}
                 max={parseInt(progress[1])}
-                className={S("composition-selection__progress")}
+                className={S("progress", "composition-selection__progress")}
               />
           }
         </div>

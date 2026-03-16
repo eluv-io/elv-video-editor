@@ -15,6 +15,7 @@ import AssetIcon from "@/assets/icons/v2/asset.svg";
 import CompositionIcon from "@/assets/icons/v2/composition.svg";
 import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
 import PinIcon from "@/assets/icons/v2/pin.svg";
+import TaggingIcon from "@/assets/icons/tagging.svg";
 
 const S = CreateModuleClassMatcher(NavStyles);
 
@@ -90,7 +91,18 @@ const Nav = observer(() => {
       icon: GroundTruthIcon,
       active: rootStore.page === "groundTruth",
       hasChanges: editStore.HasUnsavedChanges("groundTruth")
+    },
+    /*
+    {
+      label: "AI Runtime",
+      key: "tagging",
+      to: "/tagging",
+      icon: TaggingIcon,
+      active: rootStore.page === "tagging",
+      hasChanges: editStore.HasUnsavedChanges("tagging")
     }
+
+     */
   ]
     .filter(item => item);
 

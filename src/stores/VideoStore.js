@@ -87,6 +87,7 @@ class VideoStore {
   clipOutFrame;
 
   myClips = [];
+  myClipObjectIds = [];
 
   get scaleMagnitude() { return this.scaleMax - this.scaleMin; }
 
@@ -260,7 +261,7 @@ class VideoStore {
 
       this.videoObject = videoObject;
 
-      yield this.LoadMyClips();
+      yield this.LoadMyClips({objectId});
 
       this.name = videoObject.name;
       this.versionHash = videoObject.versionHash;
@@ -770,9 +771,35 @@ class VideoStore {
     this.loading = false;
   }
 
-  LoadMyClips = flow(function * () {
+  LoadMyClipObjects = flow(function * () {
     try {
-      const objectId = this.videoObject.objectId;
+      const data = (yield this.rootStore.client.walletClient.ProfileMetadata({
+        type: "app",
+        appId: "video-editor",
+        mode: "private",
+        key: `my-clips-object-ids${this.rootStore.localhost ? "-dev" : ""}`
+      }));
+
+
+      if(data) {
+        this.myClipObjectIds = JSON.parse(
+          this.rootStore.client.utils.FromB64(
+            data
+          )
+        );
+      }
+    } catch(error) {
+      console.error("Error loading my clip objects:");
+      console.error(error);
+
+      this.myClipObjectIds = [];
+    }
+  });
+
+  LoadMyClips = flow(function * ({objectId}) {
+    this.myClips = [];
+
+    try {
       const clips = yield this.rootStore.client.walletClient.ProfileMetadata({
         type: "app",
         appId: "video-editor",
@@ -797,8 +824,26 @@ class VideoStore {
     }
   });
 
-  async SaveMyClips() {
-    const objectId = this.videoObject.objectId;
+  FrameImageUrl({time, frame}) {
+    if(!this.baseImageUrl) { return; }
+
+    let imageUrl = this.baseImageUrl;
+    if(imageUrl) {
+      imageUrl = new URL(imageUrl);
+      imageUrl.searchParams.set(
+        "t",
+        (
+          typeof time !== "undefined" ? time :
+            this.FrameToTime(frame || 0)
+        ).toFixed(2)
+      );
+    }
+
+    return imageUrl;
+  }
+
+  async SaveMyClips({objectId}) {
+    if(!objectId) { return; }
 
     await this.rootStore.client.walletClient.SetProfileMetadata({
       type: "app",
@@ -807,6 +852,22 @@ class VideoStore {
       key: `my-clips-${objectId}${this.rootStore.localhost ? "-dev" : ""}`,
       value: this.rootStore.client.utils.B64(
         JSON.stringify(this.myClips)
+      )
+    });
+
+    this.myClipObjectIds = [
+      ...(this.myClipObjectIds || []),
+      objectId
+    ]
+      .filter((x, i, a) => a.indexOf(x) === i);
+
+    await this.rootStore.client.walletClient.SetProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: `my-clips-object-ids${this.rootStore.localhost ? "-dev" : ""}`,
+      value: this.rootStore.client.utils.B64(
+        JSON.stringify(this.myClipObjectIds)
       )
     });
   }
@@ -824,7 +885,7 @@ class VideoStore {
       clipOutFrame: clip.clipOutFrame || this.totalFrames - 1
     });
 
-    this.SaveMyClips();
+    this.SaveMyClips({objectId: clip.objectId});
 
     return this.myClips.slice(-1)[0];
   }
@@ -837,14 +898,18 @@ class VideoStore {
       this.myClips[index].clipInFrame = clip.clipInFrame || this.myClips[index].clipInFrame;
       this.myClips[index].clipOutFrame = clip.clipOutFrame || this.myClips[index].clipOutFrame;
 
-      this.SaveMyClips();
+      this.SaveMyClips({objectId: clip.objectId});
     }
   }
 
   RemoveMyClip(clipId) {
+    const clip = this.myClips.find(otherClip => otherClip.clipId == clipId);
+
+    if(!clip) { return; }
+
     this.myClips = this.myClips.filter(clip => clip.clipId !== clipId);
 
-    this.SaveMyClips();
+    this.SaveMyClips({objectId: clip.objectId});
   }
 
   ToggleTrack(label) {

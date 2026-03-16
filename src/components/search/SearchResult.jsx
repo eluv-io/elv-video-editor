@@ -15,6 +15,8 @@ import {Tabs} from "@mantine/core";
 import {AISearchBar} from "@/components/nav/Browser.jsx";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {GroupedSearchResults, SearchResults} from "@/components/search/SearchResults.jsx";
+import VideoStore from "@/stores/VideoStore.js";
+import {AddMyClipModal} from "@/components/timeline/Controls.jsx";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 import PlayIcon from "@/assets/icons/Play.svg";
@@ -29,6 +31,7 @@ import XIcon from "@/assets/icons/v2/x.svg";
 
 import AIImageGray from "@/assets/images/composition-manual.svg";
 import AIImageColor from "@/assets/images/composition-ai.svg";
+
 
 const S = CreateModuleClassMatcher(BrowserStyles, SearchStyles);
 
@@ -190,6 +193,24 @@ const ClipResultPanel = observer(({result}) => {
   const [showFull, setShowFull] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [showAddToMyClipsModal, setShowAddToMyClipsModal] = useState(false);
+  const [clipVideoStore, setClipVideoStore] = useState(null);
+
+  useEffect(() => {
+    setClipVideoStore(undefined);
+
+    const clipStore = new VideoStore(rootStore, {tags: false, thumbnails: true});
+
+    setTimeout(() => {
+      clipStore.SetVideo({objectId: result.objectId})
+        .then(() => setClipVideoStore(clipStore));
+    }, 1000);
+  }, [result.objectId]);
+
+  const existingClip = clipVideoStore?.myClips?.find(clip =>
+    clip.clipInFrame === clipVideoStore.TimeToFrame(result.startTime || 0) &&
+    clip.clipOutFrame === clipVideoStore.TimeToFrame(result.endTime || clipVideoStore.duration)
+  );
 
   return (
     <>
@@ -231,13 +252,24 @@ const ClipResultPanel = observer(({result}) => {
             }
           </div>
           <div className={S("result__actions--right")}>
+            {
+              existingClip || !clipVideoStore ? null :
+                <StyledButton
+                  small
+                  variant="subtle"
+                  icon={ClipIcon}
+                  onClick={() => setShowAddToMyClipsModal(true)}
+                >
+                  Save to My Clips
+                </StyledButton>
+            }
             <StyledButton
               small
               variant="subtle"
               icon={PinIcon}
               to={UrlJoin("~/", result.objectId, "tags", `?st=${result.startTime}&et=${result.endTime}&isolate=`)}
             >
-              Open in Tag Editor
+              Open
             </StyledButton>
             <StyledButton
               small
@@ -273,6 +305,21 @@ const ClipResultPanel = observer(({result}) => {
             alwaysOpened
             store={rootStore.searchVideoStore}
             onClose={() => setShowDownloadModal(false)}
+          />
+      }
+      {
+        !showAddToMyClipsModal || !clipVideoStore?.initialized ? null :
+          <AddMyClipModal
+            thumbnailImageUrl={result.imageUrl}
+            initialName={aiStore.searchResults.query}
+            store={clipVideoStore}
+            libraryId={clipVideoStore.videoObject.libraryId}
+            objectId={clipVideoStore.videoObject.objectId}
+            versionHash={clipVideoStore.videoObject.versionHash}
+            offeringKey={clipVideoStore.offeringKey}
+            clipInFrame={clipVideoStore.TimeToFrame(result.startTime || 0)}
+            clipOutFrame={clipVideoStore.TimeToFrame(result.endTime || clipVideoStore.duration)}
+            Close={() => setShowAddToMyClipsModal(false)}
           />
       }
     </>

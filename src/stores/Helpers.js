@@ -122,35 +122,36 @@ export const LoadVideo = async ({
         });
 
       let offeringKey;
-      for(let offering of offeringKeys) {
-        try {
-          videoObject.availableOfferings[offering].playoutMethods = await rootStore.client.PlayoutOptions({
-            versionHash,
-            handler: channel ? "channel" : "playout",
-            drms: browserSupportedDrms,
-            hlsjsProfile: false,
-            offering
-          });
+      await Promise.all(
+        offeringKeys.map(async offering => {
+          try {
+            videoObject.availableOfferings[offering].playoutMethods = await rootStore.client.PlayoutOptions({
+              versionHash,
+              handler: channel ? "channel" : "playout",
+              drms: browserSupportedDrms,
+              hlsjsProfile: false,
+              offering
+            });
 
-          const hlsPlayoutMethods = videoObject.availableOfferings[offering].playoutMethods.hls?.playoutMethods || {};
+            const hlsPlayoutMethods = videoObject.availableOfferings[offering].playoutMethods.hls?.playoutMethods || {};
 
-          if(!(hlsPlayoutMethods["aes-128"] || hlsPlayoutMethods["clear"])) {
-            videoObject.availableOfferings[offering].disabled = true;
-          } else {
-            if(
-              !offeringKey ||
-              offering === preferredOfferingKey ||
-              (offering.includes("default") && !offeringKey?.includes("default"))
-            ) {
-              offeringKey = offering;
+            if(!(hlsPlayoutMethods["aes-128"] || hlsPlayoutMethods["clear"])) {
+              videoObject.availableOfferings[offering].disabled = true;
+            } else {
+              if(
+                !offeringKey ||
+                offering === preferredOfferingKey ||
+                (offering.includes("default") && !offeringKey?.includes("default"))
+              ) {
+                offeringKey = offering;
+              }
             }
+          } catch(error) {
+            // eslint-disable-next-line no-console
+            console.warn(`Unable to load offering details for ${offering}`);
           }
-        } catch(error) {
-          // eslint-disable-next-line no-console
-          console.warn(`Unable to load offering details for ${offering}`);
-        }
-      }
-
+        })
+      );
 
       const hasHlsOfferings = Object.values(videoObject.availableOfferings).some(offering => !offering.disabled);
 

@@ -1,6 +1,6 @@
 import {flow, makeAutoObservable} from "mobx";
 import VideoStore from "@/stores/VideoStore.js";
-import {Unproxy} from "@/utils/Utils.js";
+import {HashString, Unproxy} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 import {ExtractHashFromLink} from "@/stores/Helpers.js";
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
@@ -28,6 +28,7 @@ class CompositionStore {
 
   clips = {};
   clipIdList = [];
+  originalClipIdList = [];
   selectedClipId;
   selectedClipSource;
   originalSelectedClipId;
@@ -50,6 +51,8 @@ class CompositionStore {
 
   saved = false;
 
+  searchSettings = {};
+
   _authTokens = {};
 
   _actionStack = [];
@@ -64,6 +67,7 @@ class CompositionStore {
     makeAutoObservable(this);
 
     this.rootStore = rootStore;
+    this.searchSettings = this.rootStore.aiStore.DEFAULT_SEARCH_SETTINGS;
 
     this.Reset();
   }
@@ -79,6 +83,7 @@ class CompositionStore {
     this.clips = {};
     this.secondarySourceIds = [];
     this.clipIdList = [];
+    this.originalClipIdList = [];
     this.aiClipIds = [];
     this.allMyClipIds = {};
     this.searchClipIds = {};
@@ -95,6 +100,7 @@ class CompositionStore {
     this.draggingClip = undefined;
     this.clipStores = {};
     this.saved = false;
+    this.searchSettings = this.rootStore.aiStore.DEFAULT_SEARCH_SETTINGS;
 
     this.rootStore.ClearResource({key: "composition-video-store"});
 
@@ -182,6 +188,12 @@ class CompositionStore {
     return this.sources[this.selectedSourceId];
   }
 
+  get originalClips() {
+    return this.originalClipIdList
+      .map(clipId => this.clips[clipId])
+      .filter(clip => clip);
+  }
+
   get myClipIds() {
     if(this.rootStore.page === "compositions") {
       return this.allMyClipIds[this.selectedSourceId || this.compositionObject?.objectId] || [];
@@ -231,6 +243,22 @@ class CompositionStore {
 
   get sourceVideoStore() {
     return this.ClipStore({clipId: this.sourceFullClipId});
+  }
+
+  get customSearchSettingsActive() {
+    return (
+      HashString(JSON.stringify({...this.searchSettings, key: 0})) !==
+      HashString(JSON.stringify({...this.rootStore?.aiStore?.DEFAULT_SEARCH_SETTINGS, key: 0}))
+    );
+  }
+
+  SetSearchSettings(options) {
+    delete options.key;
+
+    this.searchSettings = {
+      ...options,
+      key: HashString(JSON.stringify(options))
+    };
   }
 
   SetCompositionName(name) {
@@ -1107,6 +1135,7 @@ class CompositionStore {
 
     // Determine secondary sources from explicit list in metadata and by looking at all item links
     let secondarySources = metadata.sources || [];
+    let originalClipsList = {};
     let updatedClipList = {};
     this.clipIdList = yield Promise.all(
       (metadata?.items || []).map(async item => {
@@ -1136,6 +1165,12 @@ class CompositionStore {
           //audioRepresentation: store.audioRepresentation,
         };
 
+        const originalClipId = this.rootStore.NextId();
+        originalClipsList[originalClipId] = {
+          ...updatedClipList[clipId],
+          clipId: originalClipId
+        };
+
         if(clipObjectId !== objectId && !secondarySources.includes(clipObjectId)) {
           secondarySources.push(clipObjectId);
         }
@@ -1143,6 +1178,8 @@ class CompositionStore {
         return clipId;
       })
     );
+
+    this.originalClipIdList = Object.values(originalClipsList).map(clip => clip.clipId);
 
     // Initialize secondary sources
     yield Promise.all(
@@ -1156,7 +1193,8 @@ class CompositionStore {
 
     this.clips = {
       ...this.clips,
-      ...updatedClipList
+      ...updatedClipList,
+      ...originalClipsList
     };
 
     this.videoStore.name = this.compositionObject.name;
@@ -1244,6 +1282,7 @@ class CompositionStore {
       clipIds: sourceClipIds
     };
 
+    /*
     this.LoadHighlights({
       store,
       objectId,
@@ -1251,6 +1290,8 @@ class CompositionStore {
       maxDuration: primary ? this.compositionObject.initialPromptDuration : undefined,
       profile: primary ? this.compositionObject.initialProfile : "",
     });
+
+     */
 
     yield this.LoadMyClips({objectId});
 
@@ -1528,7 +1569,7 @@ class CompositionStore {
 
     if(!store) { return; }
 
-    yield store.LoadMyClips();
+    yield store.LoadMyClips({objectId});
 
     this.allMyClipIds[objectId] = yield Promise.all(
       store.myClips.map(async clip => {
@@ -1597,7 +1638,8 @@ class CompositionStore {
       !index ||
       (
         searchClipInfo.indexId === index.id &&
-        searchClipInfo.query === query
+        searchClipInfo.query === query &&
+        searchClipInfo.searchSettingsKey === this.searchSettings.key
       )
     ) { return; }
 
@@ -1611,11 +1653,16 @@ class CompositionStore {
       channelAuth: true,
       queryParams: {
         terms: query,
-        search_fields: Object.keys(index.fields || {}).join(","),
+        search_fields:
+          this.searchSettings.fields.length > 0 ?
+            this.searchSettings.fields.join(",") :
+            Object.keys(index.fields).join(","),
         clips: true,
         clips_include_source_tags: true,
+        get_chunks: true,
         debug: true,
         max_total: 100,
+        min_score: this.searchSettings.confidenceMin / 100,
         start: 0,
         limit: 100,
         filters: `id:${objectId}`
@@ -1639,6 +1686,42 @@ class CompositionStore {
         imageUrl.searchParams.set("t", (clip.start_time / 1000).toFixed(2));
       }
 
+      let startTime, endTime, subtitle, chunkStartTime;
+      startTime = (clip.start_time || 0) / 1000;
+      endTime = clip.end_time ? clip.end_time / 1000 : undefined;
+
+      chunkStartTime = clip.sources?.[0]?.chunks?.[0]?.start_time;
+
+      if(startTime || endTime) {
+        subtitle = FrameAccurateVideo.TimeToString({
+          time: startTime,
+          format: "smpte",
+          includeFractionalSeconds: true
+        });
+
+        if(endTime) {
+          subtitle += " - " + FrameAccurateVideo.TimeToString({
+            time: endTime,
+            format: "smpte",
+            includeFractionalSeconds: true
+          });
+          subtitle = `${subtitle} (${FrameAccurateVideo.TimeToString({time: endTime - startTime})})`;
+        }
+
+        imageUrl.searchParams.set("t", startTime.toFixed(2));
+      }
+
+      if(chunkStartTime) {
+        chunkStartTime = chunkStartTime / 1000;
+        imageUrl.searchParams.set("t", chunkStartTime.toFixed(2));
+      }
+
+      let score = clip.score;
+      // Score is provided as an array of scores
+      if(!score) {
+        score = Math.max(...(clip?.sources?.map(source => source.score) || []));
+      }
+
       this.clips[clipId] = {
         clipId,
         name: clip.reason,
@@ -1648,6 +1731,9 @@ class CompositionStore {
         offering: this.sourceFullClip?.offering || "default",
         clipInFrame,
         clipOutFrame,
+        firstChunkStartTime: chunkStartTime,
+        thumbnailFrame: chunkStartTime ? this.clipStores[storeKey]?.TimeToFrame(chunkStartTime) : undefined,
+        score: score ? (score * 100).toFixed(1) : "",
         imageUrl,
         storeKey,
         clipKey: `${objectId}-default-${clipInFrame}-${clipOutFrame}`
@@ -1666,6 +1752,7 @@ class CompositionStore {
     this.searchClipIds[objectId] = searchClipIds;
     this.searchClipInfo[objectId] = {
       query,
+      searchSettingsKey: this.searchSettings.key,
       indexId: this.rootStore.aiStore.selectedSearchIndexId
     };
   });

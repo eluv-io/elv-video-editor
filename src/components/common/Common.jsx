@@ -200,7 +200,7 @@ export const Linkish = forwardRef(function Linkish({
     } else if(to) {
       element = <Link href={to} onClick={onClick} ref={ref} {...props} />;
     }
-  } else if(onClick || props.type === "submit") {
+  } else if(disabled || onClick || props.type === "submit") {
     if(divButton) {
       element = <div role="button" tabIndex={0} aria-disabled={disabled} onClick={!disabled ? onClick : undefined} ref={ref} {...props} />;
     } else {

@@ -1,4 +1,4 @@
-import {configure, makeAutoObservable, flow} from "mobx";
+import {configure, makeAutoObservable, flow, runInAction} from "mobx";
 import Id from "@/utils/Id.js";
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
 import {v4 as UUID, parse as UUIDParse} from "uuid";
@@ -15,6 +15,7 @@ import FileBrowserStore from "./FileBrowserStore.js";
 import CompositionStore from "@/stores/CompositionStore.js";
 import DownloadStore from "@/stores/DownloadStore.js";
 import AIStore from "@/stores/AIStore.js";
+import AITaggingStore from "@/stores/AITaggingStore.js";
 import GroundTruthStore from "@/stores/GroundTruthStore.js";
 
 
@@ -52,7 +53,7 @@ class RootStore {
 
   libraryIds = {};
   versionHashes = {};
-
+  objectNames = {};
   authTokens = {};
 
   selectedObjectId;
@@ -65,6 +66,7 @@ class RootStore {
     makeAutoObservable(this);
 
     this.aiStore = new AIStore(this);
+    this.aiTaggingStore = new AITaggingStore(this);
     this.assetStore = new AssetStore(this);
     this.browserStore = new BrowserStore(this);
     this.compositionStore = new CompositionStore(this);
@@ -79,7 +81,8 @@ class RootStore {
     this.videoStore = new VideoStore(this);
     this.searchVideoStore = new VideoStore(this, {tags: false, thumbnails: false});
 
-    this.InitializeClient();
+    this.InitializeClient()
+      .then(() => this.videoStore.LoadMyClipObjects());
 
     if(this.logTiming) {
       sessionStorage.setItem("log-timing", "true");
@@ -313,6 +316,36 @@ class RootStore {
     }
   });
 
+  GetObjectName = flow(function * ({objectId}) {
+    return yield this.LoadResource({
+      key: "object-name",
+      id: objectId,
+      bind: this,
+      Load: async () => {
+        const metadata = await this.client.ContentObjectMetadata({
+          versionHash: await this.client.LatestVersionHash({objectId}),
+          metadataSubtree: "public",
+          select: [
+            "name",
+            "asset_metadata/title",
+            "asset_metadata/display_title"
+          ]
+        });
+
+        runInAction(() =>
+          this.objectNames[objectId] = (
+            metadata?.asset_metadata?.display_title ||
+            metadata?.asset_metadata?.title ||
+            metadata?.name ||
+            objectId
+          )
+        );
+
+        return this.objectNames[objectId];
+      }
+    });
+  });
+
   // Ensure the specified load method is called only once unless forced
   LoadResource = flow(function * ({key, id, force=false, ttl, Load, bind}) {
     if(force || (ttl && this._resources[key]?.[id] && Date.now() - this._resources[key][id].retrievedAt > ttl * 1000)) {
@@ -369,6 +402,7 @@ const root = new RootStore();
 export const rootStore = root;
 
 export const aiStore = rootStore.aiStore;
+export const aiTaggingStore = rootStore.aiTaggingStore;
 export const assetStore = rootStore.assetStore;
 export const browserStore = rootStore.browserStore;
 export const compositionStore = rootStore.compositionStore;

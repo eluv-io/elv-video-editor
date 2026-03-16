@@ -103,7 +103,7 @@ class FrameAccurateVideo {
       string += `:${seconds.floor().valueOf().toString().padStart(2, "0")}`;
 
       if(includeFractionalSeconds && seconds.floor().valueOf() !== seconds.valueOf()) {
-        string += `.${parseFloat(seconds.valueOf().toFixed(4).toString().split(".")[1])}`;
+        string += `.${parseFloat(seconds.valueOf().toFixed(3).toString().split(".")[1])}`;
       }
 
       return string;
@@ -119,7 +119,7 @@ class FrameAccurateVideo {
 
     if(!string || seconds > 0) {
       if(includeFractionalSeconds) {
-        string += `${parseFloat(seconds.valueOf().toFixed(4))}s`;
+        string += `${parseFloat(seconds.valueOf().toFixed(3))}s`;
       } else {
         string += `${seconds.floor().valueOf()}s`;
       }

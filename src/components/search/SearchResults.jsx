@@ -55,7 +55,7 @@ export const GroupedSearchResults = observer(({
       key={`scroll-${showList}-${aiStore.searchIndex?.versionHash}-${queryB58}`}
       scrollPreservationKey={scrollPreservationKey ? `search-${aiStore.searchIndex?.versionHash}-${queryB58}-${scrollPreservationKey}` : undefined}
       withLoader
-      watchList={[query, aiStore.selectedSearchIndexId, aiStore.filterLowQualitySearchResults]}
+      watchList={[query, aiStore.searchSettings.key]}
       batchSize={
         resultIndex ? Math.max(resultIndex + 10, batchSize) :
           batchSize
@@ -78,7 +78,7 @@ export const GroupedSearchResults = observer(({
                     onRender={
                       resultIndex !== result.resultIndex ? undefined :
                         element => setTimeout(() =>
-                          element.parentElement.scrollTo({
+                          element?.parentElement?.scrollTo({
                             top: element.getBoundingClientRect().top - 200
                           })
                         , 100)
@@ -120,10 +120,10 @@ export const SearchResults = observer(({showList, scrollPreservationKey, classNa
 
   return (
     <InfiniteScroll
-      key={`scroll-${showList}-${aiStore.searchIndex?.versionHash}-${queryB58}`}
+      key={`scroll-${showList}-${aiStore.searchResults?.key}`}
       scrollPreservationKey={scrollPreservationKey ? `search-${aiStore.searchIndex?.versionHash}-${queryB58}-${scrollPreservationKey}` : undefined}
       withLoader
-      watchList={[query, aiStore.selectedSearchIndexId, aiStore.filterLowQualitySearchResults]}
+      watchList={[query, aiStore.searchSettings.key]}
       batchSize={
         resultIndex ? Math.max(resultIndex + 10, batchSize) :
           batchSize
@@ -139,7 +139,7 @@ export const SearchResults = observer(({showList, scrollPreservationKey, classNa
             onRender={
               resultIndex !== index ? undefined :
                 element => setTimeout(() =>
-                  element.parentElement.scrollTo({
+                  element?.parentElement?.scrollTo({
                     top: element.getBoundingClientRect().top - 200
                   })
                 , 100)
@@ -172,10 +172,10 @@ const SearchResultsPage = observer(() => {
   const query = aiStore.client.utils.FromB58ToStr(queryB58);
 
   useEffect(() => {
-    if(aiStore.searchResults.key !== `${aiStore.searchIndex?.versionHash}-${queryB58}-${aiStore.filterLowQualitySearchResults}`) {
+    if(aiStore.searchResults.key !== aiStore.searchSettings.key) {
       aiStore.ClearSearchResults();
     }
-  }, [queryB58, aiStore.searchIndex?.versionHash]);
+  }, [queryB58, aiStore.searchSettings.key]);
 
   useEffect(() => {
     showList ?
@@ -203,24 +203,26 @@ const SearchResultsPage = observer(() => {
           </span>
           <div className={S("browser__action--right")}>
             <button
-              key={aiStore.filterLowQualitySearchResults}
+              key={aiStore.searchSettings.confidenceMin}
               className={S("browser__toggle-button")}
-              onClick={() => {
-                aiStore.SetSearchQualityFilter(!aiStore.filterLowQualitySearchResults);
-                aiStore.ClearSearchResults();
-              }}
+              onClick={() =>
+                aiStore.SetSearchSettings({
+                  ...aiStore.searchSettings,
+                  confidenceMin: aiStore.searchSettings.confidenceMin >= 55 ? 0 : 55
+                })
+              }
             >
               {
-                aiStore.filterLowQualitySearchResults ?
+                aiStore.searchSettings.confidenceMin >= 55 ?
                   "Show All Results" :
                   "Show Only High Score Results"
               }
             </button>
+            <CardDisplaySwitch
+              showList={showList}
+              setShowList={setShowList}
+            />
           </div>
-          <CardDisplaySwitch
-            showList={showList}
-            setShowList={setShowList}
-          />
         </h1>
         <div className={S("list-page", "list-page--search")}>
           {

@@ -156,7 +156,7 @@
 
 .styled-button {
   align-items: center;
-  animation: var(--animation-fadein) 0.25s ease;
+  animation: var(--animation-fadein) 0.1s ease;
   border-radius: 5px;
   display: flex;
   font-weight: 600;
@@ -221,6 +221,7 @@
   &--small {
     font-size: 12px;
     height: 30px;
+    min-width: unset;
     padding-inline: 15px;
   }
 
@@ -671,18 +672,27 @@
     z-index: 2;
   }
 
+  &__score,
   &__duration {
+    background: var(--background-toolbar--active);
     background-color: rgb(0 0 0 / 70%);
     border-radius: 5px;
-    bottom: 10px;
+    bottom: 5px;
     color: var(--text-secondary);
     font-size: 11px;
     font-weight: 500;
-    padding: 3px 8px;
+    padding: 1px 8px;
     pointer-events: none;
     position: absolute;
-    right: 10px;
     z-index: 1;
+  }
+
+  &__score {
+    left: 5px;
+  }
+
+  &__duration {
+    right: 5px;
   }
 }
 

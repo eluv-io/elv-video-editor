@@ -11,19 +11,23 @@ const PreviewThumbnail = observer(({
   store,
   startFrame,
   endFrame,
+  defaultFrame,
   useLoaderImage,
   baseImageUrl,
   showDuration=true,
+  score,
   maxThumbnails=20,
   loadingClassName,
   ...props
 }) => {
   const [ref, setRef] = useState(null);
   const [thumbnails, setThumbnails] = useState(null);
+  const [defaultThumbnail, setDefaultThumbnail] = useState(null);
   const [brokenImages, setBrokenImages] = useState({});
 
   const [clientX, setClientX] = useState(-1);
   const [hoverInfo, setHoverInfo] = useState({
+    hovering: false,
     thumbnailIndex: 0,
     previousThumbnailIndex: 0,
     progress: 0
@@ -33,24 +37,49 @@ const PreviewThumbnail = observer(({
   endFrame = endFrame || store.totalFrames - 1;
 
   useEffect(() => {
+    const totalFrames = endFrame - startFrame;
+
     if(!store || !store?.thumbnailStore.thumbnailStatus.available) {
+      setDefaultThumbnail(store.FrameImageUrl({
+        frame: defaultFrame ? defaultFrame : startFrame + totalFrames / 2
+      }));
+      setThumbnails([]);
+
       return;
     }
 
-    setThumbnails(
-      store.thumbnailStore.ThumbnailImages(
-        store.FrameToTime(startFrame),
-        store.FrameToTime(endFrame),
-        maxThumbnails
-      )
+    const thumbnails = store.thumbnailStore.ThumbnailImages(
+      store.FrameToTime(startFrame),
+      store.FrameToTime(endFrame),
+      maxThumbnails
     );
+
+    setThumbnails(thumbnails);
+
+    if(defaultFrame) {
+      setDefaultThumbnail(
+        store.thumbnailStore.ThumbnailImages(
+          store.FrameToTime(defaultFrame - totalFrames * 0.1),
+          store.FrameToTime(defaultFrame + totalFrames * 0.1),
+          1
+        )[0]
+      );
+    } else {
+      setDefaultThumbnail(
+        (thumbnails && thumbnails[Math.max(0, Math.floor(thumbnails.length / 2) - 1)]) ||
+        store.FrameImageUrl({
+          frame: startFrame + totalFrames / 2
+        })
+      );
+    }
   }, [store?.thumbnailStore.thumbnailStatus.available]);
 
   useEffect(() => {
-    if(!ref) { return; }
+    if(!ref || (thumbnails || []).length < 2) { return; }
 
     if(clientX < 0) {
       setHoverInfo({
+        hovering: false,
         thumbnailIndex: 0,
         previousThumbnailIndex: hoverInfo.previousThumbnailIndex,
         progress: 0
@@ -64,6 +93,7 @@ const PreviewThumbnail = observer(({
     const thumbnailIndex = Math.floor(thumbnails.length * progress);
 
     setHoverInfo({
+      hovering: true,
       thumbnailIndex,
       previousThumbnailIndex: hoverInfo.thumbnailIndex,
       progress
@@ -89,7 +119,9 @@ const PreviewThumbnail = observer(({
       />;
   }
 
-  const imageUrl = thumbnails[hoverInfo.thumbnailIndex];
+  const imageUrl = hoverInfo.hovering && thumbnails[hoverInfo.thumbnailIndex] ?
+    thumbnails[hoverInfo.thumbnailIndex] :
+    defaultThumbnail;
 
   return (
     <div
@@ -116,6 +148,7 @@ const PreviewThumbnail = observer(({
             style={{aspectRatio: store.aspectRatio}}
             key={`thumbnail-${hoverInfo.thumbnailIndex}`}
             src={imageUrl}
+            loading="lazy"
             onError={() => setBrokenImages({...brokenImages, [imageUrl]: true})}
             className={S("preview-thumbnail__image", "preview-thumbnail__image--current")}
           />
@@ -126,6 +159,12 @@ const PreviewThumbnail = observer(({
             style={{width: `${hoverInfo.progress * 100}%`}}
             className={S("preview-thumbnail__progress")}
           />
+      }
+      {
+        !score ? null :
+          <div className={S("preview-thumbnail__score")}>
+            { score }
+          </div>
       }
       {
         !showDuration ? null :
