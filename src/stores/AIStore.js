@@ -857,6 +857,7 @@ class AIStore {
         const time = (result?.match_info?.frame_idx || 0) / frameRate;
         const imageUrl = new URL(baseUrl);
         imageUrl.searchParams.set("t", time);
+        imageUrl.searchParams.set("exact", "true");
         imageUrl.pathname = UrlJoin("/q", versionHash, "rep", "frame_extract", result?.match_info?.offering || "default", "video");
 
         return {
