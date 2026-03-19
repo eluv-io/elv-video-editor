@@ -74,6 +74,12 @@
     }
   }
 
+  &__tooltip-image {
+    height: auto;
+    max-width: 500px;
+    object-fit: contain;
+  }
+
   &__image-badge {
     align-items: center;
     bottom: 15px;

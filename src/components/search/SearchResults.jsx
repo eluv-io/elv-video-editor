@@ -173,6 +173,7 @@ export const SearchResults = observer(({showList, scrollPreservationKey, classNa
                   {showList ? "" : "Score: "}{result.score}
                 </div>
             }
+            showImageTooltip={result.type === "frame"}
             contain
             className={S("search-result", index === resultIndex ? "search-result--selected" : "")}
           />
