@@ -199,7 +199,7 @@ const ClipResultPanel = observer(({result}) => {
   useEffect(() => {
     setClipVideoStore(undefined);
 
-    const clipStore = new VideoStore(rootStore, {tags: false, thumbnails: true});
+    const clipStore = new VideoStore(rootStore, {tags: false, thumbnails: true, id: `clip-${result.objectId}`});
 
     setTimeout(() => {
       clipStore.SetVideo({objectId: result.objectId})

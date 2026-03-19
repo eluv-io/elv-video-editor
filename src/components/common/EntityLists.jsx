@@ -79,7 +79,7 @@ export const EntityListItem = observer(({
     disabled={!image}
     label={
       <LoaderImage
-        width={250}
+        width={600}
         src={image}
         loaderDelay={25}
         loaderAspectRatio={aspectRatio === "landscape" ? 16/9 : 1}
@@ -109,7 +109,7 @@ export const EntityListItem = observer(({
               <Icon icon={ImageIcon}/>
             </div> :
             <LoaderImage
-              width={100}
+              width={200}
               src={image}
               loaderDelay={25}
               loaderAspectRatio={aspectRatio === "landscape" ? 16/9 : 1}
@@ -184,11 +184,11 @@ export const EntityCard = observer(({
         disabled={!image || !showImageTooltip}
         label={
           <LoaderImage
-            width={500}
+            width={600}
             src={image}
             loaderDelay={25}
             loaderAspectRatio={aspectRatio === "landscape" ? 16/9 : 1}
-            className={S("entity-card__tooltip-image")}
+            className={S("entity-card__image--hover")}
           />
         }
         classNames={{

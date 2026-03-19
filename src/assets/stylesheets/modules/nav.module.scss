@@ -11,7 +11,7 @@
 
   &__button {
     border-radius: 3px;
-    color: var(--text-primary);
+    color: var(--text-primary)!important;
     height: 50px;
     min-height: 50px;
     min-width: 50px;
@@ -38,7 +38,6 @@
     font-weight: 500;
     gap: 5px;
   }
-
 
   &__label-note {
     font-size: 11px;

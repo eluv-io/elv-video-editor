@@ -3,11 +3,15 @@ import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
-import {IconButton, Input, SelectInput} from "@/components/common/Common";
+import {IconButton, Input, SelectInput, StyledButton} from "@/components/common/Common";
 import Fraction from "fraction.js";
 import SVG from "react-inlinesvg";
 import {FrameRates} from "@/utils/FrameAccurateVideo";
-import {Tooltip} from "@mantine/core";
+import {Button, Portal, Tooltip} from "@mantine/core";
+import {tagStore} from "@/stores/index.js";
+import {useLocation} from "wouter";
+import UrlJoin from "url-join";
+import {Utils} from "@eluvio/elv-client-js";
 
 const S = CreateModuleClassMatcher(VideoStyles);
 
@@ -24,6 +28,8 @@ import FrameBack1 from "@/assets/icons/v2/frame-back-1.svg";
 import FrameForward1 from "@/assets/icons/v2/frame-forward-1.svg";
 import FrameForward10 from "@/assets/icons/v2/frame-forward-10.svg";
 import PlayClipIcon from "@/assets/icons/v2/play-clip.svg";
+import ImageSearchIcon from "@/assets/icons/image-search.svg";
+
 
 export const SubtitleControls = observer(({store}) => {
   const tracks = store.subtitleTracks.map(track => ({
@@ -191,6 +197,92 @@ export const DownloadFrameButton = observer(({store}) => {
       onClick={() => store.SaveFrame()}
       className={S("video-controls__button")}
     />
+  );
+});
+
+export const SearchFrameButton = observer(({store}) => {
+  return (
+    <StyledButton
+      icon={ImageSearchIcon}
+      color="--text-primary"
+      variant="secondary"
+      small
+      onClick={() => tagStore.SetEditing({
+        id: `search-frame-${store.frame}`,
+        frame: store.frame,
+        type: "searchFrame"
+      })}
+      className={S("video-controls__search-frame-button")}
+    >
+      Frame Search
+    </StyledButton>
+  );
+});
+
+let frameUpdateTimeout;
+export const SearchFrameMenu = observer(({store, element}) => {
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if(!tagStore.editedSearchFrame) { return; }
+
+    const info = {...tagStore.editedSearchFrame};
+
+    clearTimeout(frameUpdateTimeout);
+
+    frameUpdateTimeout = setTimeout(async () => {
+      const blob = await store.GetFrame({bounds: tagStore.editedSearchFrame.box, maxWidth: 500, maxHeight: 500});
+
+      tagStore.UpdateEditedSearchFrame({
+        ...info,
+        image: blob
+      });
+    }, 100);
+  }, [tagStore.editedSearchFrame?.box, tagStore.editedSearchFrame?.frame]);
+
+  if(!element) { return null; }
+
+  const box = element.getBoundingClientRect();
+
+
+  return (
+    <Portal>
+      <div
+        style={{
+          left: box.left + (box.width / 2) - 250,
+          top: box.top + box.height + 30,
+        }}
+        className={S("search-frame-menu")}
+      >
+        <div className={S("search-frame-menu__title")}>
+          Frame Search
+        </div>
+        <div className={S("search-frame-menu__text")}>
+          Resize the bounding box to select search image
+        </div>
+        <div className={S("search-frame-menu__actions")}>
+          <Button
+            variant="outline"
+            color="gray.5"
+            onClick={() => tagStore.ClearEditing(false)}
+            className={S("search-frame-menu__action")}
+          >
+            Cancel
+          </Button>
+          <Button
+            color="gray.5"
+            autoContrast
+            onClick={() => {
+              tagStore.ClearEditing(true);
+              navigate(UrlJoin("~/search", Utils.B58("frame-image:")));
+            }}
+            className={S("search-frame-menu__action")}
+          >
+            Search
+          </Button>
+        </div>
+      </div>
+    </Portal>
   );
 });
 

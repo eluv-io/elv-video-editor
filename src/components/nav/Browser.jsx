@@ -461,10 +461,10 @@ const ModeSelectionMenu = observer(({mode, setMode, className=""}) => {
   );
 });
 
-export const AISearchBar = observer(({basePath="~/search", initialQuery="", initialMode="clip"}) => {
+export const AISearchBar = observer(({basePath="~/search", initialQuery="", initialMode}) => {
   const lastMode = localStorage.getItem(`search-mode-${rootStore.tenantContractId}`);
   const [input, setInput] = useState(initialQuery);
-  const [mode, setMode] = useState(initialMode || lastMode || "clip");
+  const [mode, setMode] = useState(lastMode || "clip");
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [,navigate] = useLocation();
 
@@ -474,7 +474,10 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
       return;
     }
 
-    if(!input && mode !== "clip") { return; }
+    if(!input && mode !== "clip") {
+      navigate(UrlJoin(basePath));
+      return;
+    }
 
     if(["ilib", "iq__", "hq__", "0x"].find(prefix => input.trim().startsWith(prefix))) {
       const item = await browserStore.LookupContent(input);
@@ -515,8 +518,12 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
                 }
 
                 setMode(mode);
-                aiStore.ClearSearchResults();
-                Submit(mode);
+
+                if(mode === "frame-image" || input) {
+                  // Only submit we have text input or if we are doing search from image
+                  aiStore.ClearSearchResults();
+                  Submit(mode);
+                }
               }}
               className={S("search-input-container__menu-button")}
             />

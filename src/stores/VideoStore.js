@@ -138,7 +138,7 @@ class VideoStore {
     }
   }
 
-  constructor(rootStore, options={clipKey: "", tags: true, thumbnails: true, channel: false}) {
+  constructor(rootStore, options={clipKey: "", tags: true, thumbnails: true, channel: false, id: "default"}) {
     makeAutoObservable(
       this,
       {
@@ -147,6 +147,7 @@ class VideoStore {
       }
     );
 
+    this.id = options.id || "default";
     this.rootStore = rootStore;
     this.thumbnailStore = new ThumbnailStore(this);
     this.tags = typeof options.tags !== "undefined" ? options.tags : true;

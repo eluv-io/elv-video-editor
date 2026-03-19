@@ -624,7 +624,7 @@ class AIStore {
         const mode = parsedQuery.mode;
         query = parsedQuery.query;
 
-        const resultsKey = `${this.searchSettings.key}-${query}-${mode}`;
+        const resultsKey = `${this.searchSettings.key}-${query}-${mode}-${this.searchImageFrameUrl || ""}`;
 
         if(this.searchResults.key === resultsKey) {
           if(initial) {

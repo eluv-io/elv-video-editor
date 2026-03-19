@@ -32,8 +32,10 @@ const SetView = observer(() => {
   }, [params, videoStore.ready]);
 });
 
+let savedFrame = {};
 // All routes after content is selected - route will contain /:objectId
 const DefaultContentRoutes = observer(() => {
+  const [location] = useLocation();
   const { objectId } = useParams();
 
   useEffect(() => {
@@ -45,6 +47,15 @@ const DefaultContentRoutes = observer(() => {
       rootStore.SetSelectedObjectId(objectId, videoStore.name);
     }
   }, [objectId]);
+
+  useEffect(() => {
+    const clipParams = videoStore.ParseClipParams();
+    if(!clipParams && objectId === savedFrame.objectId && savedFrame.frame) {
+      videoStore.FocusView({initialFrame: savedFrame.frame});
+    }
+
+    return () => savedFrame = { objectId: videoStore.videoObject?.objectId, frame: videoStore.frame || 0 };
+  }, [objectId, location]);
 
   if(rootStore.errorMessage) {
     return (

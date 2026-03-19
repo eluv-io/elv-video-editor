@@ -1,3 +1,10 @@
+.search-results-grid {
+  &--frame,
+  &--frame-image {
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  }
+}
+
 .search-result {
   &--selected {
     background-color: var(--background-search-input);

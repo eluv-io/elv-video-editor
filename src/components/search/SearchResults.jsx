@@ -190,7 +190,7 @@ const SearchResultsPage = observer(() => {
   const {mode, query} = ParseSearchQuery({queryB58});
 
   useEffect(() => {
-    if(aiStore.searchResults.key !== `${aiStore.searchSettings.key}-${query}-${mode}`) {
+    if(aiStore.searchResults.key !== `${aiStore.searchSettings.key}-${query}-${mode}-${aiStore.searchImageFrameUrl || ""}`) {
       aiStore.ClearSearchResults();
     }
   }, [queryB58, aiStore.searchSettings.key]);
@@ -201,7 +201,9 @@ const SearchResultsPage = observer(() => {
       StorageHandler.remove({type: "session", key: "search-display"});
   }, [showList]);
 
-  if(mode === "frame-image" && !aiStore.searchImageFrameUrl) {
+  if(
+    (mode === "frame-image" && !aiStore.searchImageFrameUrl)
+  ) {
     return <Redirect to="~/search" />;
   }
 
@@ -290,11 +292,13 @@ const SearchResultsPage = observer(() => {
                   groupKey="f_music"
                   scrollPreservationKey="main"
                   showList={showList}
+                  groupClassName={S(`search-results-${showList ? "list" : "grid"}--${mode}`)}
                 /> :
                 <SearchResults
                   key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
                   scrollPreservationKey="main"
                   showList={showList}
+                  className={S(`search-results-${showList ? "list" : "grid"}--${mode}`)}
                 />
           }
         </div>

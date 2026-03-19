@@ -78,8 +78,7 @@ class CompositionStore {
   });
 
   Reset() {
-    this.videoStore = new VideoStore(this.rootStore, {tags: false, channel: true, thumbnails: true});
-    this.videoStore.id = "Composition Store";
+    this.videoStore = new VideoStore(this.rootStore, {tags: false, channel: true, thumbnails: true, id: "composition"});
 
     this.clips = {};
     this.secondarySourceIds = [];
@@ -637,7 +636,8 @@ class CompositionStore {
             this.rootStore,
             {
               tags: false,
-              thumbnails: true
+              thumbnails: true,
+              id: `composition-${objectId}`
             }
           );
 

@@ -25,7 +25,7 @@ const SimpleView = observer(() => {
   return (
     <PanelGroup direction="vertical" className="panel-group">
       <Panel id="top" order={1} defaultSize={65}>
-        <VideoSection />
+        <VideoSection showFrameSearch />
       </Panel>
       <PanelResizeHandle />
       <Panel id="bottom" order={2} minSize={35}>

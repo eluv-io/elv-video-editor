@@ -67,17 +67,12 @@
     }
 
     &--hover {
+      animation: var(--animation-fadein) 0.25s ease;
       border-radius: 10px;
       box-shadow: 0 0 10px black;
-      max-height: 250px;
-      max-width: 250px;
+      max-height: 400px;
+      max-width: 600px;
     }
-  }
-
-  &__tooltip-image {
-    height: auto;
-    max-width: 500px;
-    object-fit: contain;
   }
 
   &__image-badge {

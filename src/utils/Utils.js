@@ -382,10 +382,13 @@ export const ParseSearchQuery = ({query="", queryB58=""}) => {
   }
 
   let mode = "";
-  if(query.split(":")[1] || query.split(":")[0] === "frame-image") {
+  if(query.includes(":")) {
     mode = query.split(":")[0];
     query = query.split(":").slice(1).join(":");
   }
 
-  return {mode, query};
+  return {
+    mode,
+    query
+  };
 };

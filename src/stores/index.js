@@ -78,8 +78,8 @@ class RootStore {
     this.overlayStore = new OverlayStore(this);
     this.tagStore = new TagStore(this);
     this.trackStore = new TrackStore(this);
-    this.videoStore = new VideoStore(this);
-    this.searchVideoStore = new VideoStore(this, {tags: false, thumbnails: false});
+    this.videoStore = new VideoStore(this, {id: "default"});
+    this.searchVideoStore = new VideoStore(this, {tags: false, thumbnails: false, id: "search"});
 
     this.InitializeClient()
       .then(() => this.videoStore.LoadMyClipObjects());
