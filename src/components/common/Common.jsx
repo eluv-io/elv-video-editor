@@ -226,7 +226,7 @@ export const Icon = ({
   return <SVG {...props} src={icon} />;
 };
 
-export const IconButton = ({
+export const IconButton = forwardRef(function IconButtonFunction({
   label,
   icon,
   Icon,
@@ -245,7 +245,7 @@ export const IconButton = ({
   withinPortal=true,
   noHover,
   ...props
-}) => {
+}, ref) {
   const [submitting, setSubmitting] = useState(false);
 
   loading = loading || (loadingProgress > 0 && loadingProgress < 100);
@@ -288,6 +288,7 @@ export const IconButton = ({
   const button = (
     <Linkish
       {...props}
+      ref={ref}
       disabled={disabled}
       aria-label={props["aria-label"] || label || ""}
       onClick={
@@ -337,7 +338,7 @@ export const IconButton = ({
       { button }
     </Tooltip>
   );
-};
+});
 
 let copyTimeout;
 export const CopyButton = observer(({value, onCopyChange, ...props}) => {

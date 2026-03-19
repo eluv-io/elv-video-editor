@@ -6,12 +6,12 @@
   flex-direction: column;
   gap: 10px;
   height: calc(100vh - var(--gutter-size-y));
-  padding: 25px 15px;
+  padding: 25px 10px;
   width: max-content;
 
   &__button {
     border-radius: 3px;
-    color: var(--text-disabled);
+    color: var(--text-primary);
     height: 50px;
     min-height: 50px;
     min-width: 50px;

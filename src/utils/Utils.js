@@ -375,3 +375,17 @@ export const HashString = (str, seed=0) => {
 
   return 4294967296 * (2097151 & h2) + (h1 >>> 0);
 };
+
+export const ParseSearchQuery = ({query="", queryB58=""}) => {
+  if(queryB58) {
+    query = Utils.FromB58ToStr(queryB58 || "");
+  }
+
+  let mode = "";
+  if(query.split(":")[1] || query.split(":")[0] === "frame-image") {
+    mode = query.split(":")[0];
+    query = query.split(":").slice(1).join(":");
+  }
+
+  return {mode, query};
+};

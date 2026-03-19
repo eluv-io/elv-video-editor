@@ -125,17 +125,15 @@ export const LoadVideo = async ({
       await Promise.all(
         offeringKeys.map(async offering => {
           try {
-            videoObject.availableOfferings[offering].playoutMethods = await rootStore.client.PlayoutOptions({
-              versionHash,
-              handler: channel ? "channel" : "playout",
-              drms: browserSupportedDrms,
-              hlsjsProfile: false,
-              offering
-            });
+            videoObject.availableOfferings[offering].playoutFormats = Object.keys(
+              videoObject.metadata.offerings[offering]?.playout?.playout_formats || {}
+            );
 
-            const hlsPlayoutMethods = videoObject.availableOfferings[offering].playoutMethods.hls?.playoutMethods || {};
-
-            if(!(hlsPlayoutMethods["aes-128"] || hlsPlayoutMethods["clear"])) {
+            if(
+              !videoObject.availableOfferings[offering].playoutFormats.find(format =>
+                ["hls-clear", "hls-aes128"].includes(format)
+              )
+            ) {
               videoObject.availableOfferings[offering].disabled = true;
             } else {
               if(
@@ -145,6 +143,14 @@ export const LoadVideo = async ({
               ) {
                 offeringKey = offering;
               }
+
+              videoObject.availableOfferings[offering].playoutMethods = await rootStore.client.PlayoutOptions({
+                versionHash,
+                handler: channel ? "channel" : "playout",
+                drms: browserSupportedDrms,
+                hlsjsProfile: false,
+                offering
+              });
             }
           } catch(error) {
             // eslint-disable-next-line no-console

@@ -3,20 +3,21 @@ import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
-import {useParams} from "wouter";
+import {Redirect, useParams} from "wouter";
 import {aiStore} from "@/stores/index.js";
-import {IconButton} from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher, JoinClassNames, ScaleImage, StorageHandler} from "@/utils/Utils.js";
+import {IconButton, Linkish} from "@/components/common/Common.jsx";
+import {CreateModuleClassMatcher, JoinClassNames, ParseSearchQuery, ScaleImage, StorageHandler} from "@/utils/Utils.js";
 import {AISearchBar, CardDisplaySwitch} from "@/components/nav/Browser.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import UrlJoin from "url-join";
 import {EntityCard, EntityListItem} from "@/components/common/EntityLists.jsx";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
+import {Tooltip} from "@mantine/core";
 
 const S = CreateModuleClassMatcher(BrowserStyles, SearchStyles);
 
-let batchSize = 36;
+let batchSize = 48;
 export const GroupedSearchResults = observer(({
   showList,
   groupKey="f_music",
@@ -26,7 +27,6 @@ export const GroupedSearchResults = observer(({
   groupClassName=""
 }) => {
   let {queryB58, resultIndex} = useParams();
-  const query = aiStore.client.utils.FromB58ToStr(queryB58);
 
   if(!aiStore.searchIndex) { return null; }
 
@@ -55,12 +55,19 @@ export const GroupedSearchResults = observer(({
       key={`scroll-${showList}-${aiStore.searchIndex?.versionHash}-${queryB58}`}
       scrollPreservationKey={scrollPreservationKey ? `search-${aiStore.searchIndex?.versionHash}-${queryB58}-${scrollPreservationKey}` : undefined}
       withLoader
-      watchList={[query, aiStore.searchSettings.key]}
+      watchList={[queryB58, aiStore.searchSettings.key]}
       batchSize={
         resultIndex ? Math.max(resultIndex + 10, batchSize) :
           batchSize
       }
-      Update={async (limit, initial) => await aiStore.Search({query, limit: batchSize, initial})}
+      Update={
+        async (limit, initial) =>
+          await aiStore.Search({
+            query: aiStore.client.utils.FromB58ToStr(queryB58 || ""),
+            limit: batchSize,
+            initial
+          })
+      }
       className={JoinClassNames(S("grouped-entity-list", small ? "grouped-entity-list--small" : ""), className)}
     >
       {
@@ -83,7 +90,7 @@ export const GroupedSearchResults = observer(({
                           })
                         , 100)
                     }
-                    link={UrlJoin("/", queryB58, result.resultIndex.toString())}
+                    link={UrlJoin("/", queryB58 || "", result.resultIndex.toString())}
                     id={result.objectId}
                     label={result.name}
                     aspectRatio={aiStore.searchResults.type === "image" ? "square" : "landscape"}
@@ -92,7 +99,7 @@ export const GroupedSearchResults = observer(({
                     badge={
                       !result.score ? null :
                         <div className={S("search-result__score")}>
-                          Score: {result.score}
+                          {showList ? "" : "Score: "}{result.score}
                         </div>
                     }
                     contain
@@ -110,7 +117,6 @@ export const GroupedSearchResults = observer(({
 
 export const SearchResults = observer(({showList, scrollPreservationKey, className=""}) => {
   let {queryB58, resultIndex} = useParams();
-  const query = aiStore.client.utils.FromB58ToStr(queryB58);
 
   if(!aiStore.searchIndex) { return null; }
 
@@ -123,12 +129,19 @@ export const SearchResults = observer(({showList, scrollPreservationKey, classNa
       key={`scroll-${showList}-${aiStore.searchResults?.key}`}
       scrollPreservationKey={scrollPreservationKey ? `search-${aiStore.searchIndex?.versionHash}-${queryB58}-${scrollPreservationKey}` : undefined}
       withLoader
-      watchList={[query, aiStore.searchSettings.key]}
+      watchList={[queryB58, aiStore.searchSettings.key]}
       batchSize={
         resultIndex ? Math.max(resultIndex + 10, batchSize) :
           batchSize
       }
-      Update={async (limit, initial) => await aiStore.Search({query, limit: batchSize, initial})}
+      Update={
+        async (limit, initial) =>
+          await aiStore.Search({
+            query: aiStore.client.utils.FromB58ToStr(queryB58 || ""),
+            limit: batchSize,
+            initial
+          })
+      }
       className={JoinClassNames(S(showList ? "entity-list" : "entity-grid"), className)}
     >
       {
@@ -144,7 +157,11 @@ export const SearchResults = observer(({showList, scrollPreservationKey, classNa
                   })
                 , 100)
             }
-            link={UrlJoin("/", queryB58, index.toString())}
+            link={
+              result.type === "frame" ?
+                UrlJoin("~/", result.objectId, `?if=${result.frame || 0}`) :
+                UrlJoin("/", queryB58 || "", index.toString())
+            }
             id={result.objectId}
             label={result.name}
             aspectRatio={aiStore.searchResults.type === "image" ? "square" : "landscape"}
@@ -153,7 +170,7 @@ export const SearchResults = observer(({showList, scrollPreservationKey, classNa
             badge={
               !result.score ? null :
                 <div className={S("search-result__score")}>
-                  Score: {result.score}
+                  {showList ? "" : "Score: "}{result.score}
                 </div>
             }
             contain
@@ -169,10 +186,10 @@ const SearchResultsPage = observer(() => {
   const [showList, setShowList] = useState(StorageHandler.get({type: "session", key: "search-display"}) || false);
 
   let {queryB58} = useParams();
-  const query = aiStore.client.utils.FromB58ToStr(queryB58);
+  const {mode, query} = ParseSearchQuery({queryB58});
 
   useEffect(() => {
-    if(aiStore.searchResults.key !== aiStore.searchSettings.key) {
+    if(aiStore.searchResults.key !== `${aiStore.searchSettings.key}-${query}-${mode}`) {
       aiStore.ClearSearchResults();
     }
   }, [queryB58, aiStore.searchSettings.key]);
@@ -183,10 +200,14 @@ const SearchResultsPage = observer(() => {
       StorageHandler.remove({type: "session", key: "search-display"});
   }, [showList]);
 
+  if(mode === "frame-image" && !aiStore.searchImageFrameUrl) {
+    return <Redirect to="~/search" />;
+  }
+
   return (
     <div className={S("browser-page")}>
       <div className={S("browser")}>
-        <AISearchBar basePath="/" initialQuery={query} />
+        <AISearchBar basePath="/" initialQuery={query} initialMode={mode} />
         <h1 className={S("browser__header")}>
           <IconButton
             icon={BackIcon}
@@ -194,30 +215,65 @@ const SearchResultsPage = observer(() => {
             to="~/"
             className={S("browser__header-back")}
           />
-          <span>
+          <Linkish to={queryB58 ? "~/search" : undefined}>
             Search Results
-          </span>
-          <span className={S("browser__header-chevron")}>▶</span>
-          <span className={S("browser__header-last")}>
-            {query.startsWith("music:") ? query?.split("music:")[1] || "All Results" : query}
-          </span>
+          </Linkish>
+          {
+            !queryB58 ? null :
+              <>
+                <span className={S("browser__header-chevron")}>▶</span>
+                {
+                  mode === "frame-image" ?
+                    <Tooltip
+                      label={
+                        <img
+                          alt="Search Image"
+                          src={aiStore.searchImageFrameUrl}
+                          className={S("browser__header-image-full")}
+                        />
+                      }
+                      openDelay={500}
+                      offset={10}
+                      position="bottom-start"
+                      classNames={{
+                        tooltip: S("tooltip--transparent")
+                      }}
+                    >
+                      <div className={S("browser__header-image-container")}>
+                        <img
+                          alt="Search Image"
+                          src={aiStore.searchImageFrameUrl}
+                          className={S("browser__header-image")}
+                        />
+                        Image Search
+                      </div>
+                    </Tooltip> :
+                    <span className={S("browser__header-last")}>
+                      {query || "All Results" }
+                    </span>
+                }
+              </>
+          }
           <div className={S("browser__action--right")}>
-            <button
-              key={aiStore.searchSettings.confidenceMin}
-              className={S("browser__toggle-button")}
-              onClick={() =>
-                aiStore.SetSearchSettings({
-                  ...aiStore.searchSettings,
-                  confidenceMin: aiStore.searchSettings.confidenceMin >= 55 ? 0 : 55
-                })
-              }
-            >
-              {
-                aiStore.searchSettings.confidenceMin >= 55 ?
-                  "Show All Results" :
-                  "Show Only High Score Results"
-              }
-            </button>
+            {
+              mode.startsWith("frame") ? null :
+                <button
+                  key={aiStore.searchSettings.minConfidence}
+                  className={S("browser__toggle-button")}
+                  onClick={() =>
+                    aiStore.SetSearchSettings({
+                      ...aiStore.searchSettings,
+                      minConfidence: aiStore.searchSettings.minConfidence >= 55 ? 0 : 55
+                    })
+                  }
+                >
+                  {
+                    aiStore.searchSettings.minConfidence >= 55 ?
+                      "Show All Results" :
+                      "Show Only High Score Results"
+                  }
+                </button>
+            }
             <CardDisplaySwitch
               showList={showList}
               setShowList={setShowList}
@@ -226,18 +282,19 @@ const SearchResultsPage = observer(() => {
         </h1>
         <div className={S("list-page", "list-page--search")}>
           {
-            query.startsWith("music:") ?
-              <GroupedSearchResults
-                key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
-                groupKey="f_music"
-                scrollPreservationKey="main"
-                showList={showList}
-              /> :
-              <SearchResults
-                key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
-                scrollPreservationKey="main"
-                showList={showList}
-              />
+            !queryB58 ? null :
+              mode === "music" ?
+                <GroupedSearchResults
+                  key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
+                  groupKey="f_music"
+                  scrollPreservationKey="main"
+                  showList={showList}
+                /> :
+                <SearchResults
+                  key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
+                  scrollPreservationKey="main"
+                  showList={showList}
+                />
           }
         </div>
       </div>

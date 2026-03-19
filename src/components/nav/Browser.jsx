@@ -22,17 +22,17 @@ import {
   Icon,
   IconButton,
   Linkish,
-  Loader,
+  Loader, Modal,
   StyledButton
 } from "@/components/common/Common";
 import SVG from "react-inlinesvg";
 import {Redirect, Route, useParams, Switch, useLocation, useSearchParams} from "wouter";
 import UrlJoin from "url-join";
-import {Select, Tabs, Tooltip, Switch as SwitchInput, Progress} from "@mantine/core";
+import {Select, Tabs, Tooltip, Progress, Menu} from "@mantine/core";
 import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
-import {SearchIndexSelection} from "@/components/side_panel/SidePanel.jsx";
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 import SearchSettings from "@/components/search/SearchSettings.jsx";
+import {Dropzone, IMAGE_MIME_TYPE} from "@mantine/dropzone";
 
 import SettingsIcon from "@/assets/icons/v2/settings.svg";
 import LibraryIcon from "@/assets/icons/v2/library.svg";
@@ -55,9 +55,15 @@ import SearchIcon from "@/assets/icons/v2/search.svg";
 import AssetIcon from "@/assets/icons/v2/asset.svg";
 import PinIcon from "@/assets/icons/v2/pin.svg";
 import MusicIcon from "@/assets/icons/v2/music.svg";
+import WriteInputIcon from "@/assets/icons/write-input.svg";
+import PictureIcon from "@/assets/icons/picture.svg";
+import PlusIcon from "@/assets/icons/v2/plus.svg";
+import AISparkleIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import PauseIcon from "@/assets/icons/Pause.svg";
 import PlayIcon from "@/assets/icons/Play.svg";
 import LinkIcon from "@/assets/icons/v2/external-link.svg";
+import ClipIcon from "@/assets/icons/scissors.svg";
+import UploadIcon from "@/assets/icons/fileupload.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -364,14 +370,111 @@ export const CardDisplaySwitch = observer(({showList, setShowList}) => {
   );
 });
 
-export const AISearchBar = observer(({basePath="~/search", initialQuery=""}) => {
-  const [input, setInput] = useState(initialQuery.startsWith("music:") ? initialQuery.split("music:")[1] || "" : initialQuery);
-  const [searchMusic, setSearchMusic] = useState(initialQuery.startsWith("music:"));
+const SearchImageModal = observer(({Confirm, Close}) => {
+  return (
+    <Modal withCloseButton={false} yOffset={90} alwaysOpened onClose={Close} className={S("image-search")}>
+      <Dropzone
+        py={30}
+        my={15}
+        mx="auto"
+        accept={IMAGE_MIME_TYPE}
+        className={S("image-search__upload")}
+        onDrop={file => {
+          aiStore.SetSearchImageFrame(file[0]);
+          Confirm();
+        }}
+      >
+        <Icon icon={UploadIcon} className={S("image-search__icon")} />
+        <div className={S("image-search__text")}>
+          Drag & drop an image file or click to select a file
+        </div>
+      </Dropzone>
+    </Modal>
+  );
+});
+
+const ModeSelectionMenu = observer(({mode, setMode, className=""}) => {
+  const [showMenu, setShowMenu] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+
+  return (
+    <>
+      {
+        !showImageModal ? null :
+          <SearchImageModal
+            Confirm={() => {
+              setShowImageModal(false);
+              setMode("frame-image");
+            }}
+            Close={() => setShowImageModal(false)}
+          />
+      }
+      <Menu opened={showMenu} onChange={setShowMenu} offset={15} position="bottom-start">
+        <Menu.Target>
+          <IconButton
+            label="Select Search Mode"
+            icon={PlusIcon}
+            className={className}
+          />
+        </Menu.Target>
+        <Menu.Dropdown p={0}>
+          {
+            aiStore.searchCollectionIndexes.length === 0 ? null :
+              <Menu.Item
+                leftSection={<Icon icon={PictureIcon}/>}
+                onClick={() => setShowImageModal(true)}
+                className={S("search-mode-selection__option")}
+              >
+                Upload Image
+              </Menu.Item>
+          }
+          <Menu.Item
+            leftSection={<Icon icon={ClipIcon}/>}
+            onClick={() => setMode("clip")}
+            className={S("search-mode-selection__option", mode === "clip" ? "search-mode-selection__option--active" : "")}
+          >
+            Clip Search
+          </Menu.Item>
+          {
+            aiStore.searchCollectionIndexes.length === 0 ? null :
+              <Menu.Item
+                leftSection={<Icon icon={WriteInputIcon}/>}
+                onClick={() => setMode("frame")}
+                className={S("search-mode-selection__option", mode.startsWith("frame") ? "search-mode-selection__option--active" : "")}
+              >
+                Describe Image
+              </Menu.Item>
+          }
+          {
+            !aiStore.searchIndex?.musicSupported ? null :
+              <Menu.Item
+                leftSection={<Icon icon={MusicIcon} />}
+                onClick={() => setMode("music")}
+                className={S("search-mode-selection__option", mode === "music" ? "search-mode-selection__option--active" : "")}
+              >
+                Music Search
+              </Menu.Item>
+          }
+        </Menu.Dropdown>
+      </Menu>
+    </>
+  );
+});
+
+export const AISearchBar = observer(({basePath="~/search", initialQuery="", initialMode="clip"}) => {
+  const lastMode = localStorage.getItem(`search-mode-${rootStore.tenantContractId}`);
+  const [input, setInput] = useState(initialQuery);
+  const [mode, setMode] = useState(initialMode || lastMode || "clip");
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [,navigate] = useLocation();
 
-  const Submit = async (searchMusic) => {
-    if(!input && !searchMusic) { return; }
+  const Submit = async (mode) => {
+    if(mode === "frame-image") {
+      navigate(UrlJoin(basePath, rootStore.client.utils.B58("frame-image:")));
+      return;
+    }
+
+    if(!input && mode !== "clip") { return; }
 
     if(["ilib", "iq__", "hq__", "0x"].find(prefix => input.trim().startsWith(prefix))) {
       const item = await browserStore.LookupContent(input);
@@ -382,12 +485,16 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery=""}) => 
     }
 
     let term = input;
-    if(searchMusic) {
-      term = `music:${input.trim()}`;
+    if(mode) {
+      term = `${mode}:${input.trim()}`;
     }
 
     navigate(UrlJoin(basePath, rootStore.client.utils.B58(term)));
   };
+
+  useEffect(() => {
+    localStorage.setItem(`search-mode-${rootStore.tenantContractId}`, mode.toString());
+  }, [mode]);
 
   return (
     <>
@@ -399,15 +506,34 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery=""}) => 
           />
         </div>
         <div className={S("search-input-container", "search-input-container--ai")}>
-          <SearchIndexSelection position="bottom-start" className={S("search-input-container__button-left")} />
+          <div className={S("search-input-container__button-left")}>
+            <ModeSelectionMenu
+              mode={mode}
+              setMode={mode => {
+                if(mode === "frame-image") {
+                  setInput("");
+                }
+
+                setMode(mode);
+                aiStore.ClearSearchResults();
+                Submit(mode);
+              }}
+              className={S("search-input-container__menu-button")}
+            />
+            <Icon icon={AISparkleIcon} className={S("search-input-container__ai-icon")} />
+          </div>
           <input
             value={input}
-            placeholder="Search within content by phrase or keyword"
+            placeholder={
+              mode.startsWith("frame") ? "Search for images by phrase or keyword" :
+                mode === "music" ? "Search for music by phrase or keyword" :
+                  "Search within content by phrase or keyword"
+            }
             onChange={event => setInput(event.target.value)}
             onKeyDown={async event => {
               if(event.key !== "Enter") { return; }
 
-              Submit(searchMusic);
+              Submit(mode === "frame-image" ? "frame" : mode);
               //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
             }}
             className={S("search-bar", "search-bar--ai")}
@@ -417,37 +543,10 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery=""}) => 
               label="Search"
               icon={SearchArrowIcon}
               noHover
-              //onClick={() => input && navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)))}
-              onClick={() => Submit(searchMusic)}
+              onClick={() => Submit(mode)}
             />
           </div>
         </div>
-        {
-          !aiStore.searchIndex?.musicSupported ? null :
-            <SwitchInput
-              ml={5}
-              size="xl"
-              label="Search by Music"
-              checked={searchMusic}
-              onChange={event => {
-                setSearchMusic(event.currentTarget.checked);
-
-                if(input) {
-                  Submit(event.currentTarget.checked);
-                }
-              }}
-              thumbIcon={
-                <Icon
-                  icon={MusicIcon}
-                  className={S("search-bar-container__music-switch-icon", searchMusic ? "search-bar-container__music-switch-icon--active" : "")}
-                />
-              }
-              className={S("search-bar-container__music-switch", `search-bar-container__music-switch--${searchMusic ? "active" : "inactive"}`)}
-              classNames={{
-                label: S("search-bar-container__music-switch-label"),
-              }}
-            />
-        }
       </div>
       {
         !showSettingsModal ? null :
@@ -1084,10 +1183,10 @@ const ActiveItem = observer(() => {
       <Linkish
         to={
           compositionStore.compositionObject ?
-            UrlJoin("/compositions", compositionStore.compositionObject.objectId, compositionStore.compositionObject.compositionKey) :
+            UrlJoin("~/compositions", compositionStore.compositionObject.objectId, compositionStore.compositionObject.compositionKey) :
             videoStore.videoObject?.isVideo ?
-              UrlJoin("/", rootStore.selectedObjectId) :
-              UrlJoin("/", rootStore.selectedObjectId, "assets")
+              UrlJoin("~/", rootStore.selectedObjectId) :
+              UrlJoin("~/", rootStore.selectedObjectId, "assets")
         }
         className={S("active-item__content")}
       >

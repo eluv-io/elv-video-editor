@@ -51,6 +51,7 @@ class CompositionStore {
 
   saved = false;
 
+  selectedSearchIndexId;
   searchSettings = {};
 
   _authTokens = {};
@@ -252,8 +253,18 @@ class CompositionStore {
     );
   }
 
+  SetSelectedSearchIndex(id) {
+    this.searchSettings = this.rootStore.aiStore.DEFAULT_SEARCH_SETTINGS;
+    this.selectedSearchIndexId = id;
+  }
+
   SetSearchSettings(options) {
+    const searchIndexId = options.searchIndexId || this.selectedSearchIndexId;
+
     delete options.key;
+    delete options.searchIndexId;
+
+    this.SetSelectedSearchIndex(searchIndexId);
 
     this.searchSettings = {
       ...options,
@@ -613,31 +624,39 @@ class CompositionStore {
   }
 
   InitializeVideoStore = flow(function * ({objectId, offering="default"}) {
-    const storeId = `${objectId}-${offering}`;
+    return yield this.rootStore.LoadResource({
+      key: "composition-video-store",
+      id: `${this.compositionObject?.objectId}-${objectId}-${offering}`,
+      ttl: 30,
+      bind: this,
+      Load: flow(function * () {
+        const storeId = `${objectId}-${offering}`;
 
-    if(!this.clipStores[storeId]) {
-      const videoStore = new VideoStore(
-        this.rootStore,
-        {
-          tags: false,
-          thumbnails: true
+        if(!this.clipStores[storeId]) {
+          const videoStore = new VideoStore(
+            this.rootStore,
+            {
+              tags: false,
+              thumbnails: true
+            }
+          );
+
+          videoStore.id = storeId;
+          videoStore.sliderMarks = 20;
+          videoStore.majorMarksEvery = 5;
+
+          yield videoStore.SetVideo({objectId, preferredOfferingKey: offering, noTags: true});
+          this.clipStores[storeId] = videoStore;
+
+          if(offering !== videoStore.offeringKey) {
+            // Selected offering is different from requested offering - ensure expected key is set
+            this.clipStores[`${objectId}-${this.clipStores[storeId].offeringKey}`] = videoStore;
+          }
         }
-      );
 
-      videoStore.id = storeId;
-      videoStore.sliderMarks = 20;
-      videoStore.majorMarksEvery = 5;
-
-      yield videoStore.SetVideo({objectId, preferredOfferingKey: offering, noTags: true});
-      this.clipStores[storeId] = videoStore;
-
-      if(offering !== videoStore.offeringKey) {
-        // Selected offering is different from requested offering - ensure expected key is set
-        this.clipStores[`${objectId}-${this.clipStores[storeId].offeringKey}`] = videoStore;
-      }
-    }
-
-    return storeId;
+        return storeId;
+      })
+    });
   });
 
   InitializeClip = flow(function * ({
@@ -1049,6 +1068,7 @@ class CompositionStore {
   });
 
   SetCompositionObject = flow(function * ({objectId, compositionKey, addToMyLibrary=false}) {
+    console.time(`Load composition ${objectId} ${compositionKey}`);
     if(!this.myCompositions[objectId]) {
       yield this.LoadMyCompositions();
     }
@@ -1232,6 +1252,8 @@ class CompositionStore {
         duration: this.compositionDuration
       });
     }
+
+    console.timeEnd(`Load composition ${objectId} ${compositionKey}`);
   });
 
   InitializeSource = flow(function * ({objectId, writeToken, primary=false}) {
@@ -1629,7 +1651,7 @@ class CompositionStore {
   }
 
   SearchClips = flow(function * ({store, objectId, query}) {
-    const index = this.rootStore.aiStore.searchIndex;
+    const index = this.rootStore.aiStore.searchIndexes.find(index => index.id === this.selectedSearchIndexId);
     store = store || this.sourceVideoStore;
 
     const searchClipInfo = this.searchClipInfo[objectId] || {};
@@ -1662,7 +1684,7 @@ class CompositionStore {
         get_chunks: true,
         debug: true,
         max_total: 100,
-        min_score: this.searchSettings.confidenceMin / 100,
+        min_score: this.searchSettings.minConfidence / 100,
         start: 0,
         limit: 100,
         filters: `id:${objectId}`
@@ -1753,7 +1775,7 @@ class CompositionStore {
     this.searchClipInfo[objectId] = {
       query,
       searchSettingsKey: this.searchSettings.key,
-      indexId: this.rootStore.aiStore.selectedSearchIndexId
+      indexId: this.selectedSearchIndexId
     };
   });
 

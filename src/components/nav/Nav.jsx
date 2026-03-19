@@ -2,12 +2,13 @@ import NavStyles from "@/assets/stylesheets/modules/nav.module.scss";
 
 import React from "react";
 import {observer} from "mobx-react-lite";
-import {compositionStore, editStore, rootStore, videoStore} from "@/stores";
+import {aiStore, compositionStore, editStore, rootStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Confirm, IconButton} from "@/components/common/Common";
 import UrlJoin from "url-join";
 import {useLocation} from "wouter";
 
+import SearchIcon from "@/assets/icons/ai-search.svg";
 import SourceIcon from "@/assets/icons/v2/folder.svg";
 import TagIcon from "@/assets/icons/v2/tag.svg";
 import ClipIcon from "@/assets/icons/v2/clip.svg";
@@ -41,6 +42,13 @@ const Nav = observer(() => {
           });
         }
       },
+    {
+      label: "Search",
+      key: "search",
+      to: UrlJoin("/search", rootStore.client.utils.B58(aiStore.searchResults?.query || "") || ""),
+      icon: SearchIcon,
+      active: !rootStore.page || rootStore.page === "search"
+    },
     {
       label: "Source",
       key: "source",
