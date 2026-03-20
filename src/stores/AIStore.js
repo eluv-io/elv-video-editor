@@ -803,6 +803,9 @@ class AIStore {
   });
 
   CollectionSearch = flow(function * ({mode, query, start, limit}) {
+    // TODO: Remove when server side filtering implemented
+    limit = 100;
+
     let response;
     if(mode === "frame-image") {
       const body = new FormData();
@@ -845,6 +848,15 @@ class AIStore {
         ignore_trimming: true
       }
     });
+
+    // TODO: Remove when server side filtering implemented
+    results = results.filter(result =>
+      (
+        this.searchSettings.objectIds.length === 0 ||
+        this.searchSettings.objectIds.includes(result.qid)
+      ) &&
+      (result.similarity || 0) * 100 > this.searchSettings.minConfidence
+    );
 
     results = yield Promise.all(
       results.map(async result => {

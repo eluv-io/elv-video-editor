@@ -464,7 +464,7 @@ const ModeSelectionMenu = observer(({mode, setMode, className=""}) => {
 export const AISearchBar = observer(({basePath="~/search", initialQuery="", initialMode}) => {
   const lastMode = localStorage.getItem(`search-mode-${rootStore.tenantContractId}`);
   const [input, setInput] = useState(initialQuery);
-  const [mode, setMode] = useState(lastMode || "clip");
+  const [mode, setMode] = useState(lastMode || initialMode || "clip");
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [,navigate] = useLocation();
 
@@ -519,10 +519,15 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
 
                 setMode(mode);
 
-                if(mode === "frame-image" || input) {
-                  // Only submit we have text input or if we are doing search from image
+                if(mode === "frame-image") {
+                  // Only submit if we are doing search from image
                   aiStore.ClearSearchResults();
                   Submit(mode);
+                } else {
+                  setInput("");
+                  if(initialQuery) {
+                    navigate(basePath);
+                  }
                 }
               }}
               className={S("search-input-container__menu-button")}

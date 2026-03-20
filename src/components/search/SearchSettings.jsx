@@ -241,6 +241,7 @@ const ConfidenceForm = observer(({options, setOptions}) => {
         step={5}
         max={100}
         maw={500}
+        px={15}
         marks={[
           {value: 25, label: "25%"},
           {value: 50, label: "50%"},
