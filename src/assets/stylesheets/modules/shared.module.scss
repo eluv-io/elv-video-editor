@@ -360,11 +360,11 @@
   display: grid;
   gap: 30px 10px;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  height: max-content;
   max-height: 100%;
   overflow-y: auto;
   padding-right: 10px;
   scrollbar-gutter: stable;
+  height: 100%;
 
   &--empty {
     display: flex;
