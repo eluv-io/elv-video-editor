@@ -84,12 +84,12 @@ const TagsAndClipsView = observer(({mode}) => {
             </Panel>
             <PanelResizeHandle />
             <Panel id="content" order={2}>
-              <VideoSection showOverlay showSave />
+              <VideoSection showOverlay showFrameSearch showSave />
             </Panel>
           </PanelGroup>
         </Panel>
         <PanelResizeHandle />
-        <Panel id="bottom" order={2}>
+        <Panel minSize={25} id="bottom" order={2}>
           {
             mode === "tags" ?
               <TagTimeline /> :

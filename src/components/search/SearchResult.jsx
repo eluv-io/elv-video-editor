@@ -6,7 +6,7 @@ import React, {useEffect, useState} from "react";
 import {Redirect, useParams} from "wouter";
 import {rootStore, aiStore} from "@/stores/index.js";
 import {CopyableField, Icon, IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, ParseSearchQuery} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 import Player from "@/components/common/Player.jsx";
 import {ShareModal} from "@/components/download/Share.jsx";
@@ -199,7 +199,7 @@ const ClipResultPanel = observer(({result}) => {
   useEffect(() => {
     setClipVideoStore(undefined);
 
-    const clipStore = new VideoStore(rootStore, {tags: false, thumbnails: true});
+    const clipStore = new VideoStore(rootStore, {tags: false, thumbnails: true, id: `clip-${result.objectId}`});
 
     setTimeout(() => {
       clipStore.SetVideo({objectId: result.objectId})
@@ -420,7 +420,7 @@ const ImageResultPanel = observer(({result}) => {
 
 const SearchResult = observer(() => {
   let {queryB58, resultIndex} = useParams();
-  const query = aiStore.client.utils.FromB58ToStr(queryB58);
+  const {mode, query} = ParseSearchQuery({queryB58});
   const result = aiStore.searchResults?.results?.[parseInt(resultIndex)];
 
   useEffect(() => {
@@ -442,7 +442,7 @@ const SearchResult = observer(() => {
   return (
     <div className={S("browser-page")}>
       <div className={S("browser")}>
-        <AISearchBar basePath="/" initialQuery={query} />
+        <AISearchBar basePath="/" initialQuery={query} initialMode={mode} />
         <h1 className={S("browser__header")}>
           <IconButton
             icon={BackIcon}
@@ -453,7 +453,7 @@ const SearchResult = observer(() => {
           <span>Search Results</span>
           <span className={S("browser__header-chevron")}>▶</span>
           <Linkish to={UrlJoin("/", queryB58)}>
-            {query.startsWith("music:") ? query?.split("music:")[1] || "All Results" : query}
+            { query || "All Results" }
           </Linkish>
           <span className={S("browser__header-chevron")}>▶</span>
           <span className={S("browser__header-last")}>
@@ -468,7 +468,7 @@ const SearchResult = observer(() => {
         <PanelGroup direction="horizontal" className={S("result-page")}>
           <Panel id="side-panel" order={1} minSize={25}>
             {
-              query.startsWith("music") ?
+              mode === "music" ?
                 <GroupedSearchResults
                   groupKey="f_music"
                   small

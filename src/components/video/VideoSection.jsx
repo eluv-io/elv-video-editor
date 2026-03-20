@@ -23,7 +23,7 @@ import DescriptionIcon from "@/assets/icons/v2/description.svg";
 
 const S = CreateModuleClassMatcher(VideoStyles);
 
-const VideoSection = observer(({showOverlay, showSave}) => {
+const VideoSection = observer(({showOverlay, showFrameSearch, showSave}) => {
   useEffect(() => {
     keyboardControlsStore.ToggleKeyboardControls(true);
 
@@ -71,7 +71,12 @@ const VideoSection = observer(({showOverlay, showSave}) => {
             </StyledButton>
         }
       </h1>
-      <Video store={videoStore} showOverlay={showOverlay} showFrameDownload />
+      <Video
+        store={videoStore}
+        showOverlay={showOverlay}
+        showFrameSearch={showFrameSearch}
+        showFrameDownload
+      />
       <div className={S("toolbar")}>
         <Tooltip disabled={!videoStore.videoObject?.description} label={videoStore.videoObject?.description} w={500} multiline openDelay={1000}>
           <div className={S("toolbar__description")}>

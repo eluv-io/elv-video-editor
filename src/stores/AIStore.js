@@ -1,14 +1,16 @@
 import {flow, makeAutoObservable, runInAction} from "mobx";
 import UrlJoin from "url-join";
-import {HashString, Slugify, Unproxy} from "@/utils/Utils.js";
+import {HashString, ParseSearchQuery, Slugify, Unproxy} from "@/utils/Utils.js";
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 
 const GLOBAL_PROFILE_OBJECT_ID = "iq__3MVS3kjshtnAodRv4qLebBvH3oXb";
 
 class AIStore {
   searchIndexes = [];
+  searchCollectionIndexes = [];
   customSearchIndexIds = [];
   selectedSearchIndexId;
+  selectedCollectionSearchIndexId;
   searchIndexUpdateProgress = {};
   tagAggregationProgress = 0;
   highlightProfiles;
@@ -17,7 +19,7 @@ class AIStore {
   DEFAULT_SEARCH_SETTINGS = {
     objectIds: [],
     clipDuration: 0,
-    confidenceMin: 0,
+    minConfidence: 0,
     fields: [],
     key: 0
   };
@@ -25,11 +27,17 @@ class AIStore {
   searchSettings = this.DEFAULT_SEARCH_SETTINGS;
 
   searchResults = {};
+  imageSearchResults = {};
+  searchImageFrame;
+  searchImageFrameUrl;
 
   _authTokens = {};
 
   constructor(rootStore) {
-    makeAutoObservable(this);
+    makeAutoObservable(
+      this,
+      { searchImageFrame: false }
+    );
     this.rootStore = rootStore;
   }
 
@@ -88,7 +96,12 @@ class AIStore {
   }
 
   SetSearchSettings(options) {
+    const searchIndexId = options.searchIndexId || this.selectedSearchIndexId;
+
     delete options.key;
+    delete options.searchIndexId;
+
+    this.SetSelectedSearchIndex(searchIndexId);
 
     this.searchSettings = {
       ...options,
@@ -113,6 +126,7 @@ class AIStore {
     body,
     stringifyBody=true,
     authTokenInBody=false,
+    authTokenInHeader=false,
     headers={},
     format="json",
     allowStatus=[],
@@ -158,12 +172,16 @@ class AIStore {
       authToken = this._authTokens[objectId].signed;
     }
 
-    url.searchParams.set("authorization", authToken);
-
     if(authTokenInBody) {
       body.append ?
         body.append("authorization", authToken) :
         body.authorization = authToken;
+    }
+
+    if(authTokenInHeader) {
+      headers.Authorization = authToken;
+    } else {
+      url.searchParams.set("authorization", authToken);
     }
 
     if(body && stringifyBody) {
@@ -464,12 +482,19 @@ class AIStore {
   });
 
   LoadSearchIndexes = flow(function * () {
-    let searchIndexes = yield this.client.ContentObjectMetadata({
+    const metadata = yield this.client.ContentObjectMetadata({
       versionHash: yield this.client.LatestVersionHash({objectId: this.rootStore.tenantInfoObjectId}),
-      metadataSubtree: "public/search/indexes",
+      metadataSubtree: "public/search",
+      select: [
+        "indexes",
+        "collection_indexes"
+      ]
     });
 
-    searchIndexes = (searchIndexes || [])
+    this.searchCollectionIndexes = (metadata.collection_indexes || []);
+    this.selectedCollectionSearchIndexId = this.searchCollectionIndexes[0]?.id;
+
+    let searchIndexes = (metadata.indexes || [])
       .filter((x, i, a) => a.findIndex(other => x.id === other.id) === i);
 
     searchIndexes = (yield Promise.all(
@@ -513,11 +538,13 @@ class AIStore {
         savedIndexId :
         this.searchIndexes[0]?.id
     );
+
+    this.rootStore.compositionStore.selectedSearchIndexId = this.selectedSearchIndexId;
   });
 
   SetSelectedSearchIndex(id) {
     this.searchSettings = this.DEFAULT_SEARCH_SETTINGS;
-    this.rootStore.compositionStore.searchSettings =this.DEFAULT_SEARCH_SETTINGS;
+    this.searchResults = {};
     this.selectedSearchIndexId = id;
     localStorage.setItem(`search-index-${this.rootStore.tenantContractId}`, id);
   }
@@ -550,8 +577,6 @@ class AIStore {
         key: `custom-search-indexes${this.rootStore.localhost ? "-dev" : ""}`,
         value: Unproxy(this.customSearchIndexIds)
       });
-
-      this.SetSelectedSearchIndex(objectId);
     }
   });
 
@@ -571,181 +596,302 @@ class AIStore {
     });
 
     if(this.selectedSearchIndexId === objectId) {
-      this.selectedSearchIndexId = this.searchIndexes[0]?.id;
+      this.SetSelectedSearchIndex(this.searchIndexes[0]?.id);
+    }
+
+    if(this.rootStore.compositionStore.selectedSearchIndexId === objectId) {
+      this.rootStore.compositionStore.SetSelectedSearchIndex(this.searchIndexes[0]?.id);
     }
   });
 
   /* Search */
 
+  SetSearchImageFrame(imageBlob) {
+    this.searchImageFrame = imageBlob;
+    this.searchImageFrameUrl = imageBlob ? URL.createObjectURL(imageBlob) : undefined;
+  }
+
   Search = flow(function * ({query="", limit=10, initial}) {
-    let start = 0;
+    return yield this.rootStore.LoadResource({
+      key: "search",
+      id: `${query}-${limit}-${initial}`,
+      ttl: 5,
+      bind: this,
+      Load: flow(function * () {
+        let start = 0;
 
-    const resultsKey = `${this.searchSettings.key}-${query}`;
+        const parsedQuery = ParseSearchQuery({query});
+        const mode = parsedQuery.mode;
+        query = parsedQuery.query;
 
-    if(this.searchResults.key === resultsKey) {
-      if(initial) {
-        while(this.searchResults.loading) {
-          yield new Promise(resolve => setTimeout(resolve, 250));
+        const resultsKey = `${this.searchSettings.key}-${query}-${mode}-${this.searchImageFrameUrl || ""}`;
+
+        if(this.searchResults.key === resultsKey) {
+          if(initial) {
+            while(this.searchResults.loading) {
+              yield new Promise(resolve => setTimeout(resolve, 250));
+            }
+
+            return this.searchResults;
+          }
+
+          // Continuation of same query
+          if(
+            (this.searchResults.pagination.start + this.searchResults.pagination.limit) >= this.searchResults.pagination.total
+          ) {
+            // Exhausted results
+            return this.searchResults;
+          }
+
+          // Set start + limit to fetch next batch
+          start = this.searchResults.pagination.start + this.searchResults.pagination.limit;
+        } else {
+          // New query - reset
+          this.ClearSearchResults();
+        }
+
+        this.searchResults.key = resultsKey;
+        this.searchResults.loading = true;
+
+        try {
+          const {results, pagination} =
+            mode.startsWith("frame") ?
+              yield this.CollectionSearch({mode, query, start, limit}) :
+              yield this.ClipSearch({mode, query, start, limit});
+
+          if(this.searchResults.key !== resultsKey) {
+            // A different search has been performed while this query was made, throw away the result
+            return;
+          }
+
+          const type = this.searchIndex.type?.includes("assets") ? "image" : "video";
+          this.searchResults = {
+            key: resultsKey,
+            query: mode ? `${mode}:${query}` : query,
+            indexHash: this.searchIndex.versionHash,
+            pagination: pagination || {},
+            mode,
+            type,
+            loading: false,
+            results: [
+              ...(this.searchResults.results || []),
+              ...results
+            ]
+          };
+        } catch(error) {
+          this.searchResults.loading = false;
+          throw error;
         }
 
         return this.searchResults;
-      }
+      })
+    });
+  });
 
-      // Continuation of same query
-      if(
-        (this.searchResults.pagination.start + this.searchResults.pagination.limit) >= this.searchResults.pagination.total
-      ) {
-        // Exhausted results
-        return this.searchResults;
-      }
-
-      // Set start + limit to fetch next batch
-      start = this.searchResults.pagination.start + this.searchResults.pagination.limit;
-    } else {
-      // New query - reset
-      this.ClearSearchResults();
-    }
-
-    const isMusic = query.startsWith("music:") && this.searchIndex.musicSupported;
-    if(isMusic) {
-      query = query.split("music:")[1] || "";
-    }
-
+  ClipSearch = flow(function * ({mode, query, start, limit}) {
     const type = this.searchIndex.type?.includes("assets") ? "image" : "video";
-
-    this.searchResults.key = resultsKey;
-    this.searchResults.loading = true;
-
-    try {
-      let {results, contents, pagination} = (yield this.QueryAIAPI({
-        update: true,
-        objectId: this.searchIndex.id,
-        path: UrlJoin("search", "q", this.searchIndex.versionHash, "rep", "search"),
-        queryParams: {
-          terms: query,
-          search_fields:
-            isMusic ? "f_music" :
-              this.searchSettings.fields.length > 0 ?
-                this.searchSettings.fields.join(",") :
-                Object.keys(this.searchIndex.fields).join(","),
-          sort: isMusic ? "f_music" : null,
-          start,
-          limit,
-          display_fields:
-            isMusic ? "f_music" : "all",
-          clips: type === "video",
-          clip_include_source_tags: true,
-          get_chunks: true,
-          max_total: 100,
-          min_score: this.searchSettings.confidenceMin / 100,
-          select: "/public/asset_metadata/title,/public/name,public/asset_metadata/display_title",
-          //(id:iq_1234)OR(id:iq_2345)
-          filters: this.searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR")
-        }
-      })) || {};
-
-      if(this.searchResults.key !== resultsKey) {
-        // A different search has been performed while this query was made, throw away the result
-        return;
+    let {results, contents, pagination} = (yield this.QueryAIAPI({
+      //update: true,
+      objectId: this.searchIndex.id,
+      path: UrlJoin("search", "q", this.searchIndex.versionHash, "rep", "search"),
+      queryParams: {
+        terms: query,
+        search_fields:
+          mode === "music" ? "f_music" :
+            this.searchSettings.fields.length > 0 ?
+              this.searchSettings.fields.join(",") :
+              Object.keys(this.searchIndex.fields).join(","),
+        sort: mode === "music" ? "f_music" : null,
+        start,
+        limit,
+        display_fields:
+          mode === "music" ? "f_music" : "all",
+        clips: type === "video",
+        clip_include_source_tags: true,
+        get_chunks: true,
+        max_total: 100,
+        min_score: this.searchSettings.minConfidence / 100,
+        select: "/public/asset_metadata/title,/public/name,public/asset_metadata/display_title",
+        //(id:iq_1234)OR(id:iq_2345)
+        filters: this.searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR")
       }
+    })) || {};
 
-      results = results || contents;
+    results = results || contents;
 
-      const baseUrl = yield this.client.Rep({
-        versionHash: this.searchIndex.versionHash,
-        rep: "frame",
-        channelAuth: true,
-        queryParams: {
-          ignore_trimming: true
+    const baseUrl = yield this.client.Rep({
+      versionHash: this.searchIndex.versionHash,
+      rep: "frame",
+      channelAuth: true,
+      queryParams: {
+        ignore_trimming: true
+      }
+    });
+
+    return {
+      pagination,
+      results: (results || []).map(result => {
+        let imageUrl;
+        if(result.image_url || result.prefix) {
+          imageUrl = new URL(baseUrl);
+
+          if(type === "image") {
+            imageUrl.pathname = UrlJoin("q", result.hash, "files", result.prefix);
+          } else {
+            imageUrl.pathname = result.image_url.split("?")[0];
+
+            const params = new URLSearchParams(result.image_url.split("?")[1]);
+            params.keys().forEach((key, value) => imageUrl.searchParams.set(key, value));
+          }
         }
-      });
 
-      this.searchResults = {
-        key: resultsKey,
-        query,
-        indexHash: this.searchIndex.versionHash,
-        pagination: pagination || {},
-        type,
-        loading: false,
-        results: [
-          ...(this.searchResults.results || []),
-          ...(results || []).map(result => {
-            let imageUrl;
-            if(result.image_url || result.prefix) {
-              imageUrl = new URL(baseUrl);
+        let startTime, endTime, subtitle, chunkStartTime;
+        if(type === "video") {
+          startTime = (result.start_time || 0) / 1000;
+          endTime = result.end_time ? result.end_time / 1000 : undefined;
 
-              if(type === "image") {
-                imageUrl.pathname = UrlJoin("q", result.hash, "files", result.prefix);
-              } else {
-                imageUrl.pathname = result.image_url.split("?")[0];
+          chunkStartTime = result.sources?.[0]?.chunks?.[0]?.start_time;
 
-                const params = new URLSearchParams(result.image_url.split("?")[1]);
-                params.keys().forEach((key, value) => imageUrl.searchParams.set(key, value));
-              }
+          if(startTime || endTime) {
+            subtitle = FrameAccurateVideo.TimeToString({
+              time: startTime,
+              format: "smpte",
+              includeFractionalSeconds: true
+            });
+
+            if(endTime) {
+              subtitle += " - " + FrameAccurateVideo.TimeToString({
+                time: endTime,
+                format: "smpte",
+                includeFractionalSeconds: true
+              });
+              subtitle = `${subtitle} (${FrameAccurateVideo.TimeToString({time: endTime - startTime})})`;
             }
 
-            let startTime, endTime, subtitle, chunkStartTime;
-            if(type === "video") {
-              startTime = (result.start_time || 0) / 1000;
-              endTime = result.end_time ? result.end_time / 1000 : undefined;
+            imageUrl.searchParams.set("t", startTime.toFixed(2));
+          }
 
-              chunkStartTime = result.sources?.[0]?.chunks?.[0]?.start_time;
+          if(chunkStartTime) {
+            imageUrl.searchParams.set("t", (chunkStartTime / 1000).toFixed(2));
+          }
+        }
 
-              if(startTime || endTime) {
-                subtitle = FrameAccurateVideo.TimeToString({
-                  time: startTime,
-                  format: "smpte",
-                  includeFractionalSeconds: true
-                });
+        let score = result.score;
+        // Score is provided as an array of scores
+        if(!score) {
+          score = Math.max(...(result?.sources?.map(source => source.score) || []));
+        }
 
-                if(endTime) {
-                  subtitle += " - " + FrameAccurateVideo.TimeToString({
-                    time: endTime,
-                    format: "smpte",
-                    includeFractionalSeconds: true
-                  });
-                  subtitle = `${subtitle} (${FrameAccurateVideo.TimeToString({time: endTime - startTime})})`;
-                }
+        return {
+          libraryId: result.qlib_id,
+          objectId: result.id,
+          versionHash: result.hash,
+          imageUrl: imageUrl?.toString(),
+          filePath: type === "image" ? result.prefix : undefined,
+          startTime,
+          endTime,
+          firstChunkStartTime: chunkStartTime,
+          sources: result.sources,
+          name: result.meta?.public?.asset_metadata?.title || result.meta?.public?.name,
+          subtitle,
+          score: score ? (score * 100).toFixed(1) : "",
+          type,
+          result
+        };
+      })
+    };
+  });
 
-                imageUrl.searchParams.set("t", startTime.toFixed(2));
-              }
+  CollectionSearch = flow(function * ({mode, query, start, limit}) {
+    // TODO: Remove when server side filtering implemented
+    limit = 100;
 
-              if(chunkStartTime) {
-                imageUrl.searchParams.set("t", (chunkStartTime / 1000).toFixed(2));
-              }
-            }
+    let response;
+    if(mode === "frame-image") {
+      const body = new FormData();
+      body.append("file", this.searchImageFrame, "dummy.jpg");
 
-            let score = result.score;
-            // Score is provided as an array of scores
-            if(!score) {
-              score = Math.max(...(result?.sources?.map(source => source.score) || []));
-            }
-
-            return {
-              libraryId: result.qlib_id,
-              objectId: result.id,
-              versionHash: result.hash,
-              imageUrl: imageUrl?.toString(),
-              filePath: type === "image" ? result.prefix : undefined,
-              startTime,
-              endTime,
-              firstChunkStartTime: chunkStartTime,
-              sources: result.sources,
-              name: result.meta?.public?.asset_metadata?.title || result.meta?.public?.name,
-              subtitle,
-              score: score ? (score * 100).toFixed(1) : "",
-              type,
-              result
-            };
-          })
-        ]
-      };
-    } catch(error) {
-      this.searchResults.loading = false;
-      throw error;
+      response = (yield this.QueryAIAPI({
+        method: "POST",
+        objectId: this.searchIndex.id,
+        path: UrlJoin("search-ng", "collections", this.selectedCollectionSearchIndexId, "search", "image"),
+        queryParams: { start, limit },
+        body,
+        authTokenInBody: true,
+        stringifyBody: false,
+      })) || {};
+    } else {
+      response = (yield this.QueryAIAPI({
+        method: "POST",
+        objectId: this.searchIndex.id,
+        path: UrlJoin("search-ng", "collections", this.selectedCollectionSearchIndexId, "search", "text"),
+        queryParams: {
+          start,
+          limit
+        },
+        body: {query},
+        authTokenInHeader: true,
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+      })) || {};
     }
 
-    return this.searchResults;
+    let {meta, results} = response;
+
+    const baseUrl = yield this.client.Rep({
+      versionHash: this.searchIndex.versionHash,
+      rep: "frame",
+      channelAuth: true,
+      queryParams: {
+        ignore_trimming: true
+      }
+    });
+
+    // TODO: Remove when server side filtering implemented
+    results = results.filter(result =>
+      (
+        this.searchSettings.objectIds.length === 0 ||
+        this.searchSettings.objectIds.includes(result.qid)
+      ) &&
+      (result.similarity || 0) * 100 > this.searchSettings.minConfidence
+    );
+
+    results = yield Promise.all(
+      results.map(async result => {
+        const objectId = result.qid;
+        const libraryId = await this.client.ContentObjectLibraryId({objectId});
+        const objectName = await this.rootStore.GetObjectName({objectId: result.qid});
+        const versionHash = await this.client.LatestVersionHash({objectId});
+
+        const frameRate = FrameAccurateVideo.ParseRat(result?.match_info?.fps || "24000/1001");
+        const time = (result?.match_info?.frame_idx || 0) / frameRate;
+        const imageUrl = new URL(baseUrl);
+        imageUrl.searchParams.set("t", time);
+        imageUrl.searchParams.set("exact", "true");
+        imageUrl.pathname = UrlJoin("/q", versionHash, "rep", "frame_extract", result?.match_info?.offering || "default", "video");
+
+        return {
+          libraryId,
+          objectId,
+          imageUrl: imageUrl?.toString(),
+          frame: result?.match_info?.frame_idx || 0,
+          startTime: time,
+          endTime: time,
+          firstChunkStartTime: time,
+          name: objectName,
+          score: result.similarity ? (result.similarity * 100).toFixed(1) : "",
+          type: "frame",
+          result
+        };
+      })
+    );
+
+    return {
+      pagination: meta,
+      results
+    };
   });
 
   ClearSearchResults() {

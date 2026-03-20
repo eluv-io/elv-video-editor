@@ -79,7 +79,7 @@ export const EntityListItem = observer(({
     disabled={!image}
     label={
       <LoaderImage
-        width={250}
+        width={600}
         src={image}
         loaderDelay={25}
         loaderAspectRatio={aspectRatio === "landscape" ? 16/9 : 1}
@@ -108,15 +108,13 @@ export const EntityListItem = observer(({
             <div className={S("entity-card__image", "entity-card__image--blank")}>
               <Icon icon={ImageIcon}/>
             </div> :
-            <Tooltip label={"Asd"} withinPortal={false}>
-              <LoaderImage
-                width={100}
-                src={image}
-                loaderDelay={25}
-                loaderAspectRatio={aspectRatio === "landscape" ? 16/9 : 1}
-                className={S("entity-card__image", contain ? "entity-card__image--contain" : "")}
-              />
-            </Tooltip>
+            <LoaderImage
+              width={200}
+              src={image}
+              loaderDelay={25}
+              loaderAspectRatio={aspectRatio === "landscape" ? 16/9 : 1}
+              className={S("entity-card__image", contain ? "entity-card__image--contain" : "")}
+            />
         }
         {
           !anchor ? null :
@@ -175,36 +173,55 @@ export const EntityCard = observer(({
   tooltip,
   aspectRatio="square",
   onRender,
+  showImageTooltip=false,
   className=""
 }) => {
   return (
     <div ref={onRender} className={JoinClassNames(S("entity-card", `entity-card--${aspectRatio}`), className)}>
-      <Linkish
-        to={link}
-        className={S("entity-card__image-container")}
+      <Tooltip
+        position="right"
+        openDelay={500}
+        disabled={!image || !showImageTooltip}
+        label={
+          <LoaderImage
+            width={600}
+            src={image}
+            loaderDelay={25}
+            loaderAspectRatio={aspectRatio === "landscape" ? 16/9 : 1}
+            className={S("entity-card__image--hover")}
+          />
+        }
+        classNames={{
+          tooltip: S("tooltip--transparent")
+        }}
       >
-        {
-          !image ?
-            <div className={S("entity-card__image", "entity-card__image--blank")}>
-              <Icon icon={ImageIcon}/>
-            </div> :
-            <LoaderImage
-              width={320}
-              src={image}
-              loaderDelay={25}
-              loaderAspectRatio={aspectRatio === "landscape" ? 16/9 : 1}
-              className={S("entity-card__image", contain ? "entity-card__image--contain" : "")}
-            />
-        }
-        {
-          !anchor ? null :
-            <Icon icon={AnchorIcon} className={S("entity-card__image-badge", "entity-card__image-badge--left")}/>
-        }
-        {
-          !badge ? null :
-            <div className={S("entity-card__image-badge", "entity-card__image-badge--right")}>{badge}</div>
-        }
-      </Linkish>
+        <Linkish
+          to={link}
+          className={S("entity-card__image-container")}
+        >
+          {
+            !image ?
+              <div className={S("entity-card__image", "entity-card__image--blank")}>
+                <Icon icon={ImageIcon}/>
+              </div> :
+              <LoaderImage
+                width={320}
+                src={image}
+                loaderDelay={25}
+                loaderAspectRatio={aspectRatio === "landscape" ? 16/9 : 1}
+                className={S("entity-card__image", contain ? "entity-card__image--contain" : "")}
+              />
+          }
+          {
+            !anchor ? null :
+              <Icon icon={AnchorIcon} className={S("entity-card__image-badge", "entity-card__image-badge--left")}/>
+          }
+          {
+            !badge ? null :
+              <div className={S("entity-card__image-badge", "entity-card__image-badge--right")}>{badge}</div>
+          }
+        </Linkish>
+      </Tooltip>
       <div className={S("entity-card__text")}>
         <Tooltip openDelay={500} label={tooltip || label}>
           <div className={S("entity-card__title")}>

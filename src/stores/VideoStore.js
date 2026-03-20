@@ -36,6 +36,7 @@ class VideoStore {
   isLiveToVod = false;
   ready = false;
   showVideoControls = true;
+  initialFrame;
 
   consecutiveSegmentErrors = 0;
 
@@ -137,7 +138,7 @@ class VideoStore {
     }
   }
 
-  constructor(rootStore, options={clipKey: "", tags: true, thumbnails: true, channel: false}) {
+  constructor(rootStore, options={clipKey: "", tags: true, thumbnails: true, channel: false, id: "default"}) {
     makeAutoObservable(
       this,
       {
@@ -146,6 +147,7 @@ class VideoStore {
       }
     );
 
+    this.id = options.id || "default";
     this.rootStore = rootStore;
     this.thumbnailStore = new ThumbnailStore(this);
     this.tags = typeof options.tags !== "undefined" ? options.tags : true;
@@ -220,6 +222,7 @@ class VideoStore {
     this.consecutiveSegmentErrors = 0;
 
     this.initialClipPoints = undefined;
+    this.initialFrame = undefined;
 
     this.clipInFrame = undefined;
     this.clipOutFrame = undefined;
@@ -752,6 +755,11 @@ class VideoStore {
           });
         }
 
+        if(this.initialFrame) {
+          this.Seek(this.initialFrame);
+          this.initialFrame = undefined;
+        }
+
         this.aspectRatio = this.video.videoWidth / this.video.videoHeight;
       }
 
@@ -988,6 +996,14 @@ class VideoStore {
       clipPoints.isolate = true;
     }
 
+    if(params.has("if")) {
+      clipPoints.initialFrame = parseInt(params.get("if"));
+      clipPoints.initialTime = this.FrameToTime(clipPoints.initialFrame);
+    } else if(params.has("it")) {
+      clipPoints.initialTime = parseFloat(params.get("it"));
+      clipPoints.initialFrame = this.TimeToFrame(clipPoints.initialTime);
+    }
+
     return Object.keys(clipPoints).length > 0 ? clipPoints : undefined;
   }
 
@@ -1000,14 +1016,18 @@ class VideoStore {
         startTime: this.FrameToTime(clipInFrame),
         endTime: this.FrameToTime(clipOutFrame)
       });
-    } else {
+    } else if(clipOutFrame) {
       this.SetScale(
         this.FrameToProgress(clipInFrame) - 1,
         this.FrameToProgress(clipOutFrame) + 1,
       );
     }
 
-    setTimeout(() => this.Seek(clipInFrame), 1000);
+    if(clipParams.initialFrame) {
+      this.initialFrame = clipParams.initialFrame;
+    }
+
+    //setTimeout(() => this.Seek(clipInFrame), 500);
   }
 
   SMPTEToTime(smpte) {

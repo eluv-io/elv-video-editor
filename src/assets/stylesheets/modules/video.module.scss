@@ -173,6 +173,40 @@
   }
 }
 
+.search-frame-menu {
+  animation: var(--animation-fadein) 0.25s ease;
+  background-color: var(--background-modal);
+  border-radius: 5px;
+  box-shadow: 0 0 20px black;
+  padding: 20px;
+  position: fixed;
+  width: 500px;
+  z-index: 100;
+
+  &__title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 5px;
+  }
+
+  &__text {
+    color: var(--text-secondary);
+  }
+
+  &__actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    width: 100%;
+  }
+
+  &__action {
+    width: 100px;
+  }
+}
+
 .play-pause {
   position: relative;
 

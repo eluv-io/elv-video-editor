@@ -15,6 +15,8 @@ import {
   FrameForward1Button,
   FullscreenButton,
   PlayPauseButton,
+  SearchFrameButton,
+  SearchFrameMenu,
   VideoTime,
   VolumeControls
 } from "@/components/video/VideoControls";
@@ -27,6 +29,7 @@ const Video = observer(({
   store,
   showOverlay,
   showFrameDownload,
+  showFrameSearch,
   fullscreenContainer,
   playoutUrl,
   blank,
@@ -170,8 +173,12 @@ const Video = observer(({
     >
       <div className={S("video-wrapper")}>
         {
-          !showOverlay || !video || !trackStore.showOverlay ? null :
-            <Overlay key={`overlay-${tagStore.editPosition}`} element={video} />
+           !video ? null :
+            <Overlay
+              key={`overlay-${tagStore.editPosition}`}
+              element={video}
+              editOnly={!showOverlay || !trackStore.showOverlay}
+            />
         }
         <video
           key={`video-${playoutUrl}`}
@@ -206,12 +213,20 @@ const Video = observer(({
               }
               <div className={S("video-controls__right")}>
                 {
+                  !showFrameSearch ? null :
+                    <SearchFrameButton store={store} />
+                }
+                {
                   !showFrameDownload ? null :
                     <DownloadFrameButton store={store}/>
                 }
                 <FullscreenButton store={store} />
               </div>
             </div>
+        }
+        {
+          !tagStore.editedSearchFrame ? null :
+            <SearchFrameMenu store={store} element={video} />
         }
       </div>
       {

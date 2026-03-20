@@ -26,6 +26,7 @@ class TagStore {
   editedAsset;
   editedAssetTag;
   editedGroundTruthAsset;
+  editedSearchFrame;
 
   isolatedTag;
 
@@ -408,6 +409,18 @@ class TagStore {
             y2: 0.75
           }
       };
+    } else if(type === "searchFrame") {
+      this.rootStore.videoStore.ToggleVideoControls(false);
+      this.editedSearchFrame = {
+        frame,
+        box: item?.box ||
+          {
+            x1: 0.0,
+            y1: 0.0,
+            x2: 1,
+            y2: 1
+          }
+      };
     } else {
       console.error("Unknown editing type: " + type);
       return;
@@ -597,6 +610,9 @@ class TagStore {
             box: tag.box
           }
         });
+      } else if(this.editedSearchFrame) {
+        const tag = this.editedSearchFrame;
+        this.rootStore.aiStore.SetSearchImageFrame(tag.image);
       }
     }
 
@@ -606,6 +622,7 @@ class TagStore {
     this.ClearEditedAsset();
     this.ClearEditedAssetTag();
     this.ClearEditedGroundTruthAsset();
+    this.ClearEditedSearchFrame();
     this.editing = false;
   }
 
@@ -900,6 +917,10 @@ class TagStore {
     this.editedAssetTag = undefined;
   }
 
+  UpdateEditedGroundTruthAsset(asset) {
+    this.editedGroundTruthAsset = asset;
+  }
+
   ClearEditedGroundTruthAsset() {
     if(this.editedGroundTruthAsset?.poolId) {
       sessionStorage.setItem("last-selected-pool-id", this.editedGroundTruthAsset.poolId);
@@ -909,8 +930,13 @@ class TagStore {
     this.rootStore.videoStore.ToggleVideoControls(this.selectedOverlayTagIds.length === 0);
   }
 
-  UpdateEditedGroundTruthAsset(asset) {
-    this.editedGroundTruthAsset = asset;
+  UpdateEditedSearchFrame(info) {
+    this.editedSearchFrame = info;
+  }
+
+  ClearEditedSearchFrame() {
+    this.editedSearchFrame = undefined;
+    this.rootStore.videoStore.ToggleVideoControls(this.selectedOverlayTagIds.length === 0);
   }
 }
 

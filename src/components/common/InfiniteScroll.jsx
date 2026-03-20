@@ -1,6 +1,6 @@
 import CommonStyles from "@/assets/stylesheets/modules/common.module.scss";
 
-import React, {useRef, useEffect, useState} from "react";
+import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {useDebouncedState} from "@mantine/hooks";
 import {Loader} from "@/components/common/Common.jsx";
@@ -20,28 +20,38 @@ const InfiniteScroll = observer(({
   withLoader,
   className=""
 }) => {
-  const ref = useRef(null);
+  const [element, setElement] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [update, setUpdate] = useDebouncedState(0, 250);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [noScroll, setNoScroll] = useState(false);
   const [limit, setLimit] = useDebouncedState(
     (scrollPreservationKey && scrollPreservationInfo[scrollPreservationKey]?.limit) || batchSize,
     250
   );
 
   const CheckUpdate = () => {
-    if(!ref?.current) { return; }
+    if(!element) { return; }
 
-    if(ref.current.scrollTop + ref.current.offsetHeight > ref.current.scrollHeight * 0.86) {
+    if(element.scrollTop + element.offsetHeight > element.scrollHeight * 0.86) {
       setLimit(limit + batchSize);
       setUpdate(update + 1);
+    }
+
+    if(element.scrollHeight === element.clientHeight) {
+      if(!noScroll) {
+        setLimit(limit + batchSize);
+        setUpdate(update + 1);
+      }
+
+      setNoScroll(true);
     }
 
     if(loaded && scrollPreservationKey) {
       scrollPreservationInfo[scrollPreservationKey] = {
         limit,
-        scroll: ref.current.scrollTop,
+        scroll: element.scrollTop,
       };
     }
   };
@@ -50,8 +60,8 @@ const InfiniteScroll = observer(({
     // Reset limit when tag content changes
     setLimit(batchSize);
 
-    if(ref.current) {
-      ref.current.scrollTop = 0;
+    if(element) {
+      element.scrollTop = 0;
     }
 
     setUpdate(update + 1);
@@ -59,7 +69,7 @@ const InfiniteScroll = observer(({
 
   useEffect(() => {
     if(!loaded && scrollPreservationKey && scrollPreservationInfo[scrollPreservationKey]?.scroll) {
-      setTimeout(() => ref.current?.scrollTo(0, scrollPreservationInfo[scrollPreservationKey].scroll - 100), 200);
+      setTimeout(() => element?.scrollTo(0, scrollPreservationInfo[scrollPreservationKey].scroll - 100), 200);
     }
 
     if(loading || (!loaded && children?.length > 0)) {
@@ -81,14 +91,14 @@ const InfiniteScroll = observer(({
   }, [update]);
 
   useEffect(() => {
-    if(!ref.current) { return; }
+    if(!element) { return; }
 
     const resizeObserver = new ResizeObserver(CheckUpdate);
 
-    resizeObserver.observe(ref.current);
+    resizeObserver.observe(element);
 
     return () => resizeObserver.disconnect();
-  }, [ref]);
+  }, [element]);
 
   if(!loaded && withLoader) {
     return <Loader />;
@@ -100,7 +110,7 @@ const InfiniteScroll = observer(({
 
   return (
     <div
-      ref={ref}
+      ref={setElement}
       onScroll={CheckUpdate}
       className={className}
     >

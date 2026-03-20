@@ -15,7 +15,7 @@ const SimpleView = observer(() => {
       <Route path="/:queryB58/:resultIndex">
         <SearchResult />
       </Route>
-      <Route path="/:queryB58">
+      <Route path="/:queryB58?">
         <SearchResults />
       </Route>
       <Route>

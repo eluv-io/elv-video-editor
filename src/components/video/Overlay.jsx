@@ -404,7 +404,7 @@ const Draw = ({canvas, tags, hoverTags, elementSize}) => {
   });
 };
 
-const Overlay = observer(({element, asset, highlightTag}) => {
+const Overlay = observer(({element, asset, highlightTag, editOnly}) => {
   const [canvas, setCanvas] = useState(undefined);
   const [hoverPosition, setHoverPosition] = useState({hovering: false, clientX: 0, clientY: 0});
 
@@ -438,7 +438,7 @@ const Overlay = observer(({element, asset, highlightTag}) => {
   }, [element]);
 
   useEffect(() => {
-    if(!canvas) { return; }
+    if(!canvas || editOnly) { return; }
 
     const Redraw = () =>
       Draw({
@@ -476,9 +476,6 @@ const Overlay = observer(({element, asset, highlightTag}) => {
 
     return () => DisposeDrawReaction && DisposeDrawReaction();
   }, [canvas, highlightTag, hoverTags]);
-
-  if(!asset && !overlayStore.overlayEnabled) { return null; }
-
 
   if(tagStore.editedOverlayTag) {
     return (
@@ -526,6 +523,23 @@ const Overlay = observer(({element, asset, highlightTag}) => {
       />
     );
   }
+
+  if(tagStore.editedSearchFrame) {
+    return (
+      <OverlayEdit
+        mode={"rectangle"}
+        initalBox={tagStore.editedSearchFrame.box}
+        onChange={box =>
+          tagStore.UpdateEditedSearchFrame({
+            ...tagStore.editedSearchFrame,
+            box
+          })
+        }
+      />
+    );
+  }
+
+  if(!asset && !overlayStore.overlayEnabled) { return null; }
 
   return (
     <div className={S("overlay")} style={{width: `${overlayStore.overlayCanvasDimensions.width}px`}}>

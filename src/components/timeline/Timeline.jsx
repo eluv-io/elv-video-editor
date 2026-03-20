@@ -122,21 +122,21 @@ const TimelineTopBar = observer(({simple}) => {
         }
         {
           /*
-            <IconButton
-              icon={TaggingIcon}
-              label="Start Tagging Jobs"
-              to="~/tagging/new/configure"
-              onClick={() => {
-                aiTaggingStore.AddSelectedContent({
-                  objectId: videoStore.videoObject?.objectId,
-                  name: videoStore.videoObject?.name
-                });
-              }}
-            />
+          <IconButton
+            icon={TaggingIcon}
+            label="Start Tagging Jobs"
+            to="~/tagging/new/configure"
+            onClick={() => {
+              aiTaggingStore.AddSelectedContent({
+                objectId: videoStore.videoObject?.objectId,
+                name: videoStore.videoObject?.name
+              });
+            }}
+          />
+          <div className={S("toolbar__separator")}/>
 
            */
         }
-        <div className={S("toolbar__separator")}/>
         <div className={S("jump-to")}>
           <label>Jump to</label>
           <SMPTEInput

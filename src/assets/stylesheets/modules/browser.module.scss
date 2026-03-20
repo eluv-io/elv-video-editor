@@ -78,6 +78,21 @@
     text-overflow: ellipsis;
   }
 
+  &__header-image-container {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+  }
+
+  &__header-image {
+    height: 30px;
+    width: auto;
+  }
+
+  &__header-image-full {
+    max-width: 500px;
+  }
+
   &__header-right {
     display: flex;
     flex-grow: 1;
@@ -193,43 +208,6 @@
       }
     }
   }
-
-  &__music-switch {
-    cursor: pointer;
-
-    * {
-      --switch-width: 90px;
-      --switch-height: 50px;
-      --switch-thumb-size: 40px;
-      --switch-track-label-padding: 5px;
-      --switch-thumb-bd: 0 !important;
-    }
-
-    &--inactive {
-      * {
-        --switch-bg: var(--background-input) !important;
-        --switch-bd: var(--background-input) !important;
-        --switch-thumb-bg: var(--background-toolbar--active);
-        --switch-thumb-bd: 0 !important;
-
-        color: var(--text-secondary);
-      }
-    }
-
-    &--active {
-      * {
-        --switch-bg: var(--background-search-input) !important;
-        --switch-bd: var(--background-search-input) !important;
-        --switch-thumb-bg: var(--color-highlight);
-
-        color: var(--text-primary);
-      }
-    }
-  }
-
-  &__music-switch-label {
-    display: none;
-  }
 }
 
 .search-input-container {
@@ -243,8 +221,13 @@
     align-items: center;
     display: flex;
     justify-content: center;
-    left: 20px;
+    left: 15px;
     position: absolute;
+  }
+
+  &__ai-icon {
+    height: 20px;
+    width: 20px;
   }
 
   &__right-buttons {
@@ -278,6 +261,49 @@
   }
 }
 
+.search-mode-selection {
+  &__option {
+    color: var(--text-primary);
+    font-size: 16px;
+    gap: 5px;
+
+    &:not(:last-child) {
+      margin-bottom: 3px;
+    }
+
+    svg {
+      height: 20px;
+      width: 20px;
+    }
+
+    &--active {
+      &:not(&:hover) {
+        background-color: var(--background-switch-active);
+      }
+    }
+  }
+}
+
+.image-search {
+  &__upload {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    text-align: center;
+  }
+
+  &__icon {
+    color: var(--background-switch-active);
+  }
+
+  &__text {
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 20px;
+    text-align: center;
+  }
+}
+
 .search-bar {
   border: 0;
   border-radius: 30px;
@@ -286,7 +312,8 @@
   width: 100%;
 
   &--ai {
-    padding-left: 60px;
+    font-size: 20px;
+    padding-left: 70px;
   }
 
   &--error {
