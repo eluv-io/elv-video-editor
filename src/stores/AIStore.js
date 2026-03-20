@@ -803,9 +803,6 @@ class AIStore {
   });
 
   CollectionSearch = flow(function * ({mode, query, start, limit}) {
-    // TODO: Remove when server side filtering implemented
-    limit = 100;
-
     let response;
     if(mode === "frame-image") {
       const body = new FormData();
