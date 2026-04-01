@@ -118,6 +118,7 @@ const Entities = observer(({showList, filter}) => {
             label: entity.label,
             image: anchorImage,
             meta: entity.meta,
+            modified: groundTruthStore.modifiedEntityIds.includes(entity.id),
             __filterAttrs: Object.values(entity.meta || {}),
             assetCount: entity.sample_files?.length || 0
           };
@@ -130,6 +131,7 @@ const Entities = observer(({showList, filter}) => {
             entity.__filterAttrs.find(attr => attr?.toLowerCase()?.includes(token))
           )
         )
+        .sort((a, b) => a.modified ? -1 : b.modified ? 1 : 0)
         .slice(0, limit)
     );
   }, [limit, filter, updateIndex]);
@@ -165,6 +167,7 @@ const Entities = observer(({showList, filter}) => {
             count={entity.assetCount || 0}
             image={entity.image?.url}
             contain
+            modified={entity.modified}
             tooltip={
               <div className={S("tooltip", "entity-card__tooltip")}>
                 <div className={S("entity-card__tooltip-label")}>{entity.label}</div>
@@ -274,6 +277,7 @@ const GroundTruthPool = observer(() => {
               New Entity
             </StyledButton>
             <StyledButton
+              disabled={Object.keys(pool?.metadata?.entities || {}).length === 0}
               icon={GroundTruthIcon}
               onClick={() => setShowAssetModal(true)}
             >

@@ -127,3 +127,9 @@ button {
   -webkit-user-select: none!important;
   user-select: none!important;
 }
+
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

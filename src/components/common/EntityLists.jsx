@@ -169,6 +169,7 @@ export const EntityCard = observer(({
   contain,
   anchor,
   badge,
+  modified,
   actions,
   tooltip,
   aspectRatio="square",
@@ -220,11 +221,19 @@ export const EntityCard = observer(({
             !badge ? null :
               <div className={S("entity-card__image-badge", "entity-card__image-badge--right")}>{badge}</div>
           }
+          {
+            !modified ? null :
+              <div className={S("entity-card__modified-indicator")}/>
+          }
         </Linkish>
       </Tooltip>
       <div className={S("entity-card__text")}>
         <Tooltip openDelay={500} label={tooltip || label}>
           <div className={S("entity-card__title")}>
+            {
+              !modified ? null :
+                <div className={S("entity-card__modified-indicator")}/>
+            }
             <div className={S("ellipsis")}>
               {label}
             </div>

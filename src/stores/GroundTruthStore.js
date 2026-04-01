@@ -21,6 +21,13 @@ class GroundTruthStore {
     return this.rootStore.client;
   }
 
+  get modifiedEntityIds() {
+    return this.rootStore.editStore.editInfo?.groundTruth?.actionStack
+      ?.filter(action => action.type === "entity")
+      ?.map(action => action.modifiedItem?.id)
+      ?.filter(id => id);
+  }
+
   LoadGroundTruthPools = flow(function * ({force}={}) {
     return yield this.rootStore.LoadResource({
       key: "groundTruthPools",

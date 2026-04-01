@@ -153,6 +153,8 @@ const UploadForm = observer(({objectId, path, Close}) => {
   const fileStatus = rootStore.fileBrowserStore.uploadStatus[objectId] || {};
   const uploading = fileBrowserStore.activeUploadJobs[objectId] > 0;
 
+  const onClose = () => Close(selectedFiles);
+
   const Upload = async files => {
     if(!files || files.length === 0) {
       return;
@@ -210,7 +212,7 @@ const UploadForm = observer(({objectId, path, Close}) => {
       opened
       centered
       size={800}
-      onClose={uploading ? () => {} : Close}
+      onClose={uploading ? () => {} : onClose}
       withCloseButton={!uploading}
       title={LocalizeString(rootStore.l10n.components.file_browser.upload_files, {path})}
     >
@@ -270,7 +272,7 @@ const UploadForm = observer(({objectId, path, Close}) => {
           <AsyncButton w={200} disabled={uploading} loading={uploading} onClick={() => directoryUploadInput.click()}>
             Upload Directory
           </AsyncButton>
-          <AsyncButton color="gray.4" autoContrast w={200} disabled={uploading} loading={uploading} onClick={Close}>
+          <AsyncButton color="gray.4" autoContrast w={200} disabled={uploading} loading={uploading} onClick={onClose}>
             {uploading ? "" : rootStore.l10n.components.actions.done}
           </AsyncButton>
         </Group>
@@ -581,19 +583,21 @@ const FileBrowserTable = observer(({
               }
 
               return (
-                <HoverCard position="right" offset={0} width={250} shadow="md">
+                <HoverCard position="right" offset={0} width={350} shadow="md">
                   <HoverCard.Target>
                     <Container p={0} style={{cursor: "pointer"}}>
                       <IconPhoto />
                     </Container>
                   </HoverCard.Target>
                   <HoverCard.Dropdown bg="var(--background-modal)" p="sm" >
-                    <LoaderImage
-                      alt={filename}
-                      src={ScaleImage(url, 400)}
-                      loaderAspectRatio={1}
-                    />
-                    <Text mt={5} ta="center" fz="xs">{filename}</Text>
+                    <Group justify="center" w="100%">
+                      <LoaderImage
+                        alt={filename}
+                        src={ScaleImage(url, 350)}
+                        loaderAspectRatio={1}
+                      />
+                    </Group>
+                    <Text mt={5} ta="center" fz="xs" className="ellipsis">{filename}</Text>
                   </HoverCard.Dropdown>
                 </HoverCard>
               );
@@ -697,7 +701,40 @@ const FileBrowser = observer(({objectId, multiple, title, extensions=[], initial
 
   return (
     <Modal withCloseButton={false} onClose={() => {}} centered size={1000} title={title} padding="xl" {...modalProps}>
-      { showUploadForm ? <UploadForm objectId={objectId} path={path} Close={() => setShowUploadForm(false)} /> : null }
+      {
+        !showUploadForm ? null :
+          <UploadForm
+            objectId={objectId}
+            path={path}
+            Close={uploadedFiles => {
+              setShowUploadForm(false);
+
+              const filesToAdd = (uploadedFiles || [])
+                .map(({filepath}) => {
+                  const filename = filepath.split("/").slice(-1)[0];
+                  filepath = UrlJoin("/", filepath.split("/").slice(0, -1).join("/"));
+
+                  return fileBrowserStore.Directory({objectId, path: filepath})
+                    .find(file => file.filename === filename);
+                })
+                .filter(file =>
+                  file && (!extensions || extensions.length === 0 || extensions.includes(file.ext?.toLowerCase()))
+                );
+
+              let newRecords = [
+                ...selectedRecords,
+                ...filesToAdd
+              ]
+                .filter((x, i, a) => a.findIndex(file => file.filename === x.filename) === i);
+
+              if(!multiple) {
+                newRecords = newRecords.slice(0, 1);
+              }
+
+              setSelectedRecords(newRecords);
+            }}
+          />
+      }
       <Container px={0}>
         <Group mb="xs" align="center" gap="xs">
           <IconButton
@@ -734,7 +771,7 @@ const FileBrowser = observer(({objectId, multiple, title, extensions=[], initial
             setSelectedRecords={setSelectedRecords}
           />
         </Container>
-        <Group justify="space-between" mt="xs" px={5}>
+        <Group justify="space-between" mt="xs">
           {
             !fileBrowserStore.files[selectedObjectId] ? <div /> :
               <Text fz="xs" fw={600}>
@@ -751,7 +788,14 @@ const FileBrowser = observer(({objectId, multiple, title, extensions=[], initial
         {
           !multiple || selectedRecords.length === 0 ? null :
             <Container my="xs" p={0}>
-              <Text mb="sm">Selected Files ({selectedRecords.length}):</Text>
+              <Group justify="space-between">
+                <Text mb="sm">Selected Files ({selectedRecords.length}):</Text>
+                <IconButton
+                  label={rootStore.l10n.components.file_browser.remove_all}
+                  Icon={IconX}
+                  onClick={() => setSelectedRecords([])}
+                />
+              </Group>
               <ScrollArea p={0} h={100} bg="gray.8">
                 {
                   selectedRecords.map(({fullPath}) =>

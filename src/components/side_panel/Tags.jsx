@@ -239,6 +239,15 @@ const TagForm = observer(() => {
                     value={tag.trackId.toString()}
                     options={
                       trackStore.viewTracks
+                        .filter(track =>
+                          ![
+                            "celebrity_detection",
+                            "character_detection",
+                            "logo_detection",
+                            "object_detection",
+                            "optical_character_recognition"
+                          ].includes(track.key)
+                        )
                         .map(track => ({
                           label: track.label,
                           value: track.trackId.toString()

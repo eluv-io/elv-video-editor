@@ -31,6 +31,7 @@ class FileBrowserStore {
 
   // Retrieve contents of the specified directory
   Directory({objectId, path="/"}) {
+    path = path || "/";
     let directory = this.files[objectId] || {};
 
     path

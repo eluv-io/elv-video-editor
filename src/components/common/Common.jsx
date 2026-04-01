@@ -839,39 +839,41 @@ export const ProgressModal = observer(({title, progress, error, Close}) => {
       onClose={() => {}}
       withCloseButton={false}
     >
-      {
-        error ?
-          <div className={S("progress__error")}>
-            <div className={S("progress__error-message")}>
-              Something went wrong, please try again.
-            </div>
-            <div className={S("progress__actions")}>
-              {
-                /*
-              <StyledButton
-                color="--background-active"
-                icon={CopyIcon}
-                onClick={() => Copy(JSON.stringify(error, null, 2))}
-              >
-                Copy Error Details
-              </StyledButton>
+      <div className={S("progress-modal")}>
+        {
+          error ?
+            <div className={S("progress__error")}>
+              <div className={S("progress__error-message")}>
+                Something went wrong, please try again.
+              </div>
+              <div className={S("progress__actions")}>
+                {
+                  /*
+                <StyledButton
+                  color="--background-active"
+                  icon={CopyIcon}
+                  onClick={() => Copy(JSON.stringify(error, null, 2))}
+                >
+                  Copy Error Details
+                </StyledButton>
 
-                 */
-              }
-              <StyledButton onClick={Close}>
-                Close
-              </StyledButton>
+                   */
+                }
+                <StyledButton onClick={Close}>
+                  Close
+                </StyledButton>
+              </div>
+            </div> :
+            <div className={S("progress")}>
+              <Progress
+                value={progress}
+                max={100}
+                transitionDuration={1000}
+                mb="md"
+              />
             </div>
-          </div> :
-          <div className={S("progress")}>
-            <Progress
-              value={progress}
-              max={100}
-              transitionDuration={1000}
-              mb="md"
-            />
-          </div>
-      }
+        }
+      </div>
     </Modal>
   );
 });

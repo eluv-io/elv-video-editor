@@ -482,16 +482,16 @@ class AIStore {
   });
 
   LoadSearchIndexes = flow(function * () {
-    const metadata = yield this.client.ContentObjectMetadata({
+    const metadata = (yield this.client.ContentObjectMetadata({
       versionHash: yield this.client.LatestVersionHash({objectId: this.rootStore.tenantInfoObjectId}),
       metadataSubtree: "public/search",
       select: [
         "indexes",
         "collection_indexes"
       ]
-    });
+    })) || {};
 
-    this.searchCollectionIndexes = (metadata.collection_indexes || []);
+    this.searchCollectionIndexes = (metadata?.collection_indexes || []);
     this.selectedCollectionSearchIndexId = this.searchCollectionIndexes[0]?.id;
 
     let searchIndexes = (metadata.indexes || [])

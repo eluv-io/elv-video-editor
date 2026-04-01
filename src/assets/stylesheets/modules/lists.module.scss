@@ -99,6 +99,15 @@
     right: 15px;
   }
 
+  &__modified-indicator {
+    background-color: var(--color-highlight);
+    border-radius: 100%;
+    box-shadow: 0 0 2px var(--color-highlight);
+    height: 5px;
+    margin-inline: 3px;
+    width: 5px;
+  }
+
   &__text {
     align-items: center;
     display: flex;

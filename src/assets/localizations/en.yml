@@ -24,6 +24,7 @@ components:
     copy_link: Copy Link to {filename}
     rename: Rename {filename}
     delete: Delete {filename}
+    remove_all: Unselect All
     remove_selection: Remove selection {filename}
     delete_confirm: Are you sure you want to delete this file?
     directory_name: Directory Name
