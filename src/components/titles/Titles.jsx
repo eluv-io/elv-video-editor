@@ -2,9 +2,9 @@ import SearchStyles from "@/assets/stylesheets/modules/search.module.scss";
 import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 
 import {observer} from "mobx-react-lite";
-import React, {useEffect, useState} from "react";
-import {aiStore, titleStore} from "@/stores/index.js";
-import {CreateModuleClassMatcher, JoinClassNames, ParseSearchQuery, ScaleImage, StorageHandler} from "@/utils/Utils.js";
+import React, {useEffect} from "react";
+import {aiStore} from "@/stores/index.js";
+import {CreateModuleClassMatcher, ParseSearchQuery, ScaleImage} from "@/utils/Utils.js";
 import {AISearchBar} from "@/components/nav/Browser.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import UrlJoin from "url-join";
@@ -75,7 +75,14 @@ const Titles = observer(() => {
   return (
     <div className={S("browser-page")}>
       <div className={S("browser")}>
-        <AISearchBar basePath="/" initialQuery={query} initialMode={mode} />
+        <AISearchBar
+          basePath="/"
+          initialQuery={query}
+          initialMode={mode}
+          onObjectSelect={({item, navigate}) =>
+            item.objectId && navigate(UrlJoin("~/titles", "title", item.objectId))
+          }
+        />
         <div className={S("list-page", "list-page--titles")}>
           <TitleResults key={aiStore.searchResults.key} queryB58={queryB58} />
         </div>

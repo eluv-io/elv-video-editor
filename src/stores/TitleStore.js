@@ -1,5 +1,4 @@
 import {flow, makeAutoObservable} from "mobx";
-import UrlJoin from "url-join";
 import {HashString} from "@/utils/Utils.js";
 
 class TitleStore {
@@ -77,6 +76,7 @@ class TitleStore {
           objectId: titleId,
           versionHash,
           name: metadata?.name,
+          title: metadata?.asset_metadata?.display_title || metadata?.asset_metadata?.title || metadata?.name,
           metadata: metadata?.asset_metadata
         };
 

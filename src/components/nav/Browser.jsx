@@ -461,7 +461,7 @@ const ModeSelectionMenu = observer(({mode, setMode, className=""}) => {
   );
 });
 
-export const AISearchBar = observer(({basePath="~/search", initialQuery="", initialMode}) => {
+export const AISearchBar = observer(({basePath="~/search", initialQuery="", initialMode, onObjectSelect}) => {
   const lastMode = localStorage.getItem(`search-mode-${rootStore.tenantContractId}`);
   const [input, setInput] = useState(initialQuery);
   const [mode, setMode] = useState(lastMode || initialMode || "clip");
@@ -483,7 +483,7 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
       const item = await browserStore.LookupContent(input);
 
       if(item && Object.keys(item).length > 0) {
-        return ContentBrowserSelect({item, navigate});
+        return onObjectSelect ? onObjectSelect({item, navigate}) : ContentBrowserSelect({item, navigate});
       }
     }
 
