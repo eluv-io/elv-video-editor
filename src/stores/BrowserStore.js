@@ -170,6 +170,7 @@ class BrowserStore {
               "public/name",
               "public/display_image",
               "commit/timestamp",
+              "ground_truth/model_domain",
               "channel/offerings/*/display_name",
               "channel/offerings/*/updated_at",
               "channel/offerings/*/items",

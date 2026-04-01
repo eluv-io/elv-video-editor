@@ -30,7 +30,6 @@ import {Redirect, Route, useParams, Switch, useLocation, useSearchParams} from "
 import UrlJoin from "url-join";
 import {Select, Tabs, Tooltip, Progress, Menu} from "@mantine/core";
 import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
-import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 import SearchSettings from "@/components/search/SearchSettings.jsx";
 import {Dropzone, IMAGE_MIME_TYPE} from "@mantine/dropzone";
 
@@ -1068,7 +1067,11 @@ const ContentBrowserSelect = ({item, navigate}) => {
 
       path = UrlJoin("~/", Object.keys(item.vods)[0]);
     } else if(!item.isVideo) {
-      path = UrlJoin("~/", item.objectId, "assets");
+      if(item.metadata?.ground_truth) {
+        path = UrlJoin("~/ground-truth", item.objectId);
+      } else {
+        path = UrlJoin("~/", item.objectId, "assets");
+      }
     } else if(item.hasChannels) {
       path = UrlJoin("~/browse", path, item.objectId);
     } else {
@@ -1515,15 +1518,15 @@ export const TaggingJobBrowser = observer(() => {
     }))
     .map(job => ({
       ...job,
-      progress: !job?.tag_details?.tagging_progress ? undefined :
-        FrameAccurateVideo.ParseRat(job.tag_details.tagging_progress) * 100
+      progress: typeof job?.progress === "undefined" ? undefined :
+        parseFloat(job.progress) * 100
     }));
 
   return (
     <div className={S("browser-page")}>
       <div className={S("browser", "browser--tagging")}>
         <SearchBar
-          placeholder="Title, Model, Content ID"
+          placeholder="Filter by Title"
           saveByLocation
           onSubmit={value => setFilter(value)}
         />
@@ -1600,7 +1603,7 @@ export const TaggingJobBrowser = observer(() => {
                             label={
                               <div className={S("tooltip")}>
                                 <div className={S("tooltip__item")}>
-                                  {job.objectName}
+                                  {job.title}
                                 </div>
                               </div>
                             }
@@ -1608,7 +1611,7 @@ export const TaggingJobBrowser = observer(() => {
                           >
                             <div className={S("browser-table__row-title-main")}>
                               <span className={S("ellipsis")}>
-                                {job.objectName || job.objectId}
+                                {job.title || job.objectId}
                               </span>
                             </div>
                           </Tooltip>
@@ -1630,7 +1633,7 @@ export const TaggingJobBrowser = observer(() => {
                           ["succeeded", "failed", "cancelled"].includes(job?.status?.toLowerCase()) ? null :
                             <>
                               <Progress
-                                value={job?.progress || 50}
+                                value={job?.progress || 0}
                                 max={100}
                                 transitionDuration={1000}
                                 w="100%"
@@ -1641,9 +1644,16 @@ export const TaggingJobBrowser = observer(() => {
                             </>
                         }
                       </div>
-                      <div className={S("browser-table__cell")}>
-                        {job?.status?.toLowerCase() === "cancelled" ? "Paused" : Capitalize(job?.status)}
-                      </div>
+                      <Tooltip
+                        className={S("tooltip")}
+                        openDelay={500}
+                        disabled={!(job.error || job?.tag_details?.warning)}
+                        label={job.error || job?.tag_details?.warning}
+                      >
+                        <div className={S("browser-table__cell")}>
+                          {job?.status?.toLowerCase() === "cancelled" ? "Paused" : Capitalize(job?.status)}
+                        </div>
+                      </Tooltip>
                       <div className={S("browser-table__cell", "browser-table__cell--right")}>
                         {
                           ["succeeded", "cancelled", "failed"].includes(job?.status?.toLowerCase()) ? null :
@@ -1690,7 +1700,7 @@ export const TaggingJobBrowser = observer(() => {
                         <IconButton
                           small
                           icon={LinkIcon}
-                          label={`Open ${job.objectName || job.objectId}`}
+                          label={`Open ${job.title || job.objectId}`}
                           to={UrlJoin("~/", job.objectId, "tags")}
                         />
                       </div>

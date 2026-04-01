@@ -100,7 +100,6 @@ const Nav = observer(() => {
       active: rootStore.page === "groundTruth",
       hasChanges: editStore.HasUnsavedChanges("groundTruth")
     },
-    /*
     {
       label: "AI Runtime",
       key: "tagging",
@@ -109,8 +108,6 @@ const Nav = observer(() => {
       active: rootStore.page === "tagging",
       hasChanges: editStore.HasUnsavedChanges("tagging")
     }
-
-     */
   ]
     .filter(item => item);
 

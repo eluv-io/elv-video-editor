@@ -1,6 +1,8 @@
 import {flow, makeAutoObservable} from "mobx";
 import UrlJoin from "url-join";
 
+// Statuses: ("queued", "running", "cancelled", "failed", "succeeded")
+
 class AITaggingStore {
   selectedContent = [];
   jobStatus = {};
@@ -87,18 +89,16 @@ class AITaggingStore {
         start,
         limit,
         status,
+        title: filter.toLowerCase(),
         model
       }
     });
 
     // Load object name
-    jobs = yield Promise.all(
-      jobs.map(async job => ({
-        ...job,
-        objectId: job.qid,
-        objectName: await this.rootStore.GetObjectName({objectId: job.qid})
-      }))
-    );
+    jobs = jobs.map(job => ({
+      ...job,
+      objectId: job.qid,
+    }));
 
     for(const job of jobs) {
       // Update job status
@@ -123,7 +123,6 @@ class AITaggingStore {
 
           return jobs.map(job => {
             job.objectId = objectId;
-            job.objectName = this.rootStore.objectNames[objectId];
             this.jobStatus[job.job_id] = job;
 
             return job;
