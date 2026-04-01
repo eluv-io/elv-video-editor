@@ -21,6 +21,7 @@ import GroundTruthStore from "@/stores/GroundTruthStore.js";
 
 import LocalizationEN from "@/assets/localizations/en.yml";
 import UrlJoin from "url-join";
+import TitleStore from "@/stores/TitleStore.js";
 
 if(window.location.hash) {
   const path = `/${window.location.hash.replace("#", "")}`.replace("//", "/");
@@ -79,6 +80,7 @@ class RootStore {
     this.tagStore = new TagStore(this);
     this.trackStore = new TrackStore(this);
     this.videoStore = new VideoStore(this, {id: "default"});
+    this.titleStore = new TitleStore(this);
     this.searchVideoStore = new VideoStore(this, {tags: false, thumbnails: false, id: "search"});
 
     this.InitializeClient()
@@ -414,5 +416,6 @@ export const groundTruthStore = rootStore.groundTruthStore;
 export const keyboardControlsStore = rootStore.keyboardControlStore;
 export const overlayStore = rootStore.overlayStore;
 export const tagStore = rootStore.tagStore;
+export const titleStore = rootStore.titleStore;
 export const trackStore = rootStore.trackStore;
 export const videoStore = rootStore.videoStore;

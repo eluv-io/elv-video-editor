@@ -188,7 +188,10 @@ export const EntityCard = observer(({
             width={600}
             src={image}
             loaderDelay={25}
-            loaderAspectRatio={aspectRatio === "landscape" ? 16/9 : 1}
+            loaderAspectRatio={
+              aspectRatio === "landscape" ? 16/9 :
+                aspectRatio === "square" ? 1 : 2/3
+            }
             className={S("entity-card__image--hover")}
           />
         }
@@ -209,7 +212,10 @@ export const EntityCard = observer(({
                 width={320}
                 src={image}
                 loaderDelay={25}
-                loaderAspectRatio={aspectRatio === "landscape" ? 16/9 : 1}
+                loaderAspectRatio={
+                  aspectRatio === "landscape" ? 16/9 :
+                    aspectRatio === "square" ? 1 : 2/3
+                }
                 className={S("entity-card__image", contain ? "entity-card__image--contain" : "")}
               />
           }

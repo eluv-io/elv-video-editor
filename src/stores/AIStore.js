@@ -27,7 +27,6 @@ class AIStore {
   searchSettings = this.DEFAULT_SEARCH_SETTINGS;
 
   searchResults = {};
-  imageSearchResults = {};
   searchImageFrame;
   searchImageFrameUrl;
 
@@ -540,6 +539,7 @@ class AIStore {
     );
 
     this.rootStore.compositionStore.selectedSearchIndexId = this.selectedSearchIndexId;
+    this.rootStore.titleStore.selectedSearchIndexId = this.selectedSearchIndexId;
   });
 
   SetSelectedSearchIndex(id) {
@@ -602,6 +602,10 @@ class AIStore {
     if(this.rootStore.compositionStore.selectedSearchIndexId === objectId) {
       this.rootStore.compositionStore.SetSelectedSearchIndex(this.searchIndexes[0]?.id);
     }
+
+    if(this.rootStore.titleStore.selectedSearchIndexId === objectId) {
+      this.rootStore.titleStore.SetSelectedSearchIndex(this.searchIndexes[0]?.id);
+    }
   });
 
   /* Search */
@@ -621,6 +625,7 @@ class AIStore {
         let start = 0;
 
         const parsedQuery = ParseSearchQuery({query});
+
         const mode = parsedQuery.mode;
         query = parsedQuery.query;
 

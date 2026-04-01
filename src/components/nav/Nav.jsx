@@ -17,6 +17,7 @@ import CompositionIcon from "@/assets/icons/v2/composition.svg";
 import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
 import PinIcon from "@/assets/icons/v2/pin.svg";
 import TaggingIcon from "@/assets/icons/tagging.svg";
+import TitlesIcon from "@/assets/icons/titles.svg";
 
 const S = CreateModuleClassMatcher(NavStyles);
 
@@ -42,6 +43,13 @@ const Nav = observer(() => {
           });
         }
       },
+    {
+      label: "Titles",
+      key: "titles",
+      to: "/titles",
+      icon: TitlesIcon,
+      active: !rootStore.page || rootStore.page === "titles"
+    },
     {
       label: "Search",
       key: "search",
