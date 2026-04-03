@@ -4,7 +4,7 @@ import {observer} from "mobx-react-lite";
 import {useParams} from "wouter";
 import React, {useEffect} from "react";
 import {titleStore} from "@/stores/index.js";
-import {IconButton, Loader} from "@/components/common/Common.jsx";
+import {IconButton, Linkish, Loader} from "@/components/common/Common.jsx";
 import {Capitalize, CreateModuleClassMatcher} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 
@@ -48,17 +48,15 @@ const TitleMetadata = observer(() => {
 
   return (
     <div className={S("title-page")}>
-      <div className={S("breadcrumbs")}>
+      <Linkish to={UrlJoin("~/titles/", queryB58 || "", "title", titleId)} className={S("breadcrumbs")}>
         <IconButton
           icon={BackIcon}
-          label="Back to Content"
-          to={UrlJoin("~/titles/", queryB58 || "", "title", titleId)}
           className={S("browser__header-back")}
         />
         <span>
           Back to Title Info
         </span>
-      </div>
+      </Linkish>
       <div className={S("info__title")}>
         { title.title }
       </div>

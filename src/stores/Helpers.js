@@ -349,9 +349,21 @@ export const CreateTrackIntervalTree = (tags, label, offset=0) => {
 };
 
 export const ExtractHashFromLink = link => {
-  if(link?.["."]?.source) {
-    return link["."]?.source;
-  } else if(link?.["/"]) {
-    return link["/"]?.split("/").find(token => token.startsWith("hq__"));
+  if(!link) { return; }
+
+  if(typeof link === "string") {
+    return link.split("/").find(segment => segment.startsWith("hq__"));
+  }
+
+  if(link["."] && link["."].source) {
+    return link["."].source;
+  }
+
+  if(link["/"] && link["/"].startsWith("/qfab/")) {
+    return link["/"].split("/").find(segment => segment.startsWith("hq__"));
+  }
+
+  if(link["."] && link["."].container) {
+    return link["."].container;
   }
 };

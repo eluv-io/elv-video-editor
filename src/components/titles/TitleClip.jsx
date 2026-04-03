@@ -4,13 +4,14 @@ import {observer} from "mobx-react-lite";
 import {useParams} from "wouter";
 import React, {useEffect, useState} from "react";
 import {titleStore} from "@/stores/index.js";
-import {Icon, IconButton, Linkish, Loader, LoaderImage} from "@/components/common/Common.jsx";
+import {Icon, IconButton, Linkish, Loader} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
-import {Select, TextInput} from "@mantine/core";
+import Player from "@/components/common/Player.jsx";
+import TagSidebar from "@/components/titles/TagSidebar.jsx";
 
 const S = CreateModuleClassMatcher(TitleStyles);
 
@@ -66,167 +67,89 @@ const Synopsis = observer(({title}) => {
   );
 });
 
-const Clip = observer(({title, clipInfo}) => {
-  const {queryB58, titleId} = useParams();
-
-  const frameUrl = new URL(title.baseFrameUrl);
-
-  if(clipInfo.type === "full") {
-    frameUrl.searchParams.set("t", parseInt(title.metadata.info.runtime * 60) / 2);
-  }
-
-  return (
-    <Linkish
-      to={UrlJoin("~/titles/", queryB58 || "", "title", titleId, "clip", clipInfo.id)}
-      className={S("clip")}
-    >
-      <div className={S("clip__image-container")}>
-        <LoaderImage
-          src={frameUrl}
-          showWithoutSource
-          loaderAspectRatio={16/9}
-          className={S("clip__image")}
-        />
-      </div>
-      <div className={S("clip__text")}>
-        <div className={S("clip__title", "ellipsis")}>
-          Full Content
-        </div>
-        <div className={S("clip__subtitle", "ellipsis")}>
-          Subtitle
-        </div>
-      </div>
-    </Linkish>
-  );
-});
-
-const Clips = observer(({title}) => {
-  return (
-    <div className={S("clips")}>
-      <div className={S("clips__options")}>
-        <div className={S("left")}>
-          <Select
-            options={[
-              { label: "Trailers", value: "trailers"}
-            ]}
-          />
-        </div>
-        <div className={S("right")}>
-          <TextInput />
-        </div>
-      </div>
-      <div className={S("clips-list")}>
-        <Clip title={title} clipInfo={{type: "full", id: "full"}}/>
-      </div>
-    </div>
-  );
-});
-
-const GetAttributes = (info) => {
-  let year = info.release_year || info.us_release_year;
-  if(info.release_date) {
-    year = new Date(info.release_date).getFullYear();
-  }
-
-  let rating = info.mpaa_rating;
-  let runtime = info.runtime;
-  if(runtime) {
-    const hours = Math.floor(parseInt(runtime) / 60);
-    const minutes = parseInt(runtime) % 60;
-
-    runtime = hours ? `${hours}h ${minutes}m` : `${minutes}m`;
-  }
-
-  return [year, rating, runtime]
-    .filter(a => a)
-    .join(" • ");
-};
-
-const Title = observer(() => {
+const TitleClip = observer(() => {
   const {queryB58, titleId} = useParams();
   const title = titleStore.titles[titleId];
 
   useEffect(() => {
     titleStore.LoadTitle({titleId});
+
+    return () => titleStore.SetPlayer(undefined);
   }, []);
 
   if(!title) {
     return <Loader />;
   }
 
+  const clip = { type: "full", id: "full", title: title.title };
+
   return (
     <div className={S("title-page")}>
-      <Linkish to={UrlJoin("~/titles/", queryB58 || "")} className={S("breadcrumbs")}>
+      <Linkish to={UrlJoin("~/titles/", queryB58 || "", "title", titleId)} className={S("breadcrumbs")}>
         <IconButton
           icon={BackIcon}
           className={S("browser__header-back")}
         />
         <span>
-          Back to Titles
+          Back to Title Info
         </span>
       </Linkish>
-      <div className={S("title")}>
-        <div className={S("image-container")}>
-          <LoaderImage
-            showWithoutSource
-            loaderAspectRatio={2/3}
-            className={S("image")}
+      <div className={S("clip-page")}>
+        <div className={S("clip-section")}>
+          <div className={S("video-section")}>
+            <Player
+              key={`video-${clip.id}`}
+              versionHash={title.versionHash}
+              readyCallback={player => titleStore.SetPlayer(player)}
+              playoutParameters={
+                clip.type === "full" ? {} :
+                  {
+                    clipStart: clip.startTime,
+                    clipEnd: clip.endTime
+                  }
+              }
+              playerOptions={
+                clip.type !== "full" ? {} :
+                  {
+                    startTime: clip.startTime
+                  }
+              }
+              className={S("video")}
+            />
+            <div className={S("video-info")}>
+              <div className={S("left")}>
+                <div className={S("video-info__title")}>
+                  { clip.title }
+                </div>
+              </div>
+              <div className={S("right")}>
+                <IconButton icon={BackIcon} />
+              </div>
+            </div>
+          </div>
+          <div className={S("info-section")}>
+            <div className={S("info__tags")}>
+              {
+                dummyValues.tags.map(tag =>
+                  <div key={tag} className={S("info__tag")}>
+                    {tag}
+                  </div>
+                )
+              }
+            </div>
+            <Synopsis title={title}/>
+          </div>
+        </div>
+        <div className={S("sidebar-section")}>
+          <TagSidebar
+            title={title}
+            clipInfo={clip}
           />
         </div>
-        <div className={S("info")}>
-          <div className={S("info__title")}>
-            { title.title }
-          </div>
-          <div className={S("info__attributes")}>
-            <div className={S("info__attributes-text")}>
-              { GetAttributes(title.metadata.info) }
-            </div>
-            <Linkish
-              to={UrlJoin("~/titles/", queryB58 || "", "title", titleId, "metadata")}
-              className={S("info__metadata-link")}
-            >
-              All Metadata
-            </Linkish>
-          </div>
-          <div className={S("info__tags")}>
-            {
-              dummyValues.tags.map(tag =>
-                <div key={tag} className={S("info__tag")}>
-                  {tag}
-                </div>
-              )
-            }
-          </div>
-          <Synopsis title={title} />
-          <div className={S("info__credits")}>
-            {
-              !title.metadata.info.talent.director ? null :
-                <div className={S("info__credit")}>
-                  <div className={S("info__credit-label")}>
-                    Director
-                  </div>
-                  <div className={S("info__credit-value")}>
-                    { title.metadata.info.talent.director.map(credit => credit.name).join(", ") }
-                  </div>
-                </div>
-            }
-            {
-              !title.metadata.info.talent.written_by ? null :
-                <div className={S("info__credit")}>
-                  <div className={S("info__credit-label")}>
-                    Writer
-                  </div>
-                  <div className={S("info__credit-value")}>
-                    { title.metadata.info.talent.written_by.map(credit => credit.name).join(", ") }
-                  </div>
-                </div>
-            }
-          </div>
-        </div>
       </div>
-      <Clips title={title} />
+
     </div>
   );
 });
 
-export default Title;
+export default TitleClip;

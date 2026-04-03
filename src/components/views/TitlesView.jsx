@@ -5,6 +5,7 @@ import {Redirect, Route, Switch} from "wouter";
 import Titles from "@/components/titles/Titles.jsx";
 import Title from "@/components/titles/Title.jsx";
 import TitleMetadata from "@/components/titles/TitleMetadata.jsx";
+import TitleClip from "@/components/titles/TitleClip.jsx";
 
 const TitlesView = observer(() => {
   useEffect(() => {
@@ -15,6 +16,9 @@ const TitlesView = observer(() => {
     <Switch>
       <Route path="/:queryB58?/title/:titleId/metadata">
         <TitleMetadata />
+      </Route>
+      <Route path="/:queryB58?/title/:titleId/clip/:clipId">
+        <TitleClip />
       </Route>
       <Route path="/:queryB58?/title/:titleId/:clipId">
         Title Clip Details
