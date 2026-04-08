@@ -39,8 +39,7 @@ export default defineConfig(() => {
         "@/stores": fileURLToPath(new URL("./src/stores", import.meta.url)),
         "@/utils": fileURLToPath(new URL("./src/utils", import.meta.url)),
         "@/workers": fileURLToPath(new URL("./src/utils", import.meta.url)),
-        "@tabler/icons-react": "@tabler/icons-react/dist/esm/icons/index.mjs",
-        dashjs: "dashjs/dist/dash.all.min.js"
+        "@tabler/icons-react": "@tabler/icons-react/dist/esm/icons/index.mjs"
       }
     },
     build: {
