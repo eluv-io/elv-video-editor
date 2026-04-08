@@ -11,7 +11,7 @@ class AITaggingStore {
   trackKeyToModelMapping = {};
   segmentModels = [];
   frameModels = [];
-  processors = [];
+  processorModels = [];
 
   audioTracks = {};
 
@@ -77,6 +77,8 @@ class AITaggingStore {
 
       if(model.type === "frame") {
         this.frameModels.push(model.name);
+      } else if(model.type === "processor") {
+        this.processorModels.push(model.name);
       } else {
         this.segmentModels.push(model.name);
       }
@@ -204,7 +206,7 @@ class AITaggingStore {
   });
 
   SubmitTaggingJob = flow(function * ({objectId, options}) {
-    const params = [...this.segmentModels, ...this.frameModels]
+    const params = [...this.segmentModels, ...this.frameModels, ...this.processorModels]
       .filter(key => options[key])
       .map(key => {
         let result = { model: key };

@@ -16,7 +16,7 @@ const S = CreateModuleClassMatcher(BrowserStyles, TaggingStyles);
 const Summary = observer(({options}) => {
   const anySegmentModels = aiTaggingStore.segmentModels.find(key => options[key]);
   const anyFrameModels = aiTaggingStore.frameModels.find(key => options[key]);
-  const anyProcessors = aiTaggingStore.processors.find(key => options[key]);
+  const anyProcessors = aiTaggingStore.processorModels.find(key => options[key]);
 
   return (
     <div className={S("form")}>
@@ -76,9 +76,12 @@ const Summary = observer(({options}) => {
             </h2>
             <div className={S("groups")}>
               <div className={S("group", "group--summary")}>
-                <div className={S("summary-item")}>None Selected</div>
                 {
-                  aiTaggingStore.processors.map(model =>
+                  anyProcessors ? null :
+                    <div className={S("summary-item")}>None Selected</div>
+                }
+                {
+                  aiTaggingStore.processorModels.map(model =>
                     !options[model] ? null :
                       <div key={model} className={S("summary-item")}>{aiTaggingStore.modelNames[model]}</div>
                   )
@@ -204,7 +207,7 @@ const Form = observer(({options, setOptions}) => {
         </div>
       </div>
       {
-        aiTaggingStore.processors.length === 0 ? null :
+        aiTaggingStore.processorModels.length === 0 ? null :
           <div className={S("block")}>
             <h2 className={S("block__title")}>
               Processors
@@ -212,7 +215,7 @@ const Form = observer(({options, setOptions}) => {
             <div className={S("groups")}>
               <div className={S("group")}>
                 {
-                  aiTaggingStore.processors.map(model =>
+                  aiTaggingStore.processorModels.map(model =>
                     <Checkbox
                       key={`option-${model}`}
                       label={aiTaggingStore.modelNames[model]}
