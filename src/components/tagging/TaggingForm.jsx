@@ -9,7 +9,7 @@ import { TaggingSelection } from "@/components/nav/Browser.jsx";
 import {IconButton, Linkish, StyledButton} from "@/components/common/Common.jsx";
 import BackIcon from "@/assets/icons/v2/back.svg";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-import {Checkbox} from "@mantine/core";
+import {Checkbox, Select} from "@mantine/core";
 
 const S = CreateModuleClassMatcher(BrowserStyles, TaggingStyles);
 
@@ -34,7 +34,20 @@ const Summary = observer(({options}) => {
             {
               aiTaggingStore.segmentModels.map(model =>
                 !options[model] ? null :
-                  <div key={model} className={S("summary-item")}>{aiTaggingStore.modelNames[model]}</div>
+                  <>
+                    <div key={model} className={S("summary-item")}>
+                      {aiTaggingStore.modelNames[model]}
+                    </div>
+                    {
+                      !options.options[model]?.stream ? null :
+                        <div key={`${model}-stream`} className={S("summary-item-option")}>
+                          {
+                            aiTaggingStore.audioTracks[aiTaggingStore.selectedContent[0].objectId]
+                              .find(option => option.value === options.options[model]?.stream)?.label
+                          }
+                        </div>
+                    }
+                  </>
               )
             }
           </div>
@@ -55,31 +68,45 @@ const Summary = observer(({options}) => {
           </div>
         </div>
       </div>
-      <div className={S("block")}>
-        <h2 className={S("block__title")}>
-          Processors
-        </h2>
-        <div className={S("groups")}>
-          <div className={S("group", "group--summary")}>
-            {
-              anyProcessors ? null :
+      {
+        !anyProcessors ? null :
+          <div className={S("block")}>
+            <h2 className={S("block__title")}>
+              Processors
+            </h2>
+            <div className={S("groups")}>
+              <div className={S("group", "group--summary")}>
                 <div className={S("summary-item")}>None Selected</div>
-            }
-            {
-              aiTaggingStore.processors.map(model =>
-                !options[model] ? null :
-                  <div key={model} className={S("summary-item")}>{aiTaggingStore.modelNames[model]}</div>
-              )
-            }
+                {
+                  aiTaggingStore.processors.map(model =>
+                    !options[model] ? null :
+                      <div key={model} className={S("summary-item")}>{aiTaggingStore.modelNames[model]}</div>
+                  )
+                }
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+      }
     </div>
   );
 });
 
 const Form = observer(({options, setOptions}) => {
   const onChange = (key, value) => setOptions({...options, [key]: value});
+
+  useEffect(() => {
+    const defaultAudioTrackKey =
+      aiTaggingStore.selectedContentCommonAudioTracks.find(option => option.isDefault)?.value ||
+      aiTaggingStore.selectedContentCommonAudioTracks[0]?.value;
+
+    onChange(
+      "options",
+      {
+        asr: { stream: options.options?.asr?.stream || defaultAudioTrackKey },
+        euro_asr: { stream: options.options?.euro_asr?.stream || defaultAudioTrackKey }
+      }
+    );
+  }, [aiTaggingStore.selectedContent]);
 
   return (
     <div className={S("form")}>
@@ -89,21 +116,78 @@ const Form = observer(({options, setOptions}) => {
           <div className={S("group")}>
             <h3 className={S("group__title")}>
               Segment Level
+              <Checkbox
+                size={15}
+                checked={!aiTaggingStore.segmentModels.find(model => !options[model])}
+                indeterminate={
+                  aiTaggingStore.segmentModels.find(model => !options[model]) &&
+                  aiTaggingStore.segmentModels.find(model => options[model])
+                }
+                onChange={() => {
+                  const allChecked = !aiTaggingStore.segmentModels.find(model => !options[model]);
+
+                  let newOptions = {...options};
+                  aiTaggingStore.segmentModels.forEach(model => newOptions[model] = !allChecked);
+                  setOptions(newOptions);
+                }}
+              />
             </h3>
             {
               aiTaggingStore.segmentModels.map(model =>
-                <Checkbox
-                  key={`option-${model}`}
-                  label={aiTaggingStore.modelNames[model]}
-                  checked={options[model]}
-                  onChange={event => onChange(model, event.currentTarget.checked)}
-                />
+                <>
+                  <Checkbox
+                    key={`option-${model}`}
+                    label={aiTaggingStore.modelNames[model]}
+                    checked={options[model]}
+                    onChange={event => onChange(model, event.currentTarget.checked)}
+                  />
+                  {
+                    !options[model] ||
+                    !["asr", "euro_asr"].includes(model) ||
+                    aiTaggingStore.selectedContentCommonAudioTracks.length === 0 ? null :
+                      <Select
+                        label="Audio Track"
+                        value={options.options[model]?.stream}
+                        searchable
+                        maw={200}
+                        mt={-15}
+                        ml={32}
+                        mb={10}
+                        onChange={value => onChange(
+                          "options",
+                          {
+                            ...options.options,
+                            [model]: {
+                              ...(options.options[model] || {}),
+                              stream: value
+                            }
+                          }
+                        )}
+                        data={aiTaggingStore.selectedContentCommonAudioTracks}
+                      />
+                  }
+                </>
               )
             }
           </div>
           <div className={S("group")}>
             <h3 className={S("group__title")}>
               Frame Level
+              <Checkbox
+                size={15}
+                checked={!aiTaggingStore.frameModels.find(model => !options[model])}
+                indeterminate={
+                  aiTaggingStore.frameModels.find(model => !options[model]) &&
+                  aiTaggingStore.frameModels.find(model => options[model])
+                }
+                onChange={() => {
+                  const allChecked = !aiTaggingStore.frameModels.find(model => !options[model]);
+
+                  let newOptions = {...options};
+                  aiTaggingStore.frameModels.forEach(model => newOptions[model] = !allChecked);
+                  setOptions(newOptions);
+                }}
+              />
             </h3>
             {
               aiTaggingStore.frameModels.map(model =>
@@ -119,46 +203,40 @@ const Form = observer(({options, setOptions}) => {
           </div>
         </div>
       </div>
-      <div className={S("block")}>
-        <h2 className={S("block__title")}>
-          Processors
-        </h2>
-        <div className={S("groups")}>
-          <div className={S("group")}>
-            {
-              aiTaggingStore.processors.map(model =>
-                <Checkbox
-                  key={`option-${model}`}
-                  label={aiTaggingStore.modelNames[model]}
-                  checked={options[model]}
-                  disabled={model === "shot"}
-                  onChange={event => onChange(model, event.currentTarget.checked)}
-                />
-              )
-            }
+      {
+        aiTaggingStore.processors.length === 0 ? null :
+          <div className={S("block")}>
+            <h2 className={S("block__title")}>
+              Processors
+            </h2>
+            <div className={S("groups")}>
+              <div className={S("group")}>
+                {
+                  aiTaggingStore.processors.map(model =>
+                    <Checkbox
+                      key={`option-${model}`}
+                      label={aiTaggingStore.modelNames[model]}
+                      checked={options[model]}
+                      disabled={model === "shot"}
+                      onChange={event => onChange(model, event.currentTarget.checked)}
+                    />
+                  )
+                }
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+      }
     </div>
   );
 });
 
+const defaultDisabledModels = ["euro_asr"];
 const TaggingForm = observer(() => {
+  let initialOptions = {options: {}};
+  [...aiTaggingStore.segmentModels, ...aiTaggingStore.frameModels]
+    .forEach(key => initialOptions[key] = !defaultDisabledModels.includes(key));
   const [location, navigate] = useLocation();
-  const [options, setOptions] = useState({
-    asr: true,
-    celeb: true,
-    logo: true,
-    shot: true,
-    llava: true,
-    ocr: true,
-    landmark: false,
-    caption: true,
-    chapters: true,
-    asrOptions: {
-      language: "english"
-    }
-  });
+  const [options, setOptions] = useState(initialOptions);
 
   const showSummary = location.endsWith("/summary");
 
@@ -166,6 +244,10 @@ const TaggingForm = observer(() => {
     rootStore.SetPage("tagging");
     keyboardControlsStore.ToggleKeyboardControls(false);
   }, []);
+
+  if(aiTaggingStore.selectedContent.length === 0) {
+    navigate("/new");
+  }
 
   return (
     <div className={S("browser-page")}>
@@ -224,6 +306,7 @@ const TaggingForm = observer(() => {
               async () => {
                 await aiTaggingStore.SubmitTaggingJobs({options});
                 navigate("/");
+                aiTaggingStore.ClearSelectedContent();
               }
           }
         >

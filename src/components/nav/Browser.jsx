@@ -163,6 +163,7 @@ export const SearchBar = observer(({
         }
 
         Select(result);
+        setInput("");
 
         if(saveByLocation) {
           delete savedFilters[location];
@@ -1687,7 +1688,8 @@ export const TaggingJobBrowser = observer(() => {
                                   await aiTaggingStore.RestartTaggingJob({
                                     objectId: job.objectId,
                                     model: job.model,
-                                    options: job.params
+                                    options: job.params,
+                                    jobId: job.job_id
                                   });
 
                                   setPage(1);
@@ -1702,6 +1704,25 @@ export const TaggingJobBrowser = observer(() => {
                           icon={LinkIcon}
                           label={`Open ${job.title || job.objectId}`}
                           to={UrlJoin("~/", job.objectId, "tags")}
+                        />
+                        <IconButton
+                          small
+                          icon={DeleteIcon}
+                          label="Delete Job"
+                          onClick={async () => await Confirm({
+                            title: "Delete Tagging Job",
+                            text: "Are you sure you want to delete this job?",
+                            onConfirm: async () => {
+                              await aiTaggingStore.DeleteTaggingJob({
+                                objectId: job.objectId,
+                                jobId: job.job_id
+                              });
+
+                              setPage(1);
+                              setReloadKey(reloadKey + 1);
+                            }
+                          })
+                          }
                         />
                       </div>
                     </div>

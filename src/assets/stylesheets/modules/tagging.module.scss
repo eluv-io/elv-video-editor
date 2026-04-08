@@ -51,9 +51,18 @@
 
   &__title {
     font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
 
   .summary-item {
     font-size: 14px;
+  }
+
+  .summary-item-option {
+    color: var(--text-tertiary);
+    font-size: 14px;
+    margin-left: 20px;
   }
 }

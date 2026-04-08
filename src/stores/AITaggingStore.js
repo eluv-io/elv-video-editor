@@ -7,47 +7,13 @@ class AITaggingStore {
   selectedContent = [];
   jobStatus = {};
 
-  modelNames = {
-    "shot": "Shot Detection",
-    "asr": "Speech to Text",
-    "caption": "Object Identification",
-    "llava": "Scene Description",
-    "celeb": "Celebrity Identification",
-    "ocr": "OCR",
-    "logo": "Logo Identification",
-    "landmark": "Landmark Identification",
-    "chapters": "Chapters"
-  };
+  modelNames = {};
+  trackKeyToModelMapping = {};
+  segmentModels = [];
+  frameModels = [];
+  processors = [];
 
-  trackKeyToModelMapping = {
-    "shot_detection": "shot",
-    "auto_captions": "asr",
-    "celebrity_detection": "celeb",
-    "character": "character",
-    "llava_caption": "llava",
-    "logo_detection": "logo",
-    "object_detection": "caption",
-    "optical_character_recognition": "ocr",
-    "speech_to_text": "asr"
-  };
-
-  segmentModels = [
-    "asr",
-    "caption",
-    "llava",
-    "shot"
-  ];
-
-  frameModels = [
-    "celeb",
-    "ocr",
-    "logo",
-    "landmark"
-  ];
-
-  processors = [
-    "chapters"
-  ];
+  audioTracks = {};
 
   constructor(rootStore) {
     this.rootStore = rootStore;
@@ -57,6 +23,24 @@ class AITaggingStore {
 
   get client() {
     return this.rootStore.client;
+  }
+
+  get selectedContentCommonAudioTracks() {
+    if(this.selectedContent.length <= 1) {
+      return this.audioTracks[this.selectedContent[0]?.objectId] || [];
+    }
+
+    return (this.audioTracks[this.selectedContent[0]?.objectId] || [])
+      .filter(track =>
+        !this.selectedContent.slice(1)
+          .find(({objectId}) =>
+            !this.audioTracks[objectId].find(otherTrack => otherTrack.value === track.value)
+          )
+      );
+  }
+
+  Initialize() {
+    this.GetTaggingModels();
   }
 
   GetModelNameFromTrackKey(key) {
@@ -69,6 +53,9 @@ class AITaggingStore {
     }
 
     this.selectedContent.push({objectId, name});
+
+    // Preload audio track info
+    this.GetAudioTracks({objectId});
   }
 
   RemoveSelectedContent({objectId}) {
@@ -79,6 +66,73 @@ class AITaggingStore {
   ClearSelectedContent() {
     this.selectedContent = [];
   }
+
+  GetTaggingModels = flow(function * () {
+    let {models} = (yield this.rootStore.aiStore.QueryAIAPI({
+      path: UrlJoin("tagging-live", "models")
+    })) || {models: []};
+
+    for(const model of models) {
+      this.modelNames[model.name] = model.description;
+
+      if(model.type === "frame") {
+        this.frameModels.push(model.name);
+      } else {
+        this.segmentModels.push(model.name);
+      }
+
+      for(const track of model.tag_tracks || []) {
+        this.trackKeyToModelMapping[track.name] = model.name;
+      }
+    }
+  });
+
+  GetAudioTracks = flow(function * ({objectId}) {
+    this.audioTracks[objectId] = yield this.rootStore.LoadResource({
+      key: "taggingAudioTracks",
+      id: objectId,
+      bind: this,
+      Load: flow(function * () {
+        const metadata = yield this.client.ContentObjectMetadata({
+          libraryId: yield this.client.ContentObjectLibraryId({objectId}),
+          objectId: objectId,
+          metadataSubtree: "offerings",
+          resolveLinks: true,
+          linkDepthLimit: 1,
+          select: [
+            "*/playout/streams/*/representations/*/type",
+            "*/media_struct/streams/*/label",
+            "*/media_struct/streams/*/default_for_media_type"
+          ]
+        });
+
+        const offering = metadata.default ? "default" :
+          Object.keys(metadata).find(key => key.includes("default")) || Object.keys(metadata)[0];
+
+        const audioTrackKeys = Object.keys(metadata[offering].playout.streams)
+          .map(streamKey =>
+            Object.keys(metadata[offering].playout.streams[streamKey].representations || {})
+              .filter(repKey =>
+                metadata[offering].playout.streams[streamKey].representations[repKey].type === "RepAudio"
+              )
+              .map(repKey => ({streamKey, repKey}))
+          )
+          .flat();
+
+        return audioTrackKeys
+          .map(({streamKey}) => ({
+            value: streamKey.split("__")[0],
+            streamKey,
+            transcodeId: streamKey.split("__")[1],
+            label: metadata[offering].media_struct.streams[streamKey].label,
+            isDefault: !!metadata[offering].media_struct.streams[streamKey].default_for_media_type,
+          }))
+          .sort((a, b) => a.label < b.label ? -1 : 1);
+      })
+    });
+
+    return this.audioTracks[objectId];
+  });
 
   ListTaggingJobs = flow(function * ({start=0, limit=10, status, model, filter=""}={}) {
     const tenantId = yield this.rootStore.client.userProfileClient.TenantContractId();
@@ -150,23 +204,27 @@ class AITaggingStore {
   });
 
   SubmitTaggingJob = flow(function * ({objectId, options}) {
-    const params = [
-      "asr",
-      "caption",
-      "celeb",
-      "landmark",
-      "llava",
-      "logo",
-      "ocr",
-      "shot"
-    ]
+    const params = [...this.segmentModels, ...this.frameModels]
       .filter(key => options[key])
-      .map(key => ({
-        model: key,
-        ...(typeof options[key] === "object" ? options[key] : {})
-      }));
+      .map(key => {
+        let result = { model: key };
 
-    // TODO: Add params
+        // Determine proper audio track
+        const stream = options?.options?.[key]?.stream;
+        if(stream) {
+          const streamKey = this.audioTracks[objectId].find(track => track.value === stream)?.streamKey;
+
+          if(streamKey) {
+            result.overrides = {
+              scope: {
+                stream: streamKey
+              }
+            };
+          }
+        }
+
+        return result;
+      });
 
     const {jobs} = yield this.rootStore.aiStore.QueryAIAPI({
       objectId,
@@ -181,7 +239,7 @@ class AITaggingStore {
     return jobs;
   });
 
-  RestartTaggingJob = flow(function * ({objectId, model, options}) {
+  RestartTaggingJob = flow(function * ({objectId, model, options, jobId}) {
     if(options) {
       options = {
         model,
@@ -204,6 +262,16 @@ class AITaggingStore {
       }
     });
 
+    if(jobId) {
+      try {
+        // Delete original job
+        yield this.DeleteTaggingJob({objectId, jobId});
+      } catch(error) {
+        console.error("Failed to delete original job", jobId);
+        console.error(error);
+      }
+    }
+
     yield new Promise(resolve => setTimeout(resolve, 1000));
 
     yield this.GetObjectJobStatus({objectId, force: true});
@@ -214,6 +282,18 @@ class AITaggingStore {
       objectId: objectId,
       method: "POST",
       path: UrlJoin("tagging-live", objectId, "stop", model)
+    });
+
+    yield new Promise(resolve => setTimeout(resolve, 5000));
+
+    yield this.GetObjectJobStatus({objectId, force: true});
+  });
+
+  DeleteTaggingJob = flow(function * ({objectId, jobId}) {
+    yield this.rootStore.aiStore.QueryAIAPI({
+      objectId: objectId,
+      method: "Delete",
+      path: UrlJoin("tagging-live", "jobs", jobId)
     });
 
     yield new Promise(resolve => setTimeout(resolve, 5000));

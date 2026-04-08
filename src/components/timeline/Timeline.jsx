@@ -27,7 +27,6 @@ import Share from "@/components/download/Share.jsx";
 import Track from "@/components/timeline/Track.jsx";
 import {CreateTrackButton} from "@/components/forms/CreateTrack.jsx";
 import {
-  AggregateTagsButton,
   ClipModalButton,
   LiveToVodButton,
   MyClipsButton
@@ -202,10 +201,6 @@ const TimelineTopBar = observer(({simple}) => {
           })}
         />
         <div className={S("toolbar__separator")}/>
-        {
-          simple ? null :
-            <AggregateTagsButton />
-        }
         <Download store={videoStore} />
         <Share store={videoStore}/>
 

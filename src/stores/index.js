@@ -182,6 +182,7 @@ class RootStore {
     this.client = client;
 
     yield this.aiStore.Initialize();
+    yield this.aiTaggingStore.Initialize();
 
     this.initialized = true;
 
