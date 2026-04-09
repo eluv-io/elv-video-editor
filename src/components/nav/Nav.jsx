@@ -59,7 +59,7 @@ const Nav = observer(() => {
     {
       label: "Simple Mode",
       key: "simple",
-      disabled: !objectId || (videoStore.ready && !videoStore.isVideo),
+      disabled: !objectId || !videoStore.isVideo,
       to: !objectId ? "/" : UrlJoin("/", objectId),
       icon: ClipIcon,
       active: rootStore.page === "simple"
@@ -77,7 +77,7 @@ const Nav = observer(() => {
     {
       label: "Tags",
       key: "tags",
-      disabled: !objectId || (videoStore.ready && !videoStore.isVideo),
+      disabled: !objectId || !videoStore.isVideo,
       to: !objectId ? "/" : UrlJoin("/", objectId, "tags"),
       icon: TagIcon,
       active: ["tags", "clips"].includes(rootStore.page),

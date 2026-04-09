@@ -606,6 +606,10 @@
   gap: 30px;
   grid-template-columns: 1fr 450px;
   height: calc(100vh - 260px);
+
+  &--form {
+    height: calc(100vh - 190px);
+  }
 }
 
 .tagging-actions {

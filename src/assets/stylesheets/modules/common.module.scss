@@ -156,14 +156,13 @@
 
 .styled-button {
   align-items: center;
-  animation: var(--animation-fadein) 0.1s ease;
   border-radius: 5px;
   display: flex;
   font-weight: 600;
   gap: 10px;
   height: 35px;
   justify-content: center;
-  min-width: 120px;
+  min-width: 125px;
   padding-inline: 25px;
   position: relative;
   transition: opacity 0.1s ease;

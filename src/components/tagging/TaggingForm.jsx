@@ -7,9 +7,10 @@ import {aiTaggingStore, keyboardControlsStore, rootStore} from "@/stores/index.j
 import {useLocation} from "wouter";
 import { TaggingSelection } from "@/components/nav/Browser.jsx";
 import {IconButton, Linkish, StyledButton} from "@/components/common/Common.jsx";
-import BackIcon from "@/assets/icons/v2/back.svg";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Checkbox, Select} from "@mantine/core";
+
+import BackIcon from "@/assets/icons/v2/back.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles, TaggingStyles);
 
@@ -29,7 +30,9 @@ const Summary = observer(({options}) => {
             </h3>
             {
               anySegmentModels ? null :
-                <div className={S("summary-item")}>None Selected</div>
+                <div className={S("summary-item")}>
+                  None Selected
+                </div>
             }
             {
               aiTaggingStore.segmentModels.map(model =>
@@ -98,15 +101,11 @@ const Form = observer(({options, setOptions}) => {
   const onChange = (key, value) => setOptions({...options, [key]: value});
 
   useEffect(() => {
-    const defaultAudioTrackKey =
-      aiTaggingStore.selectedContentCommonAudioTracks.find(option => option.isDefault)?.value ||
-      aiTaggingStore.selectedContentCommonAudioTracks[0]?.value;
-
     onChange(
       "options",
       {
-        asr: { stream: options.options?.asr?.stream || defaultAudioTrackKey },
-        euro_asr: { stream: options.options?.euro_asr?.stream || defaultAudioTrackKey }
+        asr: { stream: options.options?.asr?.stream || "" },
+        euro_asr: { stream: options.options?.euro_asr?.stream || "" }
       }
     );
   }, [aiTaggingStore.selectedContent]);
@@ -149,11 +148,10 @@ const Form = observer(({options, setOptions}) => {
                     !["asr", "euro_asr"].includes(model) ||
                     aiTaggingStore.selectedContentCommonAudioTracks.length === 0 ? null :
                       <Select
-                        label="Audio Track"
                         value={options.options[model]?.stream}
                         searchable
                         maw={200}
-                        mt={-15}
+                        mt={-5}
                         ml={32}
                         mb={10}
                         onChange={value => onChange(
@@ -166,7 +164,10 @@ const Form = observer(({options, setOptions}) => {
                             }
                           }
                         )}
-                        data={aiTaggingStore.selectedContentCommonAudioTracks}
+                        data={[
+                          { label: "Audio Track: Default", value: "" },
+                          ...aiTaggingStore.selectedContentCommonAudioTracks
+                        ]}
                       />
                   }
                 </>
@@ -286,7 +287,7 @@ const TaggingForm = observer(() => {
             </>
         }
       </h1>
-      <div className={S("tagging-browser")}>
+      <div className={S("tagging-browser", "tagging-browser--form")}>
         {
           showSummary ?
             <Summary options={options} /> :

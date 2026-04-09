@@ -171,10 +171,14 @@ class AITaggingStore {
       ttl: 10,
       force,
       Load: flow(function * () {
+        const tenantId = yield this.client.ContentObjectTenantId({objectId});
         try {
           let {jobs} = (yield this.rootStore.aiStore.QueryAIAPI({
             objectId: objectId,
-            path: UrlJoin("tagging-live", objectId, "job-status")
+            path: UrlJoin("tagging-live", objectId, "job-status"),
+            queryParams: {
+              tenant: tenantId
+            }
           })) || {jobs: []};
 
           return jobs.map(job => {
@@ -228,12 +232,16 @@ class AITaggingStore {
         return result;
       });
 
+    const tenantId = yield this.client.ContentObjectTenantId({objectId});
     const {jobs} = yield this.rootStore.aiStore.QueryAIAPI({
       objectId,
       path: UrlJoin("tagging-live", objectId, "tag"),
       method: "POST",
       headers: {
         "Content-Type": "application/json"
+      },
+      queryParams: {
+        tenant: tenantId
       },
       body: { jobs: params }
     });
@@ -280,10 +288,14 @@ class AITaggingStore {
   });
 
   PauseTaggingJob = flow(function * ({objectId, model}) {
+    const tenantId = yield this.client.ContentObjectTenantId({objectId});
     yield this.rootStore.aiStore.QueryAIAPI({
       objectId: objectId,
       method: "POST",
-      path: UrlJoin("tagging-live", objectId, "stop", model)
+      path: UrlJoin("tagging-live", objectId, "stop", model),
+      queryParams: {
+        tenant: tenantId
+      }
     });
 
     yield new Promise(resolve => setTimeout(resolve, 5000));
@@ -292,10 +304,14 @@ class AITaggingStore {
   });
 
   DeleteTaggingJob = flow(function * ({objectId, jobId}) {
+    const tenantId = yield this.client.ContentObjectTenantId({objectId});
     yield this.rootStore.aiStore.QueryAIAPI({
       objectId: objectId,
       method: "Delete",
-      path: UrlJoin("tagging-live", "jobs", jobId)
+      path: UrlJoin("tagging-live", "jobs", jobId),
+      queryParams: {
+        tenant: tenantId
+      }
     });
 
     yield new Promise(resolve => setTimeout(resolve, 5000));
