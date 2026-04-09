@@ -34,7 +34,7 @@ const TitleMetadata = observer(() => {
   }, []);
 
   if(!title) {
-    return <Loader />;
+    return <Loader/>;
   }
 
   const info = {
@@ -45,6 +45,14 @@ const TitleMetadata = observer(() => {
     kit: title.metadata.kit,
     ...(title.metadata.info || {}),
   };
+
+  const talentKeys = Object.keys(info?.talent || {})
+    .filter(key => info.talent[key]?.[0]?.character_name)
+    .sort();
+
+  const additionalKeys = Object.keys(info?.talent || {})
+    .filter(key => !info.talent[key]?.[0]?.character_name)
+    .sort();
 
   return (
     <div className={S("title-page")}>
@@ -58,7 +66,7 @@ const TitleMetadata = observer(() => {
         </span>
       </Linkish>
       <div className={S("info__title")}>
-        { title.title }
+        {title.title}
       </div>
       <div className={S("metadata")}>
         <div className={S("metadata__column")}>
@@ -71,7 +79,7 @@ const TitleMetadata = observer(() => {
                   <div key={key} className={S("metadata__section")}>
                     <div className={S("metadata__item")}>
                       <div className={S("metadata__label")}>
-                        { FormatKey(key) }
+                        {FormatKey(key)}
                       </div>
                       <div className={S("metadata__value")}>
                         {
@@ -86,41 +94,43 @@ const TitleMetadata = observer(() => {
           }
         </div>
         {
-          !info?.talent ? null :
+          talentKeys.length === 0 && additionalKeys.length === 0 ? null :
             <div className={S("metadata__column")}>
               {
-                Object.keys(info?.talent || {})
-                  .sort((a, b) =>
-                    info.talent[a][0].character_name && !info.talent[b][0].character_name ? -1 :
-                      info.talent[b][0].character_name && !info.talent[a][0].character_name ? 1 :
-                        a < b ? -1 : 1
-                  )
-                  .map(key =>
-                    info.talent[key][0]?.character_name ?
-                      <div key={key} className={S("metadata__section", "metadata__section--multiple")}>
-                        <div className={S("metadata__section-title")}>
-                          {
-                            key === "actor" ? "Cast" :
-                              FormatKey(key)
-                          }
-                        </div>
-                        {
-                          info.talent[key]
-                            .map(entry =>
-                              key === "talent" ? null :
-                                <div key={`${key}-${entry.name}`} className={S("metadata__item")}>
-                                  <div className={S("metadata__label")}>
-                                    {entry.character_name}
-                                  </div>
-                                  <div className={S("metadata__value")}>
-                                    {entry.name}
-                                  </div>
-                                </div>
-                            )
-                        }
-                      </div> :
-                      <div key={key} className={S("metadata__section")}>
-                        <div className={S("metadata__item")}>
+                talentKeys.map(key =>
+                  <div key={key} className={S("metadata__section", "metadata__section--multiple")}>
+                    <div className={S("metadata__section-title")}>
+                      {
+                        key === "actor" ? "Cast" :
+                          FormatKey(key)
+                      }
+                    </div>
+                    {
+                      info.talent[key]
+                        .map(entry =>
+                          key === "talent" ? null :
+                            <div key={`${key}-${entry.name}`} className={S("metadata__item")}>
+                              <div className={S("metadata__label")}>
+                                {entry.character_name}
+                              </div>
+                              <div className={S("metadata__value")}>
+                                {entry.name}
+                              </div>
+                            </div>
+                        )
+                    }
+                  </div>
+                )
+              }
+              {
+                additionalKeys.length === 0 ? null :
+                  <div className={S("metadata__section", "metadata__section--multiple")}>
+                    <div className={S("metadata__section-title")}>
+                      Additional Talent
+                    </div>
+                    {
+                      additionalKeys.map(key =>
+                        <div key={key} className={S("metadata__item")}>
                           <div className={S("metadata__label")}>
                             {FormatKey(key)}
                           </div>
@@ -132,8 +142,9 @@ const TitleMetadata = observer(() => {
                             }
                           </div>
                         </div>
-                      </div>
-                  )
+                      )
+                    }
+                  </div>
               }
             </div>
         }

@@ -5,7 +5,7 @@ import {titleStore} from "@/stores/index.js";
 import {TextInput} from "@mantine/core";
 import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher, useIsVisible} from "@/utils/Utils.js";
-import {Icon} from "@/components/common/Common.jsx";
+import {Icon, Loader} from "@/components/common/Common.jsx";
 
 import AIDescriptionIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import SearchIcon from "@/assets/icons/v2/search.svg";
@@ -28,7 +28,7 @@ export const FormatTime = time => {
   return string;
 };
 
-const Tag = observer(({tag, showThumbnails, videoDimensions, active}) => {
+const Tag = observer(({tag, showThumbnails, videoDimensions, active, withSpeaker}) => {
   const [ref, setRef] = useState(undefined);
   const visible = useIsVisible(ref);
   const player = titleStore.player;
@@ -78,7 +78,18 @@ const Tag = observer(({tag, showThumbnails, videoDimensions, active}) => {
           }
         </div>
         <div className={S("tag__content")}>
-          {tag.tag}
+          {
+            withSpeaker ?
+              <>
+                <span className={S("tag__speaker")}>
+                  {tag.tag.split(":")[0].trim()}:
+                </span>
+                <span>
+                  {tag.tag.split(":").slice(1).join(":").trim()}
+                </span>
+              </> :
+              <span>{tag.tag}</span>
+          }
         </div>
       </div>
     </button>
@@ -148,8 +159,6 @@ export const TagSidebar = observer(({title, clipInfo}) => {
     setScrolled(false);
   }, [tab]);
 
-  console.log(player);
-
   useEffect(() => {
     if(!player) { return; }
 
@@ -215,7 +224,17 @@ export const TagSidebar = observer(({title, clipInfo}) => {
 
   if(!titleStore.mediaTags.hasTags) {
     return (
-      <div className={S("sidebar")} />
+      <div className={S("sidebar", "sidebar--loading")}>
+        <div className={S("header")}>
+          <div className={[S("header__title"), "_title"].join(" ")}>
+            IN THIS VIDEO
+            <Icon icon={AIDescriptionIcon}/>
+          </div>
+        </div>
+        <div className={S("loader")}>
+          <Loader/>
+        </div>
+      </div>
     );
   }
 
@@ -272,6 +291,7 @@ export const TagSidebar = observer(({title, clipInfo}) => {
             <Tag
               key={tag.id}
               tag={tag}
+              withSpeaker={tab === "TRANSCRIPT" && titleStore.mediaTags.transcriptionTrackKey === "transcription"}
               active={currentTime >= tag.start_time && currentTime <= tag.end_time ? "tag--active" : ""}
               videoDimensions={videoDimensions}
               showThumbnails={showThumbnails}

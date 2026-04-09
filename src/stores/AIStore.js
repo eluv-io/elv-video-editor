@@ -615,7 +615,7 @@ class AIStore {
     this.searchImageFrameUrl = imageBlob ? URL.createObjectURL(imageBlob) : undefined;
   }
 
-  Search = flow(function * ({query="", limit=10, initial}) {
+  Search = flow(function * ({query="", limit=10, initial, clipsContentLevel}) {
     return yield this.rootStore.LoadResource({
       key: "search",
       id: `${query}-${limit}-${initial}`,
@@ -662,7 +662,7 @@ class AIStore {
           const {results, pagination} =
             mode.startsWith("frame") ?
               yield this.CollectionSearch({mode, query, start, limit}) :
-              yield this.ClipSearch({mode, query, start, limit});
+              yield this.ClipSearch({mode, query, start, limit, clipsContentLevel});
 
           if(this.searchResults.key !== resultsKey) {
             // A different search has been performed while this query was made, throw away the result
@@ -693,7 +693,7 @@ class AIStore {
     });
   });
 
-  ClipSearch = flow(function * ({mode, query, start, limit}) {
+  ClipSearch = flow(function * ({mode, query, start, limit, clipsContentLevel}) {
     const type = this.searchIndex.type?.includes("assets") ? "image" : "video";
     let {results, contents, pagination} = (yield this.QueryAIAPI({
       //update: true,
@@ -716,9 +716,8 @@ class AIStore {
         get_chunks: true,
         max_total: 100,
         min_score: this.searchSettings.minConfidence / 100,
-        select: "/public/asset_metadata/title,/public/name,public/asset_metadata/display_title",
-        //(id:iq_1234)OR(id:iq_2345)
-        filters: this.searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR")
+        filters: this.searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR"),
+        clips_content_level: clipsContentLevel
       }
     })) || {};
 
@@ -797,7 +796,11 @@ class AIStore {
           endTime,
           firstChunkStartTime: chunkStartTime,
           sources: result.sources,
-          name: result.meta?.public?.asset_metadata?.title || result.meta?.public?.name,
+          name: (
+            result.sources?.[0]?.fields?.f_zz_ui_name_1?.[0] ||
+            result.sources?.[0]?.fields?.f_zz_ui_name_2?.[0] ||
+              result.sources?.[0]?.fields?.f_display_title?.[0]
+          ),
           subtitle,
           score: score ? (score * 100).toFixed(1) : "",
           type,

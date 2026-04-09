@@ -183,8 +183,13 @@ class TitleStore {
             });
         }
 
+        const transcriptionTrackKey =
+          tracks.find(track => track.name === "transcription") ? "transcription" :
+            tracks.find(track => track.name === "auto_captions")
+              ? "auto_captions" : null;
+
         let transcriptionTags = [];
-        if(tracks.find(track => track.name === "auto_captions")) {
+        if(transcriptionTrackKey) {
           transcriptionTags = (yield this.rootStore.aiStore.QueryAIAPI({
             objectId,
             path: offering || compositionKey ?
@@ -194,7 +199,7 @@ class TitleStore {
               channel_key: compositionKey,
               offering_key: offering,
               limit: 1000000,
-              track: "auto_captions",
+              track: transcriptionTrackKey,
               clip_start: clipStart,
               clip_end: clipEnd
             },
@@ -252,7 +257,8 @@ class TitleStore {
           tracks: tracksMap,
           transcriptionTags,
           playByPlayTags,
-          chapterTags
+          chapterTags,
+          transcriptionTrackKey
         };
       })
     });

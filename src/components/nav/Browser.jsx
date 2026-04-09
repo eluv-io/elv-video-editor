@@ -461,10 +461,10 @@ const ModeSelectionMenu = observer(({mode, setMode, className=""}) => {
   );
 });
 
-export const AISearchBar = observer(({basePath="~/search", initialQuery="", initialMode, onObjectSelect}) => {
+export const AISearchBar = observer(({basePath="~/search", initialQuery="", initialMode, onObjectSelect, clipOnly=false}) => {
   const lastMode = localStorage.getItem(`search-mode-${rootStore.tenantContractId}`);
   const [input, setInput] = useState(initialQuery);
-  const [mode, setMode] = useState(lastMode || initialMode || "clip");
+  const [mode, setMode] = useState(clipOnly ? "clip" : lastMode || initialMode || "clip");
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [,navigate] = useLocation();
 
@@ -510,28 +510,31 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
         </div>
         <div className={S("search-input-container", "search-input-container--ai")}>
           <div className={S("search-input-container__button-left")}>
-            <ModeSelectionMenu
-              mode={mode}
-              setMode={mode => {
-                if(mode === "frame-image") {
-                  setInput("");
-                }
+            {
+              clipOnly ? null :
+                <ModeSelectionMenu
+                  mode={mode}
+                  setMode={mode => {
+                    if(mode === "frame-image") {
+                      setInput("");
+                    }
 
-                setMode(mode);
+                    setMode(mode);
 
-                if(mode === "frame-image") {
-                  // Only submit if we are doing search from image
-                  aiStore.ClearSearchResults();
-                  Submit(mode);
-                } else {
-                  setInput("");
-                  if(initialQuery) {
-                    navigate(basePath);
-                  }
-                }
-              }}
-              className={S("search-input-container__menu-button")}
-            />
+                    if(mode === "frame-image") {
+                      // Only submit if we are doing search from image
+                      aiStore.ClearSearchResults();
+                      Submit(mode);
+                    } else {
+                      setInput("");
+                      if(initialQuery) {
+                        navigate(basePath);
+                      }
+                    }
+                  }}
+                  className={S("search-input-container__menu-button")}
+                />
+            }
             <Icon icon={AISparkleIcon} className={S("search-input-container__ai-icon")} />
           </div>
           <input
@@ -548,7 +551,7 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
               Submit(mode === "frame-image" ? "frame" : mode);
               //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
             }}
-            className={S("search-bar", "search-bar--ai")}
+            className={S("search-bar", "search-bar--ai", clipOnly ? "search-bar--ai-clip-only" : "")}
           />
           <div className={S("search-input-container__right-buttons")}>
             <IconButton

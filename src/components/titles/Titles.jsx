@@ -13,7 +13,7 @@ import {Redirect, useParams} from "wouter";
 
 const S = CreateModuleClassMatcher(BrowserStyles, SearchStyles);
 
-let batchSize = 48;
+let batchSize = 100;
 const TitleResults = observer(({queryB58}) =>
   <InfiniteScroll
     scrollPreservationKey="titles"
@@ -25,7 +25,8 @@ const TitleResults = observer(({queryB58}) =>
         await aiStore.Search({
           query: aiStore.client.utils.FromB58ToStr(queryB58 || ""),
           limit: batchSize,
-          initial
+          initial,
+          clipsContentLevel: true
         })
     }
     className={S("entity-grid", "entity-grid--titles")}
@@ -76,6 +77,7 @@ const Titles = observer(() => {
     <div className={S("browser-page")}>
       <div className={S("browser")}>
         <AISearchBar
+          clipOnly
           basePath="/"
           initialQuery={query}
           initialMode={mode}

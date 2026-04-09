@@ -201,12 +201,7 @@
   &__section {
     padding: 5px 0;
 
-    &:not(:last-child) {
-      border-bottom: 1px solid var(--table-border-color);
-    }
-
     &--multiple {
-      margin-bottom: 20px;
       padding-bottom: 20px;
     }
   }
@@ -223,7 +218,6 @@
     display: flex;
     font-weight: 600;
     gap: 10px;
-    padding: 3px 0;
 
     &:not(:last-child) {
       margin-bottom: 5px;
