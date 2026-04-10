@@ -251,7 +251,7 @@ const GroundTruthPool = observer(() => {
               }
               <StyledButton
                 icon={RebuildModelIcon}
-                small
+                size="sm"
                 disabled={pool.embeddingsBuilt}
                 onClick={async () =>
                   await Confirm({

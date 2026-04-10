@@ -206,7 +206,7 @@ export const SearchFrameButton = observer(({store}) => {
       icon={ImageSearchIcon}
       color="--text-primary"
       variant="secondary"
-      small
+      size="sm"
       onClick={() => tagStore.SetEditing({
         id: `search-frame-${store.frame}`,
         frame: store.frame,

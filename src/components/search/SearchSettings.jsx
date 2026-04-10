@@ -180,7 +180,7 @@ export const SearchIndexForm = observer(({options, setOptions}) => {
           textColor="--text-secondary"
           variant="secondary"
           onClick={() => setShowBrowser(true)}
-          small
+          size="sm"
           className={S("index__button")}
         >
           Add Search Index

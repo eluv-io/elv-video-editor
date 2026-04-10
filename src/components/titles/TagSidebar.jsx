@@ -5,10 +5,12 @@ import {titleStore} from "@/stores/index.js";
 import {TextInput} from "@mantine/core";
 import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher, useIsVisible} from "@/utils/Utils.js";
-import {Icon, Loader} from "@/components/common/Common.jsx";
+import {Icon, IconButton, Loader} from "@/components/common/Common.jsx";
+import SearchIcon from "@/assets/icons/v2/search.svg";
+import Player from "@/components/common/Player.jsx";
 
 import AIDescriptionIcon from "@/assets/icons/v2/ai-sparkle1.svg";
-import SearchIcon from "@/assets/icons/v2/search.svg";
+import XIcon from "@/assets/icons/v2/x.svg";
 
 const S = CreateModuleClassMatcher(SidebarStyles);
 
@@ -298,6 +300,52 @@ export const TagSidebar = observer(({title, clipInfo}) => {
             />
           )
         }
+      </div>
+    </div>
+  );
+});
+
+export const VerticalVideoSidebar = observer(({title, clip, Close}) => {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <div className={S("sidebar", "sidebar--vertical-video")}>
+      <div className={S("header")}>
+        <div className={[S("header__title", "header__title--vertical"), "_title"].join(" ")}>
+          MAKE VERTICAL
+          <Icon icon={AIDescriptionIcon} className={S("header__icon")}/>
+          <IconButton icon={XIcon} onClick={Close} className={S("header__title-close")} />
+        </div>
+      </div>
+      <div className={S("vertical-video-container")}>
+        {
+          loaded ? null :
+            <div className={S("vertical-video-container__loading-slate")}>
+              <Loader />
+            </div>
+        }
+        <Player
+          key={`video-${clip.id}`}
+          versionHash={title.versionHash}
+          readyCallback={() => setLoaded(true)}
+          playoutParameters={{
+            vertical: true,
+            ...(clip.type === "full" ? {} :
+                {
+                  clipStart: clip.startTime,
+                  clipEnd: clip.endTime
+                }
+            )
+          }}
+          playerOptions={{
+            loadChapters: true,
+            //backgroundColor: "transparent",
+            ...(
+              clip.type !== "full" ? {} :
+                {startTime: clip.startTime}
+            )
+          }}
+          className={S("vertical-video", loaded ? "vertical-video--loaded" : "")}
+        />
       </div>
     </div>
   );

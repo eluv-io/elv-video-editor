@@ -1,6 +1,7 @@
 import {flow, makeAutoObservable} from "mobx";
 import {HashString} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
+import {LoadVideo} from "@/stores/Helpers.js";
 
 class TitleStore {
   DEFAULT_SEARCH_SETTINGS = {
@@ -63,6 +64,11 @@ class TitleStore {
   }
 
   LoadTitle = flow(function * ({titleId}) {
+    // TODO: REMOVE
+    yield this.client.SetNodes({
+      fabricURIs: [ "https://host-76-74-91-2.contentfabric.io"]
+    });
+
     return yield this.rootStore.LoadResource({
       id: "titles",
       key: titleId,
@@ -79,6 +85,7 @@ class TitleStore {
           ]
         });
 
+        const videoDetails = yield LoadVideo({libraryId, objectId: titleId, versionHash});
         const baseFrameUrl = yield this.client.Rep({
           versionHash,
           rep: "frame/default/video",
@@ -95,6 +102,7 @@ class TitleStore {
           name: metadata?.name,
           title: metadata?.asset_metadata?.display_title || metadata?.asset_metadata?.title || metadata?.name,
           metadata: metadata?.asset_metadata,
+          videoDetails,
           baseFrameUrl
         };
 

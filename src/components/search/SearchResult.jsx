@@ -238,7 +238,7 @@ const ClipResultPanel = observer(({result}) => {
         <div className={S("result__actions")}>
           <div className={S("result__actions--left")}>
             <StyledButton
-              small
+              size="sm"
               icon={showFull ? ClipIcon : PlayIcon}
               onClick={() => setShowFull(!showFull)}
             >
@@ -255,7 +255,7 @@ const ClipResultPanel = observer(({result}) => {
             {
               existingClip || !clipVideoStore ? null :
                 <StyledButton
-                  small
+                  size="sm"
                   variant="subtle"
                   icon={ClipIcon}
                   onClick={() => setShowAddToMyClipsModal(true)}
@@ -264,7 +264,7 @@ const ClipResultPanel = observer(({result}) => {
                 </StyledButton>
             }
             <StyledButton
-              small
+              size="sm"
               variant="subtle"
               icon={PinIcon}
               to={UrlJoin("~/", result.objectId, "tags", `?st=${result.startTime}&et=${result.endTime}&isolate=`)}
@@ -272,7 +272,7 @@ const ClipResultPanel = observer(({result}) => {
               Open
             </StyledButton>
             <StyledButton
-              small
+              size="sm"
               variant="subtle"
               icon={DownloadIcon}
               onClick={() => setShowDownloadModal(true)}
@@ -378,7 +378,7 @@ const ImageResultPanel = observer(({result}) => {
         </Tabs>
         <div className={S("result__tab-container--right")}>
           <StyledButton
-            small
+            size="sm"
             variant="subtle"
             icon={PinIcon}
             to={UrlJoin("~/", result.objectId, "assets", aiStore.client.utils.B64(result.result.prefix.split("/").slice(-1)[0]))}

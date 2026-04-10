@@ -256,6 +256,13 @@
     font-size: 20px;
     font-weight: 500;
   }
+
+  .left,
+  .right {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+  }
 }
 
 .video {

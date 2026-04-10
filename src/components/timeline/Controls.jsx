@@ -193,7 +193,7 @@ export const MyClipsButton = observer(({store, Select, Delete}) => {
     <>
       <StyledButton
         icon={ClipIcon}
-        small
+        size="sm"
         color="--text-tertiary"
         textColor="--text-secondary"
         variant="secondary"

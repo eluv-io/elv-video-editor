@@ -434,8 +434,11 @@ export const AsyncButton = observer(({onClick, tooltip, loading, ...props}) => {
   );
 });
 
-export const StyledButton = observer(({icon, variant="primary", small, color="--color-highlight", textColor, children, loading, ...props}) => {
+export const StyledButton = observer(({icon, variant="primary", size="lg", color="--color-highlight", textColor, children, loading, ...props}) => {
   const [submitting, setSubmitting] = useState(false);
+
+  textColor = variant === "secondary" ? textColor || color : textColor || "";
+
   return (
     <Linkish
       {...props}
@@ -455,15 +458,15 @@ export const StyledButton = observer(({icon, variant="primary", small, color="--
       }
       style={{
         ...(props.style || {}),
-        "--button-color": `var(${color})`,
-        "--button-text-color": `var(${textColor || color})`,
+        "--button-color": color.startsWith("--") ? `var(${color})`: color,
+        "--button-text-color": textColor.startsWith("--") ? `var(${textColor})`: textColor,
       }}
       className={
         JoinClassNames(
           S(
             "styled-button",
             `styled-button--${variant}`,
-            small ? "styled-button--small" : "",
+            `styled-button--${size}`,
             loading || submitting ? "styled-button--loading" : ""
           ),
           props.className

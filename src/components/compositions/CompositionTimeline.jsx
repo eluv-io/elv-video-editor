@@ -172,7 +172,7 @@ const TimelineBottomBar = observer(() => {
             />
             <StyledButton
               variant="secondary"
-              small
+              size="sm"
               color="--text-tertiary"
               textColor="--text-secondary"
               icon={DiscardDraftIcon}

@@ -39,7 +39,7 @@ const VideoSection = observer(({showOverlay, showFrameSearch, showSave}) => {
         {
           !showSave ? null :
             <StyledButton
-              small
+              size="sm"
               icon={SaveIcon}
               title="Save Changes"
               disabled={!editStore.HasUnsavedChanges("tags") && !editStore.HasUnsavedChanges("clips")}

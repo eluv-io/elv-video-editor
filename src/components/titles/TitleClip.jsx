@@ -4,14 +4,16 @@ import {observer} from "mobx-react-lite";
 import {useParams} from "wouter";
 import React, {useEffect, useState} from "react";
 import {titleStore} from "@/stores/index.js";
-import {Icon, IconButton, Linkish, Loader} from "@/components/common/Common.jsx";
+import {Icon, IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
+import Player from "@/components/common/Player.jsx";
+import TagSidebar, {VerticalVideoSidebar} from "@/components/titles/TagSidebar.jsx";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
-import Player from "@/components/common/Player.jsx";
-import TagSidebar from "@/components/titles/TagSidebar.jsx";
+import VerticalIcon from "@/assets/icons/vertical.svg";
+import ClipIcon from "@/assets/icons/v2/clip.svg";
 
 const S = CreateModuleClassMatcher(TitleStyles);
 
@@ -70,6 +72,7 @@ const Synopsis = observer(({title}) => {
 const TitleClip = observer(() => {
   const {queryB58, titleId} = useParams();
   const title = titleStore.titles[titleId];
+  const [showVertical, setShowVertical] = useState(false);
 
   useEffect(() => {
     titleStore.LoadTitle({titleId});
@@ -108,12 +111,15 @@ const TitleClip = observer(() => {
                     clipEnd: clip.endTime
                   }
               }
-              playerOptions={
-                clip.type !== "full" ? {} :
-                  {
-                    startTime: clip.startTime
-                  }
-              }
+              playerOptions={{
+                ...(
+                  clip.type !== "full" ? {} :
+                    {
+                      startTime: clip.startTime
+                    }
+                ),
+                loadChapters: true
+              }}
               className={S("video")}
             />
             <div className={S("video-info")}>
@@ -123,7 +129,24 @@ const TitleClip = observer(() => {
                 </div>
               </div>
               <div className={S("right")}>
-                <IconButton icon={BackIcon} />
+                <StyledButton
+                  variant="rounded"
+                  color="--background-active"
+                  size="md"
+                  icon={ClipIcon}
+                >
+                  Save Clip
+                </StyledButton>
+                <StyledButton
+                  variant="rounded"
+                  color="--text-secondary"
+                  textColor="black"
+                  size="md"
+                  icon={VerticalIcon}
+                  onClick={() => setShowVertical(true)}
+                >
+                  Make Vertical
+                </StyledButton>
               </div>
             </div>
           </div>
@@ -141,10 +164,18 @@ const TitleClip = observer(() => {
           </div>
         </div>
         <div className={S("sidebar-section")}>
-          <TagSidebar
-            title={title}
-            clipInfo={clip}
-          />
+          {
+            showVertical ?
+              <VerticalVideoSidebar
+                title={title}
+                clip={clip}
+                Close={() => setShowVertical(false)}
+              /> :
+              <TagSidebar
+                title={title}
+                clipInfo={clip}
+              />
+          }
         </div>
       </div>
 
