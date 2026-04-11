@@ -140,6 +140,23 @@
     }
   }
 
+  &__loader {
+    height: var(--loader-size);
+    margin-left: 10px;
+    width: var(--loader-size);
+
+    --loader-size: 15px;
+
+    * {
+      height: var(--loader-size);
+      min-height: var(--loader-size);
+      min-width: var(--loader-size);
+      width: var(--loader-size);
+
+      --spinner-width: 2px;
+    }
+  }
+
   &__label {
     align-items: center;
     background-color: var(--background-toolbar);
@@ -232,6 +249,7 @@
 
   &__spacer {
     background: var(--background-primary);
+    padding: 0;
   }
 }
 

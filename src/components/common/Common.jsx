@@ -27,8 +27,8 @@ const S = CreateModuleClassMatcher(CommonStyles);
 
 // Loaders
 
-export const BareLoader = ({className=""}) => (
-  <div className={JoinClassNames(S("spinner"), className)}>
+export const BareLoader = ({className="", ...props}) => (
+  <div className={JoinClassNames(S("spinner"), className)} {...props}>
     <div className={S("spinner__inner")}/>
   </div>
 );

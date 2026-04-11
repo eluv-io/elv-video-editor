@@ -121,20 +121,17 @@
     font-size: 18px;
     font-weight: 600;
     gap: 10px;
-  }
-
-  &__title {
-    font-size: 20px;
-    margin-right: 20px;
-  }
-
-  &__type {
     padding-inline: 8px;
     transition: color 0.25s ease;
 
     &--active {
       color: var(--text-primary);
     }
+  }
+
+  &__title {
+    font-size: 20px;
+    margin-right: 20px;
   }
 
   &__text {

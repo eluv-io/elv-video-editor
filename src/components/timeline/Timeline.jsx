@@ -6,7 +6,7 @@ import {aiTaggingStore, editStore, groundTruthStore, rootStore, tagStore, trackS
 import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Utils.js";
 import {
   Confirm,
-  IconButton,
+  IconButton, Loader,
   SMPTEInput,
   SwitchInput
 } from "@/components/common/Common";
@@ -290,7 +290,7 @@ const TimelineBottomBar = observer(({simple}) => {
   );
 });
 
-const TimelineSeekBar = observer(({hoverSeek}) => {
+const TimelineSeekBar = observer(({hoverSeek, loading=false}) => {
   if(!videoStore?.initialized) { return null; }
 
   let indicators = [];
@@ -316,7 +316,12 @@ const TimelineSeekBar = observer(({hoverSeek}) => {
 
   return (
     <div className={S("timeline-row", "timeline-row--seek", "seek-bar-container")}>
-      <div className={S("timeline-row__label", "seek-bar-container__spacer")} />
+      <div className={S("timeline-row__label", "seek-bar-container__spacer")}>
+        {
+          !loading ? false :
+            <Loader className={S("timeline-row__loader")} />
+        }
+      </div>
       <MarkedSlider
         min={videoStore.scaleMin}
         max={videoStore.scaleMax}
@@ -741,7 +746,7 @@ const ClipTimelineContent = observer(() => {
   );
 });
 
-const Timeline = observer(({content, simple=false}) => {
+const Timeline = observer(({content, simple=false, loading=false}) => {
   const [hoverPosition, setHoverPosition] = useState(undefined);
   const timelineRef = useRef(null);
 
@@ -816,7 +821,7 @@ const Timeline = observer(({content, simple=false}) => {
         }}
         className={S("timeline-section__content")}
       >
-        <TimelineSeekBar hoverSeek={hoverSeek} />
+        <TimelineSeekBar hoverSeek={hoverSeek} loading={loading} />
         {
           !videoStore.initialized ? null :
             content
@@ -830,7 +835,7 @@ const Timeline = observer(({content, simple=false}) => {
 });
 
 export const TagTimeline = observer(() => {
-  return <Timeline content={<TagTimelineContent />} />;
+  return <Timeline loading={videoStore.tagsLoading} content={<TagTimelineContent />} />;
 });
 
 export const ClipTimeline = observer(() => {

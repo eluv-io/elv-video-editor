@@ -364,6 +364,10 @@ export const ExtractHashFromLink = link => {
   }
 
   if(link["."] && link["."].container) {
+    if(link["."].container?.startsWith("tqw")) {
+      return;
+    }
+
     return link["."].container;
   }
 };

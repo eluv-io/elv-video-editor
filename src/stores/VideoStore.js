@@ -32,6 +32,7 @@ class VideoStore {
 
   loading = false;
   initialized = false;
+  tagsLoading = false;
   isVideo = false;
   isLiveToVod = false;
   ready = false;
@@ -262,6 +263,10 @@ class VideoStore {
 
       const videoObject = yield LoadVideo({objectId, writeToken, preferredOfferingKey, channel: this.channel});
 
+      if(!videoObject) {
+        throw Error("Unable to load video");
+      }
+
       this.videoObject = videoObject;
 
       yield this.LoadMyClips({objectId});
@@ -370,7 +375,7 @@ class VideoStore {
       }
 
       if(this.thumbnails) {
-        this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl, this.primaryContentClipPoints);
+        this.LoadThumbnails();
       }
 
       if(videoObject?.offeringKey) {
@@ -395,119 +400,14 @@ class VideoStore {
       this.initialized = true;
       this.ready = true;
 
-      if(!this.tags) {
+      if(!this.tags || !this.isVideo) {
         return;
       }
 
       // Load tags and assets
       this.rootStore.assetStore.SetAssets(videoObject.metadata.assets);
       this.rootStore.downloadStore.LoadDownloadJobInfo();
-
-      if(!this.isVideo) {
-        this.initialized = true;
-        this.ready = true;
-      } else {
-        /*
-        console.time("LOAD FROM FILES")
-        // Load and merge tag files
-        const tagData = yield this.rootStore.client.utils.LimitedMap(
-          5,
-          Object.keys(this.metadata.video_tags?.metadata_tags || {}),
-          async linkKey => ({
-            linkKey,
-            tags: await this.rootStore.client.LinkData({
-              versionHash: this.versionHash,
-              linkPath: `video_tags/metadata_tags/${linkKey}`,
-              format: "json"
-            })
-          })
-        );
-
-        const metadataTags = FormatTags({tagData});
-
-        console.timeEnd("LOAD FROM FILES")
-
-
-         */
-        console.time("Load Tags");
-        let formattedTags = {};
-        let overlayTags = [];
-        try {
-          let apiTracks = (yield this.rootStore.aiStore.QueryAIAPI({
-            objectId,
-            path: UrlJoin("/tagstore", objectId, "tracks"),
-            channelAuth: true,
-            queryParams: {limit: 1000000},
-            format: "JSON"
-          }))?.tracks || [];
-
-          apiTracks.forEach(track =>
-            formattedTags[track.name] = {
-              ...track,
-              tags: []
-            }
-          );
-
-          let apiTags = yield this.rootStore.aiStore.QueryAIAPI({
-            objectId,
-            path: UrlJoin("/tagstore", objectId, "tags"),
-            channelAuth: true,
-            queryParams: {limit: 1000000, has_frame_info: false},
-            format: "JSON"
-          });
-
-          apiTags.tags.forEach(tag => {
-            if(!formattedTags[tag.track]) {
-              console.error("Tag for unknown track:", tag);
-              return;
-            }
-
-            formattedTags[tag.track].tags.push({
-              ...tag,
-              start_time: tag.start_time / 1000,
-              end_time: tag.end_time / 1000,
-              text: tag.tag,
-              o: {
-                api: true
-              }
-            });
-          });
-        } catch(error) {
-          console.error("Error loading tags");
-          console.error(error);
-        }
-
-        console.timeEnd("Load Tags");
-
-        let clipTags = {};
-        if(videoObject.metadata?.clips?.metadata_tags) {
-          clipTags = FormatTags({
-            tagData: [{
-              linkKey: "clips",
-              tags: videoObject.metadata?.clips
-            }]
-          });
-        }
-
-        Object.keys(videoObject.metadata.clips?.evie?.tracks || {}).forEach(trackKey =>
-          clipTags[trackKey] = {
-            ...videoObject.metadata.clips.evie.tracks[trackKey],
-            ...clipTags[trackKey],
-            tags: clipTags[trackKey]?.tags || []
-          }
-        );
-
-        yield this.rootStore.trackStore.InitializeTracks({
-          metadata: videoObject.metadata,
-          metadataTags: formattedTags,
-          metadataOverlayTags: overlayTags,
-          clipTags
-        });
-
-        this.LoadOverlayTags({objectId});
-
-        this.ready = true;
-      }
+      this.LoadTags();
     } catch(error) {
       console.error("Failed to load:");
       console.error(error);
@@ -516,6 +416,97 @@ class VideoStore {
     } finally {
       this.loading = false;
     }
+  });
+
+  LoadThumbnails() {
+    this.thumbnails = true;
+
+    if(!this.thumbnailStore.thumbnailStatus?.loaded) {
+      this.thumbnailStore.LoadThumbnails(this.thumbnailTrackUrl, this.primaryContentClipPoints);
+    }
+  }
+
+  LoadTags = flow(function * () {
+    const objectId = this.videoObject.objectId;
+    console.time("Load Tags");
+    let formattedTags = {};
+    let overlayTags = [];
+    try {
+      this.tagsLoading = true;
+      let apiTracks = (yield this.rootStore.aiStore.QueryAIAPI({
+        objectId,
+        path: UrlJoin("/tagstore", objectId, "tracks"),
+        channelAuth: true,
+        queryParams: {limit: 1000000},
+        format: "JSON"
+      }))?.tracks || [];
+
+      apiTracks.forEach(track =>
+        formattedTags[track.name] = {
+          ...track,
+          tags: []
+        }
+      );
+
+      let apiTags = yield this.rootStore.aiStore.QueryAIAPI({
+        objectId,
+        path: UrlJoin("/tagstore", objectId, "tags"),
+        channelAuth: true,
+        queryParams: {limit: 1000000, has_frame_info: false},
+        format: "JSON"
+      });
+
+      apiTags.tags.forEach(tag => {
+        if(!formattedTags[tag.track]) {
+          console.error("Tag for unknown track:", tag);
+          return;
+        }
+
+        formattedTags[tag.track].tags.push({
+          ...tag,
+          start_time: tag.start_time / 1000,
+          end_time: tag.end_time / 1000,
+          text: tag.tag,
+          o: {
+            api: true
+          }
+        });
+      });
+    } catch(error) {
+      console.error("Error loading tags");
+      console.error(error);
+    }
+
+    console.timeEnd("Load Tags");
+
+    let clipTags = {};
+    if(this.videoObject.metadata?.clips?.metadata_tags) {
+      clipTags = FormatTags({
+        tagData: [{
+          linkKey: "clips",
+          tags: videoObject.metadata?.clips
+        }]
+      });
+    }
+
+    Object.keys(this.videoObject.metadata.clips?.evie?.tracks || {}).forEach(trackKey =>
+      clipTags[trackKey] = {
+        ...this.videoObject.metadata.clips.evie.tracks[trackKey],
+        ...clipTags[trackKey],
+        tags: clipTags[trackKey]?.tags || []
+      }
+    );
+
+    yield this.rootStore.trackStore.InitializeTracks({
+      metadata: this.videoObject.metadata,
+      metadataTags: formattedTags,
+      metadataOverlayTags: overlayTags,
+      clipTags
+    });
+
+    this.LoadOverlayTags({objectId});
+
+    this.tagsLoading = false;
   });
 
   LoadOverlayTags = flow(function * ({objectId}) {

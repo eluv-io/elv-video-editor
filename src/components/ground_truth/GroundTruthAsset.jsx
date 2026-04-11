@@ -76,7 +76,7 @@ const GroundTruthAsset = observer(() => {
             </span>
           </h1>
           <div className={S("asset-page__content")}>
-            <div className={S("asset-page__image-container")}>
+          <div className={S("asset-page__image-container")}>
               <LoaderImage
                 src={asset?.link?.url}
                 loaderDelay={0}
