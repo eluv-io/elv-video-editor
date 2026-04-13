@@ -1,7 +1,7 @@
 import TitleStyles from "@/assets/stylesheets/modules/titles.module.scss";
 
 import {observer} from "mobx-react-lite";
-import {useParams} from "wouter";
+import {Redirect, useParams} from "wouter";
 import React, {useEffect, useState} from "react";
 import {titleStore} from "@/stores/index.js";
 import {Icon, IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
@@ -9,11 +9,11 @@ import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 import Player from "@/components/common/Player.jsx";
 import TagSidebar, {VerticalVideoSidebar} from "@/components/titles/TagSidebar.jsx";
+import {TextInput} from "@mantine/core";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import VerticalIcon from "@/assets/icons/vertical.svg";
-import ClipIcon from "@/assets/icons/v2/clip.svg";
 
 const S = CreateModuleClassMatcher(TitleStyles);
 
@@ -69,8 +69,51 @@ const Synopsis = observer(({title}) => {
   );
 });
 
+const Summary = observer(({title, clipInfo}) => {
+  if(!clipInfo.summary) { return; }
+
+  return (
+    <div className={S("summary")}>
+      <div className={S("summary__header")}>
+        <Icon icon={AIIcon} />
+        Summary
+      </div>
+      <div className={S("summary__text")}>
+        { clipInfo.summary }
+      </div>
+      <div className={S("summary__prompt-container")}>
+        <TextInput
+          leftSection={<Icon icon={AIIcon} />}
+          placeholder="How would you like to personalize this?"
+          className={S("summary__prompt")}
+          classNames={{
+            input: S("ai-text-input__input")
+          }}
+        />
+      </div>
+    </div>
+  );
+});
+
+const ClipInfo = ({title, clipId}) => {
+  if(clipId === "full") {
+    return { type: "full", slug: "full", name: title.title };
+  }
+
+  const clipType = Object.keys(title.metadata.ai_derived_media || {})
+    .find(clipType => title.metadata.ai_derived_media[clipType][clipId]);
+
+  if(!clipType) { return; }
+
+  return {
+    type: clipType,
+    slug: clipId,
+    ...title.metadata.ai_derived_media[clipType][clipId]
+  };
+};
+
 const TitleClip = observer(() => {
-  const {queryB58, titleId} = useParams();
+  const {queryB58, titleId, clipId} = useParams();
   const title = titleStore.titles[titleId];
   const [showVertical, setShowVertical] = useState(false);
 
@@ -84,7 +127,11 @@ const TitleClip = observer(() => {
     return <Loader />;
   }
 
-  const clip = { type: "full", id: "full", title: title.title };
+  const clipInfo = ClipInfo({title, clipId});
+
+  if(!clipInfo) {
+    return <Redirect to={UrlJoin("~/titles/", queryB58 || "", "title", titleId)} />;
+  }
 
   return (
     <div className={S("title-page")}>
@@ -101,42 +148,30 @@ const TitleClip = observer(() => {
         <div className={S("clip-section")}>
           <div className={S("video-section")}>
             <Player
-              key={`video-${clip.id}`}
+              key={`video-${clipId}`}
               versionHash={title.versionHash}
               readyCallback={player => titleStore.SetPlayer(player)}
               playoutParameters={
-                clip.type === "full" ? {} :
-                  {
-                    clipStart: clip.startTime,
-                    clipEnd: clip.endTime
-                  }
+                clipInfo.playout?.type === "composition" ?
+                  {channel: clipInfo.playout.composition_key} :
+                  clipInfo.playout?.type === "clip" ?
+                    {
+                      clipStart: clipInfo.playout.start / 1000,
+                      clipEnd: clipInfo.playout.end / 1000
+                    } : {}
               }
               playerOptions={{
-                ...(
-                  clip.type !== "full" ? {} :
-                    {
-                      startTime: clip.startTime
-                    }
-                ),
-                loadChapters: true
+                loadChapters: clipInfo.type === "full"
               }}
               className={S("video")}
             />
             <div className={S("video-info")}>
               <div className={S("left")}>
                 <div className={S("video-info__title")}>
-                  { clip.title }
+                  { clipInfo.name }
                 </div>
               </div>
               <div className={S("right")}>
-                <StyledButton
-                  variant="rounded"
-                  color="--background-active"
-                  size="md"
-                  icon={ClipIcon}
-                >
-                  Save Clip
-                </StyledButton>
                 <StyledButton
                   variant="rounded"
                   color="--text-secondary"
@@ -153,14 +188,18 @@ const TitleClip = observer(() => {
           <div className={S("info-section")}>
             <div className={S("info__tags")}>
               {
-                dummyValues.tags.map(tag =>
+                (clipInfo?.topics || dummyValues.tags).map(tag =>
                   <div key={tag} className={S("info__tag")}>
                     {tag}
                   </div>
                 )
               }
             </div>
-            <Synopsis title={title}/>
+            {
+              clipInfo.type === "full" ?
+                <Synopsis title={title}/> :
+                <Summary title={title} clipInfo={clipInfo} />
+            }
           </div>
         </div>
         <div className={S("sidebar-section")}>
@@ -168,12 +207,12 @@ const TitleClip = observer(() => {
             showVertical ?
               <VerticalVideoSidebar
                 title={title}
-                clip={clip}
+                clipInfo={clipInfo}
                 Close={() => setShowVertical(false)}
               /> :
               <TagSidebar
                 title={title}
-                clipInfo={clip}
+                clipInfo={clipInfo}
               />
           }
         </div>

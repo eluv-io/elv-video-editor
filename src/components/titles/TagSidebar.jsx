@@ -144,9 +144,14 @@ export const TagSidebar = observer(({title, clipInfo}) => {
     titleStore.LoadMediaTags({
       objectId: title.objectId,
       offering: clipInfo.offering,
-      compositionKey: clipInfo.compositionKey,
-      clipStart: clipInfo.clipStart,
-      clipEnd: clipInfo.clipEnd
+      compositionKey: clipInfo.playout?.composition_key,
+      ...(
+        clipInfo.playout?.type !== "clip" ? {} :
+          {
+            clipStart: clipInfo.playout.start / 1000,
+            clipEnd: clipInfo.playout.end / 1000
+          }
+      )
     })
       .then(() =>
         setTab(
@@ -233,9 +238,12 @@ export const TagSidebar = observer(({title, clipInfo}) => {
             <Icon icon={AIDescriptionIcon}/>
           </div>
         </div>
-        <div className={S("loader")}>
-          <Loader/>
-        </div>
+        {
+          titleStore.mediaTags.loaded ? null :
+            <div className={S("loader")}>
+              <Loader/>
+            </div>
+        }
       </div>
     );
   }
@@ -305,7 +313,7 @@ export const TagSidebar = observer(({title, clipInfo}) => {
   );
 });
 
-export const VerticalVideoSidebar = observer(({title, clip, Close}) => {
+export const VerticalVideoSidebar = observer(({title, clipInfo, Close}) => {
   const [loaded, setLoaded] = useState(false);
   return (
     <div className={S("sidebar", "sidebar--vertical-video")}>
@@ -324,25 +332,22 @@ export const VerticalVideoSidebar = observer(({title, clip, Close}) => {
             </div>
         }
         <Player
-          key={`video-${clip.id}`}
           versionHash={title.versionHash}
           readyCallback={() => setLoaded(true)}
           playoutParameters={{
             vertical: true,
-            ...(clip.type === "full" ? {} :
-                {
-                  clipStart: clip.startTime,
-                  clipEnd: clip.endTime
-                }
+            ...(
+              clipInfo.playout?.type === "composition" ?
+                {channel: clipInfo.playout.composition_key} :
+                clipInfo.playout?.type === "clip" ?
+                  {
+                    clipStart: clipInfo.playout.start / 1000,
+                    clipEnd: clipInfo.playout.end / 1000
+                  } : {}
             )
           }}
           playerOptions={{
-            loadChapters: true,
-            //backgroundColor: "transparent",
-            ...(
-              clip.type !== "full" ? {} :
-                {startTime: clip.startTime}
-            )
+            loadChapters: clipInfo.type === "full"
           }}
           className={S("vertical-video", loaded ? "vertical-video--loaded" : "")}
         />

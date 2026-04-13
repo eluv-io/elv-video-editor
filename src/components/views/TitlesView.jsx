@@ -20,9 +20,6 @@ const TitlesView = observer(() => {
       <Route path="/:queryB58?/title/:titleId/clip/:clipId">
         <TitleClip />
       </Route>
-      <Route path="/:queryB58?/title/:titleId/:clipId">
-        Title Clip Details
-      </Route>
       <Route path="/:queryB58?/title/:titleId">
         <Title />
       </Route>

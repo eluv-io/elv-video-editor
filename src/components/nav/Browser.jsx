@@ -549,7 +549,7 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
               if(event.key !== "Enter") { return; }
 
               Submit(mode === "frame-image" ? "frame" : mode);
-              //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
+              navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
             }}
             className={S("search-bar", "search-bar--ai", clipOnly ? "search-bar--ai-clip-only" : "")}
           />

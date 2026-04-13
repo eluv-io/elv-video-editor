@@ -106,7 +106,7 @@ export const LoaderImage = observer(({
   }
 
   if(loaded) {
-    return <img ref={setRef} src={(useAlternateSrc && src) || src} {...props} />;
+    return <img ref={setRef} src={(useAlternateSrc && alternateSrc) || src} {...props} />;
   }
 
   return (

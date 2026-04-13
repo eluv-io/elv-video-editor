@@ -5,12 +5,12 @@ import {useParams} from "wouter";
 import React, {useEffect, useState} from "react";
 import {titleStore} from "@/stores/index.js";
 import {Icon, IconButton, Linkish, Loader, LoaderImage} from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, Capitalize} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
-import {Select, TextInput} from "@mantine/core";
+import {Select, TextInput, Tooltip} from "@mantine/core";
 
 const S = CreateModuleClassMatcher(TitleStyles);
 
@@ -73,57 +73,116 @@ const Synopsis = observer(({title}) => {
   );
 });
 
-const Clip = observer(({title, clipInfo}) => {
+const Clip = observer(({title, clipInfo, clipType}) => {
   const {queryB58, titleId} = useParams();
 
   const frameUrl = new URL(title.baseFrameUrl);
 
-  if(clipInfo.type === "full") {
+  if(clipType === "full" || clipInfo.playout?.type === "composition") {
     frameUrl.searchParams.set("t", parseInt(title.metadata.info.runtime * 60) / 2);
+  } else {
+    frameUrl.searchParams.set("t", clipInfo.playout.start / 1000 + (clipInfo.playout.end - clipInfo.playout.start) / 2 / 1000);
   }
 
   return (
     <Linkish
-      to={UrlJoin("~/titles/", queryB58 || "", "title", titleId, "clip", clipInfo.id)}
-      className={S("clip")}
+      to={UrlJoin("~/titles/", queryB58 || "", "title", titleId, "clip", clipInfo.slug)}
+      className={S("clip", `clip--${clipType}`)}
     >
       <div className={S("clip__image-container")}>
         <LoaderImage
           src={frameUrl}
           showWithoutSource
-          loaderAspectRatio={16/9}
+          loaderAspectRatio={clipType === "shorts" ? 9/16 : 16/9}
           className={S("clip__image")}
         />
       </div>
-      <div className={S("clip__text")}>
-        <div className={S("clip__title", "ellipsis")}>
-          Full Content
+      <Tooltip
+        disabled={!clipInfo.summary}
+        label={
+          <div className={S("tooltip__item")}>
+            <div className={S("tooltip__label")}>
+              {clipInfo.name}
+            </div>
+            <div className={S("tooltip__content")}>
+              <pre>
+                {clipInfo.summary}
+              </pre>
+            </div>
+          </div>
+        }
+      >
+        <div className={S("clip__text")}>
+          <div className={S("clip__title", "ellipsis")}>
+            { clipInfo.name }
+          </div>
+          {
+            !clipInfo.summary ? null :
+              <div className={S("clip__subtitle", "ellipsis")}>
+                { clipInfo.summary }
+              </div>
+          }
         </div>
-        <div className={S("clip__subtitle", "ellipsis")}>
-          Subtitle
-        </div>
-      </div>
+      </Tooltip>
     </Linkish>
   );
 });
 
 const Clips = observer(({title}) => {
+  const availableClipTypes = [...Object.keys(title.metadata.ai_derived_media || {}).sort(), "full"];
+  const initialClipType = sessionStorage.getItem("last-clip-type") || availableClipTypes[0];
+  const [clipType, setClipType] = useState(
+    availableClipTypes.includes(initialClipType) ? initialClipType : availableClipTypes[0]
+  );
+
+  useEffect(() => {
+    sessionStorage.setItem("last-clip-type", clipType);
+  }, [clipType]);
+
+  const clips = clipType === "full" ? [{type: "full", slug: "full", name: title.title}] :
+    Object.keys(title.metadata.ai_derived_media[clipType])
+      .map(clipSlug => ({...title.metadata.ai_derived_media[clipType][clipSlug], slug: clipSlug}));
+
   return (
     <div className={S("clips")}>
       <div className={S("clips__options")}>
         <div className={S("left")}>
           <Select
-            options={[
-              { label: "Trailers", value: "trailers"}
-            ]}
+            value={clipType}
+            onChange={value => setClipType(value || clipType)}
+            data={
+              availableClipTypes.map(key => ({
+                label: key === "full" ? "Full Content" : Capitalize(key),
+                value: key
+              }))
+            }
+            classNames={{
+              input: S("rounded-select__input"),
+            }}
           />
         </div>
         <div className={S("right")}>
-          <TextInput />
+          <TextInput
+            leftSection={<Icon icon={AIIcon}/>}
+            placeholder="Prompt to suggest content"
+            w={400}
+            classNames={{
+              input: S("ai-text-input__input")
+            }}
+          />
         </div>
       </div>
-      <div className={S("clips-list")}>
-        <Clip title={title} clipInfo={{type: "full", id: "full"}}/>
+      <div className={S("clips-list", `clips-list--${clipType}`)}>
+        {
+          clips.map(clipInfo =>
+            <Clip
+              key={`clip-${clipInfo.slug}`}
+              title={title}
+              clipType={clipType}
+              clipInfo={clipInfo}
+            />
+          )
+        }
       </div>
     </div>
   );
@@ -175,7 +234,7 @@ const Title = observer(() => {
       <div className={S("title")}>
         <div className={S("image-container")}>
           <LoaderImage
-            showWithoutSource
+            src={title.metadata.images?.poster_vertical?.default?.url}
             loaderAspectRatio={2/3}
             className={S("image")}
           />

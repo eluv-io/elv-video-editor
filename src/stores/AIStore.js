@@ -693,33 +693,58 @@ class AIStore {
     });
   });
 
-  ClipSearch = flow(function * ({mode, query, start, limit, clipsContentLevel}) {
-    const type = this.searchIndex.type?.includes("assets") ? "image" : "video";
-    let {results, contents, pagination} = (yield this.QueryAIAPI({
-      //update: true,
-      objectId: this.searchIndex.id,
-      path: UrlJoin("search", "q", this.searchIndex.versionHash, "rep", "search"),
-      queryParams: {
-        terms: query,
-        search_fields:
-          mode === "music" ? "f_music" :
-            this.searchSettings.fields.length > 0 ?
-              this.searchSettings.fields.join(",") :
-              Object.keys(this.searchIndex.fields).join(","),
-        sort: mode === "music" ? "f_music" : null,
+  GetTitles = flow(function * ({start=0, limit=10}) {
+    return {
+      pagination: {
         start,
         limit,
-        display_fields:
-          mode === "music" ? "f_music" : "all",
-        clips: type === "video",
-        clip_include_source_tags: true,
-        get_chunks: true,
-        max_total: 100,
-        min_score: this.searchSettings.minConfidence / 100,
-        filters: this.searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR"),
-        clips_content_level: clipsContentLevel
-      }
-    })) || {};
+        total: this.searchIndex.indexedTitles.length
+      },
+      results: yield Promise.all(
+        this.searchIndex.indexedTitles
+          .sort((a, b) => a.name < b.name ? -1 : 1)
+          .slice(start, start + limit)
+          .map(async ({name, objectId}) => ({
+            qlib_id: await this.client.ContentObjectLibraryId({objectId}),
+            id: objectId,
+            hash: await this.client.LatestVersionHash({objectId}),
+            name: name || await this.rootStore.GetObjectName({objectId})
+          }))
+      )
+    };
+  });
+
+  ClipSearch = flow(function * ({mode, query, start, limit, clipsContentLevel}) {
+    const type = this.searchIndex.type?.includes("assets") ? "image" : "video";
+    let {results, contents, pagination} =
+      clipsContentLevel && !query ?
+        // For no-query titles listing, just look at search index titles
+        yield this.GetTitles({start, limit}) :
+        (yield this.QueryAIAPI({
+          //update: true,
+          objectId: this.searchIndex.id,
+          path: UrlJoin("search", "q", this.searchIndex.versionHash, "rep", "search"),
+          queryParams: {
+            terms: query,
+            search_fields:
+              mode === "music" ? "f_music" :
+                this.searchSettings.fields.length > 0 ?
+                  this.searchSettings.fields.join(",") :
+                  Object.keys(this.searchIndex.fields).join(","),
+            sort: mode === "music" ? "f_music" : null,
+            start,
+            limit,
+            display_fields:
+              mode === "music" ? "f_music" : "all",
+            clips: type === "video",
+            clip_include_source_tags: true,
+            get_chunks: true,
+            max_total: 100,
+            min_score: this.searchSettings.minConfidence / 100,
+            filters: this.searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR"),
+            clips_content_level: clipsContentLevel
+          }
+        })) || {};
 
     results = results || contents;
 
@@ -732,10 +757,12 @@ class AIStore {
       }
     });
 
+
+    const baseTitleImageUrl = yield this.client.FabricUrl({});
     return {
       pagination,
       results: (results || []).map(result => {
-        let imageUrl;
+        let imageUrl, titleImageUrl;
         if(result.image_url || result.prefix) {
           imageUrl = new URL(baseUrl);
 
@@ -780,6 +807,9 @@ class AIStore {
           }
         }
 
+        titleImageUrl = new URL(baseTitleImageUrl);
+        titleImageUrl.pathname = UrlJoin("qlibs", result.qlib_id, "q", result.id, "meta/public/asset_metadata/images/poster_vertical/default");
+
         let score = result.score;
         // Score is provided as an array of scores
         if(!score) {
@@ -791,12 +821,14 @@ class AIStore {
           objectId: result.id,
           versionHash: result.hash,
           imageUrl: imageUrl?.toString(),
+          titleImageUrl: titleImageUrl?.toString(),
           filePath: type === "image" ? result.prefix : undefined,
           startTime,
           endTime,
           firstChunkStartTime: chunkStartTime,
           sources: result.sources,
           name: (
+            result.name ||
             result.sources?.[0]?.fields?.f_zz_ui_name_1?.[0] ||
             result.sources?.[0]?.fields?.f_zz_ui_name_2?.[0] ||
               result.sources?.[0]?.fields?.f_display_title?.[0]

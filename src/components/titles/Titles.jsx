@@ -4,7 +4,7 @@ import BrowserStyles from "@/assets/stylesheets/modules/browser.module.scss";
 import {observer} from "mobx-react-lite";
 import React, {useEffect} from "react";
 import {aiStore} from "@/stores/index.js";
-import {CreateModuleClassMatcher, ParseSearchQuery, ScaleImage} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, ParseSearchQuery} from "@/utils/Utils.js";
 import {AISearchBar} from "@/components/nav/Browser.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import UrlJoin from "url-join";
@@ -13,13 +13,12 @@ import {Redirect, useParams} from "wouter";
 
 const S = CreateModuleClassMatcher(BrowserStyles, SearchStyles);
 
-let batchSize = 100;
+let batchSize = 20;
 const TitleResults = observer(({queryB58}) =>
   <InfiniteScroll
     scrollPreservationKey="titles"
     withLoader
     watchList={[queryB58, aiStore.searchImageFrameUrl, aiStore.searchSettings.key]}
-    batchSize={50}
     Update={
       async (limit, initial) =>
         await aiStore.Search({
@@ -39,10 +38,11 @@ const TitleResults = observer(({queryB58}) =>
           id={result.objectId}
           label={result.name}
           aspectRatio={"portrait"}
-          subtitle={result.subtitle}
-          image={ScaleImage(result.imageUrl, 100)}
+          image={result.titleImageUrl || result.imageUrl}
+          backupImage={result.imageUrl}
+          imageWidth={400}
           badge={
-            !result.score ? null :
+            !queryB58 || !result.score ? null :
               <div className={S("search-result__score")}>
                 Score: {result.score}
               </div>
