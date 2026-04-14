@@ -21,6 +21,7 @@ import {useLocation, useParams} from "wouter";
 import CompositionSelection from "@/components/compositions/CompositionSelection.jsx";
 import Share from "@/components/download/Share.jsx";
 import Download from "@/components/download/Download.jsx";
+import {MyClipsButton} from "@/components/timeline/Controls.jsx";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
@@ -31,7 +32,6 @@ import LinkIcon from "@/assets/icons/v2/external-link.svg";
 import DiscardDraftIcon from "@/assets/icons/v2/discard-draft.svg";
 import ReloadIcon from "@/assets/icons/v2/reload.svg";
 import ReorderIcon from "@/assets/icons/v2/sort-clips.svg";
-import {MyClipsButton} from "@/components/timeline/Controls.jsx";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 

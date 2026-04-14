@@ -1104,6 +1104,119 @@ class CompositionStore {
     yield this.SetCompositionObject({objectId, compositionKey});
   });
 
+  FromV2(metadata) {
+    /*
+      Slices:
+        0 - sourceIndex: 0-based index into the sources[] array
+        1 - sliceStartNumerator: clip start
+        2 - sliceStartDenominator: clip start
+        3 - sliceEndNumerator: clip end
+        4 - sliceEndDenominator: clip end
+
+      Slice effects:
+        0 - Effect type (1 = fade in audio and video at start , 2 = fade out audio and video at end)
+        1 - Slice index - which item on timeline to apply effect to (0 = first item)
+        2 - Effect duration numerator
+        3 - Effect duration denominator
+     */
+
+    const effectTypes = {
+      1: {type: "fade_in", position: "start"},
+      2: {type: "fade_out", position: "end"}
+    };
+    const ParseEffect = effect => {
+      const [type,,durationNum, durationDenom] = effect;
+
+      if(!effectTypes[type]) {
+        // eslint-disable-next-line no-console
+        console.warn("Unknown effect:", effect);
+        return;
+      }
+
+      return {
+        type: effectTypes[type].type,
+        position: effectTypes[type].position,
+        duration: durationNum / durationDenom
+      };
+    };
+
+    return (metadata.slices || []).map((slice, index) => {
+      let [sourceIndex, startNum, startDenom, endNum, endDenom] = slice;
+
+      const commonDenom = startDenom * endDenom;
+
+      startNum *= endDenom;
+      endNum *= startDenom;
+
+      return {
+        display_name: metadata.slice_info?.[index]?.display_name || `Clip ${index}`,
+        duration_rat: `${endNum - startNum}/${commonDenom}`,
+        slice_start_rat: `${startNum}/${commonDenom}`,
+        slice_end_rat: `${endNum}/${commonDenom}`,
+        effects: (metadata.slice_effects || [])
+          .filter(effect => effect[1] === index)
+          .map(effect => ParseEffect(effect))
+          .filter(effect => effect),
+        ...metadata.sources[sourceIndex]
+      };
+    });
+  }
+
+  ToV2(metadata) {
+    let slices = [];
+    let sources = [];
+    let slice_effects = [];
+    let slice_info = [];
+
+    for(const item of metadata.items || []) {
+      let sourceIndex = sources.findIndex(source => source.source["/"] === item.source["/"]);
+      if(sourceIndex < 0) {
+        sourceIndex = sources.length;
+        sources[sourceIndex] = {
+          source: item.source,
+          type: item.type
+        };
+      }
+
+      const [startNum, startDenom] = ReduceRat(item.slice_start_rat);
+      const [endNum, endDenom] = ReduceRat(item.slice_end_rat);
+
+      const sliceIndex = slices.length;
+      slices.push([
+        sourceIndex,
+        startNum,
+        startDenom,
+        endNum,
+        endDenom
+      ]);
+
+      const effectTypes = {
+        "fade_in": 1,
+        "fade_out": 2
+      };
+
+      (item.effects || []).forEach(effect => {
+        slice_effects.push([
+          effectTypes[effect.type],
+          sliceIndex,
+          parseInt(effect.duration * 1000),
+          1000
+        ]);
+      });
+
+      slice_info[sliceIndex] = {
+        display_name: item.display_name
+      };
+    }
+
+    return {
+      slices,
+      sources,
+      slice_effects,
+      slice_info
+    };
+  }
+
   SetCompositionObject = flow(function * ({objectId, compositionKey, addToMyLibrary=false}) {
     console.time(`Load composition ${objectId} ${compositionKey}`);
 
@@ -1126,6 +1239,10 @@ class CompositionStore {
         writeToken,
         metadataSubtree: UrlJoin("/channel", "offerings", compositionKey)
       })) || {};
+
+      if(metadata.slices) {
+        metadata.items = this.FromV2(metadata);
+      }
     } catch(error) {
       if(
         (error.status === 404 && error.message === "Not Found") ||
@@ -1191,7 +1308,7 @@ class CompositionStore {
     this.videoStore.videoHandler = primarySource.videoHandler;
 
     // Determine secondary sources from explicit list in metadata and by looking at all item links
-    let secondarySources = metadata.sources || [];
+    let secondarySources = [];
     let originalClipsList = {};
     let updatedClipList = {};
     this.clipIdList = yield Promise.all(
@@ -1199,6 +1316,11 @@ class CompositionStore {
         const clipId = this.rootStore.NextId();
         const clipVersionHash = ExtractHashFromLink(item.source) || versionHash;
         const clipObjectId = this.client.utils.DecodeVersionHash(clipVersionHash).objectId;
+
+        if(clipObjectId !== objectId && !secondarySources.includes(clipObjectId)) {
+          secondarySources.push(clipObjectId);
+        }
+
         const libraryId = await this.client.ContentObjectLibraryId({objectId: clipObjectId});
         const offeringKey = item.source["/"].split("/").slice(-1)[0];
 
@@ -1298,7 +1420,6 @@ class CompositionStore {
   });
 
   InitializeSource = flow(function * ({objectId, writeToken}) {
-    console.time("s1"+objectId);
     const libraryId = yield this.client.ContentObjectLibraryId({objectId});
     const versionHash = yield this.client.LatestVersionHash({objectId});
 
@@ -1309,16 +1430,11 @@ class CompositionStore {
       metadataSubtree: "/public/name"
     });
 
-    console.timeEnd("s1"+objectId);
-    console.time("s2"+objectId);
-
     // Load source clips
     const sourceFullClipId = yield this.InitializeClip({objectId, source: true});
     const store = this.ClipStore({clipId: sourceFullClipId});
     const videoHandler = new FrameAccurateVideo({frameRateRat: store.frameRateRat});
 
-    console.timeEnd("s2"+objectId);
-    console.time("s3"+objectId);
     // Load content clips
     let sourceClipIds = {};
     const sourceClips = store.videoObject.metadata?.clips?.metadata_tags || {};
@@ -1340,8 +1456,6 @@ class CompositionStore {
         };
       }
     }
-    console.timeEnd("s3"+objectId);
-    console.time("s4"+objectId);
 
     this.sources[objectId] = {
       libraryId,
@@ -1365,8 +1479,6 @@ class CompositionStore {
      */
 
     yield this.LoadMyClips({objectId});
-
-    console.timeEnd("s4"+objectId);
 
     return this.sources[objectId];
   });

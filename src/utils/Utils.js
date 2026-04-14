@@ -392,3 +392,22 @@ export const ParseSearchQuery = ({query="", queryB58=""}) => {
     query
   };
 };
+
+export const ReduceRat = (num, denom) => {
+  if(typeof num === "string") {
+    if(num.includes("/")) {
+      denom = parseInt(num.split("/")[1]);
+      num = parseInt(num.split("/")[0]);
+    } else {
+      num = parseInt(num);
+      denom = 1;
+    }
+  }
+
+  const GCD = (a,b) => b ? GCD(b, a%b) : a;
+
+  const gcd = GCD(num,denom);
+  return [num/gcd, denom/gcd];
+};
+
+window.ReduceRat = ReduceRat;

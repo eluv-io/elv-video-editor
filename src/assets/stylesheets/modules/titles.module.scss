@@ -334,6 +334,7 @@
   &__title {
     font-size: 20px;
     font-weight: 500;
+    max-width: calc(100vw - 850px);
   }
 
   .left,
@@ -345,8 +346,13 @@
 }
 
 .video {
-  height: 50vh;
+  max-height: 55vh;
   width: 100%;
+
+  &--full {
+    height: auto;
+    max-height: 75vh;
+  }
 }
 
 .ai-text-input {

@@ -100,7 +100,12 @@ const Clip = observer(({title, clipInfo, clipType}) => {
   if(clipType === "full" || clipInfo.playout?.type === "composition") {
     frameUrl.searchParams.set("t", parseInt(title.metadata.info.runtime * 60) / 2);
   } else {
-    frameUrl.searchParams.set("t", clipInfo.playout.start / 1000 + (clipInfo.playout.end - clipInfo.playout.start) / 2 / 1000);
+    frameUrl.searchParams.set(
+      "t",
+      clipInfo.image_t ?
+        (clipInfo.image_t.toString().includes(".") ? parseFloat(clipInfo.image_t) : parseInt(clipInfo.image_t) / 1000) :
+        clipInfo.playout.start / 1000 + (clipInfo.playout.end - clipInfo.playout.start) / 2 / 1000
+    );
   }
 
   return (

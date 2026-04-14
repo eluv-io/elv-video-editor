@@ -461,7 +461,7 @@ const ModeSelectionMenu = observer(({mode, setMode, className=""}) => {
   );
 });
 
-export const AISearchBar = observer(({basePath="~/search", initialQuery="", initialMode, onObjectSelect, clipOnly=false}) => {
+export const AISearchBar = observer(({basePath="~/search", initialQuery="", initialMode, onObjectSelect, clipOnly=false, placeholder}) => {
   const lastMode = localStorage.getItem(`search-mode-${rootStore.tenantContractId}`);
   const [input, setInput] = useState(initialQuery);
   const [mode, setMode] = useState(clipOnly ? "clip" : lastMode || initialMode || "clip");
@@ -540,9 +540,10 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
           <input
             value={input}
             placeholder={
-              mode.startsWith("frame") ? "Search for images by phrase or keyword" :
-                mode === "music" ? "Search for music by phrase or keyword" :
-                  "Search within content by phrase or keyword"
+              placeholder ? placeholder :
+                mode.startsWith("frame") ? "Search for images by phrase or keyword" :
+                  mode === "music" ? "Search for music by phrase or keyword" :
+                    "Search within content by phrase or keyword"
             }
             onChange={event => setInput(event.target.value)}
             onKeyDown={async event => {

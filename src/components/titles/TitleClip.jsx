@@ -131,11 +131,11 @@ const TitleClip = observer(() => {
               playerOptions={{
                 loadChapters: clipInfo.type === "full"
               }}
-              className={S("video")}
+              className={S("video", clipInfo.type !== "full" && !clipInfo.summary ? "video--full" : "")}
             />
             <div className={S("video-info")}>
               <div className={S("left")}>
-                <div className={S("video-info__title")}>
+                <div className={S("video-info__title", "ellipsis")}>
                   { clipInfo.name }
                 </div>
               </div>

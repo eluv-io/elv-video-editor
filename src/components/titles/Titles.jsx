@@ -81,6 +81,7 @@ const Titles = observer(() => {
           basePath="/"
           initialQuery={query}
           initialMode={mode}
+          placeholder="Prompt the Title Library"
           onObjectSelect={({item, navigate}) =>
             item.objectId && navigate(UrlJoin("~/titles", "title", item.objectId))
           }
