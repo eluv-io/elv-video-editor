@@ -208,6 +208,7 @@
 
   &__children {
     animation: var(--animation-fadein) 0.25s ease;
+    white-space: nowrap;
   }
 
   &__icon-container,

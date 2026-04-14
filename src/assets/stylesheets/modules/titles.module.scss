@@ -37,6 +37,7 @@
   animation: var(--animation-fadein) 0.55s ease;
   height: 100%;
   object-fit: contain;
+  object-position: top;
   width: 100%;
 }
 
@@ -92,7 +93,7 @@
     align-items: flex-start;
     border-bottom: 1px solid var(--table-border-color);
     display: flex;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 600;
     gap: 10px;
     padding: 10px;
@@ -119,7 +120,7 @@
     align-items: center;
     color: var(--text-tertiary);
     display: flex;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     gap: 10px;
     padding-inline: 8px;
@@ -127,6 +128,23 @@
 
     &--active {
       color: var(--text-primary);
+    }
+  }
+
+  &__buttons {
+    align-items: center;
+    display: flex;
+    flex-grow: 1;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  &__button {
+    background-color: var(--background-toolbar);
+    padding: 5px;
+
+    &--generate {
+      background-color: var(--background-toolbar--highlight);
     }
   }
 
@@ -140,10 +158,21 @@
     background-color: var(--background-modal);
     border-radius: 5px;
     color: var(--text-secondary);
+    font-size: 14px;
     margin-top: 10px;
-    max-height: 175px;
+    max-height: 155px;
     overflow-y: auto;
-    padding: 15px;
+    padding: 10px 50px 15px 15px;
+    position: relative;
+  }
+
+  &__generate-button {
+    background-color: var(--background-toolbar--highlight);
+    display: block;
+    padding: 5px;
+    position: absolute;
+    right: 8px;
+    top: 8px;
   }
 }
 
@@ -325,6 +354,10 @@
     background-color: var(--background-search-input);
     border: 0;
     border-radius: 44px;
+
+    &::placeholder {
+      color: var(--text-secondary);
+    }
   }
 }
 

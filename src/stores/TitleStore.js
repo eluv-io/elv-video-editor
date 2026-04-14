@@ -1,5 +1,5 @@
 import {flow, makeAutoObservable} from "mobx";
-import {HashString} from "@/utils/Utils.js";
+import {HashString, Unproxy} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 import {LoadVideo} from "@/stores/Helpers.js";
 
@@ -11,6 +11,13 @@ class TitleStore {
     yearMax: 9999,
     key: 0
   };
+
+  clipTypeKeys = [
+    "full",
+    "clips",
+    "shorts",
+    "trailers"
+  ];
 
   selectedSearchIndexId;
   mediaTags = {};
@@ -273,6 +280,53 @@ class TitleStore {
           transcriptionTrackKey
         };
       })
+    });
+  });
+
+  GenerateTitleSynopsis = flow(function * ({objectId, style="extended"}) {
+    const {synopsis} = yield this.rootStore.aiStore.QueryAIAPI({
+      server: "ai",
+      method: "GET",
+      path: UrlJoin("summary_v3", "q", objectId, "rep", "synopsis_generation"),
+      objectId,
+      channelAuth: true,
+      queryParams: {
+        regenerate: true,
+        style
+      }
+    });
+
+    const originalSynopsis = this.titles[objectId]?.metadata?.ai_derived_media?.synopses?.[style] || "";
+    this.rootStore.editStore.PerformAction({
+      label: `Generate ${style} synopsis for ${yield this.rootStore.GetObjectName({objectId})}`,
+      type: "titles",
+      action: "generateSynopsis",
+      modifiedItem: originalSynopsis,
+      Action: () => {
+        if(!this.titles[objectId].metadata.ai_derived_media) {
+          this.titles[objectId].metadata.ai_derived_media = {};
+        }
+
+        if(!this.titles[objectId].metadata.ai_derived_media.synopses) {
+          this.titles[objectId].metadata.ai_derived_media.synopses = {};
+        }
+
+        this.titles[objectId].metadata.ai_derived_media.synopses[style] = synopsis;
+      },
+      Undo: () => {
+        if(!originalSynopsis) {
+          delete this.titles[objectId].metadata.ai_derived_media.synopses[style];
+        } else {
+          this.titles[objectId].metadata.ai_derived_media.synopses[style] = originalSynopsis;
+        }
+      },
+      Write: async writeParams => {
+        await this.client.ReplaceMetadata({
+          ...writeParams,
+          metadataSubtree: UrlJoin("/public", "asset_metadata", "ai_derived_media", "synopsis", style),
+          metadata: Unproxy(synopsis)
+        });
+      }
     });
   });
 }

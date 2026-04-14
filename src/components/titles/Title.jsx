@@ -4,13 +4,14 @@ import {observer} from "mobx-react-lite";
 import {useParams} from "wouter";
 import React, {useEffect, useState} from "react";
 import {titleStore} from "@/stores/index.js";
-import {Icon, IconButton, Linkish, Loader, LoaderImage} from "@/components/common/Common.jsx";
+import {CopyButton, Icon, IconButton, Linkish, Loader, LoaderImage} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher, Capitalize} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
+import {Select, TextInput, Tooltip} from "@mantine/core";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
-import {Select, TextInput, Tooltip} from "@mantine/core";
+import GenerateIcon from "@/assets/icons/rotate-ccw.svg";
 
 const S = CreateModuleClassMatcher(TitleStyles);
 
@@ -31,8 +32,11 @@ let dummyValues = {
     "While his colleagues initially give him a standing ovation, the reality of the business world quickly sets in. SMI sends Jerry’s protégé, Bob Sugar, to fire him. In a chaotic and legendary office scene, Jerry attempts to take his clients with him, but he is out-hustled. He leaves with only two things: the office goldfish and Dorothy Boyd (Renée Zellweger), a single mother and accountant who was moved by the idealism in his mission statement."
 };
 
-const Synopsis = observer(({title}) => {
-  const [synopsisType, setSynopsisType] = useState("extended");
+export const Synopsis = observer(({title}) => {
+  const synopses = title.metadata.ai_derived_media?.synopses || {};
+  const [synopsisType, setSynopsisType] = useState(
+    Object.keys(synopses).includes("extended") ? "extended" : Object.keys(synopses)[0] || "extended"
+  );
 
   return (
     <div className={S("synopsis")}>
@@ -42,14 +46,14 @@ const Synopsis = observer(({title}) => {
           Synopsis
         </div>
         <Linkish
-          onClick={() => setSynopsisType("logline")}
-          className={S("synopsis__type", synopsisType === "logline" ? "synopsis__type--active" : "")}
+          onClick={() => setSynopsisType("oneliner")}
+          className={S("synopsis__type", synopsisType === "oneliner" ? "synopsis__type--active" : "")}
         >
           Logline (One Line)
         </Linkish>
         <Linkish
-          onClick={() => setSynopsisType("marketing")}
-          className={S("synopsis__type", synopsisType === "marketing" ? "synopsis__type--active" : "")}
+          onClick={() => setSynopsisType("sales")}
+          className={S("synopsis__type", synopsisType === "sales" ? "synopsis__type--active" : "")}
         >
           Marketing (Paragraph)
         </Linkish>
@@ -65,9 +69,24 @@ const Synopsis = observer(({title}) => {
         >
           Social
         </Linkish>
+        <Linkish
+          onClick={() => setSynopsisType("mood")}
+          className={S("synopsis__type", synopsisType === "mood" ? "synopsis__type--active" : "")}
+        >
+          Mood
+        </Linkish>
+        <div className={S("synopsis__buttons")}>
+          <CopyButton label="Copy synopsis" value={synopsisType} small />
+          <IconButton
+            icon={GenerateIcon}
+            label={synopses[synopsisType] ? "Regenerate Synopsis" : "Generate Synopsis"}
+            onClick={async () => titleStore.GenerateTitleSynopsis({objectId: title.objectId, style: synopsisType})}
+            className={S("synopsis__button", "synopsis__button--generate")}
+          />
+        </div>
       </div>
       <div key={synopsisType} className={S("synopsis__text")}>
-        { dummyValues[`synopsis_${synopsisType}`] }
+        { synopses[synopsisType] || "Not Generated" }
       </div>
     </div>
   );
@@ -129,7 +148,8 @@ const Clip = observer(({title, clipInfo, clipType}) => {
 });
 
 const Clips = observer(({title}) => {
-  const availableClipTypes = [...Object.keys(title.metadata.ai_derived_media || {}).sort(), "full"];
+  const availableClipTypes = [...Object.keys(title.metadata.ai_derived_media || {}).sort(), "full"]
+    .filter(key => titleStore.clipTypeKeys.includes(key));
   const initialClipType = sessionStorage.getItem("last-clip-type") || availableClipTypes[0];
   const [clipType, setClipType] = useState(
     availableClipTypes.includes(initialClipType) ? initialClipType : availableClipTypes[0]

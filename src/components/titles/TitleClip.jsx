@@ -14,6 +14,7 @@ import {TextInput} from "@mantine/core";
 import BackIcon from "@/assets/icons/v2/back.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import VerticalIcon from "@/assets/icons/vertical.svg";
+import {Synopsis} from "@/components/titles/Title.jsx";
 
 const S = CreateModuleClassMatcher(TitleStyles);
 
@@ -32,42 +33,6 @@ let dummyValues = {
     "While his colleagues initially give him a standing ovation, the reality of the business world quickly sets in. SMI sends Jerry’s protégé, Bob Sugar, to fire him. In a chaotic and legendary office scene, Jerry attempts to take his clients with him, but he is out-hustled. He leaves with only two things: the office goldfish and Dorothy Boyd (Renée Zellweger), a single mother and accountant who was moved by the idealism in his mission statement." +
     "While his colleagues initially give him a standing ovation, the reality of the business world quickly sets in. SMI sends Jerry’s protégé, Bob Sugar, to fire him. In a chaotic and legendary office scene, Jerry attempts to take his clients with him, but he is out-hustled. He leaves with only two things: the office goldfish and Dorothy Boyd (Renée Zellweger), a single mother and accountant who was moved by the idealism in his mission statement."
 };
-
-const Synopsis = observer(({title}) => {
-  const [synopsisType, setSynopsisType] = useState("extended");
-
-  return (
-    <div className={S("synopsis")}>
-      <div className={S("synopsis__type")}>
-        <Icon icon={AIIcon} className={S("synopsis__icon")} />
-        <div className={S("synopsis__title")}>
-          Synopsis
-        </div>
-        <Linkish
-          onClick={() => setSynopsisType("logline")}
-          className={S("synopsis__type", synopsisType === "logline" ? "synopsis__type--active" : "")}
-        >
-          Logline (One Line)
-        </Linkish>
-        <Linkish
-          onClick={() => setSynopsisType("marketing")}
-          className={S("synopsis__type", synopsisType === "marketing" ? "synopsis__type--active" : "")}
-        >
-          Marketing (Paragraph)
-        </Linkish>
-        <Linkish
-          onClick={() => setSynopsisType("extended")}
-          className={S("synopsis__type", synopsisType === "extended" ? "synopsis__type--active" : "")}
-        >
-          Extended
-        </Linkish>
-      </div>
-      <div key={synopsisType} className={S("synopsis__text")}>
-        { dummyValues[`synopsis_${synopsisType}`] }
-      </div>
-    </div>
-  );
-});
 
 const Summary = observer(({title, clipInfo}) => {
   if(!clipInfo.summary) { return; }
@@ -151,15 +116,18 @@ const TitleClip = observer(() => {
               key={`video-${clipId}`}
               versionHash={title.versionHash}
               readyCallback={player => titleStore.SetPlayer(player)}
-              playoutParameters={
-                clipInfo.playout?.type === "composition" ?
-                  {channel: clipInfo.playout.composition_key} :
-                  clipInfo.playout?.type === "clip" ?
-                    {
-                      clipStart: clipInfo.playout.start / 1000,
-                      clipEnd: clipInfo.playout.end / 1000
-                    } : {}
-              }
+              playoutParameters={{
+                vertical: clipInfo.type === "shorts",
+                ...(
+                  clipInfo.playout?.type === "composition" ?
+                    {channel: clipInfo.playout.composition_key} :
+                    clipInfo.playout?.type === "clip" ?
+                      {
+                        clipStart: clipInfo.playout.start / 1000,
+                        clipEnd: clipInfo.playout.end / 1000
+                      } : {}
+                )
+              }}
               playerOptions={{
                 loadChapters: clipInfo.type === "full"
               }}

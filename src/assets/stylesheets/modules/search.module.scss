@@ -366,11 +366,17 @@
     font-size: 14px;
     gap: 10px;
     padding: 5px 0;
+    text-align: left;
     width: 100%;
 
     &:not(:last-child) {
       border-bottom: 1px solid var(--table-border-color);
     }
+  }
+
+  &__option-id {
+    color: var(--text-tertiary);
+    font-size: 11px;
   }
 
   &__form-title {

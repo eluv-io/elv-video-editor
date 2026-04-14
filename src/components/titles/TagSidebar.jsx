@@ -333,7 +333,11 @@ export const VerticalVideoSidebar = observer(({title, clipInfo, Close}) => {
         }
         <Player
           versionHash={title.versionHash}
-          readyCallback={() => setLoaded(true)}
+          //readyCallback={() => setLoaded(true)}
+          readyCallback={player => {
+            window.p = player;
+            setLoaded(true);
+          }}
           playoutParameters={{
             vertical: true,
             ...(
@@ -347,7 +351,8 @@ export const VerticalVideoSidebar = observer(({title, clipInfo, Close}) => {
             )
           }}
           playerOptions={{
-            loadChapters: clipInfo.type === "full"
+            loadChapters: clipInfo.type === "full",
+            minBitrate: 4510000
           }}
           className={S("vertical-video", loaded ? "vertical-video--loaded" : "")}
         />

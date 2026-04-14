@@ -77,6 +77,7 @@ class EditStore {
     this.ResetPage("clips");
     this.ResetPage("assets");
     this.ResetPage("groundTruth");
+    this.ResetPage("titles");
   }
 
   ResetPage(page) {

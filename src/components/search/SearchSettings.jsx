@@ -318,9 +318,14 @@ const TitlesForm = observer(({options, setOptions}) => {
                   className={S("search-settings__option")}
                 >
                   <Checkbox checked={active} onChange={Toggle}/>
-                  <span>
-                    {name || objectId}
-                  </span>
+                  <div className={S("search-settings__option-text")}>
+                    <div className={S("search-settings__option-name")}>
+                      {name || objectId}
+                    </div>
+                    <div onClick={event => event.stopPropagation()} className={S("search-settings__option-id")}>
+                      <CopyableField value={objectId}/>
+                    </div>
+                  </div>
                 </button>
               );
             })
