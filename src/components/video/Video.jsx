@@ -21,6 +21,7 @@ import {
   VolumeControls
 } from "@/components/video/VideoControls";
 import Overlay from "@/components/video/Overlay.jsx";
+import MarkedSlider from "@/components/common/MarkedSlider.jsx";
 
 const S = CreateModuleClassMatcher(VideoStyles);
 
@@ -32,6 +33,7 @@ const Video = observer(({
   showFrameDownload,
   showFrameSearch,
   showVertical,
+  showProgress,
   fullscreenContainer,
   playoutUrl,
   blank,
@@ -109,9 +111,17 @@ const Video = observer(({
 
     const player = new HLSPlayer(config);
 
-    player.on(HLSPlayer.Events.MANIFEST_PARSED, function() {
+    player.on(HLSPlayer.Events.MANIFEST_PARSED, function(_, info) {
       // stop video preloading when the manifest has been parsed
       player.stopLoad();
+
+      // TODO: Remove - Set vertical video to 1080 automatically
+      if(vertical) {
+        const levelIndex = info?.levels?.findIndex(level => level.bitrate > 4510000);
+        if(levelIndex >= 0) {
+          player.currentLevel = levelIndex;
+        }
+      }
     });
 
     // Reload on fatal error
@@ -201,40 +211,59 @@ const Video = observer(({
         />
         {
           !ready || !store.showVideoControls ? null :
-            <div className={S("video-controls")}>
-              <div className={S("video-controls__left")}>
-                <PlayPauseButton store={store}/>
-                <VolumeControls store={store}/>
-                <VideoTime store={store}/>
-              </div>
-              <div className={S("video-controls__spacer")}/>
-              {
-                !store.fullScreen ? null :
-                  <div className={S("video-controls__center")}>
-                    <FrameBack10Button store={store} />
-                    <FrameBack1Button store={store} />
-                    <FrameDisplay store={store} />
-                    <FrameForward1Button store={store} />
-                    <FrameForward10Button store={store} />
-                    <div className={S("video-controls__spacer")}/>
+            <>
+              <div className={S("video-bottom-controls")}>
+                <div className={S("video-controls")}>
+                  <div className={S("video-controls__left")}>
+                    <PlayPauseButton store={store}/>
+                    <VolumeControls store={store}/>
+                    <VideoTime store={store}/>
                   </div>
-              }
-              <div className={S("video-controls__right")}>
+                  <div className={S("video-controls__spacer")}/>
+                  {
+                    !store.fullScreen ? null :
+                      <div className={S("video-controls__center")}>
+                        <FrameBack10Button store={store} />
+                        <FrameBack1Button store={store} />
+                        <FrameDisplay store={store} />
+                        <FrameForward1Button store={store} />
+                        <FrameForward10Button store={store} />
+                        <div className={S("video-controls__spacer")}/>
+                      </div>
+                  }
+                  <div className={S("video-controls__right")}>
+                    {
+                      !showVertical ? null :
+                        <ShowVerticalButton store={store} />
+                    }
+                    {
+                      !showFrameSearch ? null :
+                        <SearchFrameButton store={store} />
+                    }
+                    {
+                      !showFrameDownload ? null :
+                        <DownloadFrameButton store={store}/>
+                    }
+                    <FullscreenButton store={store} />
+                  </div>
+                </div>
                 {
-                  !showVertical ? null :
-                    <ShowVerticalButton store={store} />
+                  !showProgress && !store.fullScreen ? null :
+                    <MarkedSlider
+                      min={0}
+                      max={100}
+                      handles={[{ position: store.seek, style: "arrow" }]}
+                      showMarks
+                      topMarks
+                      nMarks={50}
+                      majorMarksEvery={10}
+                      RenderText={progress => store.ProgressToSMPTE(progress, true)}
+                      onChange={progress => store.Seek(store.ProgressToFrame(progress), false)}
+                      className={S("video-controls__seek")}
+                    />
                 }
-                {
-                  !showFrameSearch ? null :
-                    <SearchFrameButton store={store} />
-                }
-                {
-                  !showFrameDownload ? null :
-                    <DownloadFrameButton store={store}/>
-                }
-                <FullscreenButton store={store} />
               </div>
-            </div>
+            </>
         }
         {
           !tagStore.editedSearchFrame ? null :

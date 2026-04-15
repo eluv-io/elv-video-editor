@@ -86,7 +86,7 @@ const VideoSection = observer(({
             <StyledButton
               size="sm"
               title="Close"
-              color="--background-modal"
+              color="--color-highlight--dark"
               onClick={Close}
             >
               Close
@@ -101,6 +101,7 @@ const VideoSection = observer(({
         showFrameDownload
         setShowvertical={setShowVertical}
         showVertical={showVertical}
+        showProgress={vertical}
       />
       <div className={S("toolbar")}>
         <div className={S("toolbar__spacer")} />
