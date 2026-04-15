@@ -32,11 +32,12 @@
     max-height: unset;
     min-height: max-content;
     overflow-y: hidden;
+    padding-bottom: 20px;
     scrollbar-gutter: revert;
   }
 
-  @media screen and (width <= 1450px) {
-    // --video-width: 325px;
+  @media screen and (width <= 1600px) {
+    padding-bottom: 0;
   }
 }
 
