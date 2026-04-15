@@ -333,7 +333,19 @@ export const VerticalVideoSidebar = observer(({title, clipInfo, Close}) => {
         }
         <Player
           versionHash={title.versionHash}
-          readyCallback={() => setLoaded(true)}
+          readyCallback={player => {
+            setLoaded(true);
+
+            // Automatically set level to >= 1080
+            const qualityLevels = player.controls.GetQualityLevels()?.options?.reverse();
+            if(qualityLevels) {
+              const level = qualityLevels.find(level => level.bitrate > 4510000);
+
+              if(level) {
+                player.controls.SetQualityLevel(level.index);
+              }
+            }
+          }}
           playoutParameters={{
             vertical: true,
             ...(
@@ -348,7 +360,7 @@ export const VerticalVideoSidebar = observer(({title, clipInfo, Close}) => {
           }}
           playerOptions={{
             loadChapters: clipInfo.type === "full",
-            minBitrate: 4510000
+            maxBitrate: 13000000
           }}
           className={S("vertical-video", loaded ? "vertical-video--loaded" : "")}
         />

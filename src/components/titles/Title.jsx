@@ -69,12 +69,6 @@ export const Synopsis = observer(({title}) => {
         >
           Social
         </Linkish>
-        <Linkish
-          onClick={() => setSynopsisType("mood")}
-          className={S("synopsis__type", synopsisType === "mood" ? "synopsis__type--active" : "")}
-        >
-          Mood
-        </Linkish>
         <div className={S("synopsis__buttons")}>
           <CopyButton label="Copy synopsis" value={synopsisType} small />
           <IconButton

@@ -29,6 +29,7 @@ import FrameForward1 from "@/assets/icons/v2/frame-forward-1.svg";
 import FrameForward10 from "@/assets/icons/v2/frame-forward-10.svg";
 import PlayClipIcon from "@/assets/icons/v2/play-clip.svg";
 import ImageSearchIcon from "@/assets/icons/image-search.svg";
+import VerticalIcon from "@/assets/icons/vertical.svg";
 
 
 export const SubtitleControls = observer(({store}) => {
@@ -197,6 +198,21 @@ export const DownloadFrameButton = observer(({store}) => {
       onClick={() => store.SaveFrame()}
       className={S("video-controls__button")}
     />
+  );
+});
+
+export const ShowVerticalButton = observer(({store}) => {
+  return (
+    <StyledButton
+      icon={VerticalIcon}
+      color="--text-primary"
+      variant="secondary"
+      size="sm"
+      onClick={() => store.ToggleShowVertical(!store.showVertical)}
+      className={S("video-controls__search-frame-button")}
+    >
+      Make Vertical
+    </StyledButton>
   );
 });
 

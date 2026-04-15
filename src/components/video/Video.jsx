@@ -16,7 +16,7 @@ import {
   FullscreenButton,
   PlayPauseButton,
   SearchFrameButton,
-  SearchFrameMenu,
+  SearchFrameMenu, ShowVerticalButton,
   VideoTime,
   VolumeControls
 } from "@/components/video/VideoControls";
@@ -27,9 +27,11 @@ const S = CreateModuleClassMatcher(VideoStyles);
 
 const Video = observer(({
   store,
+  vertical,
   showOverlay,
   showFrameDownload,
   showFrameSearch,
+  showVertical,
   fullscreenContainer,
   playoutUrl,
   blank,
@@ -60,6 +62,12 @@ const Video = observer(({
   useEffect(() => {
     if(!video || !playoutUrl || blank) {
       return;
+    }
+
+    if(vertical) {
+      playoutUrl = new URL(playoutUrl);
+      playoutUrl.searchParams.set("v", "1");
+      playoutUrl = playoutUrl.toString();
     }
 
     if(hlsPlayer) {
@@ -174,11 +182,11 @@ const Video = observer(({
       <div className={S("video-wrapper")}>
         {
            !video ? null :
-            <Overlay
-              key={`overlay-${tagStore.editPosition}`}
-              element={video}
-              editOnly={!showOverlay || !trackStore.showOverlay}
-            />
+             <Overlay
+               key={`overlay-${tagStore.editPosition}`}
+               element={video}
+               editOnly={!showOverlay || !trackStore.showOverlay}
+             />
         }
         <video
           key={`video-${playoutUrl}`}
@@ -212,6 +220,10 @@ const Video = observer(({
                   </div>
               }
               <div className={S("video-controls__right")}>
+                {
+                  !showVertical ? null :
+                    <ShowVerticalButton store={store} />
+                }
                 {
                   !showFrameSearch ? null :
                     <SearchFrameButton store={store} />

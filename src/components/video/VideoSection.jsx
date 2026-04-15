@@ -14,27 +14,38 @@ import {
   SubtitleControls, TimecodeOffsetToggle,
 } from "@/components/video/VideoControls";
 import Video from "@/components/video/Video";
-import SVG from "react-inlinesvg";
-import {Tooltip} from "@mantine/core";
 import {Confirm, StyledButton} from "@/components/common/Common.jsx";
 
 import SaveIcon from "@/assets/icons/Save.svg";
-import DescriptionIcon from "@/assets/icons/v2/description.svg";
 
 const S = CreateModuleClassMatcher(VideoStyles);
 
-const VideoSection = observer(({showOverlay, showFrameSearch, showSave}) => {
+const VideoSection = observer(({
+  store,
+  title,
+  vertical=false,
+  showOverlay,
+  showFrameSearch,
+  showSave,
+  showVertical,
+  setShowVertical,
+  Close
+}) => {
   useEffect(() => {
+    if(store) { return; }
+
     keyboardControlsStore.ToggleKeyboardControls(true);
 
     return () => keyboardControlsStore.ToggleKeyboardControls(false);
   }, []);
 
+  store = store || videoStore;
+
   return (
     <div className={S("content-block", "video-section")}>
       <h1 className={S("video-section__title")}>
         <div className={S("ellipsis")}>
-          {videoStore.name}
+          {title || store.name}
         </div>
         {
           !showSave ? null :
@@ -70,32 +81,38 @@ const VideoSection = observer(({showOverlay, showFrameSearch, showSave}) => {
               Publish
             </StyledButton>
         }
+        {
+          !Close ? null :
+            <StyledButton
+              size="sm"
+              title="Close"
+              color="--background-modal"
+              onClick={Close}
+            >
+              Close
+            </StyledButton>
+        }
       </h1>
       <Video
-        store={videoStore}
+        store={store}
+        vertical={vertical}
         showOverlay={showOverlay}
         showFrameSearch={showFrameSearch}
         showFrameDownload
+        setShowvertical={setShowVertical}
+        showVertical={showVertical}
       />
       <div className={S("toolbar")}>
-        <Tooltip disabled={!videoStore.videoObject?.description} label={videoStore.videoObject?.description} w={500} multiline openDelay={1000}>
-          <div className={S("toolbar__description")}>
-            <SVG src={DescriptionIcon} className={S("icon", "toolbar__description-icon")} />
-            <div className={S("toolbar__description-text")}>
-              { videoStore.videoObject?.description }
-            </div>
-          </div>
-        </Tooltip>
         <div className={S("toolbar__spacer")} />
         <div className={S("toolbar__controls-group", "toolbar__controls-group--tight")}>
-          <TimecodeOffsetToggle store={videoStore} />
-          <PlaybackRateControl store={videoStore} />
-          <FrameRateControls store={videoStore} />
-          <DropFrameControls store={videoStore} />
-          <OfferingControls store={videoStore} />
-          <QualityControls store={videoStore} />
-          <SubtitleControls store={videoStore} />
-          <AudioControls store={videoStore} />
+          <TimecodeOffsetToggle store={store} />
+          <PlaybackRateControl store={store} />
+          <FrameRateControls store={store} />
+          <DropFrameControls store={store} />
+          <OfferingControls store={store} />
+          <QualityControls store={store} />
+          <SubtitleControls store={store} />
+          <AudioControls store={store} />
         </div>
       </div>
     </div>

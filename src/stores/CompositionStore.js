@@ -1218,6 +1218,17 @@ class CompositionStore {
   }
 
   SetCompositionObject = flow(function * ({objectId, compositionKey, addToMyLibrary=false}) {
+    // TODO: REMOVE
+    /*
+    yield this.client.SetNodes({
+      fabricURIs: [
+        //"https://host-76-74-29-13.contentfabric.io",
+        //"https://host-76-74-29-9.contentfabric.io"
+      ]
+    });
+
+     */
+
     console.time(`Load composition ${objectId} ${compositionKey}`);
 
     if(!this.myCompositions[objectId]) {

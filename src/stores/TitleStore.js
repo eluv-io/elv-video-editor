@@ -71,11 +71,6 @@ class TitleStore {
   }
 
   LoadTitle = flow(function * ({titleId}) {
-    // TODO: REMOVE
-    yield this.client.SetNodes({
-      fabricURIs: [ "https://host-76-74-29-29.contentfabric.io"]
-    });
-
     return yield this.rootStore.LoadResource({
       id: "titles",
       key: titleId,

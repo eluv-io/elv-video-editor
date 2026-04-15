@@ -38,6 +38,8 @@ class VideoStore {
   ready = false;
   showVideoControls = true;
   initialFrame;
+  showVertical = false;
+  verticalVideoStore = undefined;
 
   consecutiveSegmentErrors = 0;
 
@@ -238,11 +240,25 @@ class VideoStore {
     }
 
     this.thumbnailStore = new ThumbnailStore(this);
+    this.verticalVideoStore = undefined;
     this.myClips = [];
   }
 
   ToggleVideoControls(enable) {
     this.showVideoControls = enable;
+  }
+
+  ToggleShowVertical(show) {
+    if(show) {
+      this.verticalVideoStore = new VideoStore(
+        this.rootStore,
+        {tags: false, channel: false, thumbnails: false, id: "vertical"}
+      );
+
+      this.verticalVideoStore.SetVideo({objectId: this.videoObject.objectId});
+    }
+
+    this.showVertical = show;
   }
 
   SetOffering = flow(function * (offeringKey) {
