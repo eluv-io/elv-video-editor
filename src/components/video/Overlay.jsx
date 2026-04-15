@@ -9,7 +9,7 @@ import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Tooltip} from "@mantine/core";
 import {BoxToPoints, PointInPolygon, PointsToBox, ReorderPoints} from "@/utils/Geometry.js";
 
-const frameSpread = 10;
+const frameSpread = 8;
 
 const S = CreateModuleClassMatcher(OverlayStyles);
 
@@ -359,6 +359,7 @@ const Draw = ({canvas, tags, hoverTags, elementSize}) => {
   const context = canvas.getContext("2d");
   const width = context.canvas.width;
   const height = context.canvas.height;
+  const toHex = n => n.toString(16).padStart(2, "0");
 
   context.clearRect(0, 0, context.canvas.width, context.canvas.height);
   context.lineWidth = 3;
@@ -367,6 +368,35 @@ const Draw = ({canvas, tags, hoverTags, elementSize}) => {
 
   tags.forEach(tag => {
     if(!tag.box) { return; }
+
+    context.lineWidth = 3;
+    context.strokeStyle = `#${toHex(tag.color.r)}${toHex(tag.color.g)}${toHex(tag.color.b)}`;
+    context.fillStyle = `#${toHex(tag.color.r)}${toHex(tag.color.g)}${toHex(tag.color.b)}`;
+
+    if(tag.pose) {
+      context.globalAlpha = 0.6;
+
+      Object.values(tag.pose).forEach(([x, y]) => {
+        context.beginPath();
+        context.arc(x * width, y * height, 1.5, 0, 2 * Math.PI);
+        context.fill();
+        context.stroke();
+      });
+
+      (videoStore.poseConnections || [])
+        .forEach(([start, end]) => {
+          if(!tag.pose[start] || !tag.pose[end]) { return; }
+          const [startX, startY] = tag.pose[start];
+          const [endX, endY] = tag.pose[end];
+
+          context.beginPath();
+          context.moveTo(startX * width, startY * height);
+          context.lineTo(endX * width, endY * height);
+          context.stroke();
+        });
+
+      return;
+    }
 
     let {x1, x2, y1, y2, x3, y3, x4, y4} = tag.box;
 
@@ -377,8 +407,6 @@ const Draw = ({canvas, tags, hoverTags, elementSize}) => {
       points = [[x1, y1], [x2, y2], [x3, y3], [x4, y4]];
     }
     points = points.map(point => [point[0] * width, point[1] * height]);
-
-    const toHex = n => n.toString(16).padStart(2, "0");
 
     if(
       // Hover tags
@@ -391,8 +419,6 @@ const Draw = ({canvas, tags, hoverTags, elementSize}) => {
     } else {
       context.globalAlpha = 0.4;
     }
-
-    context.strokeStyle = `#${toHex(tag.color.r)}${toHex(tag.color.g)}${toHex(tag.color.b)}`;
 
     context.beginPath();
     context.moveTo(points[0][0], points[0][1]);

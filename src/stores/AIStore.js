@@ -1112,6 +1112,14 @@ class AIStore {
     }
   });
 
+  LoadPoseInfo = flow(function * () {
+    return yield this.client.ContentObjectMetadata({
+      libraryId: yield this.client.ContentObjectLibraryId({objectId: GLOBAL_PROFILE_OBJECT_ID}),
+      objectId: GLOBAL_PROFILE_OBJECT_ID,
+      metadataSubtree: "public/track_metadata/pose/point_connections"
+    });
+  });
+
   LoadHighlightProfiles = flow(function * () {
     let highlightProfileInfo = (yield this.client.ContentObjectMetadata({
       libraryId: yield this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId}),

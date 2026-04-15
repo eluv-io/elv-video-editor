@@ -211,7 +211,7 @@ const ThumbnailTrack = observer(({
   }
 
   return (
-    <Tooltip
+    <Tooltip.Floating
       position="top"
       offset={hoverOffset}
       disabled={!hovering || tooltipDisabled}
@@ -231,7 +231,7 @@ const ThumbnailTrack = observer(({
       }
     >
       { content }
-    </Tooltip>
+    </Tooltip.Floating>
   );
 });
 

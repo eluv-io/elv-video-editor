@@ -527,6 +527,8 @@ class VideoStore {
 
   LoadOverlayTags = flow(function * ({objectId}) {
     try {
+      let loadPoseInfo = false;
+
       console.time("Load Overlay Tags");
       let apiTags = (yield this.rootStore.aiStore.QueryAIAPI({
         objectId,
@@ -557,6 +559,10 @@ class VideoStore {
           overlayTags[frame][tag.track] = { tags: [] };
         }
 
+        if(tag.additional_info?.pose) {
+          loadPoseInfo = true;
+        }
+
         overlayTags[frame][tag.track].tags.push({
           tagId: tag.id,
           box: tag.frame_info.box,
@@ -564,6 +570,7 @@ class VideoStore {
           trackKey: tag.track,
           trackId: trackIds[tag.track],
           text: tag.tag,
+          pose: tag.additional_info?.pose,
           o: {
             api: true
           }
@@ -571,6 +578,10 @@ class VideoStore {
       });
 
       this.rootStore.overlayStore.AddOverlayTracks(overlayTags);
+
+      if(loadPoseInfo) {
+        this.poseConnections = yield this.rootStore.aiStore.LoadPoseInfo();
+      }
     } catch(error) {
       console.error("Error loading overlay tags");
       console.error(error);
