@@ -143,7 +143,7 @@ const ClipTransitionMenu = observer(({clip, Close}) => {
   return (
     <Modal
       onClick={SP()}
-      title={`Manage Transitions for ${clip.name}`}
+      title="Manage Transitions"
       alwaysOpened
       centered
       size={600}

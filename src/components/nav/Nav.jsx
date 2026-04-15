@@ -26,6 +26,7 @@ const Nav = observer(() => {
   const objectId = rootStore.selectedObjectId;
   const compositionObject = compositionStore.compositionObject;
 
+  const videoId = compositionObject?.objectId || (videoStore.isVideo && objectId);
   let pages = [
     !objectId ? undefined :
       {
@@ -68,8 +69,8 @@ const Nav = observer(() => {
     {
       label: "Simple Mode",
       key: "simple",
-      disabled: !objectId || !videoStore.isVideo,
-      to: !objectId ? "/" : UrlJoin("/", objectId),
+      disabled: !videoId,
+      to: !videoId ? "/" : UrlJoin("/", videoId),
       icon: ClipIcon,
       active: rootStore.page === "simple"
     },
@@ -86,8 +87,8 @@ const Nav = observer(() => {
     {
       label: "Tags",
       key: "tags",
-      disabled: !objectId || !videoStore.isVideo,
-      to: !objectId ? "/" : UrlJoin("/", objectId, "tags"),
+      disabled: !videoId,
+      to: !videoId ? "/" : UrlJoin("/", videoId, "tags"),
       icon: TagIcon,
       active: ["tags", "clips"].includes(rootStore.page),
       hasChanges: editStore.HasUnsavedChanges("tags") || editStore.HasUnsavedChanges("clips")
