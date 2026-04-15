@@ -23,23 +23,6 @@ import GenerateIcon from "@/assets/icons/rotate-ccw.svg";
 
 const S = CreateModuleClassMatcher(TitleStyles);
 
-let dummyValues = {
-  attributes: ["1996", "R", "2h 19m"],
-  tags: [
-    "Feel-Good Romance",
-    "Football",
-    "Romantic Comedy",
-    "Workplace Drama",
-    "Comedy"
-  ],
-  synopsis_logline: "Jerry Maguire (Tom Cruise) is a top-tier sports agent at Sports Management International (SMI)",
-  synopsis_marketing: "Jerry Maguire (Tom Cruise) is a top-tier sports agent at Sports Management International (SMI), living a life of superficial success—wealthy, charismatic, and engaged to the equally ambitious Avery Bishop. However, after a troubling encounter with the young son of an injured client, Jerry has a late-night crisis of conscience. He writes a 25-page \"mission statement\" (not a memo) titled The Things We Think and Do Not Say, calling for the agency to focus on fewer clients and more personal attention rather than just \"showing them the money.\"\n",
-  synopsis_social: "Jerry Maguire (Tom Cruise) is a top-tier sports agent at Sports Management International (SMI), living a life of superficial success—wealthy, charismatic, and engaged to the equally ambitious Avery Bishop. However, after a troubling encounter with the young son of an injured client, Jerry has a late-night crisis of conscience. He writes a 25-page \"mission statement\" (not a memo) titled The Things We Think and Do Not Say, calling for the agency to focus on fewer clients and more personal attention rather than just \"showing them the money.\"\n",
-  synopsis_extended: "Jerry Maguire (Tom Cruise) is a top-tier sports agent at Sports Management International (SMI), living a life of superficial success—wealthy, charismatic, and engaged to the equally ambitious Avery Bishop. However, after a troubling encounter with the young son of an injured client, Jerry has a late-night crisis of conscience. He writes a 25-page \"mission statement\" (not a memo) titled The Things We Think and Do Not Say, calling for the agency to focus on fewer clients and more personal attention rather than just \"showing them the money.\"\n" +
-    "While his colleagues initially give him a standing ovation, the reality of the business world quickly sets in. SMI sends Jerry’s protégé, Bob Sugar, to fire him. In a chaotic and legendary office scene, Jerry attempts to take his clients with him, but he is out-hustled. He leaves with only two things: the office goldfish and Dorothy Boyd (Renée Zellweger), a single mother and accountant who was moved by the idealism in his mission statement." +
-    "While his colleagues initially give him a standing ovation, the reality of the business world quickly sets in. SMI sends Jerry’s protégé, Bob Sugar, to fire him. In a chaotic and legendary office scene, Jerry attempts to take his clients with him, but he is out-hustled. He leaves with only two things: the office goldfish and Dorothy Boyd (Renée Zellweger), a single mother and accountant who was moved by the idealism in his mission statement."
-};
-
 export const Synopsis = observer(({title}) => {
   const synopses = title.metadata.ai_derived_media?.synopses || {};
   const [synopsisType, setSynopsisType] = useState(
@@ -284,15 +267,20 @@ const Title = observer(() => {
               { titleId }
             </CopyableField>
           </div>
-          <div className={S("info__tags")}>
-            {
-              dummyValues.tags.map(tag =>
-                <div key={tag} className={S("info__tag")}>
-                  {tag}
-                </div>
-              )
-            }
-          </div>
+          {
+            !title.metadata?.ai_derived_media?.topics ? null :
+              <div className={S("info__tags")}>
+                {
+                  title.metadata.ai_derived_media.topics
+                    .slice(0, 6)
+                    .map(tag =>
+                      <div key={tag} className={S("info__tag")}>
+                        {tag}
+                      </div>
+                    )
+                }
+              </div>
+          }
           <Synopsis title={title} />
           <div className={S("info__credits")}>
             {

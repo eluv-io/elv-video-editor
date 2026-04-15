@@ -9,7 +9,7 @@ import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Tooltip} from "@mantine/core";
 import {BoxToPoints, PointInPolygon, PointsToBox, ReorderPoints} from "@/utils/Geometry.js";
 
-const frameSpread = 8;
+const frameSpread = 10;
 
 const S = CreateModuleClassMatcher(OverlayStyles);
 
@@ -374,7 +374,7 @@ const Draw = ({canvas, tags, hoverTags, elementSize}) => {
     context.fillStyle = `#${toHex(tag.color.r)}${toHex(tag.color.g)}${toHex(tag.color.b)}`;
 
     if(tag.pose) {
-      context.globalAlpha = 0.6;
+      context.globalAlpha = 0.7;
 
       Object.values(tag.pose).forEach(([x, y]) => {
         context.beginPath();
