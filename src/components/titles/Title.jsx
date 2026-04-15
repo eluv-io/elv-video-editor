@@ -4,7 +4,15 @@ import {observer} from "mobx-react-lite";
 import {useParams} from "wouter";
 import React, {useEffect, useState} from "react";
 import {titleStore} from "@/stores/index.js";
-import {CopyButton, Icon, IconButton, Linkish, Loader, LoaderImage} from "@/components/common/Common.jsx";
+import {
+  CopyableField,
+  CopyButton,
+  Icon,
+  IconButton,
+  Linkish,
+  Loader,
+  LoaderImage
+} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher, Capitalize} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 import {Select, TextInput, Tooltip} from "@mantine/core";
@@ -272,6 +280,9 @@ const Title = observer(() => {
             >
               All Metadata
             </Linkish>
+            <CopyableField value={titleId} className={S("info__id")}>
+              { titleId }
+            </CopyableField>
           </div>
           <div className={S("info__tags")}>
             {

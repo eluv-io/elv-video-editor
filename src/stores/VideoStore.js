@@ -595,8 +595,17 @@ class VideoStore {
     const objectId = this.videoObject?.objectId;
     const offering = this.offeringKey;
 
+    const frame = this.frame;
+    const activeTracks = this.rootStore.trackStore.activeTracks;
+    const filter = this.rootStore.tagStore.filter;
+
     this.Reset();
+
+    this.initialFrame = frame;
     yield this.SetVideo({objectId, writeToken: this.videoObject?.writeToken, preferredOfferingKey: offering});
+
+    this.rootStore.trackStore.activeTracks = activeTracks;
+    this.rootStore.tagStore.SetFilter(filter);
   });
 
   ReloadThumbnails = flow(function * () {

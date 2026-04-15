@@ -48,6 +48,11 @@
     font-weight: 800;
   }
 
+  &__id {
+    color: var(--text-tertiary);
+    font-size: 12px;
+  }
+
   &__attributes {
     align-items: center;
     display: flex;
@@ -346,6 +351,11 @@
     font-size: 20px;
     font-weight: 500;
     max-width: calc(100vw - 850px);
+  }
+
+  &__id {
+    color: var(--text-tertiary);
+    font-size: 12px;
   }
 
   .left,

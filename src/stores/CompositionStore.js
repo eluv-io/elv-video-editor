@@ -343,6 +343,7 @@ class CompositionStore {
 
         this.clips[clipId] = {
           ...clip,
+          effects: clip.effects || [],
           clipId
         };
 
@@ -506,12 +507,14 @@ class CompositionStore {
 
     const clip1 = {
       ...clip,
+      effects: (clip.effects || []).filter(effect => effect.position === "start"),
       clipId: this.rootStore.NextId(),
       clipOutFrame: clip.clipInFrame + clipSplitFrame
     };
 
     const clip2 = {
       ...clip,
+      effects: (clip.effects || []).filter(effect => effect.position === "end"),
       clipId: this.rootStore.NextId(),
       clipInFrame: clip1.clipOutFrame + 1
     };
@@ -989,6 +992,7 @@ class CompositionStore {
           slice_start_rat: store.FrameToRat(clip.clipInFrame || 0),
           slice_end_rat: store.FrameToRat(clipOutFrame || store.totalFrames - 1),
           duration_rat: store.FrameToRat((clipOutFrame || store.totalFrames - 1) - (clip.clipInFrame || 0)),
+          effects: clip.effects,
           type: "mez_vod"
         };
       });
@@ -1000,6 +1004,20 @@ class CompositionStore {
         metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "items"),
         metadata: Unproxy(items)
       });
+
+      /*
+      const updatedFields = Unproxy(this.ToV2({items}));
+      for(const key of Object.keys(updatedFields)) {
+        yield this.client.ReplaceMetadata({
+          libraryId,
+          objectId,
+          writeToken,
+          metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, key),
+          metadata: updatedFields[key]
+        });
+      }
+
+       */
 
       yield this.client.ReplaceMetadata({
         libraryId,
@@ -1021,7 +1039,7 @@ class CompositionStore {
         libraryId,
         objectId,
         writeToken,
-        metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "sources"),
+        metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "selected_sources"),
         metadata: Unproxy(this.secondarySourceIds)
       });
 
@@ -1218,12 +1236,12 @@ class CompositionStore {
   }
 
   SetCompositionObject = flow(function * ({objectId, compositionKey, addToMyLibrary=false}) {
-    // TODO: REMOVE
     /*
+    // TODO: REMOVE
     yield this.client.SetNodes({
       fabricURIs: [
         //"https://host-76-74-29-13.contentfabric.io",
-        //"https://host-76-74-29-9.contentfabric.io"
+        "https://host-76-74-29-9.contentfabric.io"
       ]
     });
 
@@ -1353,7 +1371,8 @@ class CompositionStore {
           clipInFrame,
           clipOutFrame,
           storeKey: `${clipObjectId}-${offeringKey}`,
-          clipKey: `${clipObjectId}-${offeringKey}-${clipInFrame}-${clipOutFrame}`
+          clipKey: `${clipObjectId}-${offeringKey}-${clipInFrame}-${clipOutFrame}`,
+          effects: item.effects || [],
           // TODO: Audio
           //audioRepresentation: store.audioRepresentation,
         };
@@ -1361,6 +1380,7 @@ class CompositionStore {
         const originalClipId = this.rootStore.NextId();
         originalClipsList[originalClipId] = {
           ...updatedClipList[clipId],
+          //effects: [],
           clipId: originalClipId
         };
 

@@ -169,11 +169,16 @@ class RootStore {
 
     this.tenantContractId = yield client.userProfileClient.TenantContractId();
 
-    this.tenantInfoObjectId = yield client.ContentObjectMetadata({
-      libraryId: this.tenantContractId.replace(/^iten/, "ilib"),
-      objectId: this.tenantContractId.replace(/^iten/, "iq__"),
-      metadataSubtree: "public/ml_config",
-    });
+    try {
+      this.tenantInfoObjectId = yield client.ContentObjectMetadata({
+        libraryId: this.tenantContractId.replace(/^iten/, "ilib"),
+        objectId: this.tenantContractId.replace(/^iten/, "iq__"),
+        metadataSubtree: "public/ml_config",
+      });
+    } catch(error) {
+      console.error("Unable to load public/ml_config for tenantInfoObjectId");
+      console.error(error);
+    }
 
     if(!this.tenantInfoObjectId) {
       // eslint-disable-next-line no-console
@@ -184,9 +189,11 @@ class RootStore {
     this.client = client;
 
     // TODO: REMOVE
-    yield this.client.SetNodes({
-      fabricURIs: [ "https://host-76-74-29-29.contentfabric.io"]
-    });
+    if(!(yield this.client.NetworkInfo()).name.includes("demo")) {
+      yield this.client.SetNodes({
+        fabricURIs: ["https://host-76-74-29-29.contentfabric.io"]
+      });
+    }
 
     yield this.aiStore.Initialize();
     yield this.aiTaggingStore.Initialize();

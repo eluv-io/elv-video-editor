@@ -4,7 +4,7 @@ import {observer} from "mobx-react-lite";
 import {Redirect, useParams} from "wouter";
 import React, {useEffect, useState} from "react";
 import {titleStore} from "@/stores/index.js";
-import {Icon, IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
+import {CopyableField, Icon, IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 import Player from "@/components/common/Player.jsx";
@@ -135,8 +135,13 @@ const TitleClip = observer(() => {
             />
             <div className={S("video-info")}>
               <div className={S("left")}>
-                <div className={S("video-info__title", "ellipsis")}>
-                  { clipInfo.name }
+                <div>
+                  <div className={S("video-info__title", "ellipsis")}>
+                    { clipInfo.name }
+                  </div>
+                  <CopyableField value={titleId} className={S("video-info__id")}>
+                    { titleId }
+                  </CopyableField>
                 </div>
               </div>
               <div className={S("right")}>
