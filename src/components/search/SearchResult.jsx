@@ -28,6 +28,7 @@ import LinkIcon from "@/assets/icons/v2/external-link.svg";
 import DownloadIcon from "@/assets/icons/v2/download.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
+import TitleIcon from "@/assets/icons/titles.svg";
 
 import AIImageGray from "@/assets/images/composition-manual.svg";
 import AIImageColor from "@/assets/images/composition-ai.svg";
@@ -227,10 +228,9 @@ const ClipResultPanel = observer(({result}) => {
                 }
             }
             playerOptions={
-              !showFull ? {} :
-                {
-                  startTime: result.startTime
-                }
+              result.type === "frame" ?
+                { startTime: result.imageTime } :
+                showFull ? { startTime: result.startTime } : {}
             }
             className={S("result__video")}
           />
@@ -274,13 +274,21 @@ const ClipResultPanel = observer(({result}) => {
             <StyledButton
               size="sm"
               variant="subtle"
+              icon={TitleIcon}
+              to={UrlJoin("~/", "titles", result.objectId)}
+            >
+              View Title
+            </StyledButton>
+            <StyledButton
+              size="sm"
+              variant="subtle"
               icon={DownloadIcon}
               onClick={() => setShowDownloadModal(true)}
             >
               Download
             </StyledButton>
             <StyledButton
-              small
+              size="sm"
               variant="subtle"
               icon={ShareIcon}
               onClick={() => setShowShareModal(true)}
@@ -485,7 +493,7 @@ const SearchResult = observer(() => {
           <PanelResizeHandle />
           <Panel key={`result-${queryB58}-${resultIndex}`} id="content" order={2} minSize={30} defaultSize={contentRatio} >
               {
-                result.type === "video" ?
+                ["video", "frame"].includes(result.type) ?
                   <ClipResultPanel result={result} /> :
                   <ImageResultPanel result={result} />
               }

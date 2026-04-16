@@ -324,6 +324,42 @@ class TitleStore {
       }
     });
   });
+
+  GenerateClipSummary = flow(function * ({objectId, clipType="clips", clipSlug, prompt}) {
+    const clip = this.titles[objectId]?.metadata?.ai_derived_media?.[clipType]?.[clipSlug];
+
+    if(!clip) { return; }
+
+    const result = yield this.rootStore.aiStore.GenerateClipSummary({
+      objectId,
+      startTime: clip.playout.start / 1000,
+      endTime: clip.playout.end / 1000,
+      prompt,
+      regenerate: true
+    });
+
+    const summary = result.summary;
+    const originalSummary = clip.summary;
+    this.rootStore.editStore.PerformAction({
+      label: `Regenerate clip summary for ${yield this.rootStore.GetObjectName({objectId})} clip with prompt ${prompt}`,
+      type: "titles",
+      action: "generateSummary",
+      modifiedItem: originalSummary,
+      Action: () => {
+        this.titles[objectId].metadata.ai_derived_media[clipType][clipSlug].summary = summary;
+      },
+      Undo: () => {
+        this.titles[objectId].metadata.ai_derived_media[clipType][clipSlug].summary = originalSummary || "";
+      },
+      Write: async writeParams => {
+        await this.client.ReplaceMetadata({
+          ...writeParams,
+          metadataSubtree: UrlJoin("/public", "asset_metadata", "ai_derived_media", clipType, clipSlug, "summary"),
+          metadata: Unproxy(summary)
+        });
+      }
+    });
+  });
 }
 
 export default TitleStore;

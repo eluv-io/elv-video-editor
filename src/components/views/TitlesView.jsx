@@ -14,16 +14,16 @@ const TitlesView = observer(() => {
 
   return (
     <Switch>
-      <Route path="/:queryB58?/title/:titleId/metadata">
+      <Route path="/:titleId/metadata">
         <TitleMetadata />
       </Route>
-      <Route path="/:queryB58?/title/:titleId/clip/:clipId">
+      <Route path="/:titleId/clip/:clipId">
         <TitleClip />
       </Route>
-      <Route path="/:queryB58?/title/:titleId">
+      <Route path="/:titleId">
         <Title />
       </Route>
-      <Route path="/:queryB58?">
+      <Route path="/">
         <Titles />
       </Route>
       <Route>

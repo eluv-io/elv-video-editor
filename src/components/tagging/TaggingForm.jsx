@@ -3,7 +3,7 @@ import TaggingStyles from "@/assets/stylesheets/modules/tagging.module.scss";
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
-import {aiTaggingStore, keyboardControlsStore, rootStore} from "@/stores/index.js";
+import {aiTaggingStore, groundTruthStore, keyboardControlsStore, rootStore} from "@/stores/index.js";
 import {useLocation} from "wouter";
 import { TaggingSelection } from "@/components/nav/Browser.jsx";
 import {IconButton, Linkish, StyledButton} from "@/components/common/Common.jsx";
@@ -65,7 +65,17 @@ const Summary = observer(({options}) => {
             {
               aiTaggingStore.frameModels.map(model =>
                 !options[model] ? null :
-                  <div key={model} className={S("summary-item")}>{aiTaggingStore.modelNames[model]}</div>
+                  <>
+                    <div key={model} className={S("summary-item")}>
+                      {aiTaggingStore.modelNames[model]}
+                    </div>
+                    {
+                      !options.options[model]?.groundTruthPool ? null :
+                        <div key={`${model}-pool`} className={S("summary-item-option")}>
+                          Ground Truth Pool: { groundTruthStore.pools[options.options[model].groundTruthPool].name }
+                        </div>
+                    }
+                  </>
               )
             }
           </div>
@@ -99,6 +109,10 @@ const Summary = observer(({options}) => {
 
 const Form = observer(({options, setOptions}) => {
   const onChange = (key, value) => setOptions({...options, [key]: value});
+
+  useEffect(() => {
+    groundTruthStore.LoadGroundTruthPools();
+  }, []);
 
   useEffect(() => {
     onChange(
@@ -195,13 +209,47 @@ const Form = observer(({options, setOptions}) => {
             </h3>
             {
               aiTaggingStore.frameModels.map(model =>
-                <Checkbox
-                  key={`option-${model}`}
-                  label={aiTaggingStore.modelNames[model]}
-                  checked={options[model]}
-                  disabled={model === "landmark"}
-                  onChange={event => onChange(model, event.currentTarget.checked)}
-                />
+                <>
+                  <Checkbox
+                    key={`option-${model}`}
+                    label={aiTaggingStore.modelNames[model]}
+                    checked={options[model]}
+                    disabled={model === "landmark"}
+                    onChange={event => onChange(model, event.currentTarget.checked)}
+                  />
+                  {
+                    !options[model] ||
+                    model !== "celeb" ||
+                    Object.keys(groundTruthStore.pools).length <= 1 ? null :
+                      <Select
+                        value={options.options[model]?.groundTruthPool || ""}
+                        searchable
+                        maw={300}
+                        mt={-5}
+                        ml={32}
+                        mb={10}
+                        onChange={value => onChange(
+                          "options",
+                          {
+                            ...options.options,
+                            [model]: {
+                              ...(options.options[model] || {}),
+                              groundTruthPool: value
+                            }
+                          }
+                        )}
+                        data={[
+                          { label: "Ground Truth Pool: Default", value: "" },
+                          ...Object.values(groundTruthStore.pools)
+                            .map(pool => ({
+                              value: pool.objectId,
+                              label: pool.name
+                            }))
+                            .sort((a, b) => a.name < b.name ? 1 : -1)
+                        ]}
+                      />
+                  }
+                </>
               )
             }
           </div>

@@ -229,6 +229,13 @@ class AITaggingStore {
           }
         }
 
+        const groundTruthPool = options?.options?.[key]?.groundTruthPool;
+        if(groundTruthPool) {
+          result.model_params = {
+            ground_truth: groundTruthPool
+          };
+        }
+
         return result;
       });
 

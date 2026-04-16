@@ -24,6 +24,7 @@ const InfiniteScroll = observer(({
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [update, setUpdate] = useDebouncedState(0, 250);
+  const [initialScrollPosition] = useState(scrollPreservationInfo[scrollPreservationKey]?.scroll || 0);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [noScroll, setNoScroll] = useState(false);
   const [limit, setLimit] = useDebouncedState(
@@ -68,10 +69,6 @@ const InfiniteScroll = observer(({
   }, watchList);
 
   useEffect(() => {
-    if(!loaded && scrollPreservationKey && scrollPreservationInfo[scrollPreservationKey]?.scroll) {
-      setTimeout(() => element?.scrollTo(0, scrollPreservationInfo[scrollPreservationKey].scroll - 100), 200);
-    }
-
     if(loading || (!loaded && children?.length > 0)) {
       setLoaded(true);
       return;
@@ -92,6 +89,10 @@ const InfiniteScroll = observer(({
 
   useEffect(() => {
     if(!element) { return; }
+
+    if(initialScrollPosition) {
+      element.scrollTo(0, initialScrollPosition);
+    }
 
     const resizeObserver = new ResizeObserver(CheckUpdate);
 

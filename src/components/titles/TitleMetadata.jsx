@@ -26,7 +26,7 @@ const FormatKey = key => {
 };
 
 const TitleMetadata = observer(() => {
-  const {queryB58, titleId} = useParams();
+  const {titleId} = useParams();
   const title = titleStore.titles[titleId];
 
   useEffect(() => {
@@ -56,7 +56,7 @@ const TitleMetadata = observer(() => {
 
   return (
     <div className={S("title-page")}>
-      <Linkish to={UrlJoin("~/titles/", queryB58 || "", "title", titleId)} className={S("breadcrumbs")}>
+      <Linkish to={UrlJoin("~/titles/", titleId)} className={S("breadcrumbs")}>
         <IconButton
           icon={BackIcon}
           className={S("browser__header-back")}

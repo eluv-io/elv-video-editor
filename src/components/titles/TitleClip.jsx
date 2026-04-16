@@ -10,16 +10,43 @@ import UrlJoin from "url-join";
 import Player from "@/components/common/Player.jsx";
 import TagSidebar, {VerticalVideoSidebar} from "@/components/titles/TagSidebar.jsx";
 import {TextInput} from "@mantine/core";
+import {Synopsis} from "@/components/titles/Title.jsx";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import VerticalIcon from "@/assets/icons/vertical.svg";
-import {Synopsis} from "@/components/titles/Title.jsx";
+import PinIcon from "@/assets/icons/v2/pin.svg";
+import SubmitIcon from "@/assets/icons/v2/search-arrow.svg";
+
 
 const S = CreateModuleClassMatcher(TitleStyles);
 
 const Summary = observer(({title, clipInfo}) => {
+  const [prompt, setPrompt] = useState("");
+  const [regenerating, setRegenerating] = useState(false);
+
   if(!clipInfo.summary) { return; }
+
+  const Regenerate = async () => {
+    if(regenerating) { return; }
+
+    setRegenerating(true);
+    try {
+      await titleStore.GenerateClipSummary({
+        objectId: title.objectId,
+        clipType: clipInfo.type,
+        clipSlug: clipInfo.slug,
+        prompt
+      });
+
+      setPrompt("");
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.log(error);
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   return (
     <div className={S("summary")}>
@@ -33,7 +60,19 @@ const Summary = observer(({title, clipInfo}) => {
       <div className={S("summary__prompt-container")}>
         <TextInput
           leftSection={<Icon icon={AIIcon} />}
+          value={prompt}
+          onChange={event => setPrompt(event.target.value)}
           placeholder="How would you like to personalize this?"
+          onKeyDown={event => {
+            if(event.key === "Enter") {
+              Regenerate();
+            }
+          }}
+          rightSection={
+            !regenerating ?
+              <IconButton onClick={() => Regenerate()} icon={SubmitIcon} /> :
+              <Loader loaderClassName={S("ai-text-input__loader")} />
+          }
           className={S("summary__prompt")}
           classNames={{
             input: S("ai-text-input__input")
@@ -62,7 +101,7 @@ const ClipInfo = ({title, clipId}) => {
 };
 
 const TitleClip = observer(() => {
-  const {queryB58, titleId, clipId} = useParams();
+  const {titleId, clipId} = useParams();
   const title = titleStore.titles[titleId];
   const [showVertical, setShowVertical] = useState(false);
 
@@ -79,12 +118,12 @@ const TitleClip = observer(() => {
   const clipInfo = ClipInfo({title, clipId});
 
   if(!clipInfo) {
-    return <Redirect to={UrlJoin("~/titles/", queryB58 || "", "title", titleId)} />;
+    return <Redirect to={UrlJoin("~/titles/", titleId)} />;
   }
 
   return (
     <div className={S("title-page")}>
-      <Linkish to={UrlJoin("~/titles/", queryB58 || "", "title", titleId)} className={S("breadcrumbs")}>
+      <Linkish to={UrlJoin("~/titles/", titleId)} className={S("breadcrumbs")}>
         <IconButton
           icon={BackIcon}
           className={S("browser__header-back")}
@@ -119,7 +158,7 @@ const TitleClip = observer(() => {
             />
             <div className={S("video-info")}>
               <div className={S("left")}>
-                <div>
+                <div className={S("video-info__text")}>
                   <div className={S("video-info__title", "ellipsis")}>
                     { clipInfo.name }
                   </div>
@@ -129,6 +168,19 @@ const TitleClip = observer(() => {
                 </div>
               </div>
               <div className={S("right")}>
+                <StyledButton
+                  variant="rounded"
+                  color="--background-active"
+                  size="md"
+                  icon={PinIcon}
+                  to={
+                    clipInfo.playout?.type === "composition" ?
+                      UrlJoin("~/compositions", titleId, clipInfo.playout.composition_key) :
+                      UrlJoin("~/", titleId, clipInfo.playout?.type === "clip" ? `?st=${clipInfo.playout.start / 1000}&et=${clipInfo.playout.end / 1000}&it=${clipInfo.playout.start / 1000}` : "")
+                  }
+                >
+                  Open
+                </StyledButton>
                 <StyledButton
                   variant="rounded"
                   color="--text-secondary"
@@ -156,7 +208,7 @@ const TitleClip = observer(() => {
                 </div>
             }
             {
-              clipInfo.type === "full" ?
+              ["full", "trailers", "shorts"].includes(clipInfo.type) ?
                 <Synopsis title={title}/> :
                 <Summary title={title} clipInfo={clipInfo} />
             }

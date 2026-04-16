@@ -158,7 +158,7 @@ export const SearchResults = observer(({showList, scrollPreservationKey, classNa
                 , 100)
             }
             link={
-              result.type === "frame" ?
+              result.type === "frame" && result.frame ?
                 UrlJoin("~/", result.objectId, `?if=${result.frame || 0}`) :
                 UrlJoin("/", queryB58 || "", index.toString())
             }
@@ -277,10 +277,13 @@ const SearchResultsPage = observer(() => {
                   }
                 </button>
             }
-            <CardDisplaySwitch
-              showList={showList}
-              setShowList={setShowList}
-            />
+            {
+              mode === "prompt" ? null :
+                <CardDisplaySwitch
+                  showList={showList}
+                  setShowList={setShowList}
+                />
+            }
           </div>
         </h1>
         <div className={S("list-page", "list-page--search")}>
@@ -291,14 +294,14 @@ const SearchResultsPage = observer(() => {
                   key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
                   groupKey="f_music"
                   scrollPreservationKey="main"
-                  showList={showList}
-                  groupClassName={S(`search-results-${showList ? "list" : "grid"}--${mode}`)}
+                  showList={showList || mode === "prompt"}
+                  groupClassName={S(`search-results-${showList || mode === "prompt" ? "list" : "grid"}--${mode}`)}
                 /> :
                 <SearchResults
                   key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
                   scrollPreservationKey="main"
-                  showList={showList}
-                  className={S(`search-results-${showList ? "list" : "grid"}--${mode}`)}
+                  showList={showList || mode === "prompt"}
+                  className={S(`search-results-${showList || mode === "prompt" ? "list" : "grid"}--${mode}`)}
                 />
           }
         </div>

@@ -54,7 +54,7 @@
 .result {
   &__video {
     height: 100%;
-    max-height: calc(100vh - 315px);
+    max-height: calc(100vh - 350px);
     width: 100%;
   }
 
@@ -76,7 +76,7 @@
   }
 
   &__video-container {
-    max-height: calc(100vh - 315px);
+    max-height: calc(100vh - 350px);
   }
 
   &__image {

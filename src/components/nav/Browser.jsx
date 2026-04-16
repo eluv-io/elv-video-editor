@@ -455,6 +455,14 @@ const ModeSelectionMenu = observer(({mode, setMode, className=""}) => {
                 Music Search
               </Menu.Item>
           }
+
+          <Menu.Item
+            leftSection={<Icon icon={AISparkleIcon} />}
+            onClick={() => setMode("prompt")}
+            className={S("search-mode-selection__option", mode === "prompt" ? "search-mode-selection__option--active" : "")}
+          >
+            Prompt
+          </Menu.Item>
         </Menu.Dropdown>
       </Menu>
     </>
@@ -541,6 +549,7 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
             value={input}
             placeholder={
               placeholder ? placeholder :
+                mode === "prompt" ? "Prompt the title library" :
                 mode.startsWith("frame") ? "Search for images by phrase or keyword" :
                   mode === "music" ? "Search for music by phrase or keyword" :
                     "Search within content by phrase or keyword"
@@ -550,7 +559,7 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
               if(event.key !== "Enter") { return; }
 
               Submit(mode === "frame-image" ? "frame" : mode);
-              navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
+              //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
             }}
             className={S("search-bar", "search-bar--ai", clipOnly ? "search-bar--ai-clip-only" : "")}
           />
@@ -1602,7 +1611,7 @@ export const TaggingJobBrowser = observer(() => {
                   jobs.map(job =>
                     <div key={`job-${job.job_id}`} className={S("browser-table__row")}>
                       <div className={S("browser-table__cell")}>
-                        <div className={S("browser-table__row-title")}>
+                        <Linkish to={UrlJoin("~/", job.objectId, "tags")} className={S("browser-table__row-title")}>
                           <Tooltip
                             position="top-start"
                             label={
@@ -1625,7 +1634,7 @@ export const TaggingJobBrowser = observer(() => {
                               {job.objectId}
                             </CopyableField>
                           </div>
-                        </div>
+                        </Linkish>
                       </div>
                       <div className={S("browser-table__cell")}>
                         {aiTaggingStore.modelNames[job.model]}

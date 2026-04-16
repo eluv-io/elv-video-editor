@@ -78,7 +78,7 @@ export const Synopsis = observer(({title}) => {
 });
 
 const Clip = observer(({title, clipInfo, clipType}) => {
-  const {queryB58, titleId} = useParams();
+  const {titleId} = useParams();
 
   const frameUrl = new URL(title.baseFrameUrl);
 
@@ -95,14 +95,14 @@ const Clip = observer(({title, clipInfo, clipType}) => {
 
   return (
     <Linkish
-      to={UrlJoin("~/titles/", queryB58 || "", "title", titleId, "clip", clipInfo.slug)}
+      to={UrlJoin("~/titles/", titleId, "clip", clipInfo.slug)}
       className={S("clip", `clip--${clipType}`)}
     >
       <div className={S("clip__image-container")}>
         <LoaderImage
           src={frameUrl}
           showWithoutSource
-          loaderAspectRatio={clipType === "shorts" ? 9/16 : 16/9}
+          //loaderAspectRatio={clipType === "shorts" ? 9/16 : 16/9}
           className={S("clip__image")}
         />
       </div>
@@ -219,7 +219,7 @@ const GetAttributes = (info) => {
 };
 
 const Title = observer(() => {
-  const {queryB58, titleId} = useParams();
+  const {titleId} = useParams();
   const title = titleStore.titles[titleId];
 
   useEffect(() => {
@@ -232,7 +232,7 @@ const Title = observer(() => {
 
   return (
     <div className={S("title-page")}>
-      <Linkish to={UrlJoin("~/titles/", queryB58 || "")} className={S("breadcrumbs")}>
+      <Linkish to={UrlJoin("~/titles/")} className={S("breadcrumbs")}>
         <IconButton
           icon={BackIcon}
           className={S("browser__header-back")}
@@ -258,7 +258,7 @@ const Title = observer(() => {
               { GetAttributes(title.metadata.info) }
             </div>
             <Linkish
-              to={UrlJoin("~/titles/", queryB58 || "", "title", titleId, "metadata")}
+              to={UrlJoin("~/titles/", titleId, "metadata")}
               className={S("info__metadata-link")}
             >
               All Metadata

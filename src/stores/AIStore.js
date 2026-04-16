@@ -2,6 +2,7 @@ import {flow, makeAutoObservable, runInAction} from "mobx";
 import UrlJoin from "url-join";
 import {HashString, ParseSearchQuery, Slugify, Unproxy} from "@/utils/Utils.js";
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
+import OpenAI from "openai";
 
 const GLOBAL_PROFILE_OBJECT_ID = "iq__3MVS3kjshtnAodRv4qLebBvH3oXb";
 
@@ -31,6 +32,8 @@ class AIStore {
   searchImageFrameUrl;
 
   _authTokens = {};
+
+  titles = [];
 
   constructor(rootStore) {
     makeAutoObservable(
@@ -102,6 +105,7 @@ class AIStore {
 
     this.SetSelectedSearchIndex(searchIndexId);
 
+    this.titles = [];
     this.searchSettings = {
       ...options,
       key: HashString(JSON.stringify(options))
@@ -248,7 +252,7 @@ class AIStore {
     this.rootStore.ClearResource({key: "imageSummary", id: `${objectId}-${filePath}`});
   });
 
-  GenerateClipSummary = flow(function * ({objectId, startTime, endTime, regenerate=false, cacheOnly=false}) {
+  GenerateClipSummary = flow(function * ({objectId, startTime, endTime, regenerate=false, cacheOnly=false, prompt}) {
     return yield this.rootStore.LoadResource({
       key: "clipSummary",
       id: `${objectId}-${startTime}-${endTime}`,
@@ -266,7 +270,8 @@ class AIStore {
             end_time: parseInt(endTime * 1000),
             regenerate,
             cache: cacheOnly ? "only" : undefined,
-            engine: "summary_v2"
+            engine: "summary_v3",
+            personal_prompt: prompt
           }
         });
       })
@@ -283,7 +288,7 @@ class AIStore {
       queryParams: {
         start_time: parseInt(startTime * 1000),
         end_time: parseInt(endTime * 1000),
-        engine: "summary_v2"
+        engine: "summary_v3"
       }
     });
 
@@ -615,7 +620,7 @@ class AIStore {
     this.searchImageFrameUrl = imageBlob ? URL.createObjectURL(imageBlob) : undefined;
   }
 
-  Search = flow(function * ({query="", limit=10, initial, clipsContentLevel}) {
+  Search = flow(function * ({query="", limit=10, initial}) {
     return yield this.rootStore.LoadResource({
       key: "search",
       id: `${query}-${limit}-${initial}`,
@@ -660,9 +665,11 @@ class AIStore {
 
         try {
           const {results, pagination} =
-            mode.startsWith("frame") ?
-              yield this.CollectionSearch({mode, query, start, limit}) :
-              yield this.ClipSearch({mode, query, start, limit, clipsContentLevel});
+            mode === "prompt" ?
+              yield this.PromptSearch({prompt: query}) :
+              mode.startsWith("frame") ?
+                yield this.CollectionSearch({mode, query, start, limit}) :
+                yield this.ClipSearch({mode, query, start, limit});
 
           if(this.searchResults.key !== resultsKey) {
             // A different search has been performed while this query was made, throw away the result
@@ -693,58 +700,58 @@ class AIStore {
     });
   });
 
-  GetTitles = flow(function * ({start=0, limit=10}) {
-    return {
-      pagination: {
-        start,
-        limit,
-        total: this.searchIndex.indexedTitles.length
-      },
-      results: yield Promise.all(
+  GetTitles = flow(function * ({limit=10}) {
+    const start = this.titles.length;
+    const baseTitleImageUrl = yield this.client.FabricUrl({});
+
+    this.titles = [
+      ...this.titles,
+      ...(yield Promise.all(
         this.searchIndex.indexedTitles
           .sort((a, b) => a.name < b.name ? -1 : 1)
           .slice(start, start + limit)
-          .map(async ({name, objectId}) => ({
-            qlib_id: await this.client.ContentObjectLibraryId({objectId}),
-            id: objectId,
-            hash: await this.client.LatestVersionHash({objectId}),
-            name: name || await this.rootStore.GetObjectName({objectId})
-          }))
-      )
-    };
+          .map(async ({name, objectId}) => {
+            const libraryId = await this.client.ContentObjectLibraryId({objectId});
+            const imageUrl = new URL(baseTitleImageUrl);
+            imageUrl.pathname = UrlJoin("qlibs", libraryId, "q", objectId, "meta/public/asset_metadata/images/poster_vertical/default");
+
+            return {
+              libraryId,
+              objectId: objectId,
+              imageUrl: imageUrl.toString(),
+              name: name || await this.rootStore.GetObjectName({objectId})
+            };
+          })
+      ))
+    ];
   });
 
-  ClipSearch = flow(function * ({mode, query, start, limit, clipsContentLevel}) {
+  ClipSearch = flow(function * ({mode, query, start, limit}) {
     const type = this.searchIndex.type?.includes("assets") ? "image" : "video";
-    let {results, contents, pagination} =
-      clipsContentLevel && !query ?
-        // For no-query titles listing, just look at search index titles
-        yield this.GetTitles({start, limit}) :
-        (yield this.QueryAIAPI({
-          //update: true,
-          objectId: this.searchIndex.id,
-          path: UrlJoin("search", "q", this.searchIndex.versionHash, "rep", "search"),
-          queryParams: {
-            terms: query,
-            search_fields:
-              mode === "music" ? "f_music" :
-                this.searchSettings.fields.length > 0 ?
-                  this.searchSettings.fields.join(",") :
-                  Object.keys(this.searchIndex.fields).join(","),
-            sort: mode === "music" ? "f_music" : null,
-            start,
-            limit,
-            display_fields:
-              mode === "music" ? "f_music" : "all",
-            clips: type === "video",
-            clip_include_source_tags: true,
-            get_chunks: true,
-            max_total: 100,
-            min_score: this.searchSettings.minConfidence / 100,
-            filters: this.searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR"),
-            clips_content_level: clipsContentLevel
-          }
-        })) || {};
+    let {results, contents, pagination} = (yield this.QueryAIAPI({
+      //update: true,
+      objectId: this.searchIndex.id,
+      path: UrlJoin("search", "q", this.searchIndex.versionHash, "rep", "search"),
+      queryParams: {
+        terms: query,
+        search_fields:
+          mode === "music" ? "f_music" :
+            this.searchSettings.fields.length > 0 ?
+              this.searchSettings.fields.join(",") :
+              Object.keys(this.searchIndex.fields).join(","),
+        sort: mode === "music" ? "f_music" : null,
+        start,
+        limit,
+        display_fields:
+          mode === "music" ? "f_music" : "all",
+        clips: type === "video",
+        clip_include_source_tags: true,
+        get_chunks: true,
+        max_total: 100,
+        min_score: this.searchSettings.minConfidence / 100,
+        filters: this.searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR"),
+      }
+    })) || {};
 
     results = results || contents;
 
@@ -928,6 +935,122 @@ class AIStore {
     return {
       pagination: meta,
       results
+    };
+  });
+
+  PromptSearch = flow(function * ({prompt}) {
+    if(!this.promptClient) {
+      this.promptClient = new OpenAI({
+        apiKey: EluvioConfiguration["open-ai-key"],
+        baseURL: "https://ai-03.contentfabric.io/api/agents/v1",
+        dangerouslyAllowBrowser: true
+      });
+    }
+
+    const completion = yield this.promptClient.chat.completions.create({
+      model: "agent_7Qv13l7K_6HqJ1C46dbYr",   // this is hardcoded for now to Eluvio Agent Andrea
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      stream: false,
+    });
+
+    //const completion = {"id":"chatcmpl-5HjHQV8ZFjok-q9XtW45N","object":"chat.completion","created":1776358500,"model":"agent_7Qv13l7K_6HqJ1C46dbYr","choices":[{"index":0,"message":{"role":"assistant","content":"Here are the search results for \"pizza\":\n\n**CLIPS:**\n- CLIP: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2858.010, 2883.314, 2858.01, LYLE, LYLE, CROCODILE\n- CLIP: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2842.010, 2868.549, 2842.01, LYLE, LYLE, CROCODILE\n- CLIP: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2818.010, 2843.482, 2818.01, LYLE, LYLE, CROCODILE\n- CLIP: iq__4Md7rZAcnT7s8V5kQfvmn1ZXiqob, 2516.010, 2541.597, 2516.01, BLUE LOCK THE MOVIE -EPISODE NAGI-\n- CLIP: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 4112.010, 4138.943, 4112.01, LYLE, LYLE, CROCODILE\n- CLIP: iq__6ssFX218ePmwGrVVKW2y2JMWq7g, 2966.010, 2991.922, 2966.01, SPIDER-MAN: ACROSS THE SPIDER-VERSE\n- CLIP: iq__6ssFX218ePmwGrVVKW2y2JMWq7g, 2478.010, 2503.851, 2478.01, SPIDER-MAN: ACROSS THE SPIDER-VERSE\n- CLIP: iq__4HrRxWHwNkgCcsKDABD4f1y5Anfc, 736.010, 761.611, 736.01, COBRA KAI: SEASON 03: EP# 0303 - NOW YOU'RE GONNA PAY\n- CLIP: iq__pTtSsF8xFKAf7wmPovUU4SmbXDt, 478.010, 503.445, 478.01, JEOPARDY!: SEASON 39: EP# 8745 - EPISODE #8745\n- CLIP: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2308.010, 2334.057, 2308.01, LYLE, LYLE, CROCODILE\n- CLIP: iq__vXB1xK3H32VyEAeUyydUwj1b46Z, 3206.010, 3232.791, 3206.01, LOVE AND A BULLET\n- CLIP: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 1996.010, 2022.412, 1996.01, LYLE, LYLE, CROCODILE\n- CLIP: iq__552vys79mZp37KZzqQ6eEFJtMnJ, 2860.010, 2918.416, 2860.01, EQUALIZER 3, THE\n- CLIP: iq__vXB1xK3H32VyEAeUyydUwj1b46Z, 2440.010, 2465.691, 2440.01, LOVE AND A BULLET\n- CLIP: iq__4Dssys9PTPDTnWyYHAJAWAvdzjcW, 272.010, 298.607, 272.01, NO HARD FEELINGS\n- CLIP: iq__3zd22sCCPaaVQ9gVdQUsJtHDzMCw, 2804.010, 2830.052, 2804.01, EQUALIZER 3, THE\n- CLIP: iq__4Dssys9PTPDTnWyYHAJAWAvdzjcW, 286.010, 312.537, 286.01, NO HARD FEELINGS\n- CLIP: iq__4Dssys9PTPDTnWyYHAJAWAvdzjcW, 4476.010, 4502.932, 4476.01, NO HARD FEELINGS\n- CLIP: iq__552vys79mZp37KZzqQ6eEFJtMnJ, 2818.010, 2844.483, 2818.01, EQUALIZER 3, THE\n\n**IMAGES:**\n- IMAGE: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2827.825, LYLE, LYLE, CROCODILE\n- IMAGE: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2826.824, LYLE, LYLE, CROCODILE\n- IMAGE: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2000.999, LYLE, LYLE, CROCODILE\n- IMAGE: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2828.826, LYLE, LYLE, CROCODILE\n- IMAGE: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2829.827, LYLE, LYLE, CROCODILE\n- IMAGE: iq__pTtSsF8xFKAf7wmPovUU4SmbXDt, 481.481, JEOPARDY!: SEASON 39: EP# 8745 - EPISODE #8745\n- IMAGE: iq__pTtSsF8xFKAf7wmPovUU4SmbXDt, 480.480, JEOPARDY!: SEASON 39: EP# 8745 - EPISODE #8745\n- IMAGE: iq__pTtSsF8xFKAf7wmPovUU4SmbXDt, 480.447, JEOPARDY!: SEASON 39: EP# 8745 - EPISODE #8745\n- IMAGE: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2830.828, LYLE, LYLE, CROCODILE\n- IMAGE: iq__552vys79mZp37KZzqQ6eEFJtMnJ, 2229.227, EQUALIZER 3, THE","tool_calls":[{"id":"call_dtrfckbq","type":"function","function":{"name":"search_clips_mcp_eluvio-stg","arguments":""}},{"id":"call_kir68afo","type":"function","function":{"name":"search_images_mcp_eluvio-stg","arguments":""}}]},"finish_reason":"stop"}],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}};
+    const message = (completion.choices?.[0]?.message?.content || "").replace("\\n", "\n");
+
+    if(!message) { return; }
+
+    const baseUrl = yield this.client.Rep({
+      versionHash: this.searchIndex.versionHash,
+      rep: "frame",
+      channelAuth: true,
+      queryParams: {
+        ignore_trimming: true
+      }
+    });
+
+    let clips = yield Promise.all(
+      message.split("\n")
+        .filter(line => line.includes("CLIP:"))
+        .map(async line => {
+          try {
+            const segments = line.split("CLIP:")[1].split(",");
+            const objectId = segments[0].trim();
+            const libraryId = await this.rootStore.LibraryId({objectId});
+            const versionHash = await this.rootStore.VersionHash({objectId});
+
+            const imageTime = parseFloat(segments[3]);
+            const imageUrl = new URL(baseUrl);
+            imageUrl.searchParams.set("t", imageTime.toString());
+            // TODO: This assumes default offering
+            imageUrl.pathname = UrlJoin("/q", versionHash, "rep", "frame_extract", "default", "video");
+
+            return {
+              libraryId,
+              objectId: segments[0].trim(),
+              versionHash,
+              startTime: parseFloat(segments[1]),
+              endTime: parseFloat(segments[2]),
+              imageUrl: imageUrl.toString(),
+              imageTime: parseFloat(segments[3]),
+              name: segments.slice(4).join(",").trim(),
+              type: "video"
+            };
+          } catch(error) {
+            console.error("Error parsing clip result:");
+            console.error(error);
+          }
+        })
+    );
+
+    let images = yield Promise.all(
+      message.split("\n")
+        .filter(segment => segment.includes("IMAGE:"))
+        .map(async line => {
+          try {
+            const segments = line.split("IMAGE:")[1].split(",");
+            const imageTime = parseFloat(segments[1]);
+            const objectId = segments[0].trim();
+            const libraryId = await this.rootStore.LibraryId({objectId});
+            const versionHash = await this.rootStore.VersionHash({objectId});
+
+            const imageUrl = new URL(baseUrl);
+            imageUrl.searchParams.set("t", imageTime.toString());
+            imageUrl.searchParams.set("exact", "true");
+            // TODO: This assumes default
+            imageUrl.pathname = UrlJoin("/q", versionHash, "rep", "frame", "default", "video");
+
+            return {
+              libraryId,
+              objectId,
+              versionHash,
+              name: segments.slice(2).join(",").trim(),
+              imageUrl: imageUrl.toString(),
+              imageTime,
+              type: "frame"
+            };
+          } catch(error) {
+            console.error("Error parsing image result:");
+            console.error(error);
+          }
+        })
+        .filter(result => result)
+    );
+
+    return {
+      pagination: {
+        start: 0,
+        limit: clips.length + images.length,
+        total: clips.length + images.length,
+        count: clips.length + images.length
+      },
+      results: [
+        ...clips,
+        ...images
+      ]
     };
   });
 
