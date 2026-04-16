@@ -101,7 +101,7 @@ const TitleClip = observer(() => {
               versionHash={title.versionHash}
               readyCallback={player => titleStore.SetPlayer(player)}
               playoutParameters={{
-                vertical: clipInfo.type === "shorts",
+                //vertical: clipInfo.type === "shorts",
                 ...(
                   clipInfo.playout?.type === "composition" ?
                     {channel: clipInfo.playout.composition_key} :

@@ -238,14 +238,14 @@
   grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
 
   &--shorts {
-    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    // grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   }
 }
 
 .clip {
   &--shorts {
     .clip__image {
-      aspect-ratio: 9/16;
+      // aspect-ratio: 9/16;
     }
   }
 

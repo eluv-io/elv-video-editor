@@ -1142,6 +1142,7 @@ class CompositionStore {
       1: {type: "fade_in", position: "start"},
       2: {type: "fade_out", position: "end"}
     };
+
     const ParseEffect = effect => {
       const [type,,durationNum, durationDenom] = effect;
 
@@ -1175,14 +1176,14 @@ class CompositionStore {
           .filter(effect => effect[1] === index)
           .map(effect => ParseEffect(effect))
           .filter(effect => effect),
-        ...metadata.sources[sourceIndex]
+        ...metadata.ch_sources[sourceIndex]
       };
     });
   }
 
   ToV2(metadata) {
     let slices = [];
-    let sources = [];
+    let ch_sources = [];
     let slice_effects = [];
     let slice_info = [];
 
@@ -1190,7 +1191,7 @@ class CompositionStore {
       let sourceIndex = sources.findIndex(source => source.source["/"] === item.source["/"]);
       if(sourceIndex < 0) {
         sourceIndex = sources.length;
-        sources[sourceIndex] = {
+        ch_sources[sourceIndex] = {
           source: item.source,
           type: item.type
         };
@@ -1229,7 +1230,7 @@ class CompositionStore {
 
     return {
       slices,
-      sources,
+      ch_sources,
       slice_effects,
       slice_info
     };
@@ -1337,7 +1338,7 @@ class CompositionStore {
     this.videoStore.videoHandler = primarySource.videoHandler;
 
     // Determine secondary sources from explicit list in metadata and by looking at all item links
-    let secondarySources = [];
+    let secondarySources = metadata.selected_sources || metadata.sources;
     let originalClipsList = {};
     let updatedClipList = {};
     this.clipIdList = yield Promise.all(
