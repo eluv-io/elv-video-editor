@@ -104,7 +104,7 @@ class TitleStore {
           versionHash,
           name: metadata?.name,
           title: metadata?.asset_metadata?.display_title || metadata?.asset_metadata?.title || metadata?.name,
-          metadata: metadata?.asset_metadata,
+          metadata: metadata?.asset_metadata || {},
           videoDetails,
           baseFrameUrl
         };

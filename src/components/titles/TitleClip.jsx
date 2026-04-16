@@ -152,7 +152,8 @@ const TitleClip = observer(() => {
                 )
               }}
               playerOptions={{
-                loadChapters: clipInfo.type === "full"
+                loadChapters: clipInfo.type === "full",
+                loadPoseOverlay: true
               }}
               className={S("video", clipInfo.type !== "full" && !clipInfo.summary ? "video--full" : "")}
             />

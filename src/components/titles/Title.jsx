@@ -83,7 +83,7 @@ const Clip = observer(({title, clipInfo, clipType}) => {
   const frameUrl = new URL(title.baseFrameUrl);
 
   if(!clipInfo.image_t && (clipType === "full" || clipInfo.playout?.type === "composition")) {
-    frameUrl.searchParams.set("t", parseInt(title.metadata.info.runtime * 60) / 1.5);
+    frameUrl.searchParams.set("t", parseInt((title.metadata?.info?.runtime || 10) * 60) / 1.5);
   } else {
     frameUrl.searchParams.set(
       "t",
@@ -198,7 +198,7 @@ const Clips = observer(({title}) => {
   );
 });
 
-const GetAttributes = (info) => {
+const GetAttributes = (info={}) => {
   let year = info.release_year || info.us_release_year;
   if(info.release_date) {
     year = new Date(info.release_date).getFullYear();
@@ -284,7 +284,7 @@ const Title = observer(() => {
           <Synopsis title={title} />
           <div className={S("info__credits")}>
             {
-              !title.metadata.info.talent.director ? null :
+              !title.metadata?.info?.talent?.director ? null :
                 <div className={S("info__credit")}>
                   <div className={S("info__credit-label")}>
                     Director
@@ -295,7 +295,7 @@ const Title = observer(() => {
                 </div>
             }
             {
-              !title.metadata.info.talent.written_by ? null :
+              !title.metadata?.info?.talent?.written_by ? null :
                 <div className={S("info__credit")}>
                   <div className={S("info__credit-label")}>
                     Writer

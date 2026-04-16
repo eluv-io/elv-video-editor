@@ -9,7 +9,7 @@ import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Tooltip} from "@mantine/core";
 import {BoxToPoints, PointInPolygon, PointsToBox, ReorderPoints} from "@/utils/Geometry.js";
 
-const frameSpread = 10;
+const frameSpread = 5;
 
 const S = CreateModuleClassMatcher(OverlayStyles);
 
