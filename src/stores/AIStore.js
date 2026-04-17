@@ -2,7 +2,6 @@ import {flow, makeAutoObservable, runInAction} from "mobx";
 import UrlJoin from "url-join";
 import {HashString, ParseSearchQuery, Slugify, Unproxy} from "@/utils/Utils.js";
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
-import OpenAI from "openai";
 
 const GLOBAL_PROFILE_OBJECT_ID = "iq__3MVS3kjshtnAodRv4qLebBvH3oXb";
 
@@ -28,6 +27,7 @@ class AIStore {
   searchSettings = this.DEFAULT_SEARCH_SETTINGS;
 
   searchResults = {};
+  activePromptSearchId;
   searchImageFrame;
   searchImageFrameUrl;
 
@@ -692,6 +692,7 @@ class AIStore {
           };
         } catch(error) {
           this.searchResults.loading = false;
+          this.searchResults.error = error;
           throw error;
         }
 
@@ -939,6 +940,157 @@ class AIStore {
   });
 
   PromptSearch = flow(function * ({prompt}) {
+    const baseUrl = "https://ai-03.contentfabric.io/";
+
+    const authorizationToken = (yield (
+      yield fetch(
+        UrlJoin(baseUrl, "api", "auth", "login"),
+        {
+          method: "POST",
+          body: JSON.stringify({
+            email: EluvioConfiguration["ai-em"],
+            password: EluvioConfiguration["ai-p"]
+          }),
+          headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+          },
+        }
+      )
+    ).json()).token;
+
+    const response = yield (
+      yield fetch(
+        UrlJoin(baseUrl, "api", "agents", "chat"),
+        {
+          method: "POST",
+          body: JSON.stringify({
+            text: `Search for clips and images matching this prompt: ${prompt}`,
+            sender: "User",
+            clientTimestamp: new Date().toISOString(),
+            isCreatedByUser: true,
+            parentMessageId: "00000000-0000-0000-0000-000000000000",
+            messageId: this.rootStore.NextId(true),
+            endpoint: "agents",
+            agent_id: "agent_7Qv13l7K_6HqJ1C46dbYr",
+            isTemporary: true
+          }),
+          headers: {
+            "Authorization": `Bearer ${authorizationToken}`,
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+          }
+        }
+      )
+    ).json();
+
+    this.activePromptSearchId = response.streamId;
+
+    const streamResponse = yield fetch(
+      UrlJoin(baseUrl, "api", "agents", "chat", "stream", response.streamId),
+      {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${authorizationToken}`,
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    if(!streamResponse.ok) {
+      throw Error(streamResponse);
+    }
+
+    const reader = streamResponse.body.getReader();
+
+    this.PromptSearchStreamHandler({reader, streamId: response.streamId})
+      .then(fullText => {
+        // eslint-disable-next-line no-console
+        console.info("Full response from prompt:")
+        // eslint-disable-next-line no-console
+        console.info(fullText);
+
+        if(this.activePromptSearchId === response.streamId) {
+          runInAction(() => this.activePromptSearchId = undefined);
+        }
+      });
+
+    return {
+      pagination: {
+        start: 0,
+        total: 0,
+        limit: 1,
+        count: 0
+      },
+      results: []
+    };
+  });
+
+  PromptSearchStreamHandler = flow(function * ({reader, streamId}) {
+    const decoder = new TextDecoder();
+
+    let lastUpdateLineCount = 0;
+
+    let fullText = "";
+    do {
+      if(this.activePromptSearchId !== streamId) {
+        // eslint-disable-next-line no-console
+        console.warn("Another prompt search has been started - aborting");
+        return;
+      }
+
+      const { done, value } = yield reader.read();
+
+      if(done) {
+        this.UpdatePromptSearchResults({message: fullText});
+        return fullText;
+      }
+
+      const chunk = decoder.decode(value, { stream: true });
+
+      // SSE chunks usually look like "data: {...}\n\n"
+      const lines = chunk
+        .split("\n")
+        .filter(line => line.startsWith("data:"));
+
+      for(const line of lines) {
+        const jsonStr = line.replace("data: ", "").trim();
+
+        // Final message often just says [DONE]
+        if(jsonStr === "[DONE]") {
+          this.UpdatePromptSearchResults({message: fullText});
+          return fullText;
+        }
+
+        try {
+          const payload = JSON.parse(jsonStr);
+
+          if(payload.event !== "on_message_delta") {
+            continue;
+          }
+
+          payload.data?.delta?.content
+            ?.forEach(({type, text}) =>
+              fullText += type === "text" ? text : ""
+            );
+
+          const lineCount = fullText.split("\n").slice(0, -1).length;
+
+          if(lineCount > lastUpdateLineCount) {
+            lastUpdateLineCount = lineCount;
+            this.UpdatePromptSearchResults({message: fullText});
+          }
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn("malformed sse: " + jsonStr);
+        }
+      }
+    } while(true);
+  });
+
+  UpdatePromptSearchResults = flow(function * ({message}) {
+    /*
     if(!this.promptClient) {
       this.promptClient = new OpenAI({
         apiKey: EluvioConfiguration["open-ai-key"],
@@ -958,11 +1110,10 @@ class AIStore {
       stream: false,
     });
 
-    //const completion = {"id":"chatcmpl-5HjHQV8ZFjok-q9XtW45N","object":"chat.completion","created":1776358500,"model":"agent_7Qv13l7K_6HqJ1C46dbYr","choices":[{"index":0,"message":{"role":"assistant","content":"Here are the search results for \"pizza\":\n\n**CLIPS:**\n- CLIP: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2858.010, 2883.314, 2858.01, LYLE, LYLE, CROCODILE\n- CLIP: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2842.010, 2868.549, 2842.01, LYLE, LYLE, CROCODILE\n- CLIP: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2818.010, 2843.482, 2818.01, LYLE, LYLE, CROCODILE\n- CLIP: iq__4Md7rZAcnT7s8V5kQfvmn1ZXiqob, 2516.010, 2541.597, 2516.01, BLUE LOCK THE MOVIE -EPISODE NAGI-\n- CLIP: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 4112.010, 4138.943, 4112.01, LYLE, LYLE, CROCODILE\n- CLIP: iq__6ssFX218ePmwGrVVKW2y2JMWq7g, 2966.010, 2991.922, 2966.01, SPIDER-MAN: ACROSS THE SPIDER-VERSE\n- CLIP: iq__6ssFX218ePmwGrVVKW2y2JMWq7g, 2478.010, 2503.851, 2478.01, SPIDER-MAN: ACROSS THE SPIDER-VERSE\n- CLIP: iq__4HrRxWHwNkgCcsKDABD4f1y5Anfc, 736.010, 761.611, 736.01, COBRA KAI: SEASON 03: EP# 0303 - NOW YOU'RE GONNA PAY\n- CLIP: iq__pTtSsF8xFKAf7wmPovUU4SmbXDt, 478.010, 503.445, 478.01, JEOPARDY!: SEASON 39: EP# 8745 - EPISODE #8745\n- CLIP: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2308.010, 2334.057, 2308.01, LYLE, LYLE, CROCODILE\n- CLIP: iq__vXB1xK3H32VyEAeUyydUwj1b46Z, 3206.010, 3232.791, 3206.01, LOVE AND A BULLET\n- CLIP: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 1996.010, 2022.412, 1996.01, LYLE, LYLE, CROCODILE\n- CLIP: iq__552vys79mZp37KZzqQ6eEFJtMnJ, 2860.010, 2918.416, 2860.01, EQUALIZER 3, THE\n- CLIP: iq__vXB1xK3H32VyEAeUyydUwj1b46Z, 2440.010, 2465.691, 2440.01, LOVE AND A BULLET\n- CLIP: iq__4Dssys9PTPDTnWyYHAJAWAvdzjcW, 272.010, 298.607, 272.01, NO HARD FEELINGS\n- CLIP: iq__3zd22sCCPaaVQ9gVdQUsJtHDzMCw, 2804.010, 2830.052, 2804.01, EQUALIZER 3, THE\n- CLIP: iq__4Dssys9PTPDTnWyYHAJAWAvdzjcW, 286.010, 312.537, 286.01, NO HARD FEELINGS\n- CLIP: iq__4Dssys9PTPDTnWyYHAJAWAvdzjcW, 4476.010, 4502.932, 4476.01, NO HARD FEELINGS\n- CLIP: iq__552vys79mZp37KZzqQ6eEFJtMnJ, 2818.010, 2844.483, 2818.01, EQUALIZER 3, THE\n\n**IMAGES:**\n- IMAGE: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2827.825, LYLE, LYLE, CROCODILE\n- IMAGE: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2826.824, LYLE, LYLE, CROCODILE\n- IMAGE: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2000.999, LYLE, LYLE, CROCODILE\n- IMAGE: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2828.826, LYLE, LYLE, CROCODILE\n- IMAGE: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2829.827, LYLE, LYLE, CROCODILE\n- IMAGE: iq__pTtSsF8xFKAf7wmPovUU4SmbXDt, 481.481, JEOPARDY!: SEASON 39: EP# 8745 - EPISODE #8745\n- IMAGE: iq__pTtSsF8xFKAf7wmPovUU4SmbXDt, 480.480, JEOPARDY!: SEASON 39: EP# 8745 - EPISODE #8745\n- IMAGE: iq__pTtSsF8xFKAf7wmPovUU4SmbXDt, 480.447, JEOPARDY!: SEASON 39: EP# 8745 - EPISODE #8745\n- IMAGE: iq__cKjQwrN817yb1paEaUpPr6n9PRi, 2830.828, LYLE, LYLE, CROCODILE\n- IMAGE: iq__552vys79mZp37KZzqQ6eEFJtMnJ, 2229.227, EQUALIZER 3, THE","tool_calls":[{"id":"call_dtrfckbq","type":"function","function":{"name":"search_clips_mcp_eluvio-stg","arguments":""}},{"id":"call_kir68afo","type":"function","function":{"name":"search_images_mcp_eluvio-stg","arguments":""}}]},"finish_reason":"stop"}],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}};
-    const message = (completion.choices?.[0]?.message?.content || "").replace("\\n", "\n");
-
     if(!message) { return; }
 
+
+     */
     const baseUrl = yield this.client.Rep({
       versionHash: this.searchIndex.versionHash,
       rep: "frame",
@@ -1040,18 +1191,17 @@ class AIStore {
         .filter(result => result)
     );
 
-    return {
-      pagination: {
-        start: 0,
-        limit: clips.length + images.length,
-        total: clips.length + images.length,
-        count: clips.length + images.length
-      },
-      results: [
-        ...clips,
-        ...images
-      ]
+    this.searchResults.pagination = {
+      start: 0,
+      limit: clips.length + images.length,
+      total: clips.length + images.length,
+      count: clips.length + images.length
     };
+
+    this.searchResults.results = [
+      ...clips,
+      ...images
+    ];
   });
 
   ClearSearchResults() {

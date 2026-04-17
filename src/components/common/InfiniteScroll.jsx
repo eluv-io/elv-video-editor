@@ -18,6 +18,7 @@ const InfiniteScroll = observer(({
   scrollPreservationKey,
   Update,
   withLoader,
+  showLoader,
   className=""
 }) => {
   const [element, setElement] = useState(null);
@@ -117,7 +118,7 @@ const InfiniteScroll = observer(({
     >
       { children }
       {
-        !loading || !withLoader ? null :
+        !showLoader && (!loading || !withLoader) ? null :
           <Loader className={S("infinite-scroll__loader")} />
       }
     </div>
