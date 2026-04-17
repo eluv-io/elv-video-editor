@@ -1339,7 +1339,7 @@ class CompositionStore {
     this.videoStore.videoHandler = primarySource.videoHandler;
 
     // Determine secondary sources from explicit list in metadata and by looking at all item links
-    let secondarySources = metadata.selected_sources || metadata.sources;
+    let secondarySources = metadata.selected_sources || metadata.sources || [];
     let originalClipsList = {};
     let updatedClipList = {};
     this.clipIdList = yield Promise.all(
