@@ -295,22 +295,26 @@ const SearchResultsPage = observer(() => {
                 <div className={S("search-results__error")}>
                   Something went wrong, please try again.
                 </div> :
-                mode === "music" ?
-                  <GroupedSearchResults
-                    mode={mode}
-                    key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
-                    groupKey="f_music"
-                    scrollPreservationKey="main"
-                    showList={showList}
-                    groupClassName={S("search-results", `search-results-${showList ? "list" : "grid"}--${mode}`)}
-                  /> :
-                  <SearchResults
-                    mode={mode}
-                    key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
-                    scrollPreservationKey="main"
-                    showList={showList}
-                    className={S("search-results", `search-results-${showList ? "list" : "grid"}--${mode}`)}
-                  />
+                aiStore.searchResults.clarify ?
+                  <div className={S("search-results__clarify")}>
+                    Please clarify your prompt
+                  </div> :
+                  mode === "music" ?
+                    <GroupedSearchResults
+                      mode={mode}
+                      key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
+                      groupKey="f_music"
+                      scrollPreservationKey="main"
+                      showList={showList}
+                      groupClassName={S("search-results", `search-results-${showList ? "list" : "grid"}--${mode}`)}
+                    /> :
+                    <SearchResults
+                      mode={mode}
+                      key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
+                      scrollPreservationKey="main"
+                      showList={showList}
+                      className={S("search-results", `search-results-${showList ? "list" : "grid"}--${mode}`)}
+                    />
           }
         </div>
       </div>

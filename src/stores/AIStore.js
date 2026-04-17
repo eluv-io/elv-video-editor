@@ -965,7 +965,7 @@ class AIStore {
         {
           method: "POST",
           body: JSON.stringify({
-            text: `Search for clips and images matching this prompt: ${prompt}`,
+            text: prompt,
             sender: "User",
             clientTimestamp: new Date().toISOString(),
             isCreatedByUser: true,
@@ -1006,13 +1006,19 @@ class AIStore {
 
     this.PromptSearchStreamHandler({reader, streamId: response.streamId})
       .then(fullText => {
-        // eslint-disable-next-line no-console
-        console.info("Full response from prompt:")
-        // eslint-disable-next-line no-console
+         
+        console.info("Full response from prompt:");
+         
         console.info(fullText);
 
         if(this.activePromptSearchId === response.streamId) {
-          runInAction(() => this.activePromptSearchId = undefined);
+          runInAction(() => {
+            this.activePromptSearchId = undefined;
+
+            if(fullText?.toLowerCase?.()?.includes("could you please clarify")) {
+              this.searchResults.clarify = true;
+            }
+          });
         }
       });
 
