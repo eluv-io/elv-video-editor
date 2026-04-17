@@ -264,7 +264,7 @@ const SearchResultsPage = observer(() => {
           }
           <div className={S("browser__action--right")}>
             {
-              mode.startsWith("frame") ? null :
+              mode === "prompt" || mode.startsWith("frame") ? null :
                 <button
                   key={aiStore.searchSettings.minConfidence}
                   className={S("browser__toggle-button")}
