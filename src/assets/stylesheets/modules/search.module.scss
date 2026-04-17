@@ -105,6 +105,16 @@
       display: flex;
       gap: 10px;
     }
+
+    &--right {
+      gap: 5px;
+    }
+  }
+
+  &__action {
+    animation: var(--animation-fadein) 0.25s ease-in-out;
+    background-color: var(--background-modal);
+    padding: 5px;
   }
 
   &__tab-container {

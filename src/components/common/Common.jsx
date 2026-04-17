@@ -434,7 +434,7 @@ export const AsyncButton = observer(({onClick, tooltip, loading, ...props}) => {
   );
 });
 
-export const StyledButton = observer(({icon, variant="primary", size="lg", color="--color-highlight", textColor, children, loading, ...props}) => {
+export const StyledButton = observer(({icon, variant="primary", size="lg", color="--color-highlight--dark", textColor, children, loading, ...props}) => {
   const [submitting, setSubmitting] = useState(false);
 
   textColor = variant === "secondary" ? textColor || color : textColor || "";

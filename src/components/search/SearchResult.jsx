@@ -25,7 +25,7 @@ import ShareIcon from "@/assets/icons/v2/share.svg";
 import PinIcon from "@/assets/icons/v2/pin.svg";
 import RegenerateIcon from "@/assets/icons/rotate-ccw.svg";
 import LinkIcon from "@/assets/icons/v2/external-link.svg";
-import DownloadIcon from "@/assets/icons/v2/download.svg";
+import DownloadIcon from "@/assets/icons/download.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
 import TitleIcon from "@/assets/icons/titles.svg";
@@ -252,25 +252,6 @@ const ClipResultPanel = observer(({result}) => {
             }
           </div>
           <div className={S("result__actions--right")}>
-            {
-              existingClip || !clipVideoStore ? null :
-                <StyledButton
-                  size="sm"
-                  variant="subtle"
-                  icon={ClipIcon}
-                  onClick={() => setShowAddToMyClipsModal(true)}
-                >
-                  Save to My Clips
-                </StyledButton>
-            }
-            <StyledButton
-              size="sm"
-              variant="subtle"
-              icon={PinIcon}
-              to={UrlJoin("~/", result.objectId, "tags", `?st=${result.startTime}&et=${result.endTime}&isolate=`)}
-            >
-              Open
-            </StyledButton>
             <StyledButton
               size="sm"
               variant="subtle"
@@ -279,22 +260,33 @@ const ClipResultPanel = observer(({result}) => {
             >
               View Title
             </StyledButton>
-            <StyledButton
-              size="sm"
-              variant="subtle"
-              icon={DownloadIcon}
-              onClick={() => setShowDownloadModal(true)}
-            >
-              Download
-            </StyledButton>
-            <StyledButton
-              size="sm"
-              variant="subtle"
+            {
+              existingClip || !clipVideoStore ? null :
+                <IconButton
+                  label="Add to My Clips"
+                  className={S("result__action")}
+                  icon={ClipIcon}
+                  onClick={() => setShowAddToMyClipsModal(true)}
+                />
+            }
+            <IconButton
+              label="Open in Tag View"
+              className={S("result__action")}
+              icon={PinIcon}
+              to={UrlJoin("~/", result.objectId, "tags", `?st=${result.startTime}&et=${result.endTime}&isolate=`)}
+            />
+            <IconButton
+              label="Share"
+              className={S("result__action")}
               icon={ShareIcon}
               onClick={() => setShowShareModal(true)}
-            >
-              Share
-            </StyledButton>
+            />
+            <IconButton
+              label="Download"
+              className={S("result__action")}
+              icon={DownloadIcon}
+              onClick={() => setShowDownloadModal(true)}
+            />
           </div>
         </div>
         <Summary result={result} />
