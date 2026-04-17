@@ -83,7 +83,11 @@ const Clip = observer(({title, clipInfo, clipType}) => {
   const frameUrl = new URL(title.baseFrameUrl);
 
   if(!clipInfo.image_t && (clipType === "full" || clipInfo.playout?.type === "composition")) {
-    frameUrl.searchParams.set("t", parseInt((title.metadata?.info?.runtime || 10) * 60) / 1.5);
+    frameUrl.searchParams.set(
+      "t",
+      title.metadata?.ai_derived_media?.full_content?.image_t ||
+      parseInt((title.metadata?.info?.runtime || 10) * 60) / 1.5
+    );
   } else {
     frameUrl.searchParams.set(
       "t",
