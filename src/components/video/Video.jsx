@@ -66,11 +66,15 @@ const Video = observer(({
       return;
     }
 
+    playoutUrl = new URL(playoutUrl);
+    const authorizationToken = playoutUrl.searchParams.get("authorization");
+    playoutUrl.searchParams.delete("authorization");
+
     if(vertical) {
-      playoutUrl = new URL(playoutUrl);
       playoutUrl.searchParams.set("v", "1");
-      playoutUrl = playoutUrl.toString();
     }
+
+    playoutUrl = playoutUrl.toString();
 
     if(hlsPlayer) {
       hlsPlayer.destroy();
@@ -108,6 +112,11 @@ const Video = observer(({
         autoLevelEnabled: false
       };
     }
+
+    config.xhrSetup = xhr => {
+      xhr.setRequestHeader("Authorization", `Bearer ${authorizationToken}`);
+      return xhr;
+    };
 
     const player = new HLSPlayer(config);
 

@@ -277,7 +277,9 @@ class DownloadStore {
     clipInFrame,
     clipOutFrame,
     shareId,
-    title
+    title,
+    vertical,
+    node
   }) {
     let options = {
       autoplay: true,
@@ -319,6 +321,14 @@ class DownloadStore {
 
     if(title) {
       url.searchParams.set("ttl", this.rootStore.client.utils.B64(title));
+    }
+
+    if(vertical) {
+      url.searchParams.set("v", "");
+    }
+
+    if(node) {
+      url.searchParams.set("node", node);
     }
 
     return url.toString();
@@ -511,6 +521,22 @@ class DownloadStore {
       })
     );
 
+    const node = (await this.rootStore.client.Nodes()).fabricURIs[0];
+    const verticalEmbedUrl = new URL(
+      await this.CreateEmbedUrl({
+        store,
+        offeringKey: share.downloadOptions?.offering,
+        audioTrackLabel: share.audioTrackLabel,
+        compositionKey: share.compositionKey,
+        clipInFrame: clipDetails.clipInFrame ? clipDetails.clipInFrame : undefined,
+        clipOutFrame: clipDetails.clipOutFrame ? clipDetails.clipOutFrame : undefined,
+        shareId: share.share_id,
+        title: share.title,
+        vertical: true,
+        node
+      })
+    );
+
     if(share.downloadJobId) {
       const downloadUrl = new URL(embedUrl.origin);
       downloadUrl.searchParams.set("d", "");
@@ -529,7 +555,8 @@ class DownloadStore {
       expiresAt: new Date(share.end_time),
       expired: Date.now() > new Date(share.end_time).getTime(),
       clipDetails,
-      embedUrl: embedUrl.toString()
+      embedUrl: embedUrl.toString(),
+      verticalEmbedUrl: verticalEmbedUrl.toString()
     };
   }
 
