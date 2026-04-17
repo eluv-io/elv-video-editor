@@ -132,6 +132,19 @@
     --tooltip-content-border-color: none;
   }
 
+  &--uncapped {
+    .tooltip__content {
+      max-height: unset;
+      max-width: 900px;
+      width: 900px;
+
+      p,
+      pre {
+        max-width: 100%;
+      }
+    }
+  }
+
   &__item {
     font-size: 14px;
     font-weight: 500;

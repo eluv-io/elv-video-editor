@@ -545,24 +545,44 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
             }
             <Icon icon={AISparkleIcon} className={S("search-input-container__ai-icon")} />
           </div>
-          <input
-            value={input}
-            placeholder={
-              placeholder ? placeholder :
-                mode === "prompt" ? "Prompt the title library" :
-                mode.startsWith("frame") ? "Search for images by phrase or keyword" :
-                  mode === "music" ? "Search for music by phrase or keyword" :
-                    "Search within content by phrase or keyword"
+          <Tooltip
+            openDelay={1000}
+            label={
+              <div className={S("tooltip", "tooltip--uncapped")}>
+                <div className={S("tooltip__item")}>
+                  <div className={S("tooltip__label")}>
+                    Prompt Response:
+                  </div>
+                  <div className={S("tooltip__content")}>
+                    <p>
+                      { aiStore.searchResults.currentResponse || "" }
+                    </p>
+                  </div>
+                </div>
+              </div>
             }
-            onChange={event => setInput(event.target.value)}
-            onKeyDown={async event => {
-              if(event.key !== "Enter") { return; }
+            disabled={mode !== "prompt" || aiStore.searchResults.prompt !== input || !aiStore.searchResults.currentResponse}
+            className={S("tooltip")}
+          >
+            <input
+              value={input}
+              placeholder={
+                placeholder ? placeholder :
+                  mode === "prompt" ? "Prompt the title library" :
+                    mode.startsWith("frame") ? "Search for images by phrase or keyword" :
+                      mode === "music" ? "Search for music by phrase or keyword" :
+                        "Search within content by phrase or keyword"
+              }
+              onChange={event => setInput(event.target.value)}
+              onKeyDown={async event => {
+                if(event.key !== "Enter") { return; }
 
-              Submit(mode === "frame-image" ? "frame" : mode);
-              //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
-            }}
-            className={S("search-bar", "search-bar--ai", clipOnly ? "search-bar--ai-clip-only" : "")}
-          />
+                Submit(mode === "frame-image" ? "frame" : mode);
+                //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
+              }}
+              className={S("search-bar", "search-bar--ai", clipOnly ? "search-bar--ai-clip-only" : "")}
+            />
+          </Tooltip>
           <div className={S("search-input-container__right-buttons")}>
             <IconButton
               label="Search"

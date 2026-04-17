@@ -664,7 +664,7 @@ class AIStore {
         this.searchResults.loading = true;
 
         try {
-          const {results, pagination} =
+          const {results, pagination, ...extra} =
             mode === "prompt" ?
               yield this.PromptSearch({prompt: query}) :
               mode.startsWith("frame") ?
@@ -678,6 +678,7 @@ class AIStore {
 
           const type = this.searchIndex.type?.includes("assets") ? "image" : "video";
           this.searchResults = {
+            ...extra,
             key: resultsKey,
             query: mode ? `${mode}:${query}` : query,
             indexHash: this.searchIndex.versionHash,
@@ -1006,16 +1007,17 @@ class AIStore {
 
     this.PromptSearchStreamHandler({reader, streamId: response.streamId})
       .then(fullText => {
-         
         console.info("Full response from prompt:");
-         
         console.info(fullText);
 
         if(this.activePromptSearchId === response.streamId) {
           runInAction(() => {
             this.activePromptSearchId = undefined;
 
-            if(fullText?.toLowerCase?.()?.includes("could you please clarify")) {
+            if(
+              this.searchResults.results.length === 0 ||
+              fullText?.toLowerCase?.()?.includes("could you please clarify")
+            ) {
               this.searchResults.clarify = true;
             }
           });
@@ -1023,6 +1025,7 @@ class AIStore {
       });
 
     return {
+      prompt,
       pagination: {
         start: 0,
         total: 0,
@@ -1129,17 +1132,19 @@ class AIStore {
       }
     });
 
+    const ParseNumber = str => parseFloat(str.replace(/[^\d.-]/g, ""));
+
     let clips = yield Promise.all(
       message.split("\n")
         .filter(line => line.includes("CLIP:"))
         .map(async line => {
           try {
             const segments = line.split("CLIP:")[1].split(",");
-            const objectId = segments[0].trim();
+            const objectId = segments[0].trim().match(/(iq__\w+)/)[0];
             const libraryId = await this.rootStore.LibraryId({objectId});
             const versionHash = await this.rootStore.VersionHash({objectId});
 
-            const imageTime = parseFloat(segments[3]);
+            const imageTime = ParseNumber(segments[3]);
             const imageUrl = new URL(baseUrl);
             imageUrl.searchParams.set("t", imageTime.toString());
             // TODO: This assumes default offering
@@ -1147,12 +1152,12 @@ class AIStore {
 
             return {
               libraryId,
-              objectId: segments[0].trim(),
+              objectId,
               versionHash,
-              startTime: parseFloat(segments[1]),
-              endTime: parseFloat(segments[2]),
+              startTime: ParseNumber(segments[1]),
+              endTime: ParseNumber(segments[2]),
               imageUrl: imageUrl.toString(),
-              imageTime: parseFloat(segments[3]),
+              imageTime,
               name: segments.slice(4).join(",").trim(),
               type: "video"
             };
@@ -1161,6 +1166,7 @@ class AIStore {
             console.error(error);
           }
         })
+        .filter(result => result)
     );
 
     let images = yield Promise.all(
@@ -1169,8 +1175,8 @@ class AIStore {
         .map(async line => {
           try {
             const segments = line.split("IMAGE:")[1].split(",");
-            const imageTime = parseFloat(segments[1]);
-            const objectId = segments[0].trim();
+            const imageTime = ParseNumber(segments[1]);
+            const objectId = segments[0].trim().match(/(iq__\w+)/)[0];
             const libraryId = await this.rootStore.LibraryId({objectId});
             const versionHash = await this.rootStore.VersionHash({objectId});
 
@@ -1208,6 +1214,8 @@ class AIStore {
       ...clips,
       ...images
     ];
+
+    this.searchResults.currentResponse = message;
   });
 
   ClearSearchResults() {
