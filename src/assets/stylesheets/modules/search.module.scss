@@ -408,8 +408,16 @@
   }
 
   &__form-title {
+    align-items: center;
+    display: flex;
     font-weight: 800;
+    justify-content: space-between;
     margin-bottom: 15px;
+
+    label {
+      color: var(--text-tertiary);
+      font-size: 12px;
+    }
   }
 
   &__button {

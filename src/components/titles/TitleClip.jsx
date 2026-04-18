@@ -11,12 +11,15 @@ import Player from "@/components/common/Player.jsx";
 import TagSidebar, {VerticalVideoSidebar} from "@/components/titles/TagSidebar.jsx";
 import {TextInput} from "@mantine/core";
 import {Synopsis} from "@/components/titles/Title.jsx";
+import ShareModalButton from "@/components/download/Share.jsx";
+import DownloadModalButton from "@/components/download/Download.jsx";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import VerticalIcon from "@/assets/icons/vertical.svg";
 import PinIcon from "@/assets/icons/v2/pin.svg";
 import SubmitIcon from "@/assets/icons/v2/search-arrow.svg";
+
 
 
 const S = CreateModuleClassMatcher(TitleStyles);
@@ -84,6 +87,8 @@ const Summary = observer(({title, clipInfo}) => {
 });
 
 const ClipInfo = ({title, clipId}) => {
+  if(!title) { return; }
+
   if(clipId === "full") {
     return { type: "full", slug: "full", name: title.title };
   }
@@ -104,6 +109,7 @@ const TitleClip = observer(() => {
   const {titleId, clipId} = useParams();
   const title = titleStore.titles[titleId];
   const [showVertical, setShowVertical] = useState(false);
+  const clipInfo = ClipInfo({title, clipId});
 
   useEffect(() => {
     titleStore.LoadTitle({titleId});
@@ -111,11 +117,20 @@ const TitleClip = observer(() => {
     return () => titleStore.SetPlayer(undefined);
   }, []);
 
+  useEffect(() => {
+    if(!title) { return; }
+    if(clipInfo?.playout?.type === "clip") {
+      title.videoStore.SetClipMark({inFrame: title.videoStore.TimeToFrame(clipInfo.playout.start / 1000)});
+      title.videoStore.SetClipMark({outFrame: title.videoStore.TimeToFrame(clipInfo.playout.end / 1000)});
+    } else {
+      title.videoStore.SetClipMark({inFrame: 0});
+      title.videoStore.SetClipMark({outFrame: title.videoStore.totalFrames - 1});
+    }
+  }, [!!title]);
+
   if(!title) {
     return <Loader />;
   }
-
-  const clipInfo = ClipInfo({title, clipId});
 
   if(!clipInfo) {
     return <Redirect to={UrlJoin("~/titles/", titleId)} />;
@@ -192,6 +207,14 @@ const TitleClip = observer(() => {
                 >
                   Make Vertical
                 </StyledButton>
+                {
+                  clipInfo.playout?.type === "composition" ? null :
+                    <>
+                      <ShareModalButton store={title.videoStore} />
+                      <DownloadModalButton store={title.videoStore} />
+                    </>
+                }
+
               </div>
             </div>
           </div>

@@ -21,6 +21,7 @@ class AIStore {
     clipDuration: 0,
     minConfidence: 0,
     fields: [],
+    cache: true,
     key: 0
   };
 
@@ -733,7 +734,7 @@ class AIStore {
     let {results, contents, pagination} = (yield this.QueryAIAPI({
       //update: true,
       objectId: this.searchIndex.id,
-      path: UrlJoin("search", "q", this.searchIndex.versionHash, "rep", "search"),
+      path: UrlJoin(this.searchSettings.cache ? "mlcache" : "", "search", "q", this.searchIndex.versionHash, "rep", "search"),
       queryParams: {
         terms: query,
         search_fields:
@@ -1010,18 +1011,20 @@ class AIStore {
         console.info("Full response from prompt:");
         console.info(fullText);
 
-        if(this.activePromptSearchId === response.streamId) {
+        setTimeout(() => {
           runInAction(() => {
-            this.activePromptSearchId = undefined;
+            if(this.activePromptSearchId === response.streamId) {
+              this.activePromptSearchId = undefined;
 
-            if(
-              this.searchResults.results.length === 0 ||
-              fullText?.toLowerCase?.()?.includes("could you please clarify")
-            ) {
-              this.searchResults.clarify = true;
+              if(
+                this.searchResults.results.length === 0 ||
+                fullText?.toLowerCase?.()?.includes("could you please clarify")
+              ) {
+                this.searchResults.clarify = true;
+              }
             }
           });
-        }
+        }, 1000);
       });
 
     return {
@@ -1088,7 +1091,7 @@ class AIStore {
 
           if(lineCount > lastUpdateLineCount) {
             lastUpdateLineCount = lineCount;
-            this.UpdatePromptSearchResults({message: fullText});
+            this.UpdatePromptSearchResults({message: fullText + "\n"});
           }
         } catch (e) {
           // eslint-disable-next-line no-console

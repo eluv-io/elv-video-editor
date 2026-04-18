@@ -91,7 +91,13 @@ export const SearchIndexForm = observer(({options, setOptions}) => {
       }
       <div className={S("search-settings__form")}>
         <div className={S("search-settings__form-title")}>
-          Search Index
+          <span>Search Index</span>
+          <Checkbox
+            label="Use Cache"
+            labelPosition="left"
+            checked={options.cache}
+            onChange={() => setOptions({...options, cache: !options.cache})}
+          />
         </div>
 
         {

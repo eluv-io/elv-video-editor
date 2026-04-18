@@ -282,11 +282,11 @@ const Form = observer(({options, setOptions}) => {
   );
 });
 
-const defaultDisabledModels = ["euro_asr"];
+const defaultEnabledModels = ["shot"];
 const TaggingForm = observer(() => {
   let initialOptions = {options: {}};
   [...aiTaggingStore.segmentModels, ...aiTaggingStore.frameModels]
-    .forEach(key => initialOptions[key] = !defaultDisabledModels.includes(key));
+    .forEach(key => initialOptions[key] = defaultEnabledModels.includes(key));
   const [location, navigate] = useLocation();
   const [options, setOptions] = useState(initialOptions);
 

@@ -81,7 +81,7 @@ const Tag = observer(({tag, showThumbnails, videoDimensions, active, withSpeaker
         </div>
         <div className={S("tag__content")}>
           {
-            withSpeaker ?
+            withSpeaker && tag.tag.split(":").length > 1 ?
               <>
                 <span className={S("tag__speaker")}>
                   {tag.tag.split(":")[0].trim()}:

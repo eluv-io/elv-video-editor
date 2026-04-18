@@ -1,7 +1,7 @@
 import {flow, makeAutoObservable} from "mobx";
 import {HashString, Unproxy} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
-import {LoadVideo} from "@/stores/Helpers.js";
+import VideoStore from "@/stores/VideoStore.js";
 
 class TitleStore {
   DEFAULT_SEARCH_SETTINGS = {
@@ -88,7 +88,10 @@ class TitleStore {
           ]
         });
 
-        const videoDetails = yield LoadVideo({libraryId, objectId: titleId, versionHash});
+        const name = metadata?.asset_metadata?.display_title || metadata?.asset_metadata?.title || metadata?.name;
+        const videoStore = new VideoStore(this.rootStore, {tags: false, channel: false, thumbnails: true, id: `title-store-${name}`});
+        yield videoStore.SetVideo({objectId: titleId});
+
         const baseFrameUrl = yield this.client.Rep({
           versionHash,
           rep: "frame/default/video",
@@ -103,10 +106,11 @@ class TitleStore {
           objectId: titleId,
           versionHash,
           name: metadata?.name,
-          title: metadata?.asset_metadata?.display_title || metadata?.asset_metadata?.title || metadata?.name,
+          title: name,
           metadata: metadata?.asset_metadata || {},
-          videoDetails,
-          baseFrameUrl
+          videoStore: videoStore,
+          baseFrameUrl,
+          compositionVideoStores: {}
         };
 
         return this.titles[titleId];
