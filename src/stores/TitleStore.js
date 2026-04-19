@@ -191,9 +191,13 @@ class TitleStore {
 
                 return {
                   ...tag,
-                  tag: [`${action1} ${action2}`.trim(), player, team]
-                    .filter(item => item)
-                    .join(" - ").toUpperCase()
+                  tag:
+                    [
+                      `${[action1, action2].filter(a => a).join(" ").trim()}`,
+                      `${[player, team].filter(a => a).join(" - ").trim()}`
+                    ]
+                      .filter(item => item)
+                      .join(" - ").toUpperCase()
                 };
               } catch(error) {
                 this.Log(`Error parsing tag ${JSON.stringify(tag)}`, true);

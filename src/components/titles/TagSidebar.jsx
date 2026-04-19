@@ -90,7 +90,7 @@ const Tag = observer(({tag, showThumbnails, videoDimensions, active, withSpeaker
                   {tag.tag.split(":").slice(1).join(":").trim()}
                 </span>
               </> :
-              <span>{tag.tag.replace("UNDEFINED", "")}</span>
+              <span>{tag.tag}</span>
           }
         </div>
       </div>
