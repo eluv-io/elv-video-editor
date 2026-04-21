@@ -71,6 +71,8 @@ const Video = observer(({
     playoutUrl.searchParams.delete("authorization");
 
     if(vertical) {
+      // TODO: Remove
+      playoutUrl.hostname = "host-76-74-29-29.contentfabric.io";
       playoutUrl.searchParams.set("v", "1");
     }
 

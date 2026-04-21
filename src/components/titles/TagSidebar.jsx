@@ -1,7 +1,7 @@
 import SidebarStyles from "@/assets/stylesheets/modules/tag-sidebar.module.scss";
 
 import React, {useEffect, useState} from "react";
-import {titleStore} from "@/stores/index.js";
+import {rootStore, titleStore} from "@/stores/index.js";
 import {TextInput} from "@mantine/core";
 import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher, useIsVisible} from "@/utils/Utils.js";
@@ -315,6 +315,16 @@ export const TagSidebar = observer(({title, clipInfo}) => {
 
 export const VerticalVideoSidebar = observer(({title, clipInfo, Close}) => {
   const [loaded, setLoaded] = useState(false);
+
+  // TODO: Remove
+  useEffect(() => {
+    rootStore.client.SetNodes({
+      fabricURIs: ["https://host-76-74-29-29.contentfabric.io"]
+    });
+
+    return () => rootStore.client.ResetRegion();
+  }, []);
+
   return (
     <div className={S("sidebar", "sidebar--vertical-video")}>
       <div className={S("header")}>
