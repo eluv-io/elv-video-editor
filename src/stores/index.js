@@ -188,13 +188,6 @@ class RootStore {
 
     this.client = client;
 
-    // TODO: REMOVE
-    if(!(yield this.client.NetworkInfo()).name.includes("demo")) {
-      yield this.client.SetNodes({
-        fabricURIs: ["https://host-76-74-29-29.contentfabric.io"]
-      });
-    }
-
     yield this.aiStore.Initialize();
     yield this.aiTaggingStore.Initialize();
 
