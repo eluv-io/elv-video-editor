@@ -252,14 +252,17 @@ const ClipResultPanel = observer(({result}) => {
             }
           </div>
           <div className={S("result__actions--right")}>
-            <StyledButton
-              size="sm"
-              variant="subtle"
-              icon={TitleIcon}
-              to={UrlJoin("~/", "titles", result.objectId)}
-            >
-              View Title
-            </StyledButton>
+            {
+              !aiStore.IsTitle({objectId: result.objectId}) ? null :
+                <StyledButton
+                  size="sm"
+                  variant="subtle"
+                  icon={TitleIcon}
+                  to={UrlJoin("~/", "titles", result.objectId)}
+                >
+                  View Title
+                </StyledButton>
+            }
             {
               existingClip || !clipVideoStore ? null :
                 <IconButton

@@ -34,6 +34,7 @@ class AIStore {
 
   _authTokens = {};
 
+  titleIndex;
   titles = [];
 
   constructor(rootStore) {
@@ -50,6 +51,22 @@ class AIStore {
 
   get searchIndex() {
     return this.searchIndexes.find(index => index.id === this.selectedSearchIndexId);
+  }
+
+  get selectedTitleSearchIndexId() {
+    if(this.searchIndex?.title_index) {
+      return this.selectedSearchIndexId;
+    }
+
+    return this.searchIndexes.find(index => index.title_index)?.id;
+  }
+
+  get titleSearchIndex() {
+    return this.searchIndexes.find(index => index.id === this.selectedTitleSearchIndexId);
+  }
+
+  get collectionSearchIndex() {
+    return this.searchIndexes.find(index => index.id === this.selectedCollectionSearchIndexId);
   }
 
   get highlightsAvailable() {
@@ -100,11 +117,14 @@ class AIStore {
 
   SetSearchSettings(options) {
     const searchIndexId = options.searchIndexId || this.selectedSearchIndexId;
+    const searchCollectionIndexId = options.imageCollectionId || this.selectedCollectionSearchIndexId;
 
     delete options.key;
     delete options.searchIndexId;
+    delete options.imageCollectionId;
 
     this.SetSelectedSearchIndex(searchIndexId);
+    this.SetSelectedCollectionSearchIndex(searchCollectionIndexId);
 
     this.titles = [];
     this.searchSettings = {
@@ -492,11 +512,11 @@ class AIStore {
       metadataSubtree: "public/search",
       select: [
         "indexes",
-        "collection_indexes"
+        "image_collections"
       ]
     })) || {};
 
-    this.searchCollectionIndexes = (metadata?.collection_indexes || []);
+    this.searchCollectionIndexes = (metadata?.image_collections || []);
     this.selectedCollectionSearchIndexId = this.searchCollectionIndexes[0]?.id;
 
     let searchIndexes = (metadata.indexes || [])
@@ -544,8 +564,14 @@ class AIStore {
         this.searchIndexes[0]?.id
     );
 
+    const savedCollectionIndexId = localStorage.getItem(`search-collection-index-${this.rootStore.tenantContractId}`);
+    this.SetSelectedCollectionSearchIndex(
+      savedCollectionIndexId && this.searchCollectionIndexes?.find(index => index.id === savedCollectionIndexId) ?
+        savedCollectionIndexId :
+        this.searchCollectionIndexes[0]?.id
+    );
+
     this.rootStore.compositionStore.selectedSearchIndexId = this.selectedSearchIndexId;
-    this.rootStore.titleStore.selectedSearchIndexId = this.selectedSearchIndexId;
   });
 
   SetSelectedSearchIndex(id) {
@@ -553,6 +579,13 @@ class AIStore {
     this.searchResults = {};
     this.selectedSearchIndexId = id;
     localStorage.setItem(`search-index-${this.rootStore.tenantContractId}`, id);
+  }
+
+  SetSelectedCollectionSearchIndex(id) {
+    this.searchSettings = this.DEFAULT_SEARCH_SETTINGS;
+    this.searchResults = {};
+    this.selectedCollectionSearchIndexId = id;
+    localStorage.setItem(`search-collection-index-${this.rootStore.tenantContractId}`, id);
   }
 
   AddSearchIndex = flow(function * ({objectId, add=true}) {
@@ -607,10 +640,6 @@ class AIStore {
 
     if(this.rootStore.compositionStore.selectedSearchIndexId === objectId) {
       this.rootStore.compositionStore.SetSelectedSearchIndex(this.searchIndexes[0]?.id);
-    }
-
-    if(this.rootStore.titleStore.selectedSearchIndexId === objectId) {
-      this.rootStore.titleStore.SetSelectedSearchIndex(this.searchIndexes[0]?.id);
     }
   });
 
@@ -704,13 +733,18 @@ class AIStore {
   });
 
   GetTitles = flow(function * ({limit=10}) {
+    if(this.titleIndex !== this.selectedTitleSearchIndexId) {
+      this.titles = [];
+    }
+
+    this.titleIndex = this.selectedTitleSearchIndexId;
     const start = this.titles.length;
     const baseTitleImageUrl = yield this.client.FabricUrl({});
 
     this.titles = [
       ...this.titles,
       ...(yield Promise.all(
-        this.searchIndex.indexedTitles
+        this.titleSearchIndex.indexedTitles
           .sort((a, b) => a.name < b.name ? -1 : 1)
           .slice(start, start + limit)
           .map(async ({name, objectId}) => {
@@ -728,6 +762,12 @@ class AIStore {
       ))
     ];
   });
+
+  IsTitle({objectId}) {
+    return !!this.searchIndexes
+      .filter(index => index.title_index)
+      .find(index => index.indexedTitles.find(title => title.objectId === objectId));
+  }
 
   ClipSearch = flow(function * ({mode, query, start, limit}) {
     const type = this.searchIndex.type?.includes("assets") ? "image" : "video";

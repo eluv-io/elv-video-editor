@@ -469,7 +469,7 @@ const ModeSelectionMenu = observer(({mode, setMode, className=""}) => {
   );
 });
 
-export const AISearchBar = observer(({basePath="~/search", initialQuery="", initialMode, onObjectSelect, clipOnly=false, placeholder}) => {
+export const AISearchBar = observer(({basePath="~/search", initialQuery="", initialMode, onObjectSelect, clipOnly=false, placeholder, BeforeSubmit}) => {
   const lastMode = localStorage.getItem(`search-mode-${rootStore.tenantContractId}`);
   const [input, setInput] = useState(initialQuery);
   const [mode, setMode] = useState(clipOnly ? "clip" : lastMode || initialMode || "clip");
@@ -477,6 +477,8 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
   const [,navigate] = useLocation();
 
   const Submit = async (mode) => {
+    BeforeSubmit?.({mode, query: input});
+
     if(mode === "frame-image") {
       navigate(UrlJoin(basePath, rootStore.client.utils.B58("frame-image:")));
       return;
@@ -1560,7 +1562,7 @@ export const TaggingJobBrowser = observer(() => {
     <div className={S("browser-page")}>
       <div className={S("browser", "browser--tagging")}>
         <SearchBar
-          placeholder="Filter by Title"
+          placeholder="Filter by Title or Content ID"
           saveByLocation
           onSubmit={value => setFilter(value)}
         />

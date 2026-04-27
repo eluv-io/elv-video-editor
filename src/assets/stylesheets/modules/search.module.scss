@@ -165,7 +165,7 @@
     border-radius: 7px;
     max-height: 155px;
     overflow-y: auto;
-    padding: 10px 20px 20px;
+    padding: 10px 10px 20px;
     position: relative;
   }
 
@@ -374,6 +374,10 @@
     animation: var(--animation-fadein) 0.4s ease;
     height: 400px;
     overflow: hidden;
+
+    &--scrollable {
+      overflow-y: auto;
+    }
   }
 
   &__search {
@@ -412,7 +416,7 @@
     display: flex;
     font-weight: 800;
     justify-content: space-between;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
 
     label {
       color: var(--text-tertiary);
@@ -488,7 +492,7 @@
   }
 
   &__button {
-    margin: 10px 0 0 auto;
+    margin: 10px 0 30px;
     width: 200px;
   }
 }

@@ -67,12 +67,13 @@ export const SearchIndexForm = observer(({options, setOptions}) => {
     indexUpdateProgress = ((indexUpdateProgress || 0) + (aiStore.tagAggregationProgress || 0)) / 2;
   }
 
-  const SetSearchIndex = searchIndexId => {
+  const SetSearchIndex = ({searchIndexId, imageCollectionId}) => {
     setOptions({
       // Important - must reset fields if search index changes, as they might differ between indexes
       ...aiStore.DEFAULT_SEARCH_SETTINGS,
       minConfidence: options.minConfidence,
-      searchIndexId
+      searchIndexId: searchIndexId || options.searchIndexId,
+      imageCollectionId: imageCollectionId || options.imageCollectionId
     });
   };
 
@@ -82,14 +83,19 @@ export const SearchIndexForm = observer(({options, setOptions}) => {
         !showBrowser ? null :
           <SearchIndexBrowseModal
             Select={async ({objectId}) => {
-              await aiStore.AddSearchIndex({objectId});
-              SetSearchIndex(objectId);
+              if(showBrowser === "index") {
+                await aiStore.AddSearchIndex({objectId});
+                SetSearchIndex({searchIndexId: objectId});
+              } else {
+                //await aiStore.AddImageCollection({objectId});
+                SetSearchIndex({imageCollectionId: objectId});
+              }
               setShowBrowser(false);
             }}
             Cancel={() => setShowBrowser(false)}
           />
       }
-      <div className={S("search-settings__form")}>
+      <div className={S("search-settings__form", "search-settings__form--scrollable")}>
         <div className={S("search-settings__form-title")}>
           <span>Search Index</span>
           <Checkbox
@@ -106,7 +112,7 @@ export const SearchIndexForm = observer(({options, setOptions}) => {
               role="button"
               tabIndex={0}
               key={`index-${index.id}`}
-              onClick={() => SetSearchIndex(index.id)}
+              onClick={() => SetSearchIndex({searchIndexId: index.id})}
               className={S("index__option", options.searchIndexId === index.id ? "index__option--active" : "")}
             >
               <div className={S("index__text")}>
@@ -139,7 +145,7 @@ export const SearchIndexForm = observer(({options, setOptions}) => {
                             } catch(error) {
                               console.error(error);
                             } finally {
-                              SetSearchIndex(aiStore.searchIndexes[0].id);
+                              SetSearchIndex({searchIndexId: aiStore.searchIndexes[0].id});
                             }
                           }
                         });
@@ -185,12 +191,44 @@ export const SearchIndexForm = observer(({options, setOptions}) => {
           color="--color-border"
           textColor="--text-secondary"
           variant="secondary"
-          onClick={() => setShowBrowser(true)}
+          onClick={() => setShowBrowser("index")}
           size="sm"
           className={S("index__button")}
         >
           Add Search Index
         </StyledButton>
+
+        {
+          aiStore.searchCollectionIndexes.length === 0 ? null :
+            <>
+              <div className={S("search-settings__form-title")}>
+                Image Collections
+              </div>
+              {
+                aiStore.searchCollectionIndexes.map(index =>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    key={`index-${index.id}`}
+                    onClick={() => SetSearchIndex({imageCollectionId: index.id})}
+                    className={S("index__option", options.imageCollectionId === index.id ? "index__option--active" : "")}
+                  >
+                    <div className={S("index__text")}>
+                      <div className={S("index__option-name", "ellipsis")}>
+                        {index.name || index.id}
+                      </div>
+                      {
+                        !index.name ? null :
+                          <div className={S("index__option-id")}>
+                            <CopyableField value={index.id}/>
+                          </div>
+                      }
+                    </div>
+                  </div>
+                )
+              }
+            </>
+        }
       </div>
     </>
   );
@@ -346,6 +384,7 @@ const SearchSettings = observer(({store, singleObject, Close}) => {
   const [tab, setTab] = useState(singleObject ? "confidence" : "titles");
   const [options, setOptions] = useState({
     searchIndexId: store.selectedSearchIndexId,
+    imageCollectionId: store.selectedCollectionSearchIndexId,
     ...store.searchSettings
   });
 
@@ -446,7 +485,10 @@ const SearchSettings = observer(({store, singleObject, Close}) => {
           Cancel
         </Button>
         <Button
-          onClick={() => setOptions(aiStore.DEFAULT_SEARCH_SETTINGS)}
+          onClick={() => setOptions({
+            ...options,
+            ...aiStore.DEFAULT_SEARCH_SETTINGS
+          })}
           variant="outline"
           color="gray.5"
           w={150}

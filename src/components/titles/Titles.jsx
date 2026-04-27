@@ -49,6 +49,11 @@ const Titles = observer(() => {
       <div className={S("browser")}>
         <AISearchBar
           basePath="~/search"
+          BeforeSubmit={({mode}) => {
+            if(mode === "clip" && !aiStore.searchIndex?.title_index) {
+              aiStore.SetSelectedSearchIndex(aiStore.selectedTitleSearchIndexId);
+            }
+          }}
           onObjectSelect={({item, navigate}) =>
             item.objectId && navigate(UrlJoin("~/titles", item.objectId))
           }

@@ -1,17 +1,9 @@
 import {flow, makeAutoObservable} from "mobx";
-import {HashString, Unproxy} from "@/utils/Utils.js";
+import {Unproxy} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 import VideoStore from "@/stores/VideoStore.js";
 
 class TitleStore {
-  DEFAULT_SEARCH_SETTINGS = {
-    query: "",
-    genres: [],
-    yearMin: 0,
-    yearMax: 9999,
-    key: 0
-  };
-
   clipTypeKeys = [
     "full",
     "clips",
@@ -19,15 +11,8 @@ class TitleStore {
     "trailers"
   ];
 
-  selectedSearchIndexId;
   mediaTags = {};
-  searchSettings = this.DEFAULT_SEARCH_SETTINGS;
-  searchResults = {};
-  searchImageFrame;
-  searchImageFrameUrl;
-
   titles = {};
-
   player = undefined;
 
   constructor(rootStore) {
@@ -40,34 +25,8 @@ class TitleStore {
     return this.rootStore.client;
   }
 
-  get customSearchSettingsActive() {
-    return (
-      HashString(JSON.stringify({...this.searchSettings, key: 0})) !==
-      HashString(JSON.stringify({...this.rootStore?.aiStore?.DEFAULT_SEARCH_SETTINGS, key: 0}))
-    );
-  }
-
   SetPlayer(player) {
     this.player = player;
-  }
-
-  SetSelectedSearchIndex(id) {
-    this.searchSettings = this.rootStore.aiStore.DEFAULT_SEARCH_SETTINGS;
-    this.selectedSearchIndexId = id;
-  }
-
-  SetSearchSettings(options) {
-    const searchIndexId = options.searchIndexId || this.selectedSearchIndexId;
-
-    delete options.key;
-    delete options.searchIndexId;
-
-    this.SetSelectedSearchIndex(searchIndexId);
-
-    this.searchSettings = {
-      ...options,
-      key: HashString(JSON.stringify(options))
-    };
   }
 
   LoadTitle = flow(function * ({titleId}) {

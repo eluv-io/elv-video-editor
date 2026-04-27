@@ -44,14 +44,14 @@ const Nav = observer(() => {
           });
         }
       },
-    {
-      label: "Titles",
-      key: "titles",
-      // TODO: Preserve search
-      to: "/titles",
-      icon: TitlesIcon,
-      active: !rootStore.page || rootStore.page === "titles"
-    },
+    !aiStore.selectedTitleSearchIndexId ? undefined :
+      {
+        label: "Titles",
+        key: "titles",
+        to: "/titles",
+        icon: TitlesIcon,
+        active: !rootStore.page || rootStore.page === "titles"
+      },
     {
       label: "Search",
       key: "search",
