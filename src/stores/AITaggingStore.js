@@ -1,5 +1,6 @@
 import {flow, makeAutoObservable} from "mobx";
 import UrlJoin from "url-join";
+import {aiTaggingStore} from "@/stores/index.js";
 
 // Statuses: ("queued", "running", "cancelled", "failed", "succeeded")
 
@@ -14,6 +15,41 @@ class AITaggingStore {
   processorModels = [];
 
   audioTracks = {};
+
+  /*
+  Speaker recognition - needs STT
+Chapters - requires STT
+Evidence - requires STT, GIT, LLava, Shot
+Character - requires Celeb
+Focus and Pose - requires Shot
+
+   */
+  modelDependencyMap = {
+    "speaker": [
+      "asr"
+    ],
+    "chapters": [
+      "asr"
+    ],
+    "evidence": [
+      "asr",
+      "llava",
+      "git", // ??
+      "shot"
+    ],
+    "character": [
+      "celeb"
+    ],
+    "focus": [
+      "shot"
+    ],
+    "vertical_video": [
+      "shot"
+    ],
+    "pose": [
+      "shot"
+    ]
+  };
 
   constructor(rootStore) {
     this.rootStore = rootStore;
@@ -216,8 +252,13 @@ class AITaggingStore {
   });
 
   SubmitTaggingJob = flow(function * ({objectId, options}) {
+    const dependentModels = Object.keys(options)
+      .filter(key => key !== "options" && options[key])
+      .map(key => aiTaggingStore.modelDependencyMap[key] || [])
+      .flat();
+
     const params = [...this.segmentModels, ...this.frameModels, ...this.processorModels]
-      .filter(key => options[key])
+      .filter(key => options[key] || dependentModels.includes(key))
       .map(key => {
         let result = { model: key };
 

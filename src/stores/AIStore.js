@@ -1000,7 +1000,7 @@ class AIStore {
         yield fetch(
           UrlJoin(exchangeBaseUrl, "ml", "token_exchange", tenantId, "agent"),
           {
-            method: "GET",
+            method: "POST",
             headers: {
               "Accept": "application/json",
               "Content-Type": "application/json",

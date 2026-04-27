@@ -15,9 +15,14 @@ import BackIcon from "@/assets/icons/v2/back.svg";
 const S = CreateModuleClassMatcher(BrowserStyles, TaggingStyles);
 
 const Summary = observer(({options}) => {
-  const anySegmentModels = aiTaggingStore.segmentModels.find(key => options[key]);
-  const anyFrameModels = aiTaggingStore.frameModels.find(key => options[key]);
-  const anyProcessors = aiTaggingStore.processorModels.find(key => options[key]);
+  const dependentModels = Object.keys(options)
+    .filter(key => key !== "options" && options[key])
+    .map(key => aiTaggingStore.modelDependencyMap[key] || [])
+    .flat();
+
+  const anySegmentModels = aiTaggingStore.segmentModels.find(key => options[key] || dependentModels.includes(key));
+  const anyFrameModels = aiTaggingStore.frameModels.find(key => options[key] || dependentModels.includes(key));
+  const anyProcessors = aiTaggingStore.processorModels.find(key => options[key] || dependentModels.includes(key));
 
   return (
     <div className={S("form")}>
@@ -36,7 +41,7 @@ const Summary = observer(({options}) => {
             }
             {
               aiTaggingStore.segmentModels.map(model =>
-                !options[model] ? null :
+                !options[model] && !dependentModels.includes(model) ? null :
                   <>
                     <div key={model} className={S("summary-item")}>
                       {aiTaggingStore.modelNames[model]}
@@ -64,7 +69,7 @@ const Summary = observer(({options}) => {
             }
             {
               aiTaggingStore.frameModels.map(model =>
-                !options[model] ? null :
+                !options[model] && !dependentModels.includes(model) ? null :
                   <>
                     <div key={model} className={S("summary-item")}>
                       {aiTaggingStore.modelNames[model]}
@@ -95,7 +100,7 @@ const Summary = observer(({options}) => {
                 }
                 {
                   aiTaggingStore.processorModels.map(model =>
-                    !options[model] ? null :
+                    !options[model] && !dependentModels.includes(model) ? null :
                       <div key={model} className={S("summary-item")}>{aiTaggingStore.modelNames[model]}</div>
                   )
                 }
@@ -123,6 +128,11 @@ const Form = observer(({options, setOptions}) => {
       }
     );
   }, [aiTaggingStore.selectedContent]);
+
+  const dependentModels = Object.keys(options)
+    .filter(key => key !== "options" && options[key])
+    .map(key => aiTaggingStore.modelDependencyMap[key] || [])
+    .flat();
 
   return (
     <div className={S("form")}>
@@ -155,10 +165,11 @@ const Form = observer(({options, setOptions}) => {
                     key={`option-${model}`}
                     label={aiTaggingStore.modelNames[model]}
                     checked={options[model]}
+                    indeterminate={!options[model] && dependentModels.includes(model)}
                     onChange={event => onChange(model, event.currentTarget.checked)}
                   />
                   {
-                    !options[model] ||
+                    !(options[model] || dependentModels.includes(model)) ||
                     !["asr", "euro_asr"].includes(model) ||
                     aiTaggingStore.selectedContentCommonAudioTracks.length === 0 ? null :
                       <Select
@@ -213,6 +224,7 @@ const Form = observer(({options, setOptions}) => {
                   <Checkbox
                     key={`option-${model}`}
                     label={aiTaggingStore.modelNames[model]}
+                    indeterminate={!options[model] && dependentModels.includes(model)}
                     checked={options[model]}
                     disabled={model === "landmark"}
                     onChange={event => onChange(model, event.currentTarget.checked)}
@@ -268,6 +280,7 @@ const Form = observer(({options, setOptions}) => {
                     <Checkbox
                       key={`option-${model}`}
                       label={aiTaggingStore.modelNames[model]}
+                      indeterminate={!options[model] && dependentModels.includes(model)}
                       checked={options[model]}
                       disabled={model === "shot"}
                       onChange={event => onChange(model, event.currentTarget.checked)}
