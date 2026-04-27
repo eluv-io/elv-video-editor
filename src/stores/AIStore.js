@@ -15,6 +15,8 @@ class AIStore {
   tagAggregationProgress = 0;
   highlightProfiles;
   defaultHighlightProfileKey;
+  mcpExchangeSentinelId;
+  mcpAuthToken;
 
   DEFAULT_SEARCH_SETTINGS = {
     objectIds: [],
@@ -136,6 +138,7 @@ class AIStore {
   // Load search indexes and highlight profiles
   Initialize = flow(function * () {
     yield this.LoadSearchIndexes();
+    yield this.LoadMCPExchangeSentinel();
     this.LoadHighlightProfiles();
   });
 
@@ -983,23 +986,30 @@ class AIStore {
 
   PromptSearch = flow(function * ({prompt}) {
     const baseUrl = "https://ai-03.contentfabric.io/";
+    const exchangeBaseUrl = "https://ai.contentfabric.io/";
 
-    const authorizationToken = (yield (
-      yield fetch(
-        UrlJoin(baseUrl, "api", "auth", "login"),
-        {
-          method: "POST",
-          body: JSON.stringify({
-            email: EluvioConfiguration["ai-em"],
-            password: EluvioConfiguration["ai-p"]
-          }),
-          headers: {
-            "Accept": "application/json",
-            "Content-Type": "application/json"
-          },
-        }
-      )
-    ).json()).token;
+    if(!this.mcpAuthToken) {
+      const channelToken = new URL(yield this.client.FabricUrl({
+        versionHash: yield this.client.LatestVersionHash({objectId: this.mcpExchangeSentinelId}),
+        channelAuth: true
+      })).searchParams.get("authorization");
+
+      const tenantId = yield this.client.ContentObjectTenantId({objectId: this.mcpExchangeSentinelId});
+
+      this.mcpAuthToken = (yield (
+        yield fetch(
+          UrlJoin(exchangeBaseUrl, "ml", "token_exchange", tenantId, "agent"),
+          {
+            method: "GET",
+            headers: {
+              "Accept": "application/json",
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${channelToken}`
+            },
+          }
+        )
+      ).json()).token;
+    }
 
     const response = yield (
       yield fetch(
@@ -1018,7 +1028,7 @@ class AIStore {
             isTemporary: true
           }),
           headers: {
-            "Authorization": `Bearer ${authorizationToken}`,
+            "Authorization": `Bearer ${this.mcpAuthToken}`,
             "Accept": "application/json",
             "Content-Type": "application/json"
           }
@@ -1033,7 +1043,7 @@ class AIStore {
       {
         method: "GET",
         headers: {
-          "Authorization": `Bearer ${authorizationToken}`,
+          "Authorization": `Bearer ${this.mcpAuthToken}`,
           "Accept": "application/json",
           "Content-Type": "application/json"
         }
@@ -1447,6 +1457,14 @@ class AIStore {
       libraryId: yield this.client.ContentObjectLibraryId({objectId: GLOBAL_PROFILE_OBJECT_ID}),
       objectId: GLOBAL_PROFILE_OBJECT_ID,
       metadataSubtree: "public/track_metadata/pose/point_connections"
+    });
+  });
+
+  LoadMCPExchangeSentinel = flow(function * () {
+    this.mcpExchangeSentinelId = yield this.client.ContentObjectMetadata({
+      libraryId: yield this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId}),
+      objectId: this.rootStore.tenantInfoObjectId,
+      metadataSubtree: "public/exchange_sentinels/agent",
     });
   });
 
