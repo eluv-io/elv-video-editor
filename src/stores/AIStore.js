@@ -35,6 +35,7 @@ class AIStore {
   searchImageFrameUrl;
 
   _authTokens = {};
+  verticalVideoProcessingStatus = {};
 
   titleIndex;
   titles = [];
@@ -1585,6 +1586,224 @@ class AIStore {
     yield this.LoadHighlightProfiles();
 
     return this.highlightProfileInfo[profile.type][profile.subtype][0]?.key;
+  });
+
+  AwaitVerticalVideoJobs = flow(function * ({objectId, model}) {
+    console.info(`Checking for ${model} jobs`);
+    let progress = 0;
+    while(progress < 100) {
+      const activeJobs = (yield Promise.all(
+        ["running", "queued"].map(async status => {
+          try {
+            return (await this.rootStore.aiTaggingStore.ListTaggingJobs({
+              objectId,
+              model,
+              status
+            })).jobs;
+          } catch(error) {
+            if(error.status === 404) {
+              return [];
+            }
+
+            throw error;
+          }
+        })
+      ))
+        .flat();
+
+      if(activeJobs.length === 0) {
+        progress = 100;
+      } else {
+        progress = 100;
+        activeJobs.forEach(job => progress = Math.min(progress, (job.progress || 0) * 100));
+        this.verticalVideoProcessingStatus[objectId][`${model}_progress`] = progress;
+      }
+
+      yield new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  });
+
+  RetrieveVerticalVideoTags = flow(function * ({objectId, model}) {
+    yield this.AwaitVerticalVideoJobs({objectId, model});
+
+    const trackKey = this.rootStore.aiTaggingStore.modelToTrackKeyMapping[model];
+
+    let tags = (yield this.rootStore.aiStore.QueryAIAPI({
+      objectId,
+      path: UrlJoin("/tagstore", objectId, "tags"),
+      channelAuth: true,
+      queryParams: {
+        limit: 1000000,
+        has_frame_info: model === "vertical_video",
+        track: trackKey
+      },
+      format: "JSON"
+    }))?.tags || [];
+
+    if(tags.length === 0) {
+      // No tags, must submit and wait for vertical video job
+      console.info(`No ${model} tags present, starting job`);
+      yield this.rootStore.aiTaggingStore.SubmitTaggingJob({
+        objectId,
+        options: { [model]: true }
+      });
+
+      yield new Promise(resolve => setTimeout(resolve, 5000));
+
+      yield this.AwaitVerticalVideoJobs({objectId, model});
+
+      // Re-query tags
+      tags = (yield this.rootStore.aiStore.QueryAIAPI({
+        objectId,
+        path: UrlJoin("/tagstore", objectId, "tags"),
+        channelAuth: true,
+        queryParams: {
+          limit: 1000000,
+          has_frame_info: model === "vertical_video",
+          track: trackKey
+        },
+        format: "JSON"
+      }))?.tags || [];
+
+      if(tags.length === 0) {
+        throw Error("Failed to generate tags");
+      }
+    }
+
+    this.verticalVideoProcessingStatus[objectId][`${model}_progress`] = 100;
+
+    return tags;
+  });
+
+  ProcessVerticalVideo = flow(function * ({objectId, force=false}) {
+    try {
+      this.verticalVideoProcessingStatus[objectId] = {
+        shot_progress: 0,
+        vertical_video_progress: 0,
+      };
+
+      // Check for existing vertical.bin
+      const hasVertical = !!(
+        yield this.client.ContentObjectMetadata({
+          versionHash: yield this.client.LatestVersionHash({objectId}),
+          metadataSubtree: "/files/vertical.bin"
+        })
+      );
+
+      if(hasVertical && !force) {
+        console.info("Content already has vertical.bin");
+        return;
+      }
+
+      // Retrieve tags, generating if necessary
+      const shotTags = yield this.RetrieveVerticalVideoTags({objectId, model: "shot"});
+      let verticalVideoTags = yield this.RetrieveVerticalVideoTags({objectId, model: "vertical_video"});
+
+      if(shotTags.length !== verticalVideoTags.length) {
+        throw Error(`Mismatch between shot / vertical video tag count: Shot ${shotTags.length} Vertical ${verticalVideoTags.length}`);
+      }
+
+      console.info("Processing tags");
+
+      // 1. Sort the tags by frame_idx to ensure chronological processing
+      verticalVideoTags = verticalVideoTags.sort((a, b) => {
+        return (a.frame_info?.frame_idx || 0) - (b.frame_info?.frame_idx || 0);
+      });
+
+      const xValues = [];
+      let expectedNextFrame = verticalVideoTags.length > 0 ? verticalVideoTags[0].frame_info.frame_idx : 0;
+
+      let breaks = 0;
+      // 2. Iterate and validate
+      verticalVideoTags.forEach(tag => {
+        const currentFrameIdx = tag.frame_info?.frame_idx ?? 0;
+        const coords = tag.additional_info?.["x-coordinates"] || [];
+
+        // Emit warning if there is a gap or overlap in frame indices
+        if(currentFrameIdx !== expectedNextFrame) {
+          breaks += 1;
+          if(breaks < 4) {
+            console.info(
+              `[Warning] Continuity break at Tag ID: ${tag.id}. ` +
+              `Expected frame_idx ${expectedNextFrame}, but found ${currentFrameIdx}.`
+            );
+          }
+        }
+
+        // Add coordinates to our list
+        coords.forEach(x => {
+          // Fixed point with 4 decimal places
+          xValues.push(Math.round(x * 10000));
+        });
+
+        // Calculate what the next frame_idx should be
+        // (Current index + number of samples provided in this tag)
+        expectedNextFrame = currentFrameIdx + coords.length;
+      });
+
+      // 3. Pack into Buffer as 4-byte Little Endian integers
+      const buffer = Buffer.alloc(xValues.length * 4);
+      xValues.forEach((value, i) => {
+        buffer.writeInt32LE(value, i * 4);
+      });
+
+      if(breaks > 0) {
+        throw Error(`There were ${breaks} breaks in continuity. Err`);
+      }
+
+      const libraryId = yield this.client.ContentObjectLibraryId({objectId});
+      const editResponse = yield this.client.EditContentObject({
+        libraryId,
+        objectId
+      });
+
+      yield this.client.UploadFiles({
+        libraryId,
+        objectId,
+        writeToken: editResponse.write_token,
+        fileInfo: [
+          {
+            path: "vertical.bin",
+            mime_type: "application/octet-stream",
+            size: buffer.length,
+            data: buffer,
+          },
+        ],
+      });
+
+      const defaultOfferings = Object.keys(
+        (yield this.client.ContentObjectMetadata({
+          libraryId,
+          objectId,
+          metadataSubtree: "offerings",
+          select: [
+            "*/ready",
+            "*/media_struct/duration_rat"
+          ]
+        }) || {})
+      ).filter(key => key.includes("default"));
+
+      for(const offering of defaultOfferings) {
+        yield this.client.ReplaceMetadata({
+          libraryId,
+          objectId,
+          writeToken: editResponse.write_token,
+          metadataSubtree: UrlJoin("/offerings", offering, "verticalize", "data"),
+          metadata: {
+            "/": "./files/vertical.bin"
+          }
+        });
+      }
+
+      yield this.client.FinalizeContentObject({
+        libraryId,
+        objectId,
+        writeToken: editResponse.write_token,
+        commitMessage: "EVIE: Upload vertical video information file"
+      });
+    } finally {
+      delete this.verticalVideoProcessingStatus[objectId];
+    }
   });
 }
 

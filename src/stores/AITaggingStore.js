@@ -10,6 +10,7 @@ class AITaggingStore {
 
   modelNames = {};
   trackKeyToModelMapping = {};
+  modelToTrackKeyMapping = {};
   segmentModels = [];
   frameModels = [];
   processorModels = [];
@@ -122,6 +123,7 @@ Focus and Pose - requires Shot
 
       for(const track of model.tag_tracks || []) {
         this.trackKeyToModelMapping[track.name] = model.name;
+        this.modelToTrackKeyMapping[model.name] = track.name;
       }
     }
   });
@@ -173,8 +175,7 @@ Focus and Pose - requires Shot
     return this.audioTracks[objectId];
   });
 
-  ListTaggingJobs = flow(function * ({start=0, limit=10, status, model, filter=""}={}) {
-    let objectId = "";
+  ListTaggingJobs = flow(function * ({start=0, limit=10, status, model, objectId="", filter=""}={}) {
     if(filter.startsWith("iq__")) {
       objectId = filter;
       filter = "";
