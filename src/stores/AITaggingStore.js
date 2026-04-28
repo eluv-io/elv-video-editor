@@ -278,7 +278,7 @@ Focus and Pose - requires Shot
         }
 
         const groundTruthPool = options?.options?.[key]?.groundTruthPool;
-        if(groundTruthPool) {
+        if(groundTruthPool && groundTruthPool !== "default") {
           result.model_params = {
             ground_truth: groundTruthPool
           };

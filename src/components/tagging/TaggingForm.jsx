@@ -262,7 +262,8 @@ const Form = observer(({options, setOptions}) => {
                               value: pool.objectId,
                               label: pool.name
                             }))
-                            .sort((a, b) => a.name < b.name ? 1 : -1)
+                            .sort((a, b) => a.name < b.name ? 1 : -1),
+                          { label: "Default Large Pool", value: "default" },
                         ]}
                       />
                   }
