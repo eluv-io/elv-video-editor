@@ -73,7 +73,7 @@ const ActiveItem = observer(() => {
             { rootStore.selectedObjectId }
           </CopyableField>
           <StyledButton
-            size="sm"
+            size="md"
             className={S("active-menu__button")}
             onClick={() => {
               setShow(false);
