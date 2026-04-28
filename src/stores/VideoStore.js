@@ -500,7 +500,7 @@ class VideoStore {
       clipTags = FormatTags({
         tagData: [{
           linkKey: "clips",
-          tags: videoObject.metadata?.clips
+          tags: this.videoObject.metadata?.clips
         }]
       });
     }

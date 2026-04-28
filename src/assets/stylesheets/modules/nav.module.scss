@@ -43,3 +43,32 @@
     font-size: 11px;
   }
 }
+
+.active-menu {
+  padding: 0 10px 10px;
+
+  &__container {
+    background: var(--background-modal);
+    border: 0;
+    box-shadow: 0 5px 5px rgb(0 0 0 / 50%);
+  }
+
+  &__title {
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  &__name {
+    font-weight: 800;
+  }
+
+  &__id {
+    color: var(--text-tertiary);
+    font-size: 12px;
+  }
+
+  &__button {
+     margin-top: 10px;
+  }
+}

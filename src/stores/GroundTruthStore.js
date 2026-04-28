@@ -51,10 +51,11 @@ class GroundTruthStore {
 
         let pools = {};
         yield Promise.all(
-          (poolInfo?.pools || []).map(async poolId => {
+          (poolInfo?.pools || []).map(async (poolId, index) => {
             try {
               pools[poolId] = {
                 ...(this.pools[poolId] || {}),
+                order: index,
                 objectId: poolId,
                 name: (await this.client.ContentObjectMetadata({
                   libraryId: await this.client.ContentObjectLibraryId({objectId: poolId}),

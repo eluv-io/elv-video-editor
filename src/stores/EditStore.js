@@ -220,8 +220,6 @@ class EditStore {
 
     // Remove unnecessary delete of new tags and convert modification of ML tag to delete + create user tag
     return formattedActions
-      // Deletion of newly created tag is not necessary
-      .filter(action => !(action.action === "delete" && !action.modifiedItem.o))
       .flat()
       .filter(a => a)
       // Sort modifications by highest index first so deletes will not interfere with indices of other actions

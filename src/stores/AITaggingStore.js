@@ -19,7 +19,7 @@ class AITaggingStore {
   /*
   Speaker recognition - needs STT
 Chapters - requires STT
-Evidence - requires STT, GIT, LLava, Shot
+Evidence - requires STT, GIT, LLava, Shot, Speaker
 Character - requires Celeb
 Focus and Pose - requires Shot
 
@@ -35,7 +35,8 @@ Focus and Pose - requires Shot
       "asr",
       "llava",
       "git", // ??
-      "shot"
+      "shot",
+      "speaker"
     ],
     "character": [
       "celeb"

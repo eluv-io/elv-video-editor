@@ -374,7 +374,7 @@ class BrowserStore {
         pool.name.toLowerCase().includes(filter.toLowerCase()) ||
         pool.objectId.toLowerCase().includes(filter.toLowerCase())
       )
-      .sort((a, b) => a?.name?.localeCompare(b?.name));
+      .sort((a, b) => a.order < b.order ? -1 : 1);
     const total = pools.length;
 
     return {

@@ -124,7 +124,12 @@ const Form = observer(({options, setOptions}) => {
       "options",
       {
         asr: { stream: options.options?.asr?.stream || "" },
-        euro_asr: { stream: options.options?.euro_asr?.stream || "" }
+        euro_asr: { stream: options.options?.euro_asr?.stream || "" },
+        celeb: {
+          groundTruthPool: Object.keys(groundTruthStore.pools).find(key =>
+            groundTruthStore.pools[key].order === 0
+          )
+        }
       }
     );
   }, [aiTaggingStore.selectedContent]);
@@ -251,7 +256,6 @@ const Form = observer(({options, setOptions}) => {
                           }
                         )}
                         data={[
-                          { label: "Ground Truth Pool: Default", value: "" },
                           ...Object.values(groundTruthStore.pools)
                             .map(pool => ({
                               value: pool.objectId,
