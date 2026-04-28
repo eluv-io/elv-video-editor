@@ -45,7 +45,8 @@ export const LoadVideo = async ({
         "video_tags",
         "mime_types",
         "assets",
-        "live_recording_info"
+        "live_recording_info",
+        "files/vertical.bin"
       ]
     })) || { public: {}};
 
@@ -60,7 +61,8 @@ export const LoadVideo = async ({
       isVideo: !!metadata.offerings || !!metadata.channel,
       isChannel: !!metadata.channel,
       isLiveToVod: !!metadata.live_recording_info,
-      liveStreamInfo: metadata.live_recording_info
+      liveStreamInfo: metadata.live_recording_info,
+      hasVertical: !!metadata.files?.["vertical.bin"]
     };
 
     if(videoObject.isVideo) {

@@ -115,6 +115,11 @@ const Summary = observer(({options}) => {
 const Form = observer(({options, setOptions}) => {
   const onChange = (key, value) => setOptions({...options, [key]: value});
 
+  const dependentModels = Object.keys(options)
+    .filter(key => key !== "options" && options[key])
+    .map(key => aiTaggingStore.modelDependencyMap[key] || [])
+    .flat();
+
   useEffect(() => {
     groundTruthStore.LoadGroundTruthPools();
   }, []);
@@ -126,18 +131,14 @@ const Form = observer(({options, setOptions}) => {
         asr: { stream: options.options?.asr?.stream || "" },
         euro_asr: { stream: options.options?.euro_asr?.stream || "" },
         celeb: {
-          groundTruthPool: Object.keys(groundTruthStore.pools).find(key =>
-            groundTruthStore.pools[key].order === 0
-          )
+          groundTruthPool: options.options?.celeb?.groundTruthPool ||
+            Object.keys(groundTruthStore.pools).find(key =>
+              groundTruthStore.pools[key].order === 0
+            )
         }
       }
     );
-  }, [aiTaggingStore.selectedContent]);
-
-  const dependentModels = Object.keys(options)
-    .filter(key => key !== "options" && options[key])
-    .map(key => aiTaggingStore.modelDependencyMap[key] || [])
-    .flat();
+  }, [aiTaggingStore.selectedContent, options.celeb, dependentModels]);
 
   return (
     <div className={S("form")}>
