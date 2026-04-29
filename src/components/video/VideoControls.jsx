@@ -224,10 +224,15 @@ export const ShowVerticalButton = observer(({store}) => {
             title: "Generate Vertical Video",
             text: "This video is not yet configured for vertical display. Would you like to set it up?",
             onConfirm: async () => {
-              await aiStore.ProcessVerticalVideo({objectId: store.videoObject.objectId});
-              await store.Reload();
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              store.ToggleShowVertical(!store.showVertical);
+              const objectId = store.videoObject.objectId;
+              await aiStore.ProcessVerticalVideo({objectId});
+
+              if(store.videoObject.objectId === objectId) {
+                // Only refresh if the same object is still being shown
+                await store.Reload();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                store.ToggleShowVertical(!store.showVertical);
+              }
             }
           });
         }
