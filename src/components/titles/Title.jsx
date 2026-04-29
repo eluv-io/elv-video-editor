@@ -1,9 +1,9 @@
 import TitleStyles from "@/assets/stylesheets/modules/titles.module.scss";
 
 import {observer} from "mobx-react-lite";
-import {useParams} from "wouter";
+import {useLocation, useParams} from "wouter";
 import React, {useEffect, useState} from "react";
-import {titleStore} from "@/stores/index.js";
+import {rootStore, titleStore} from "@/stores/index.js";
 import {
   CopyableField,
   CopyButton,
@@ -20,6 +20,7 @@ import {Select, TextInput, Tooltip} from "@mantine/core";
 import BackIcon from "@/assets/icons/v2/back.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import GenerateIcon from "@/assets/icons/rotate-ccw.svg";
+import SearchArrowIcon from "@/assets/icons/v2/search-arrow.svg";
 
 const S = CreateModuleClassMatcher(TitleStyles);
 
@@ -142,6 +143,8 @@ const Clip = observer(({title, clipInfo, clipType}) => {
 });
 
 const Clips = observer(({title}) => {
+  const [,navigate] = useLocation();
+  const [promptInput, setPromptInput] = useState("");
   const availableClipTypes = [...Object.keys(title.metadata.ai_derived_media || {}).sort(), "full"]
     .filter(key => titleStore.clipTypeKeys.includes(key));
   const initialClipType = sessionStorage.getItem("last-clip-type") || availableClipTypes[0];
@@ -156,6 +159,11 @@ const Clips = observer(({title}) => {
   const clips = clipType === "full" ? [{type: "full", slug: "full", name: title.title}] :
     Object.keys(title.metadata.ai_derived_media[clipType])
       .map(clipSlug => ({...title.metadata.ai_derived_media[clipType][clipSlug], slug: clipSlug}));
+
+  const PromptSearch = () => {
+    let prompt = `${promptInput}. Only return results from ${title.title}`;
+    promptInput && navigate(UrlJoin("~/search", rootStore.client.utils.B58(`prompt:${prompt}`)));
+  };
 
   return (
     <div className={S("clips")}>
@@ -178,8 +186,16 @@ const Clips = observer(({title}) => {
         <div className={S("right")}>
           <TextInput
             leftSection={<Icon icon={AIIcon}/>}
+            rightSection={<IconButton onClick={PromptSearch} icon={SearchArrowIcon}/>}
             placeholder="Prompt to suggest content"
             w={400}
+            value={promptInput}
+            onChange={event => setPromptInput(event.target.value)}
+            onKeyDown={event => {
+              if(event.key === "Enter") {
+                PromptSearch();
+              }
+            }}
             classNames={{
               input: S("ai-text-input__input")
             }}

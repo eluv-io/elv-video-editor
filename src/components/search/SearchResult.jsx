@@ -264,7 +264,7 @@ const ClipResultPanel = observer(({result}) => {
                 </StyledButton>
             }
             {
-              existingClip || !clipVideoStore ? null :
+              result.type !== "video" || existingClip || !clipVideoStore ? null :
                 <IconButton
                   label="Add to My Clips"
                   className={S("result__action")}
@@ -276,7 +276,16 @@ const ClipResultPanel = observer(({result}) => {
               label="Open in Tag View"
               className={S("result__action")}
               icon={PinIcon}
-              to={UrlJoin("~/", result.objectId, "tags", `?st=${result.startTime}&et=${result.endTime}&isolate=`)}
+              to={
+                UrlJoin(
+                  "~/",
+                  result.objectId,
+                  "tags",
+                  result.type === "frame" ?
+                    `?it=${result.imageTime}&isolate=` :
+                    `?st=${result.startTime}&et=${result.endTime}&isolate=`
+                )
+              }
             />
             <IconButton
               label="Share"

@@ -40,6 +40,7 @@ export const LoadVideo = async ({
         "offerings/*/media_struct/streams/*/tags/timecode",
         "offerings/*/playout/streams/*/representations",
         "offerings/*/playout/playout_formats",
+        "offerings/*/verticalize",
         "channel",
         "clips",
         "video_tags",
@@ -62,7 +63,6 @@ export const LoadVideo = async ({
       isChannel: !!metadata.channel,
       isLiveToVod: !!metadata.live_recording_info,
       liveStreamInfo: metadata.live_recording_info,
-      hasVertical: !!metadata.files?.["vertical.bin"]
     };
 
     if(videoObject.isVideo) {
@@ -166,6 +166,7 @@ export const LoadVideo = async ({
       if(!hasHlsOfferings) { throw Error("No offerings with HLS Clear or AES-128 playout found."); }
 
       videoObject.offeringKey = offeringKey;
+      videoObject.hasVertical = metadata.offerings?.[offeringKey]?.verticalize?.data;
 
       // Determine duration and framerate
       videoObject.streamKey = Object.keys(metadata.offerings[videoObject.offeringKey].media_struct.streams)

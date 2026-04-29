@@ -1675,18 +1675,31 @@ class AIStore {
     return tags;
   });
 
-  ProcessVerticalVideo = flow(function * ({objectId, force=false}) {
+  ProcessVerticalVideo = flow(function * ({objectId, offering="default", force=false}) {
     try {
       this.verticalVideoProcessingStatus[objectId] = {
         shot_progress: 0,
         vertical_video_progress: 0,
       };
 
-      // Check for existing vertical.bin
+      const libraryId = yield this.client.ContentObjectLibraryId({objectId});
+      const defaultOfferings = Object.keys(
+        (yield this.client.ContentObjectMetadata({
+          libraryId,
+          objectId,
+          metadataSubtree: "offerings",
+          select: [
+            "*/ready",
+            "*/media_struct/duration_rat"
+          ]
+        }) || {})
+      ).filter(key => key.includes("default"));
+
       const hasVertical = !!(
         yield this.client.ContentObjectMetadata({
-          versionHash: yield this.client.LatestVersionHash({objectId}),
-          metadataSubtree: "/files/vertical.bin"
+          libraryId,
+          objectId,
+          metadataSubtree: UrlJoin("/offerings", offering, "verticalize", "data")
         })
       );
 
@@ -1751,7 +1764,6 @@ class AIStore {
         throw Error(`There were ${breaks} breaks in continuity. Err`);
       }
 
-      const libraryId = yield this.client.ContentObjectLibraryId({objectId});
       const editResponse = yield this.client.EditContentObject({
         libraryId,
         objectId
@@ -1770,18 +1782,6 @@ class AIStore {
           },
         ],
       });
-
-      const defaultOfferings = Object.keys(
-        (yield this.client.ContentObjectMetadata({
-          libraryId,
-          objectId,
-          metadataSubtree: "offerings",
-          select: [
-            "*/ready",
-            "*/media_struct/duration_rat"
-          ]
-        }) || {})
-      ).filter(key => key.includes("default"));
 
       for(const offering of defaultOfferings) {
         yield this.client.ReplaceMetadata({

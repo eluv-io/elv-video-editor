@@ -197,19 +197,19 @@ const TitleClip = observer(() => {
                 >
                   Open
                 </StyledButton>
-                <StyledButton
-                  variant="rounded"
-                  color="--text-secondary"
-                  textColor="black"
-                  size="md"
-                  icon={VerticalIcon}
-                  onClick={() => setShowVertical(true)}
-                >
-                  Make Vertical
-                </StyledButton>
                 {
                   clipInfo.playout?.type === "composition" ? null :
                     <>
+                      <StyledButton
+                        variant="rounded"
+                        color="--text-secondary"
+                        textColor="black"
+                        size="md"
+                        icon={VerticalIcon}
+                        onClick={() => setShowVertical(true)}
+                      >
+                        Make Vertical
+                      </StyledButton>
                       <ShareModalButton store={title.videoStore} />
                       <DownloadModalButton store={title.videoStore} />
                     </>

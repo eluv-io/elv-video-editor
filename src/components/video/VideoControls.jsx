@@ -225,7 +225,7 @@ export const ShowVerticalButton = observer(({store}) => {
             text: "This video is not yet configured for vertical display. Would you like to set it up?",
             onConfirm: async () => {
               const objectId = store.videoObject.objectId;
-              await aiStore.ProcessVerticalVideo({objectId});
+              await aiStore.ProcessVerticalVideo({objectId, offering: store.offeringKey});
 
               if(store.videoObject.objectId === objectId) {
                 // Only refresh if the same object is still being shown
