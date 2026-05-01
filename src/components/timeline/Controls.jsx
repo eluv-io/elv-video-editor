@@ -53,11 +53,6 @@ const MyClipsModal = observer(({store, opened, highlightedClipId, Select, Delete
   }, [showDownload, showShare]);
 
   const Seek = clip => {
-    if(Select) {
-      Select(clip);
-      return;
-    }
-
     store.SetClipMark({
       inFrame: clip.clipInFrame || 0,
       outFrame: clip.clipOutFrame || videoStore.totalFrames - 1
@@ -89,7 +84,7 @@ const MyClipsModal = observer(({store, opened, highlightedClipId, Select, Delete
                     role="button"
                     tabIndex={0}
                     onClick={() => {
-                      Seek(clip);
+                      Select?.(clip) || Seek(clip);
                       Close();
                     }}
                     className={S("my-clips-modal__item", clip.clipId === highlightedClipId ? "my-clips-modal__item--highlighted" : "")}
