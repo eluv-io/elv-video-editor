@@ -147,7 +147,7 @@ const ShareCreateForm = observer(({
   setShowShareForm,
   setSelectedShare
 }) => {
-  const isComposition = rootStore.page === "compositions";
+  const isComposition = store.channel;
   const [submitErrorMessage, setSubmitErrorMessage] = useState(undefined);
   const [shareOptions, setShareOptions] = useState({
     type: mode,
@@ -459,7 +459,7 @@ const Shares = observer(({store, setSelectedShare, setEditingShare}) => {
   const [tab, setTab] = useState("active");
   const [key, setKey] = useState(0);
 
-  const isComposition = rootStore.page === "compositions";
+  const isComposition = store.channel;
 
   useEffect(() => {
     setShares(undefined);
@@ -862,7 +862,7 @@ export const ShareModal = observer(({store, ...props}) => {
             {
               selectedShare ?
                 "Share Details" :
-                rootStore.page === "compositions" ?
+                store.channel === "compositions" ?
                   "Share Composition" : "Share Clip"
             }
           </div>
