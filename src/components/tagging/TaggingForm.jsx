@@ -27,7 +27,13 @@ const Summary = observer(({options}) => {
   return (
     <div className={S("form")}>
       <div className={S("block")}>
-        <h2 className={S("block__title")}>Model Tracks</h2>
+        <h2 className={S("block__title")}>
+          <span>Model Tracks</span>
+          {
+            !options.replace ? null :
+              <span style={{fontSize: 15}}>Existing tags will be replaced</span>
+          }
+        </h2>
         <div className={S("groups", "groups--double")}>
           <div className={S("group", "group--summary")}>
             <h3 className={S("group__title")}>
@@ -138,12 +144,20 @@ const Form = observer(({options, setOptions}) => {
         }
       }
     );
-  }, [aiTaggingStore.selectedContent, options.celeb, dependentModels]);
+  }, [aiTaggingStore.selectedContent, options.celeb, JSON.stringify(dependentModels)]);
 
   return (
     <div className={S("form")}>
       <div className={S("block")}>
-        <h2 className={S("block__title")}>Model Tracks</h2>
+        <h2 className={S("block__title")}>
+          <span>Model Tracks</span>
+          <Checkbox
+            label="Replace Existing Tags"
+            size={15}
+            checked={options.replace}
+            onChange={event => onChange("replace", event.target.checked)}
+          />
+        </h2>
         <div className={S("groups", "groups--double")}>
           <div className={S("group")}>
             <h3 className={S("group__title")}>
@@ -303,7 +317,7 @@ const Form = observer(({options, setOptions}) => {
 
 const defaultEnabledModels = ["shot"];
 const TaggingForm = observer(() => {
-  let initialOptions = {options: {}};
+  let initialOptions = {replace: true, options: {}};
   [...aiTaggingStore.segmentModels, ...aiTaggingStore.frameModels]
     .forEach(key => initialOptions[key] = defaultEnabledModels.includes(key));
   const [location, navigate] = useLocation();

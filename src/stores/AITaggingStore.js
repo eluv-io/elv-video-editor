@@ -262,7 +262,12 @@ Focus and Pose - requires Shot
     const params = [...this.segmentModels, ...this.frameModels, ...this.processorModels]
       .filter(key => options[key] || dependentModels.includes(key))
       .map(key => {
-        let result = { model: key };
+        let result = {
+          model: key,
+          overrides: {
+            replace: options.replace
+          }
+        };
 
         // Determine proper audio track
         const stream = options?.options?.[key]?.stream;
@@ -271,6 +276,7 @@ Focus and Pose - requires Shot
 
           if(streamKey) {
             result.overrides = {
+              ...result.overrides,
               scope: {
                 stream: streamKey
               }
@@ -299,7 +305,12 @@ Focus and Pose - requires Shot
       queryParams: {
         tenant: tenantId
       },
-      body: { jobs: params }
+      body: {
+        jobs: params,
+        options: {
+          replace: options.replace
+        }
+      }
     });
 
     return jobs;
