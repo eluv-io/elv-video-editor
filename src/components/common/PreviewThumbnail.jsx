@@ -23,6 +23,7 @@ const PreviewThumbnail = observer(({
   const [ref, setRef] = useState(null);
   const [thumbnails, setThumbnails] = useState(null);
   const [defaultThumbnail, setDefaultThumbnail] = useState(null);
+  const [fallbackThumbnail, setFallbackThumnail] = useState(null);
   const [brokenImages, setBrokenImages] = useState({});
 
   const [clientX, setClientX] = useState(-1);
@@ -39,10 +40,14 @@ const PreviewThumbnail = observer(({
   useEffect(() => {
     const totalFrames = endFrame - startFrame;
 
+    const fallbackThumbnail = store.FrameImageUrl({
+      frame: defaultFrame ? defaultFrame : startFrame + totalFrames / 2
+    });
+
+    setFallbackThumnail(fallbackThumbnail);
+
     if(!store || !store?.thumbnailStore.thumbnailStatus.available) {
-      setDefaultThumbnail(store.FrameImageUrl({
-        frame: defaultFrame ? defaultFrame : startFrame + totalFrames / 2
-      }));
+      setDefaultThumbnail(defaultThumbnail);
       setThumbnails([]);
 
       return;
@@ -121,7 +126,9 @@ const PreviewThumbnail = observer(({
 
   const imageUrl = hoverInfo.hovering && thumbnails[hoverInfo.thumbnailIndex] ?
     thumbnails[hoverInfo.thumbnailIndex] :
-    defaultThumbnail;
+    defaultThumbnail || fallbackThumbnail;
+
+  const isFrameUrl = !thumbnails[hoverInfo.thumbnailIndex];
 
   return (
     <div
@@ -143,15 +150,26 @@ const PreviewThumbnail = observer(({
               )
             }
           /> :
-          <img
-            alt="Thumbnail"
-            style={{aspectRatio: store.aspectRatio}}
-            key={`thumbnail-${hoverInfo.thumbnailIndex}`}
-            src={imageUrl}
-            loading="lazy"
-            onError={() => setBrokenImages({...brokenImages, [imageUrl]: true})}
-            className={S("preview-thumbnail__image", "preview-thumbnail__image--current")}
-          />
+          isFrameUrl ?
+            <LoaderImage
+              alt="Thumbnail"
+              style={{aspectRatio: store.aspectRatio}}
+              loaderAspectRatio={store.aspectRatio}
+              key={`thumbnail-${hoverInfo.thumbnailIndex}`}
+              src={imageUrl}
+              loading="lazy"
+              onError={() => setBrokenImages({...brokenImages, [imageUrl]: true})}
+              className={S("preview-thumbnail__image", "preview-thumbnail__image--current")}
+            /> :
+            <img
+              alt="Thumbnail"
+              style={{aspectRatio: store.aspectRatio}}
+              key={`thumbnail-${hoverInfo.thumbnailIndex}`}
+              src={imageUrl}
+              loading="lazy"
+              onError={() => setBrokenImages({...brokenImages, [imageUrl]: true})}
+              className={S("preview-thumbnail__image", "preview-thumbnail__image--current")}
+            />
       }
       {
         hoverInfo <= 0 ? null :
@@ -163,7 +181,7 @@ const PreviewThumbnail = observer(({
       {
         !score ? null :
           <div className={S("preview-thumbnail__score")}>
-            { score }
+            {score}
           </div>
       }
       {

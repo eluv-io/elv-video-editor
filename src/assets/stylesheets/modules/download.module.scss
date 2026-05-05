@@ -429,11 +429,17 @@
     padding: 5px;
   }
 
-  &__social-links,
-  &__links {
+  &__social-links {
     align-items: center;
     display: flex;
     gap: 15px;
+    margin-top: 20px;
+  }
+
+  &__links {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     margin-top: 20px;
   }
 

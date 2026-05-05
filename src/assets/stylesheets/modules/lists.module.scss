@@ -15,6 +15,18 @@
     }
   }
 
+  &--portrait {
+    .entity-card__image-container,
+    .entity-card__image {
+      aspect-ratio: 2/3;
+    }
+
+    .entity-card__title {
+      font-size: 14px;
+      max-width: calc(100% - 10px);
+    }
+  }
+
   &__image-container {
     aspect-ratio: 1;
     overflow: hidden;

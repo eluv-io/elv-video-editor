@@ -455,20 +455,30 @@ const ModeSelectionMenu = observer(({mode, setMode, className=""}) => {
                 Music Search
               </Menu.Item>
           }
+
+          <Menu.Item
+            leftSection={<Icon icon={AISparkleIcon} />}
+            onClick={() => setMode("prompt")}
+            className={S("search-mode-selection__option", mode === "prompt" ? "search-mode-selection__option--active" : "")}
+          >
+            Prompt
+          </Menu.Item>
         </Menu.Dropdown>
       </Menu>
     </>
   );
 });
 
-export const AISearchBar = observer(({basePath="~/search", initialQuery="", initialMode}) => {
+export const AISearchBar = observer(({basePath="~/search", initialQuery="", initialMode, onObjectSelect, clipOnly=false, placeholder, BeforeSubmit}) => {
   const lastMode = localStorage.getItem(`search-mode-${rootStore.tenantContractId}`);
   const [input, setInput] = useState(initialQuery);
-  const [mode, setMode] = useState(lastMode || initialMode || "clip");
+  const [mode, setMode] = useState(clipOnly ? "clip" : lastMode || initialMode || "clip");
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [,navigate] = useLocation();
 
   const Submit = async (mode) => {
+    BeforeSubmit?.({mode, query: input});
+
     if(mode === "frame-image") {
       navigate(UrlJoin(basePath, rootStore.client.utils.B58("frame-image:")));
       return;
@@ -483,7 +493,7 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
       const item = await browserStore.LookupContent(input);
 
       if(item && Object.keys(item).length > 0) {
-        return ContentBrowserSelect({item, navigate});
+        return onObjectSelect ? onObjectSelect({item, navigate}) : ContentBrowserSelect({item, navigate});
       }
     }
 
@@ -510,46 +520,71 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
         </div>
         <div className={S("search-input-container", "search-input-container--ai")}>
           <div className={S("search-input-container__button-left")}>
-            <ModeSelectionMenu
-              mode={mode}
-              setMode={mode => {
-                if(mode === "frame-image") {
-                  setInput("");
-                }
+            {
+              clipOnly ? null :
+                <ModeSelectionMenu
+                  mode={mode}
+                  setMode={mode => {
+                    if(mode === "frame-image") {
+                      setInput("");
+                    }
 
-                setMode(mode);
+                    setMode(mode);
 
-                if(mode === "frame-image") {
-                  // Only submit if we are doing search from image
-                  aiStore.ClearSearchResults();
-                  Submit(mode);
-                } else {
-                  setInput("");
-                  if(initialQuery) {
-                    navigate(basePath);
-                  }
-                }
-              }}
-              className={S("search-input-container__menu-button")}
-            />
+                    if(mode === "frame-image") {
+                      // Only submit if we are doing search from image
+                      aiStore.ClearSearchResults();
+                      Submit(mode);
+                    } else {
+                      setInput("");
+                      if(initialQuery) {
+                        navigate(basePath);
+                      }
+                    }
+                  }}
+                  className={S("search-input-container__menu-button")}
+                />
+            }
             <Icon icon={AISparkleIcon} className={S("search-input-container__ai-icon")} />
           </div>
-          <input
-            value={input}
-            placeholder={
-              mode.startsWith("frame") ? "Search for images by phrase or keyword" :
-                mode === "music" ? "Search for music by phrase or keyword" :
-                  "Search within content by phrase or keyword"
+          <Tooltip
+            openDelay={1000}
+            label={
+              <div className={S("tooltip", "tooltip--uncapped")}>
+                <div className={S("tooltip__item")}>
+                  <div className={S("tooltip__label")}>
+                    Prompt Response:
+                  </div>
+                  <div className={S("tooltip__content")}>
+                    <p>
+                      { aiStore.searchResults.currentResponse || "" }
+                    </p>
+                  </div>
+                </div>
+              </div>
             }
-            onChange={event => setInput(event.target.value)}
-            onKeyDown={async event => {
-              if(event.key !== "Enter") { return; }
+            disabled={mode !== "prompt" || aiStore.searchResults.prompt !== input || !aiStore.searchResults.currentResponse}
+            className={S("tooltip")}
+          >
+            <input
+              value={input}
+              placeholder={
+                placeholder ? placeholder :
+                  mode === "prompt" ? "Prompt the title library" :
+                    mode.startsWith("frame") ? "Search for images by phrase or keyword" :
+                      mode === "music" ? "Search for music by phrase or keyword" :
+                        "Search within content by phrase or keyword"
+              }
+              onChange={event => setInput(event.target.value)}
+              onKeyDown={async event => {
+                if(event.key !== "Enter") { return; }
 
-              Submit(mode === "frame-image" ? "frame" : mode);
-              //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
-            }}
-            className={S("search-bar", "search-bar--ai")}
-          />
+                Submit(mode === "frame-image" ? "frame" : mode);
+                //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
+              }}
+              className={S("search-bar", "search-bar--ai", clipOnly ? "search-bar--ai-clip-only" : "")}
+            />
+          </Tooltip>
           <div className={S("search-input-container__right-buttons")}>
             <IconButton
               label="Search"
@@ -1527,7 +1562,7 @@ export const TaggingJobBrowser = observer(() => {
     <div className={S("browser-page")}>
       <div className={S("browser", "browser--tagging")}>
         <SearchBar
-          placeholder="Filter by Title"
+          placeholder="Filter by Title or Content ID"
           saveByLocation
           onSubmit={value => setFilter(value)}
         />
@@ -1598,7 +1633,7 @@ export const TaggingJobBrowser = observer(() => {
                   jobs.map(job =>
                     <div key={`job-${job.job_id}`} className={S("browser-table__row")}>
                       <div className={S("browser-table__cell")}>
-                        <div className={S("browser-table__row-title")}>
+                        <Linkish to={UrlJoin("~/", job.objectId, "tags")} className={S("browser-table__row-title")}>
                           <Tooltip
                             position="top-start"
                             label={
@@ -1621,7 +1656,7 @@ export const TaggingJobBrowser = observer(() => {
                               {job.objectId}
                             </CopyableField>
                           </div>
-                        </div>
+                        </Linkish>
                       </div>
                       <div className={S("browser-table__cell")}>
                         {aiTaggingStore.modelNames[job.model]}

@@ -1,12 +1,13 @@
 import NavStyles from "@/assets/stylesheets/modules/nav.module.scss";
 
-import React from "react";
+import React, {useState} from "react";
 import {observer} from "mobx-react-lite";
 import {aiStore, compositionStore, editStore, rootStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-import {Confirm, IconButton} from "@/components/common/Common";
+import {Confirm, CopyableField, IconButton, StyledButton} from "@/components/common/Common";
 import UrlJoin from "url-join";
 import {useLocation} from "wouter";
+import {Popover} from "@mantine/core";
 
 import SearchIcon from "@/assets/icons/ai-search.svg";
 import SourceIcon from "@/assets/icons/v2/folder.svg";
@@ -17,30 +18,97 @@ import CompositionIcon from "@/assets/icons/v2/composition.svg";
 import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
 import PinIcon from "@/assets/icons/v2/pin.svg";
 import TaggingIcon from "@/assets/icons/tagging.svg";
+import TitlesIcon from "@/assets/icons/titles.svg";
 
 const S = CreateModuleClassMatcher(NavStyles);
+
+let menuTimeout;
+const ActiveItem = observer(() => {
+  const [show, setShow] = useState(false);
+
+  if(!rootStore.selectedObjectId) { return; }
+
+  const Hover = () => {
+    clearTimeout(menuTimeout);
+    menuTimeout = setTimeout(() => setShow(true), 250);
+  };
+
+  const Blur = () => menuTimeout = setTimeout(() => setShow(false), 250);
+
+  return (
+    <Popover
+      position="right-start"
+      offset={20}
+      opened={show}
+      classNames={{
+        dropdown: S("active-menu__container")
+      }}
+    >
+      <Popover.Target>
+        <IconButton
+          onFocus={Hover}
+          onMouseEnter={Hover}
+          onMouseLeave={Blur}
+          onBlur={Blur}
+          onClick={() => {}}
+          icon={PinIcon}
+          className={S("nav__button")}
+        />
+      </Popover.Target>
+      <Popover.Dropdown>
+        <div
+          onFocus={Hover}
+          onMouseEnter={Hover}
+          onMouseLeave={Blur}
+          onBlur={Blur}
+          className={S("active-menu")}
+        >
+          <div className={S("active-menu__title")}>
+            Active Item:
+          </div>
+          <div className={S("active-menu__name")}>
+            { rootStore.selectedObjectName }
+          </div>
+          <CopyableField value={rootStore.selectedObjectId} className={S("active-menu__id")}>
+            { rootStore.selectedObjectId }
+          </CopyableField>
+          <StyledButton
+            size="md"
+            className={S("active-menu__button")}
+            onClick={() => {
+              setShow(false);
+              Confirm({
+                title: "Clear Active Item",
+                text: "Would you like to clear the active item?",
+                onConfirm: () => {
+                  rootStore.Navigate("/");
+                  rootStore.SetSelectedObjectId(undefined, "");
+                }
+              });
+            }}
+          >
+            Clear Active Item
+          </StyledButton>
+        </div>
+      </Popover.Dropdown>
+    </Popover>
+  );
+});
 
 const Nav = observer(() => {
   const [, navigate] = useLocation();
   const objectId = rootStore.selectedObjectId;
   const compositionObject = compositionStore.compositionObject;
 
+  const videoId = compositionObject?.objectId || (videoStore.isVideo && objectId);
   let pages = [
-    !objectId ? undefined :
+    !aiStore.selectedTitleSearchIndexId ? undefined :
       {
-        label: `Active: ${rootStore.selectedObjectName || rootStore.selectedObjectId}`,
-        key: "pin",
-        icon: PinIcon,
-        onClick: async () => {
-          await Confirm({
-            title: "Clear Active Item",
-            text: "Would you like to clear the active item?",
-            onConfirm: () => {
-              rootStore.Navigate("/");
-              rootStore.SetSelectedObjectId(undefined, "");
-            }
-          });
-        }
+        label: "Titles",
+        key: "titles",
+        to: "/titles",
+        icon: TitlesIcon,
+        active: !rootStore.page || rootStore.page === "titles"
       },
     {
       label: "Search",
@@ -59,8 +127,8 @@ const Nav = observer(() => {
     {
       label: "Simple Mode",
       key: "simple",
-      disabled: !objectId || !videoStore.isVideo,
-      to: !objectId ? "/" : UrlJoin("/", objectId),
+      disabled: !videoId,
+      to: !videoId ? "/" : UrlJoin("/", videoId),
       icon: ClipIcon,
       active: rootStore.page === "simple"
     },
@@ -77,8 +145,8 @@ const Nav = observer(() => {
     {
       label: "Tags",
       key: "tags",
-      disabled: !objectId || !videoStore.isVideo,
-      to: !objectId ? "/" : UrlJoin("/", objectId, "tags"),
+      disabled: !videoId,
+      to: !videoId ? "/" : UrlJoin("/", videoId, "tags"),
       icon: TagIcon,
       active: ["tags", "clips"].includes(rootStore.page),
       hasChanges: editStore.HasUnsavedChanges("tags") || editStore.HasUnsavedChanges("clips")
@@ -149,6 +217,7 @@ const Nav = observer(() => {
 
   return (
     <nav className={S("nav")}>
+      <ActiveItem />
       {
         pages.map(({label, key, icon, to, active, disabled, hasChanges, onClick}) =>
           <IconButton

@@ -19,6 +19,7 @@ const S = CreateModuleClassMatcher(BrowserStyles, SearchStyles);
 
 let batchSize = 48;
 export const GroupedSearchResults = observer(({
+  mode,
   showList,
   groupKey="f_music",
   scrollPreservationKey,
@@ -55,6 +56,7 @@ export const GroupedSearchResults = observer(({
       key={`scroll-${showList}-${aiStore.searchIndex?.versionHash}-${queryB58}`}
       scrollPreservationKey={scrollPreservationKey ? `search-${aiStore.searchIndex?.versionHash}-${queryB58}-${scrollPreservationKey}` : undefined}
       withLoader
+      showLoader={mode === "prompt" && aiStore.activePromptSearchId}
       watchList={[queryB58, aiStore.searchSettings.key]}
       batchSize={
         resultIndex ? Math.max(resultIndex + 10, batchSize) :
@@ -62,11 +64,12 @@ export const GroupedSearchResults = observer(({
       }
       Update={
         async (limit, initial) =>
-          await aiStore.Search({
-            query: aiStore.client.utils.FromB58ToStr(queryB58 || ""),
-            limit: batchSize,
-            initial
-          })
+          mode === "prompt" && !initial ? undefined :
+            await aiStore.Search({
+              query: aiStore.client.utils.FromB58ToStr(queryB58 || ""),
+              limit: batchSize,
+              initial
+            })
       }
       className={JoinClassNames(S("grouped-entity-list", small ? "grouped-entity-list--small" : ""), className)}
     >
@@ -115,7 +118,7 @@ export const GroupedSearchResults = observer(({
   );
 });
 
-export const SearchResults = observer(({showList, scrollPreservationKey, className=""}) => {
+export const SearchResults = observer(({mode, showList, scrollPreservationKey, className=""}) => {
   let {queryB58, resultIndex} = useParams();
 
   if(!aiStore.searchIndex) { return null; }
@@ -129,6 +132,7 @@ export const SearchResults = observer(({showList, scrollPreservationKey, classNa
       key={`scroll-${showList}-${aiStore.searchResults?.key}`}
       scrollPreservationKey={scrollPreservationKey ? `search-${aiStore.searchIndex?.versionHash}-${queryB58}-${scrollPreservationKey}` : undefined}
       withLoader
+      showLoader={mode === "prompt" && aiStore.activePromptSearchId}
       watchList={[queryB58, aiStore.searchSettings.key]}
       batchSize={
         resultIndex ? Math.max(resultIndex + 10, batchSize) :
@@ -136,11 +140,12 @@ export const SearchResults = observer(({showList, scrollPreservationKey, classNa
       }
       Update={
         async (limit, initial) =>
-          await aiStore.Search({
-            query: aiStore.client.utils.FromB58ToStr(queryB58 || ""),
-            limit: batchSize,
-            initial
-          })
+          mode === "prompt" && !initial ? undefined :
+            await aiStore.Search({
+              query: aiStore.client.utils.FromB58ToStr(queryB58 || ""),
+              limit: batchSize,
+              initial
+            })
       }
       className={JoinClassNames(S(showList ? "entity-list" : "entity-grid"), className)}
     >
@@ -158,7 +163,7 @@ export const SearchResults = observer(({showList, scrollPreservationKey, classNa
                 , 100)
             }
             link={
-              result.type === "frame" ?
+              result.type === "frame" && result.frame ?
                 UrlJoin("~/", result.objectId, `?if=${result.frame || 0}`) :
                 UrlJoin("/", queryB58 || "", index.toString())
             }
@@ -259,7 +264,7 @@ const SearchResultsPage = observer(() => {
           }
           <div className={S("browser__action--right")}>
             {
-              mode.startsWith("frame") ? null :
+              mode === "prompt" || mode.startsWith("frame") ? null :
                 <button
                   key={aiStore.searchSettings.minConfidence}
                   className={S("browser__toggle-button")}
@@ -286,20 +291,30 @@ const SearchResultsPage = observer(() => {
         <div className={S("list-page", "list-page--search")}>
           {
             !queryB58 ? null :
-              mode === "music" ?
-                <GroupedSearchResults
-                  key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
-                  groupKey="f_music"
-                  scrollPreservationKey="main"
-                  showList={showList}
-                  groupClassName={S(`search-results-${showList ? "list" : "grid"}--${mode}`)}
-                /> :
-                <SearchResults
-                  key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
-                  scrollPreservationKey="main"
-                  showList={showList}
-                  className={S(`search-results-${showList ? "list" : "grid"}--${mode}`)}
-                />
+              aiStore.searchResults.error ?
+                <div className={S("search-results__error")}>
+                  Something went wrong, please try again.
+                </div> :
+                aiStore.searchResults.clarify ?
+                  <div className={S("search-results__clarify")}>
+                    Please clarify your prompt
+                  </div> :
+                  mode === "music" ?
+                    <GroupedSearchResults
+                      mode={mode}
+                      key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
+                      groupKey="f_music"
+                      scrollPreservationKey="main"
+                      showList={showList}
+                      groupClassName={S("search-results", `search-results-${showList ? "list" : "grid"}--${mode}`)}
+                    /> :
+                    <SearchResults
+                      mode={mode}
+                      key={`${aiStore.selectedSearchIndexId}-${queryB58}`}
+                      scrollPreservationKey="main"
+                      showList={showList}
+                      className={S("search-results", `search-results-${showList ? "list" : "grid"}--${mode}`)}
+                    />
           }
         </div>
       </div>

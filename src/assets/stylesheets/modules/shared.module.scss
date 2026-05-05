@@ -132,6 +132,19 @@
     --tooltip-content-border-color: none;
   }
 
+  &--uncapped {
+    .tooltip__content {
+      max-height: unset;
+      max-width: 900px;
+      width: 900px;
+
+      p,
+      pre {
+        max-width: 100%;
+      }
+    }
+  }
+
   &__item {
     font-size: 14px;
     font-weight: 500;
@@ -355,9 +368,16 @@
   &--search {
     max-height: calc(100vh - 175px);
   }
+
+  &--titles {
+    border: 0;
+    margin-top: 0;
+    max-height: calc(100vh - 125px);
+  }
 }
 
 .entity-grid {
+  align-content: start;
   display: grid;
   gap: 30px 10px;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
@@ -372,6 +392,10 @@
     font-size: 20px;
     justify-content: center;
     padding-top: 100px;
+  }
+
+  &--titles {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   }
 }
 

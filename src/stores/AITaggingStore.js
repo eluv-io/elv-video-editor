@@ -1,5 +1,6 @@
 import {flow, makeAutoObservable} from "mobx";
 import UrlJoin from "url-join";
+import {aiTaggingStore} from "@/stores/index.js";
 
 // Statuses: ("queued", "running", "cancelled", "failed", "succeeded")
 
@@ -9,11 +10,48 @@ class AITaggingStore {
 
   modelNames = {};
   trackKeyToModelMapping = {};
+  modelToTrackKeyMapping = {};
   segmentModels = [];
   frameModels = [];
   processorModels = [];
 
   audioTracks = {};
+
+  /*
+  Speaker recognition - needs STT
+Chapters - requires STT
+Evidence - requires STT, GIT, LLava, Shot, Speaker
+Character - requires Celeb
+Focus and Pose - requires Shot
+
+   */
+  modelDependencyMap = {
+    "speaker": [
+      "asr"
+    ],
+    "chapters": [
+      "asr"
+    ],
+    "evidence": [
+      "asr",
+      "llava",
+      "git", // ??
+      "shot",
+      "speaker"
+    ],
+    "character": [
+      "celeb"
+    ],
+    "focus": [
+      "shot"
+    ],
+    "vertical_video": [
+      "shot"
+    ],
+    "pose": [
+      "shot"
+    ]
+  };
 
   constructor(rootStore) {
     this.rootStore = rootStore;
@@ -85,6 +123,7 @@ class AITaggingStore {
 
       for(const track of model.tag_tracks || []) {
         this.trackKeyToModelMapping[track.name] = model.name;
+        this.modelToTrackKeyMapping[model.name] = track.name;
       }
     }
   });
@@ -136,10 +175,15 @@ class AITaggingStore {
     return this.audioTracks[objectId];
   });
 
-  ListTaggingJobs = flow(function * ({start=0, limit=10, status, model, filter=""}={}) {
+  ListTaggingJobs = flow(function * ({start=0, limit=10, status, model, objectId="", filter=""}={}) {
+    if(filter.startsWith("iq__")) {
+      objectId = filter;
+      filter = "";
+    }
+
     const tenantId = yield this.rootStore.client.userProfileClient.TenantContractId();
     let {jobs, meta} = yield this.rootStore.aiStore.QueryAIAPI({
-      path: UrlJoin("tagging-live", "job-status"),
+      path: UrlJoin("tagging-live", objectId, "job-status"),
       queryParams: {
         tenant: tenantId,
         start,
@@ -210,10 +254,20 @@ class AITaggingStore {
   });
 
   SubmitTaggingJob = flow(function * ({objectId, options}) {
+    const dependentModels = Object.keys(options)
+      .filter(key => key !== "options" && options[key])
+      .map(key => aiTaggingStore.modelDependencyMap[key] || [])
+      .flat();
+
     const params = [...this.segmentModels, ...this.frameModels, ...this.processorModels]
-      .filter(key => options[key])
+      .filter(key => options[key] || dependentModels.includes(key))
       .map(key => {
-        let result = { model: key };
+        let result = {
+          model: key,
+          overrides: {
+            replace: options.replace
+          }
+        };
 
         // Determine proper audio track
         const stream = options?.options?.[key]?.stream;
@@ -222,11 +276,19 @@ class AITaggingStore {
 
           if(streamKey) {
             result.overrides = {
+              ...result.overrides,
               scope: {
                 stream: streamKey
               }
             };
           }
+        }
+
+        const groundTruthPool = options?.options?.[key]?.groundTruthPool;
+        if(groundTruthPool && groundTruthPool !== "default") {
+          result.model_params = {
+            ground_truth: groundTruthPool
+          };
         }
 
         return result;
@@ -243,7 +305,12 @@ class AITaggingStore {
       queryParams: {
         tenant: tenantId
       },
-      body: { jobs: params }
+      body: {
+        jobs: params,
+        options: {
+          replace: options.replace
+        }
+      }
     });
 
     return jobs;

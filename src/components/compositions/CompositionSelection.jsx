@@ -301,7 +301,7 @@ const CompositionCreationModal = observer(({type, defaultProfileType="", Cancel}
             <Icon icon={type === "ai" ? AISparkleIcon : CompositionIcon} />
             {
               type === "ai" ?
-                "Generating AI Highlights..." :
+                "Generating AI Composition..." :
                 "Initializing Composition..."
             }
           </div>

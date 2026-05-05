@@ -162,6 +162,8 @@ export const EntityListItem = observer(({
 export const EntityCard = observer(({
   link,
   image,
+  backupImage,
+  imageWidth=320,
   label,
   subtitle,
   id,
@@ -187,8 +189,12 @@ export const EntityCard = observer(({
           <LoaderImage
             width={600}
             src={image}
+            alternateSrc={backupImage}
             loaderDelay={25}
-            loaderAspectRatio={aspectRatio === "landscape" ? 16/9 : 1}
+            loaderAspectRatio={
+              aspectRatio === "landscape" ? 16/9 :
+                aspectRatio === "square" ? 1 : 2/3
+            }
             className={S("entity-card__image--hover")}
           />
         }
@@ -206,10 +212,15 @@ export const EntityCard = observer(({
                 <Icon icon={ImageIcon}/>
               </div> :
               <LoaderImage
-                width={320}
+                alt={label}
+                width={imageWidth}
                 src={image}
+                alternateSrc={backupImage}
                 loaderDelay={25}
-                loaderAspectRatio={aspectRatio === "landscape" ? 16/9 : 1}
+                loaderAspectRatio={
+                  aspectRatio === "landscape" ? 16/9 :
+                    aspectRatio === "square" ? 1 : 2/3
+                }
                 className={S("entity-card__image", contain ? "entity-card__image--contain" : "")}
               />
           }

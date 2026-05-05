@@ -366,7 +366,7 @@ export const OverlayTagDetails = observer(() => {
             {tag.text}
           </pre>
           <StyledButton
-            small
+            size="sm"
             style={{marginTop: 30}}
             icon={GroundTruthIcon}
             onClick={() => tagStore.AddGroundTruthAsset({label: tag.text, box: tag.box})}

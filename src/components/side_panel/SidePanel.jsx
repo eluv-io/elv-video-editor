@@ -3,8 +3,8 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher, JoinClassNames} from "@/utils/Utils.js";
-import {CopyableField, Icon, IconButton, Input, Modal} from "@/components/common/Common.jsx";
-import {rootStore, assetStore, compositionStore, tagStore, trackStore, aiStore} from "@/stores/index.js";
+import {Confirm, CopyableField, Icon, IconButton, Input, Linkish, Modal} from "@/components/common/Common.jsx";
+import {rootStore, assetStore, compositionStore, tagStore, trackStore} from "@/stores/index.js";
 import {TagDetails, TagsList} from "@/components/side_panel/Tags.jsx";
 import Assets from "@/components/side_panel/Assets.jsx";
 import {TrackDetails} from "@/components/side_panel/Tracks.jsx";
@@ -18,39 +18,25 @@ import {CompositionBrowser, CompositionClips} from "@/components/side_panel/Comp
 import {Combobox, Menu, PillsInput, Switch, Tooltip, useCombobox} from "@mantine/core";
 import {useLocation} from "wouter";
 import {LibraryBrowser, ObjectBrowser} from "@/components/nav/Browser.jsx";
+import SearchSettings from "@/components/search/SearchSettings.jsx";
 
 import SelectArrowsIcon from "@/assets/icons/v2/select-arrows.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
 import SourcesIcon from "@/assets/icons/v2/folder.svg";
 import SearchIcon from "@/assets/icons/v2/search.svg";
 import SettingsIcon from "@/assets/icons/v2/settings.svg";
-import SearchSettings from "@/components/search/SearchSettings.jsx";
+import BackIcon from "@/assets/icons/v2/back.svg";
+import RightCaretIcon from "@/assets/icons/caret-right.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
-const TagSwitch = observer(() => {
-  const [, navigate] = useLocation();
 
-  return (
-    <div className={S("search__toggle")}>
-      <label>Generated</label>
-      <Switch
-        color="var(--color-highlight)"
-        size="xs"
-        checked={rootStore.page === "clips"}
-        classNames={{track: S("search__toggle-bg")}}
-        onChange={event => navigate(event.currentTarget.checked ? "/clips" : "/tags")}
-      />
-      <label>Clips</label>
-    </div>
-  );
-});
 
 const SourceSelectionModal = observer(({Select, Cancel}) => {
   const [libraryId, setLibraryId] = useState(undefined);
 
   return (
-    <Modal withCloseButton={false} opened centered size={1000} onClose={Cancel}>
+    <Modal onClick={event => event.stopPropagation()} withCloseButton={false} opened centered size={1000} onClose={Cancel}>
       {
         libraryId ?
           <ObjectBrowser
@@ -96,12 +82,16 @@ const SourceSelection = observer(() => {
         shadow="md"
         width={250}
         offset={10}
+        zIndex={200}
         position="bottom-middle"
       >
         <Menu.Target>
-          <Tooltip label="Select Source" disabled={showMenu} openDelay={500}>
+          <Tooltip label="Select Sources" disabled={showMenu} openDelay={500}>
             <button
-              onClick={() => setShowMenu(!showMenu)}
+              onClick={event => {
+                event.stopPropagation();
+                setShowMenu(!showMenu);
+              }}
               className={S("search__source-button", showMenu ? "search__source-button--active" : "")}
             >
               <Icon icon={SourcesIcon} />
@@ -110,9 +100,9 @@ const SourceSelection = observer(() => {
         </Menu.Target>
 
         <Menu.Dropdown w={450} radius={10} p={0}>
-          <div className={S("search__source-menu")}>
+          <div onClick={event => event.stopPropagation()} className={S("search__source-menu")}>
             <div className={S("search__index-title")}>
-              Select Source
+              Select Sources
             </div>
             {
               Object.values(compositionStore.sources).map(({objectId, name}) =>
@@ -126,16 +116,33 @@ const SourceSelection = observer(() => {
                   }}
                   className={S("search__source-option", compositionStore.selectedSourceId === objectId ? "search__source-option--active" : "")}
                 >
-                  <Tooltip label={name}>
-                    <div className={S("search__source-text")}>
-                      <div className={S("search__source-option-name")}>
+                  <div className={S("search__source-text")}>
+                    <Tooltip label={name}>
+                      <div className={S("search__source-option-name", "ellipsis")}>
                         {name}
                       </div>
-                      <div className={S("search__source-option-id", "ellipsis")}>
-                        <CopyableField value={objectId} />
-                      </div>
+                    </Tooltip>
+                    <div className={S("search__source-option-id", "ellipsis")}>
+                      <CopyableField value={objectId} />
                     </div>
-                  </Tooltip>
+                  </div>
+                  {
+                    objectId === compositionStore.primarySourceId ||
+                    compositionStore.clipList.find(clip => clip.objectId === objectId) ? null :
+                      <IconButton
+                        icon={XIcon}
+                        className={S("search__source-option-remove", {})}
+                        onClick={event => {
+                          event.stopPropagation();
+
+                          Confirm({
+                            title: "Remove Source",
+                            text: "Are you sure you want to remove this source from the composition?",
+                            onConfirm: () => compositionStore.RemoveSource({objectId})
+                          });
+                        }}
+                      />
+                  }
                 </div>
               )
             }
@@ -164,6 +171,24 @@ const SourceSelection = observer(() => {
           />
       }
     </>
+  );
+});
+
+const TagSwitch = observer(() => {
+  const [, navigate] = useLocation();
+
+  return (
+    <div className={S("search__toggle")}>
+      <label>Generated</label>
+      <Switch
+        color="var(--color-highlight)"
+        size="xs"
+        checked={rootStore.page === "clips"}
+        classNames={{track: S("search__toggle-bg")}}
+        onChange={event => navigate(event.currentTarget.checked ? "/clips" : "/tags")}
+      />
+      <label>Clips</label>
+    </div>
   );
 });
 
@@ -452,7 +477,7 @@ export const CompositionSearchSettings = observer(() => {
   return (
     <>
       <div
-        className={S("side-panel__search-icon", aiStore.customSearchSettingsActive ? "side-panel__search-icon--active" : "")}
+        className={S("side-panel__search-icon", compositionStore.customSearchSettingsActive ? "side-panel__search-icon--active" : "")}
       >
         <IconButton
           onClick={() => setShowSettingsModal(true)}
@@ -463,7 +488,6 @@ export const CompositionSearchSettings = observer(() => {
         !showSettingsModal ? null :
           <SearchSettings
             store={compositionStore}
-            singleObject
             Close={() => setShowSettingsModal(false)}
           />
       }
@@ -472,9 +496,25 @@ export const CompositionSearchSettings = observer(() => {
 });
 
 export const CompositionSidePanel = observer(() => {
+  const [, navigate] = useLocation();
+
   return (
     <div className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
+        <div className={S("side-panel__breadcrumbs")}>
+          <Linkish
+            className={S("ellipsis")}
+            onClick={() => {
+              navigate("/compositions");
+              compositionStore.Reset();
+            }}
+          >
+            <Icon icon={BackIcon} className={S("side-panel__breadcrumbs-back")}/>
+            My Compositions
+          </Linkish>
+          <Icon icon={RightCaretIcon} />
+          <span className={S("ellipsis")}>{compositionStore.compositionObject?.name}</span>
+        </div>
         <SidebarFilter
           beforeContent={<CompositionSearchSettings/>}
           afterContent={<SourceSelection />}

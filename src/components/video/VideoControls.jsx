@@ -3,12 +3,12 @@ import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
 import {CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
-import {IconButton, Input, SelectInput, StyledButton} from "@/components/common/Common";
+import {Confirm, IconButton, Input, SelectInput, StyledButton} from "@/components/common/Common";
 import Fraction from "fraction.js";
 import SVG from "react-inlinesvg";
 import {FrameRates} from "@/utils/FrameAccurateVideo";
 import {Button, Portal, Tooltip} from "@mantine/core";
-import {tagStore} from "@/stores/index.js";
+import {aiStore, tagStore} from "@/stores/index.js";
 import {useLocation} from "wouter";
 import UrlJoin from "url-join";
 import {Utils} from "@eluvio/elv-client-js";
@@ -29,6 +29,7 @@ import FrameForward1 from "@/assets/icons/v2/frame-forward-1.svg";
 import FrameForward10 from "@/assets/icons/v2/frame-forward-10.svg";
 import PlayClipIcon from "@/assets/icons/v2/play-clip.svg";
 import ImageSearchIcon from "@/assets/icons/image-search.svg";
+import VerticalIcon from "@/assets/icons/vertical.svg";
 
 
 export const SubtitleControls = observer(({store}) => {
@@ -200,13 +201,60 @@ export const DownloadFrameButton = observer(({store}) => {
   );
 });
 
+export const ShowVerticalButton = observer(({store}) => {
+  const verticalStatus = !store.videoObject.hasVertical && aiStore.verticalVideoProcessingStatus[store.videoObject.objectId];
+
+  let progress;
+  if(verticalStatus) {
+    progress = ((verticalStatus.shot_progress || 0) + (verticalStatus.vertical_video_progress || 0)) / 2;
+  }
+
+  return (
+    <StyledButton
+      icon={VerticalIcon}
+      color="--text-primary"
+      variant="secondary"
+      size="sm"
+      disabled={typeof progress !== "undefined"}
+      onClick={() => {
+        if(store.videoObject.hasVertical) {
+          store.ToggleShowVertical(!store.showVertical);
+        } else {
+          Confirm({
+            title: "Generate Vertical Video",
+            text: "This video is not yet configured for vertical display. Would you like to set it up?",
+            onConfirm: async () => {
+              const objectId = store.videoObject.objectId;
+              await aiStore.ProcessVerticalVideo({objectId, offering: store.offeringKey});
+
+              if(store.videoObject.objectId === objectId) {
+                // Only refresh if the same object is still being shown
+                await store.Reload();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                store.ToggleShowVertical(!store.showVertical);
+              }
+            }
+          });
+        }
+      }}
+      className={S("video-controls__search-frame-button")}
+    >
+      {
+        typeof progress !== "undefined" ?
+          `Processing: ${Math.min(progress, 95).toFixed(0)}%` :
+          "Make Vertical"
+      }
+    </StyledButton>
+  );
+});
+
 export const SearchFrameButton = observer(({store}) => {
   return (
     <StyledButton
       icon={ImageSearchIcon}
       color="--text-primary"
       variant="secondary"
-      small
+      size="sm"
       onClick={() => tagStore.SetEditing({
         id: `search-frame-${store.frame}`,
         frame: store.frame,

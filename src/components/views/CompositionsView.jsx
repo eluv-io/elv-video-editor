@@ -34,7 +34,16 @@ const CompositionsView = observer(() => {
       <div className="error">
         <div>Unable to load content: </div>
         <div>{rootStore.errorMessage}</div>
-        <Linkish to="~/" styled>Return to Content Browser</Linkish>
+        <Linkish
+          to="~/compositions"
+          styled
+          onClick={() => {
+            rootStore.SetError("");
+            compositionStore.Reset();
+          }}
+        >
+          Return to Content Browser
+        </Linkish>
       </div>
     );
   }

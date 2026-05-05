@@ -644,11 +644,15 @@ const ShareDetails = observer(({store, selectedShare, Back, Close}) => {
 
     // Load short URLs
     Promise.all(
-      [selectedShare?.embedUrl, selectedShare?.downloadUrl].map(async url =>
+      [
+        selectedShare?.embedUrl,
+        selectedShare?.verticalEmbedUrl,
+        selectedShare?.downloadUrl
+      ].map(async url =>
         url && await downloadStore.CreateShortUrl(url)
       )
     )
-      .then(([embedUrl, downloadUrl]) => setShortUrls({embedUrl, downloadUrl}));
+      .then(([embedUrl, verticalEmbedUrl, downloadUrl]) => setShortUrls({embedUrl, verticalEmbedUrl, downloadUrl}));
   }, [selectedShare?.embedUrl, selectedShare?.downloadUrl]);
 
   const representations = store.ResolutionOptions(selectedShare.offering);
@@ -662,6 +666,7 @@ const ShareDetails = observer(({store, selectedShare, Back, Close}) => {
   const jobStatus = downloadStore.shareDownloadJobStatus[selectedShare.downloadJobId];
 
   const embedUrl = shortUrls.embedUrl || selectedShare?.embedUrl;
+  const verticalEmbedUrl = shortUrls.verticalEmbedUrl || selectedShare?.verticalEmbedUrl;
   const downloadUrl = shortUrls.downloadUrl || selectedShare?.downloadUrl;
 
   return (
@@ -721,6 +726,13 @@ const ShareDetails = observer(({store, selectedShare, Back, Close}) => {
                   <button onClick={() => Copy(embedUrl)} className={S("share-details__copy")}>
                     <Icon icon={LinkIcon}/>
                     Copy Streaming URL
+                  </button>
+              }
+              {
+                !["stream", "both"].includes(selectedShare.permissions) || !verticalEmbedUrl ? null :
+                  <button onClick={() => Copy(verticalEmbedUrl)} className={S("share-details__copy")}>
+                    <Icon icon={LinkIcon}/>
+                    Copy Vertical Streaming URL
                   </button>
               }
               {

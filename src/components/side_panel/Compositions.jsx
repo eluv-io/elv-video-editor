@@ -4,7 +4,15 @@ import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {CreateModuleClassMatcher, DragHandler, StorageHandler} from "@/utils/Utils.js";
 import {aiStore, browserStore, compositionStore, rootStore, trackStore} from "@/stores/index.js";
-import {ClipTimeInfo, Confirm, CopyableField, Icon, IconButton, Linkish, Loader} from "@/components/common/Common.jsx";
+import {
+  ClipTimeInfo,
+  Confirm,
+  CopyableField,
+  Icon,
+  IconButton,
+  Linkish,
+  Loader,
+} from "@/components/common/Common.jsx";
 import {Tooltip} from "@mantine/core";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import UrlJoin from "url-join";
@@ -14,7 +22,7 @@ import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import ClipIcon from "@/assets/icons/v2/clip.svg";
 import VideoIcon from "@/assets/icons/v2/video.svg";
 import CompositionIcon from "@/assets/icons/v2/composition.svg";
-import XIcon from "@/assets/icons/X.svg";
+import XIcon from "@/assets/icons/v2/x.svg";
 import TagIcon from "@/assets/icons/v2/tag.svg";
 import DeleteIcon from "@/assets/icons/trash.svg";
 import ChevronUpIcon from "@/assets/icons/chevron-up.svg";
@@ -38,6 +46,8 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
         showDragShadow: true,
         createNewClip: true
       }))}
+      // eslint-disable-next-line react/no-unknown-property
+      dataClipId={clip.clipId}
       onDragEnd={() => compositionStore.EndDrag()}
       onClick={() => compositionStore.SetSelectedClip({clipId: clip.clipId, source: "side-panel"})}
       className={S("clip", compositionStore.originalSelectedClipId === clip.clipId ? "clip--active" : "")}
@@ -59,6 +69,7 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
         <Tooltip
           disabled={!!compositionStore.draggingClip}
           label={<ClipTooltipContent clip={clip} />}
+          position="bottom"
           maw={300}
         >
           <div draggable={false} className={S("clip__name", "ellipsis")}>
@@ -124,12 +135,14 @@ const ClipGroup = observer(({
   noFilter,
   loading=false,
   showTagLinks,
-  showEmpty
+  showEmpty,
+  closeable=true
 }) => {
   const [hide, setHide] = useState(
-    defaultClosed ?
-      StorageHandler.get({type: "session", key: `show-clips-${groupKey}`}) ? false : true :
-      StorageHandler.get({type: "session", key: `hide-clips-${groupKey}`})
+    !closeable ? false :
+      defaultClosed ?
+        StorageHandler.get({type: "session", key: `show-clips-${groupKey}`}) ? false : true :
+        StorageHandler.get({type: "session", key: `hide-clips-${groupKey}`})
   );
 
   useEffect(() => {
@@ -158,7 +171,7 @@ const ClipGroup = observer(({
 
   return (
     <div className={S("clip-group", hide ? "clip-group--closed" : "")}>
-      <button onClick={() => setHide(!hide)} className={S("clip-group__header")}>
+      <Linkish onClick={!closeable ? undefined : () => setHide(!hide)} className={S("clip-group__header")}>
         {
           !icon ? null :
             <Icon icon={icon} className={S("clip-group__header-icon")} />
@@ -180,8 +193,13 @@ const ClipGroup = observer(({
               </div>
           }
         </div>
-        <Icon icon={hide ? ChevronDownIcon : ChevronUpIcon} className={S("clip-group__header-indicator")} />
-      </button>
+        {
+          !closeable ? null :
+            <div className={S("clip-group__header-right")}>
+              <Icon icon={hide ? ChevronDownIcon : ChevronUpIcon} className={S("clip-group__header-indicator")} />
+            </div>
+        }
+      </Linkish>
       {
         hide ? null :
          hidden ? (showEmpty ? <div className={S("clip-group__empty")}>No Results</div> : null) :
@@ -200,7 +218,7 @@ const AIClips = observer(() => {
   const clipIds = clipSource === "search" ?
     compositionStore.searchClipIds[compositionStore.selectedSourceId] || [] :
     compositionStore.originalClips
-      .filter(clip => clip.objectId === compositionStore.selectedSourceId)
+      //.filter(clip => clip.objectId === compositionStore.selectedSourceId)
       .map(clip => clip.clipId);
 
   useEffect(() => {
@@ -243,6 +261,7 @@ const AIClips = observer(() => {
       groupKey="ai"
       showTagLinks
       title={compositionStore.filter ? "Results" : "Selected Candidates"}
+      closeable={!compositionStore.filter}
       subtitle={!compositionStore.filter ? "Prompt" : ""}
       clipIds={clipIds}
       loading={loading}
@@ -288,6 +307,7 @@ export const CompositionClips = observer(() => {
           compositionStore.sourceFullClipId,
           ...compositionStore.myClipIds
         ]}
+        showSourceSelection
       />
       {
         !compositionStore.compositionObject?.objectId ? null :

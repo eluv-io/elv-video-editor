@@ -40,12 +40,14 @@ export const LoadVideo = async ({
         "offerings/*/media_struct/streams/*/tags/timecode",
         "offerings/*/playout/streams/*/representations",
         "offerings/*/playout/playout_formats",
+        "offerings/*/verticalize",
         "channel",
         "clips",
         "video_tags",
         "mime_types",
         "assets",
-        "live_recording_info"
+        "live_recording_info",
+        "files/vertical.bin"
       ]
     })) || { public: {}};
 
@@ -60,7 +62,7 @@ export const LoadVideo = async ({
       isVideo: !!metadata.offerings || !!metadata.channel,
       isChannel: !!metadata.channel,
       isLiveToVod: !!metadata.live_recording_info,
-      liveStreamInfo: metadata.live_recording_info
+      liveStreamInfo: metadata.live_recording_info,
     };
 
     if(videoObject.isVideo) {
@@ -164,6 +166,7 @@ export const LoadVideo = async ({
       if(!hasHlsOfferings) { throw Error("No offerings with HLS Clear or AES-128 playout found."); }
 
       videoObject.offeringKey = offeringKey;
+      videoObject.hasVertical = metadata.offerings?.[offeringKey]?.verticalize?.data;
 
       // Determine duration and framerate
       videoObject.streamKey = Object.keys(metadata.offerings[videoObject.offeringKey].media_struct.streams)
@@ -349,9 +352,25 @@ export const CreateTrackIntervalTree = (tags, label, offset=0) => {
 };
 
 export const ExtractHashFromLink = link => {
-  if(link?.["."]?.source) {
-    return link["."]?.source;
-  } else if(link?.["/"]) {
-    return link["/"]?.split("/").find(token => token.startsWith("hq__"));
+  if(!link) { return; }
+
+  if(typeof link === "string") {
+    return link.split("/").find(segment => segment.startsWith("hq__"));
+  }
+
+  if(link["."] && link["."].source) {
+    return link["."].source;
+  }
+
+  if(link["/"] && link["/"].startsWith("/qfab/")) {
+    return link["/"].split("/").find(segment => segment.startsWith("hq__"));
+  }
+
+  if(link["."] && link["."].container) {
+    if(link["."].container?.startsWith("tqw")) {
+      return;
+    }
+
+    return link["."].container;
   }
 };

@@ -312,8 +312,12 @@
   width: 100%;
 
   &--ai {
-    font-size: 20px;
+    font-size: 18px;
     padding-left: 70px;
+  }
+
+  &--ai-clip-only {
+    padding-left: 40px;
   }
 
   &--error {

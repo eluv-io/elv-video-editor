@@ -10,6 +10,7 @@ class CompositionStore {
   myCompositions = {};
   allMyClipIds = {};
   sources = {};
+  searchResultSources = {};
   secondarySourceIds = [];
   primarySourceId;
   selectedSourceId;
@@ -245,10 +246,20 @@ class CompositionStore {
     return this.ClipStore({clipId: this.sourceFullClipId});
   }
 
+  get defaultSearchSettings() {
+    return {
+      ...this.rootStore?.aiStore?.DEFAULT_SEARCH_SETTINGS,
+      objectIds: [
+        this.primarySourceId,
+        ...this.secondarySourceIds
+      ]
+    };
+  }
+
   get customSearchSettingsActive() {
     return (
       HashString(JSON.stringify({...this.searchSettings, key: 0})) !==
-      HashString(JSON.stringify({...this.rootStore?.aiStore?.DEFAULT_SEARCH_SETTINGS, key: 0}))
+      HashString(JSON.stringify({...this.defaultSearchSettings, key: 0}))
     );
   }
 
@@ -332,6 +343,7 @@ class CompositionStore {
 
         this.clips[clipId] = {
           ...clip,
+          effects: clip.effects || [],
           clipId
         };
 
@@ -495,12 +507,14 @@ class CompositionStore {
 
     const clip1 = {
       ...clip,
+      effects: (clip.effects || []).filter(effect => effect.position === "start"),
       clipId: this.rootStore.NextId(),
       clipOutFrame: clip.clipInFrame + clipSplitFrame
     };
 
     const clip2 = {
       ...clip,
+      effects: (clip.effects || []).filter(effect => effect.position === "end"),
       clipId: this.rootStore.NextId(),
       clipInFrame: clip1.clipOutFrame + 1
     };
@@ -616,16 +630,20 @@ class CompositionStore {
 
     this.selectedClipSource = source;
     this.originalSelectedClipId = clipId;
+
+    if(!this.clipStores[this.selectedClip.storeKey]?.thumbnails) {
+      this.clipStores[this.selectedClip.storeKey]?.LoadThumbnails();
+    }
   }
 
   ClearSelectedClip() {
     this.selectedClipId = undefined;
   }
 
-  InitializeVideoStore = flow(function * ({objectId, offering="default"}) {
+  InitializeVideoStore = flow(function * ({objectId, offering="default", loadThumbnails=true}) {
     return yield this.rootStore.LoadResource({
       key: "composition-video-store",
-      id: `${this.compositionObject?.objectId}-${objectId}-${offering}`,
+      id: `${this.compositionObject?.objectId}-${objectId}-${offering}-${loadThumbnails}`,
       ttl: 30,
       bind: this,
       Load: flow(function * () {
@@ -636,7 +654,7 @@ class CompositionStore {
             this.rootStore,
             {
               tags: false,
-              thumbnails: true,
+              thumbnails: loadThumbnails,
               id: `composition-${objectId}`
             }
           );
@@ -668,9 +686,10 @@ class CompositionStore {
     clipInTime,
     clipOutFrame,
     clipOutTime,
-    source
+    source,
+    loadThumbnails=true
   }) {
-    const key = yield this.InitializeVideoStore({objectId, offering});
+    const key = yield this.InitializeVideoStore({objectId, offering, loadThumbnails});
 
     const store = this.clipStores[key];
 
@@ -751,7 +770,9 @@ class CompositionStore {
 
       return playoutUrl;
     } catch(error) {
+
       console.error("Error getting composition playout url:");
+
       console.error(error);
 
       if(retry < 2) {
@@ -927,6 +948,25 @@ class CompositionStore {
           )
       );
 
+      const missingSourceIds = this.clipList
+        .map(clip => clip.objectId)
+        .filter(id => !this.sources[id])
+        .filter((x, i, a) => a.indexOf(x) == i);
+
+      yield Promise.all(
+        missingSourceIds.map(async objectId => {
+          await this.InitializeSource({objectId});
+
+          this.clipStores[this.clips[this.sources[objectId].fullClipId].storeKey]?.LoadThumbnails();
+        })
+      );
+
+      this.secondarySourceIds = [
+        ...this.secondarySourceIds,
+        ...missingSourceIds
+      ]
+        .filter((x, i, a) => a.indexOf(x) == i);
+
       const items = this.clipList.map(clip => {
         const store = this.clipStores[clip.storeKey];
 
@@ -952,6 +992,7 @@ class CompositionStore {
           slice_start_rat: store.FrameToRat(clip.clipInFrame || 0),
           slice_end_rat: store.FrameToRat(clipOutFrame || store.totalFrames - 1),
           duration_rat: store.FrameToRat((clipOutFrame || store.totalFrames - 1) - (clip.clipInFrame || 0)),
+          effects: clip.effects,
           type: "mez_vod"
         };
       });
@@ -963,6 +1004,20 @@ class CompositionStore {
         metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "items"),
         metadata: Unproxy(items)
       });
+
+      /*
+      const updatedFields = Unproxy(this.ToV2({items}));
+      for(const key of Object.keys(updatedFields)) {
+        yield this.client.ReplaceMetadata({
+          libraryId,
+          objectId,
+          writeToken,
+          metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, key),
+          metadata: updatedFields[key]
+        });
+      }
+
+       */
 
       yield this.client.ReplaceMetadata({
         libraryId,
@@ -984,7 +1039,7 @@ class CompositionStore {
         libraryId,
         objectId,
         writeToken,
-        metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "sources"),
+        metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "selected_sources"),
         metadata: Unproxy(this.secondarySourceIds)
       });
 
@@ -1067,8 +1122,135 @@ class CompositionStore {
     yield this.SetCompositionObject({objectId, compositionKey});
   });
 
+  FromV2(metadata) {
+    /*
+      Slices:
+        0 - sourceIndex: 0-based index into the sources[] array
+        1 - sliceStartNumerator: clip start
+        2 - sliceStartDenominator: clip start
+        3 - sliceEndNumerator: clip end
+        4 - sliceEndDenominator: clip end
+
+      Slice effects:
+        0 - Effect type (1 = fade in audio and video at start , 2 = fade out audio and video at end)
+        1 - Slice index - which item on timeline to apply effect to (0 = first item)
+        2 - Effect duration numerator
+        3 - Effect duration denominator
+     */
+
+    const effectTypes = {
+      1: {type: "fade_in", position: "start"},
+      2: {type: "fade_out", position: "end"}
+    };
+
+    const ParseEffect = effect => {
+      const [type,,durationNum, durationDenom] = effect;
+
+      if(!effectTypes[type]) {
+        // eslint-disable-next-line no-console
+        console.warn("Unknown effect:", effect);
+        return;
+      }
+
+      return {
+        type: effectTypes[type].type,
+        position: effectTypes[type].position,
+        duration: durationNum / durationDenom
+      };
+    };
+
+    return (metadata.slices || []).map((slice, index) => {
+      let [sourceIndex, startNum, startDenom, endNum, endDenom] = slice;
+
+      const commonDenom = startDenom * endDenom;
+
+      startNum *= endDenom;
+      endNum *= startDenom;
+
+      return {
+        display_name: metadata.slice_info?.[index]?.display_name || `Clip ${index}`,
+        duration_rat: `${endNum - startNum}/${commonDenom}`,
+        slice_start_rat: `${startNum}/${commonDenom}`,
+        slice_end_rat: `${endNum}/${commonDenom}`,
+        effects: (metadata.slice_effects || [])
+          .filter(effect => effect[1] === index)
+          .map(effect => ParseEffect(effect))
+          .filter(effect => effect),
+        ...metadata.ch_sources[sourceIndex]
+      };
+    });
+  }
+
+  ToV2(metadata) {
+    let slices = [];
+    let ch_sources = [];
+    let slice_effects = [];
+    let slice_info = [];
+
+    for(const item of metadata.items || []) {
+      let sourceIndex = sources.findIndex(source => source.source["/"] === item.source["/"]);
+      if(sourceIndex < 0) {
+        sourceIndex = sources.length;
+        ch_sources[sourceIndex] = {
+          source: item.source,
+          type: item.type
+        };
+      }
+
+      const [startNum, startDenom] = ReduceRat(item.slice_start_rat);
+      const [endNum, endDenom] = ReduceRat(item.slice_end_rat);
+
+      const sliceIndex = slices.length;
+      slices.push([
+        sourceIndex,
+        startNum,
+        startDenom,
+        endNum,
+        endDenom
+      ]);
+
+      const effectTypes = {
+        "fade_in": 1,
+        "fade_out": 2
+      };
+
+      (item.effects || []).forEach(effect => {
+        slice_effects.push([
+          effectTypes[effect.type],
+          sliceIndex,
+          parseInt(effect.duration * 1000),
+          1000
+        ]);
+      });
+
+      slice_info[sliceIndex] = {
+        display_name: item.display_name
+      };
+    }
+
+    return {
+      slices,
+      ch_sources,
+      slice_effects,
+      slice_info
+    };
+  }
+
   SetCompositionObject = flow(function * ({objectId, compositionKey, addToMyLibrary=false}) {
+
+    // TODO: REMOVE
+    /*
+    yield this.client.SetNodes({
+      fabricURIs: [
+        //"https://host-76-74-29-13.contentfabric.io",
+        "https://host-76-74-29-9.contentfabric.io"
+      ]
+    });
+
+     */
+
     console.time(`Load composition ${objectId} ${compositionKey}`);
+
     if(!this.myCompositions[objectId]) {
       yield this.LoadMyCompositions();
     }
@@ -1088,6 +1270,10 @@ class CompositionStore {
         writeToken,
         metadataSubtree: UrlJoin("/channel", "offerings", compositionKey)
       })) || {};
+
+      if(metadata.slices) {
+        metadata.items = this.FromV2(metadata);
+      }
     } catch(error) {
       if(
         (error.status === 404 && error.message === "Not Found") ||
@@ -1152,9 +1338,8 @@ class CompositionStore {
     this.videoStore.SetFrameRate({rateRat: primarySourceStore.frameRateRat});
     this.videoStore.videoHandler = primarySource.videoHandler;
 
-
     // Determine secondary sources from explicit list in metadata and by looking at all item links
-    let secondarySources = metadata.sources || [];
+    let secondarySources = metadata.selected_sources || metadata.sources || [];
     let originalClipsList = {};
     let updatedClipList = {};
     this.clipIdList = yield Promise.all(
@@ -1162,10 +1347,18 @@ class CompositionStore {
         const clipId = this.rootStore.NextId();
         const clipVersionHash = ExtractHashFromLink(item.source) || versionHash;
         const clipObjectId = this.client.utils.DecodeVersionHash(clipVersionHash).objectId;
+
+        if(clipObjectId !== objectId && !secondarySources.includes(clipObjectId)) {
+          secondarySources.push(clipObjectId);
+        }
+
         const libraryId = await this.client.ContentObjectLibraryId({objectId: clipObjectId});
         const offeringKey = item.source["/"].split("/").slice(-1)[0];
 
-        await this.InitializeVideoStore({objectId: clipObjectId, offering: offeringKey});
+        await this.InitializeVideoStore({
+          objectId: clipObjectId,
+          offering: offeringKey
+        });
 
         const clipInFrame = primarySource.videoHandler.RatToFrame(item.slice_start_rat);
         const clipOutFrame = primarySource.videoHandler.RatToFrame(item.slice_end_rat);
@@ -1180,7 +1373,8 @@ class CompositionStore {
           clipInFrame,
           clipOutFrame,
           storeKey: `${clipObjectId}-${offeringKey}`,
-          clipKey: `${clipObjectId}-${offeringKey}-${clipInFrame}-${clipOutFrame}`
+          clipKey: `${clipObjectId}-${offeringKey}-${clipInFrame}-${clipOutFrame}`,
+          effects: item.effects || [],
           // TODO: Audio
           //audioRepresentation: store.audioRepresentation,
         };
@@ -1188,6 +1382,7 @@ class CompositionStore {
         const originalClipId = this.rootStore.NextId();
         originalClipsList[originalClipId] = {
           ...updatedClipList[clipId],
+          //effects: [],
           clipId: originalClipId
         };
 
@@ -1239,6 +1434,7 @@ class CompositionStore {
     yield this.GetCompositionPlayoutUrl();
 
     this.initialized = true;
+    this.SetSearchSettings(this.defaultSearchSettings);
 
     yield this.LoadMyClips({objectId});
 
@@ -1256,7 +1452,7 @@ class CompositionStore {
     console.timeEnd(`Load composition ${objectId} ${compositionKey}`);
   });
 
-  InitializeSource = flow(function * ({objectId, writeToken, primary=false}) {
+  InitializeSource = flow(function * ({objectId, writeToken}) {
     const libraryId = yield this.client.ContentObjectLibraryId({objectId});
     const versionHash = yield this.client.LatestVersionHash({objectId});
 
@@ -1320,7 +1516,31 @@ class CompositionStore {
     return this.sources[objectId];
   });
 
+  InitializeSearchResultSource = flow(function * ({objectId}) {
+    if(this.sources[objectId] || this.searchResultSources[objectId]) { return; }
+
+    const libraryId = yield this.client.ContentObjectLibraryId({objectId});
+    const versionHash = yield this.client.LatestVersionHash({objectId});
+
+    // Load source clips
+    const sourceFullClipId = yield this.InitializeClip({objectId, source: true, loadThumbnails: false});
+    const store = this.ClipStore({clipId: sourceFullClipId});
+    const videoHandler = new FrameAccurateVideo({frameRateRat: store.frameRateRat});
+
+    this.searchResultSources[objectId] = {
+      libraryId,
+      objectId,
+      versionHash,
+      videoHandler,
+      fullClipId: sourceFullClipId
+    };
+  });
+
   AddSource = flow(function * ({objectId}) {
+    const hasDefaultTitleSearchSettings =
+      [...this.defaultSearchSettings.objectIds].sort().toString() ===
+      [...this.searchSettings.objectIds].sort().toString();
+
     yield this.InitializeSource({objectId});
 
     if(!this.secondarySourceIds.includes(objectId)) {
@@ -1330,7 +1550,28 @@ class CompositionStore {
     }
 
     this.SelectSource({objectId});
+
+    if(hasDefaultTitleSearchSettings) {
+      this.searchSettings.objectIds = [...this.searchSettings.objectIds, objectId];
+    }
   });
+
+  RemoveSource({objectId}) {
+    const hasDefaultTitleSearchSettings =
+      [...this.defaultSearchSettings.objectIds].sort().toString() ===
+      [...this.searchSettings.objectIds].sort().toString();
+
+    if(this.selectedSourceId === objectId) {
+      this.selectedSourceId = this.primarySourceId;
+    }
+
+    delete this.sources[objectId];
+    this.secondarySourceIds = this.secondarySourceIds.filter(id => id !== objectId);
+
+    if(hasDefaultTitleSearchSettings) {
+      this.searchSettings.objectIds = [...this.searchSettings.objectIds].filter(id => id !== objectId);
+    }
+  }
 
   SelectSource({objectId}) {
     if(!this.sources[objectId]) {
@@ -1585,8 +1826,6 @@ class CompositionStore {
   }
 
   LoadMyClips = flow(function * ({objectId}) {
-    if(!this.initialized) { return; }
-
     const store = this.ClipStore({clipId: this.sources[objectId]?.fullClipId});
 
     if(!store) { return; }
@@ -1665,9 +1904,6 @@ class CompositionStore {
       )
     ) { return; }
 
-    const libraryId = yield this.client.ContentObjectLibraryId({objectId});
-    const versionHash = yield this.client.LatestVersionHash({objectId});
-
     const clips = (yield this.rootStore.aiStore.QueryAIAPI({
       server: "ai",
       objectId: index.id,
@@ -1679,6 +1915,7 @@ class CompositionStore {
           this.searchSettings.fields.length > 0 ?
             this.searchSettings.fields.join(",") :
             Object.keys(index.fields).join(","),
+        display_fields: "all",
         clips: true,
         clips_include_source_tags: true,
         get_chunks: true,
@@ -1687,16 +1924,40 @@ class CompositionStore {
         min_score: this.searchSettings.minConfidence / 100,
         start: 0,
         limit: 100,
-        filters: `id:${objectId}`
+        filters: this.searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR")
       }
     }))?.contents || [];
 
+    const sourceIdsToLoad = clips
+      .map(clip => clip.id)
+      .filter(id => !this.sources[id] && !this.searchResultSources[id])
+      .filter((x, i, a) => a.indexOf(x) == i);
+
+    yield Promise.all(
+      sourceIdsToLoad.map(async objectId =>
+        await this.InitializeSearchResultSource({objectId})
+      )
+    );
+
     let searchClipIds = [];
     for(const clip of clips) {
+      const sourceClip = this.clips[
+        this.sources[clip.id]?.fullClipId ||
+        this.searchResultSources[clip.id]?.fullClipId
+      ];
+
+      if(!sourceClip) {
+        // eslint-disable-next-line no-console
+        console.warn("No source clip found for search result");
+        // eslint-disable-next-line no-console
+        console.warn(clip);
+        continue;
+      }
+
       const clipInFrame = store.TimeToFrame(clip.start_time / 1000);
       const clipOutFrame = store.TimeToFrame(clip.end_time / 1000);
       const clipId = this.rootStore.NextId();
-      const storeKey = `${objectId}-default`;
+      const storeKey = sourceClip.storeKey;
 
       let imageUrl = this.clipStores[storeKey]?.baseImageUrl;
       if(imageUrl) {
@@ -1744,13 +2005,24 @@ class CompositionStore {
         score = Math.max(...(clip?.sources?.map(source => source.score) || []));
       }
 
+      const name = (
+        clip.sources?.[0]?.fields?.f_zz_ui_name_1?.[0] ||
+        clip.sources?.[0]?.fields?.f_zz_ui_name_2?.[0] ||
+        clip.sources?.[0]?.fields?.f_display_title?.[0]
+      );
+
+      const description = (
+        clip.sources?.[0]?.fields?.f_llava_as_string?.[0] ||
+        clip.sources?.[0]?.fields?.f_llava?.[0]
+      );
+
       this.clips[clipId] = {
         clipId,
-        name: clip.reason,
-        libraryId,
-        objectId,
-        versionHash,
-        offering: this.sourceFullClip?.offering || "default",
+        name: `${name}${description ? `: ${description}` : ""}`,
+        libraryId: yield this.client.ContentObjectLibraryId({objectId: clip.id}),
+        objectId: clip.id,
+        versionHash: sourceClip.versionHash,
+        offering: sourceClip.offering,
         clipInFrame,
         clipOutFrame,
         firstChunkStartTime: chunkStartTime,
@@ -1758,7 +2030,7 @@ class CompositionStore {
         score: score ? (score * 100).toFixed(1) : "",
         imageUrl,
         storeKey,
-        clipKey: `${objectId}-default-${clipInFrame}-${clipOutFrame}`
+        clipKey: `${clip.id}-${sourceClip.offering}-${clipInFrame}-${clipOutFrame}`
       };
 
       searchClipIds.push(clipId);

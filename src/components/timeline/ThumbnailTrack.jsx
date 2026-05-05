@@ -108,7 +108,9 @@ const ThumbnailTrack = observer(({
   noHover,
   hoverOffset=30,
   RenderTooltip,
+  tooltipDisabled=false,
   thumbnailFrom="middle",
+  float=true,
   className=""
 }) => {
   const [ref, setRef] = useState(null);
@@ -209,11 +211,12 @@ const ThumbnailTrack = observer(({
     return content;
   }
 
+  const Component = float ? Tooltip.Floating : Tooltip;
   return (
-    <Tooltip.Floating
+    <Component
       position="top"
       offset={hoverOffset}
-      disabled={!hovering}
+      disabled={!hovering || tooltipDisabled}
       label={
         RenderTooltip ?
           RenderTooltip(hoverThumbnail) :
@@ -230,7 +233,7 @@ const ThumbnailTrack = observer(({
       }
     >
       { content }
-    </Tooltip.Floating>
+    </Component>
   );
 });
 

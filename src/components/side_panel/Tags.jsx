@@ -525,7 +525,7 @@ export const TagsList = observer(({mode="tags"}) => {
   const [tags, setTags] = useState([]);
   const [pageInfo, setPageInfo] = useState({min: 0, max: 0, center: 0, total: 0});
   const [playheadFrame, setPlayheadFrame] = useState(null);
-  const [showTagsFromPlayhead, setShowTagsFromPlayhead] = useState(false);
+  const [showTagsFromPlayhead, setShowTagsFromPlayhead] = useState(sessionStorage.getItem("show-tags-from-playhead") || false);
   const perPage = 20;
 
   let tracks = {};
@@ -574,6 +574,14 @@ export const TagsList = observer(({mode="tags"}) => {
     //tagStore.scrollSeekTime,
     showTagsFromPlayhead && Math.ceil(videoStore.currentTime)
   ]);
+
+  useEffect(() => {
+    if(showTagsFromPlayhead) {
+      sessionStorage.setItem("show-tags-from-playhead", "true");
+    } else {
+      sessionStorage.removeItem("show-tags-from-playhead");
+    }
+  }, [showTagsFromPlayhead]);
 
   useEffect(() => {
     if(!showTagsFromPlayhead) { return; }

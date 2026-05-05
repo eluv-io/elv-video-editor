@@ -25,9 +25,10 @@ import ShareIcon from "@/assets/icons/v2/share.svg";
 import PinIcon from "@/assets/icons/v2/pin.svg";
 import RegenerateIcon from "@/assets/icons/rotate-ccw.svg";
 import LinkIcon from "@/assets/icons/v2/external-link.svg";
-import DownloadIcon from "@/assets/icons/v2/download.svg";
+import DownloadIcon from "@/assets/icons/download.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
+import TitleIcon from "@/assets/icons/titles.svg";
 
 import AIImageGray from "@/assets/images/composition-manual.svg";
 import AIImageColor from "@/assets/images/composition-ai.svg";
@@ -227,10 +228,9 @@ const ClipResultPanel = observer(({result}) => {
                 }
             }
             playerOptions={
-              !showFull ? {} :
-                {
-                  startTime: result.startTime
-                }
+              result.type === "frame" ?
+                { startTime: result.imageTime } :
+                showFull ? { startTime: result.startTime } : {}
             }
             className={S("result__video")}
           />
@@ -238,7 +238,7 @@ const ClipResultPanel = observer(({result}) => {
         <div className={S("result__actions")}>
           <div className={S("result__actions--left")}>
             <StyledButton
-              small
+              size="sm"
               icon={showFull ? ClipIcon : PlayIcon}
               onClick={() => setShowFull(!showFull)}
             >
@@ -253,40 +253,52 @@ const ClipResultPanel = observer(({result}) => {
           </div>
           <div className={S("result__actions--right")}>
             {
-              existingClip || !clipVideoStore ? null :
+              !aiStore.IsTitle({objectId: result.objectId}) ? null :
                 <StyledButton
-                  small
+                  size="sm"
                   variant="subtle"
-                  icon={ClipIcon}
-                  onClick={() => setShowAddToMyClipsModal(true)}
+                  icon={TitleIcon}
+                  to={UrlJoin("~/", "titles", result.objectId)}
                 >
-                  Save to My Clips
+                  View Title
                 </StyledButton>
             }
-            <StyledButton
-              small
-              variant="subtle"
+            {
+              result.type !== "video" || existingClip || !clipVideoStore ? null :
+                <IconButton
+                  label="Add to My Clips"
+                  className={S("result__action")}
+                  icon={ClipIcon}
+                  onClick={() => setShowAddToMyClipsModal(true)}
+                />
+            }
+            <IconButton
+              label="Open in Tag View"
+              className={S("result__action")}
               icon={PinIcon}
-              to={UrlJoin("~/", result.objectId, "tags", `?st=${result.startTime}&et=${result.endTime}&isolate=`)}
-            >
-              Open
-            </StyledButton>
-            <StyledButton
-              small
-              variant="subtle"
-              icon={DownloadIcon}
-              onClick={() => setShowDownloadModal(true)}
-            >
-              Download
-            </StyledButton>
-            <StyledButton
-              small
-              variant="subtle"
+              to={
+                UrlJoin(
+                  "~/",
+                  result.objectId,
+                  "tags",
+                  result.type === "frame" ?
+                    `?it=${result.imageTime}&isolate=` :
+                    `?st=${result.startTime}&et=${result.endTime}&isolate=`
+                )
+              }
+            />
+            <IconButton
+              label="Share"
+              className={S("result__action")}
               icon={ShareIcon}
               onClick={() => setShowShareModal(true)}
-            >
-              Share
-            </StyledButton>
+            />
+            <IconButton
+              label="Download"
+              className={S("result__action")}
+              icon={DownloadIcon}
+              onClick={() => setShowDownloadModal(true)}
+            />
           </div>
         </div>
         <Summary result={result} />
@@ -378,7 +390,7 @@ const ImageResultPanel = observer(({result}) => {
         </Tabs>
         <div className={S("result__tab-container--right")}>
           <StyledButton
-            small
+            size="sm"
             variant="subtle"
             icon={PinIcon}
             to={UrlJoin("~/", result.objectId, "assets", aiStore.client.utils.B64(result.result.prefix.split("/").slice(-1)[0]))}
@@ -485,7 +497,7 @@ const SearchResult = observer(() => {
           <PanelResizeHandle />
           <Panel key={`result-${queryB58}-${resultIndex}`} id="content" order={2} minSize={30} defaultSize={contentRatio} >
               {
-                result.type === "video" ?
+                ["video", "frame"].includes(result.type) ?
                   <ClipResultPanel result={result} /> :
                   <ImageResultPanel result={result} />
               }

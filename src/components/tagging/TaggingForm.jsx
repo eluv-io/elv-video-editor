@@ -3,7 +3,7 @@ import TaggingStyles from "@/assets/stylesheets/modules/tagging.module.scss";
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
-import {aiTaggingStore, keyboardControlsStore, rootStore} from "@/stores/index.js";
+import {aiTaggingStore, groundTruthStore, keyboardControlsStore, rootStore} from "@/stores/index.js";
 import {useLocation} from "wouter";
 import { TaggingSelection } from "@/components/nav/Browser.jsx";
 import {IconButton, Linkish, StyledButton} from "@/components/common/Common.jsx";
@@ -15,14 +15,25 @@ import BackIcon from "@/assets/icons/v2/back.svg";
 const S = CreateModuleClassMatcher(BrowserStyles, TaggingStyles);
 
 const Summary = observer(({options}) => {
-  const anySegmentModels = aiTaggingStore.segmentModels.find(key => options[key]);
-  const anyFrameModels = aiTaggingStore.frameModels.find(key => options[key]);
-  const anyProcessors = aiTaggingStore.processorModels.find(key => options[key]);
+  const dependentModels = Object.keys(options)
+    .filter(key => key !== "options" && options[key])
+    .map(key => aiTaggingStore.modelDependencyMap[key] || [])
+    .flat();
+
+  const anySegmentModels = aiTaggingStore.segmentModels.find(key => options[key] || dependentModels.includes(key));
+  const anyFrameModels = aiTaggingStore.frameModels.find(key => options[key] || dependentModels.includes(key));
+  const anyProcessors = aiTaggingStore.processorModels.find(key => options[key] || dependentModels.includes(key));
 
   return (
     <div className={S("form")}>
       <div className={S("block")}>
-        <h2 className={S("block__title")}>Model Tracks</h2>
+        <h2 className={S("block__title")}>
+          <span>Model Tracks</span>
+          {
+            !options.replace ? null :
+              <span style={{fontSize: 15}}>Existing tags will be replaced</span>
+          }
+        </h2>
         <div className={S("groups", "groups--double")}>
           <div className={S("group", "group--summary")}>
             <h3 className={S("group__title")}>
@@ -36,7 +47,7 @@ const Summary = observer(({options}) => {
             }
             {
               aiTaggingStore.segmentModels.map(model =>
-                !options[model] ? null :
+                !options[model] && !dependentModels.includes(model) ? null :
                   <>
                     <div key={model} className={S("summary-item")}>
                       {aiTaggingStore.modelNames[model]}
@@ -64,8 +75,18 @@ const Summary = observer(({options}) => {
             }
             {
               aiTaggingStore.frameModels.map(model =>
-                !options[model] ? null :
-                  <div key={model} className={S("summary-item")}>{aiTaggingStore.modelNames[model]}</div>
+                !options[model] && !dependentModels.includes(model) ? null :
+                  <>
+                    <div key={model} className={S("summary-item")}>
+                      {aiTaggingStore.modelNames[model]}
+                    </div>
+                    {
+                      !options.options[model]?.groundTruthPool ? null :
+                        <div key={`${model}-pool`} className={S("summary-item-option")}>
+                          Ground Truth Pool: { groundTruthStore.pools[options.options[model].groundTruthPool].name }
+                        </div>
+                    }
+                  </>
               )
             }
           </div>
@@ -85,7 +106,7 @@ const Summary = observer(({options}) => {
                 }
                 {
                   aiTaggingStore.processorModels.map(model =>
-                    !options[model] ? null :
+                    !options[model] && !dependentModels.includes(model) ? null :
                       <div key={model} className={S("summary-item")}>{aiTaggingStore.modelNames[model]}</div>
                   )
                 }
@@ -100,20 +121,43 @@ const Summary = observer(({options}) => {
 const Form = observer(({options, setOptions}) => {
   const onChange = (key, value) => setOptions({...options, [key]: value});
 
+  const dependentModels = Object.keys(options)
+    .filter(key => key !== "options" && options[key])
+    .map(key => aiTaggingStore.modelDependencyMap[key] || [])
+    .flat();
+
+  useEffect(() => {
+    groundTruthStore.LoadGroundTruthPools();
+  }, []);
+
   useEffect(() => {
     onChange(
       "options",
       {
         asr: { stream: options.options?.asr?.stream || "" },
-        euro_asr: { stream: options.options?.euro_asr?.stream || "" }
+        euro_asr: { stream: options.options?.euro_asr?.stream || "" },
+        celeb: {
+          groundTruthPool: options.options?.celeb?.groundTruthPool ||
+            Object.keys(groundTruthStore.pools).find(key =>
+              groundTruthStore.pools[key].order === 0
+            )
+        }
       }
     );
-  }, [aiTaggingStore.selectedContent]);
+  }, [aiTaggingStore.selectedContent, options.celeb, JSON.stringify(dependentModels)]);
 
   return (
     <div className={S("form")}>
       <div className={S("block")}>
-        <h2 className={S("block__title")}>Model Tracks</h2>
+        <h2 className={S("block__title")}>
+          <span>Model Tracks</span>
+          <Checkbox
+            label="Replace Existing Tags"
+            size={15}
+            checked={options.replace}
+            onChange={event => onChange("replace", event.target.checked)}
+          />
+        </h2>
         <div className={S("groups", "groups--double")}>
           <div className={S("group")}>
             <h3 className={S("group__title")}>
@@ -141,10 +185,11 @@ const Form = observer(({options, setOptions}) => {
                     key={`option-${model}`}
                     label={aiTaggingStore.modelNames[model]}
                     checked={options[model]}
+                    indeterminate={!options[model] && dependentModels.includes(model)}
                     onChange={event => onChange(model, event.currentTarget.checked)}
                   />
                   {
-                    !options[model] ||
+                    !(options[model] || dependentModels.includes(model)) ||
                     !["asr", "euro_asr"].includes(model) ||
                     aiTaggingStore.selectedContentCommonAudioTracks.length === 0 ? null :
                       <Select
@@ -195,13 +240,48 @@ const Form = observer(({options, setOptions}) => {
             </h3>
             {
               aiTaggingStore.frameModels.map(model =>
-                <Checkbox
-                  key={`option-${model}`}
-                  label={aiTaggingStore.modelNames[model]}
-                  checked={options[model]}
-                  disabled={model === "landmark"}
-                  onChange={event => onChange(model, event.currentTarget.checked)}
-                />
+                <>
+                  <Checkbox
+                    key={`option-${model}`}
+                    label={aiTaggingStore.modelNames[model]}
+                    indeterminate={!options[model] && dependentModels.includes(model)}
+                    checked={options[model]}
+                    disabled={model === "landmark"}
+                    onChange={event => onChange(model, event.currentTarget.checked)}
+                  />
+                  {
+                    !options[model] ||
+                    model !== "celeb" ||
+                    Object.keys(groundTruthStore.pools).length <= 1 ? null :
+                      <Select
+                        value={options.options[model]?.groundTruthPool || ""}
+                        searchable
+                        maw={300}
+                        mt={-5}
+                        ml={32}
+                        mb={10}
+                        onChange={value => onChange(
+                          "options",
+                          {
+                            ...options.options,
+                            [model]: {
+                              ...(options.options[model] || {}),
+                              groundTruthPool: value
+                            }
+                          }
+                        )}
+                        data={[
+                          ...Object.values(groundTruthStore.pools)
+                            .map(pool => ({
+                              value: pool.objectId,
+                              label: pool.name
+                            }))
+                            .sort((a, b) => a.name < b.name ? 1 : -1),
+                          { label: "Default Large Pool", value: "default" },
+                        ]}
+                      />
+                  }
+                </>
               )
             }
           </div>
@@ -220,6 +300,7 @@ const Form = observer(({options, setOptions}) => {
                     <Checkbox
                       key={`option-${model}`}
                       label={aiTaggingStore.modelNames[model]}
+                      indeterminate={!options[model] && dependentModels.includes(model)}
                       checked={options[model]}
                       disabled={model === "shot"}
                       onChange={event => onChange(model, event.currentTarget.checked)}
@@ -234,11 +315,11 @@ const Form = observer(({options, setOptions}) => {
   );
 });
 
-const defaultDisabledModels = ["euro_asr"];
+const defaultEnabledModels = ["shot"];
 const TaggingForm = observer(() => {
-  let initialOptions = {options: {}};
+  let initialOptions = {replace: true, options: {}};
   [...aiTaggingStore.segmentModels, ...aiTaggingStore.frameModels]
-    .forEach(key => initialOptions[key] = !defaultDisabledModels.includes(key));
+    .forEach(key => initialOptions[key] = defaultEnabledModels.includes(key));
   const [location, navigate] = useLocation();
   const [options, setOptions] = useState(initialOptions);
 
