@@ -1026,7 +1026,7 @@ export const ObjectBrowser = observer(({
               <Linkish onClick={Back}>
                 Content Libraries
               </Linkish>
-              <span className={S("browser__header-chevron")}>▶</span>
+              <span className={S("browser__header-chevron")}>➤</span>
               <span className={S("browser__header-last")}>
                 {library?.name || libraryId}
               </span>
@@ -1437,11 +1437,11 @@ export const TaggingContentBrowser = observer(() => {
         <Linkish to="/">
           AI Runtime
         </Linkish>
-        <span className={S("browser__header-chevron")}>▶</span>
+        <span className={S("browser__header-chevron")}>➤</span>
         <span>
           New Job
         </span>
-        <span className={S("browser__header-chevron")}>▶</span>
+        <span className={S("browser__header-chevron")}>➤</span>
         <span className={S("browser__header-last")}>
           Select Content
         </span>

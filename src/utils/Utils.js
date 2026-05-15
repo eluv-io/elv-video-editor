@@ -387,8 +387,20 @@ export const ParseSearchQuery = ({query="", queryB58=""}) => {
     query = query.split(":").slice(1).join(":");
   }
 
+  let modeText = "Search Results";
+  if(mode === "clip") {
+    modeText = "Clip Search";
+  } else if(mode === "music") {
+    modeText = "Music Search";
+  } else if(mode === "prompt") {
+    modeText = "Prompt Search";
+  } else if(mode?.startsWith("frame")) {
+    modeText = "Image Search";
+  }
+
   return {
     mode,
+    modeText,
     query
   };
 };

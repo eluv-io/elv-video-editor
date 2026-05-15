@@ -192,7 +192,7 @@ const SearchResultsPage = observer(() => {
   const [showList, setShowList] = useState(StorageHandler.get({type: "session", key: "search-display"}) || false);
 
   let {queryB58} = useParams();
-  const {mode, query} = ParseSearchQuery({queryB58});
+  const {mode, modeText, query} = ParseSearchQuery({queryB58});
 
   useEffect(() => {
     if(aiStore.searchResults.key !== `${aiStore.searchSettings.key}-${query}-${mode}-${aiStore.searchImageFrameUrl || ""}`) {
@@ -224,12 +224,12 @@ const SearchResultsPage = observer(() => {
             className={S("browser__header-back")}
           />
           <Linkish to={queryB58 ? "~/search" : undefined}>
-            Search Results
+            { modeText }
           </Linkish>
           {
             !queryB58 ? null :
               <>
-                <span className={S("browser__header-chevron")}>▶</span>
+                <span className={S("browser__header-chevron")}>➤</span>
                 {
                   mode === "frame-image" ?
                     <Tooltip

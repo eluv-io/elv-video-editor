@@ -346,22 +346,22 @@ const TaggingForm = observer(() => {
         <Linkish to="/">
           AI Runtime
         </Linkish>
-        <span className={S("browser__header-chevron")}>▶</span>
+        <span className={S("browser__header-chevron")}>➤</span>
         <span>
           New Job
         </span>
-        <span className={S("browser__header-chevron")}>▶</span>
+        <span className={S("browser__header-chevron")}>➤</span>
         <Linkish to="/new" className={S("browser__header-last")}>
           Select Content
         </Linkish>
-        <span className={S("browser__header-chevron")}>▶</span>
+        <span className={S("browser__header-chevron")}>➤</span>
         <Linkish to={showSummary ? "/new/configure" : ""}>
           Model Track(s) & Processors
         </Linkish>
         {
           !showSummary ? null :
             <>
-              <span className={S("browser__header-chevron")}>▶</span>
+              <span className={S("browser__header-chevron")}>➤</span>
               <span>
                 Summary
               </span>

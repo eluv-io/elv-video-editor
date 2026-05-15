@@ -432,7 +432,7 @@ const ImageResultPanel = observer(({result}) => {
 
 const SearchResult = observer(() => {
   let {queryB58, resultIndex} = useParams();
-  const {mode, query} = ParseSearchQuery({queryB58});
+  const {mode, modeText, query} = ParseSearchQuery({queryB58});
   const result = aiStore.searchResults?.results?.[parseInt(resultIndex)];
 
   useEffect(() => {
@@ -462,12 +462,12 @@ const SearchResult = observer(() => {
             to={UrlJoin("/", queryB58)}
             className={S("browser__header-back")}
           />
-          <span>Search Results</span>
-          <span className={S("browser__header-chevron")}>▶</span>
+          <span>{modeText}</span>
+          <span className={S("browser__header-chevron")}>➤</span>
           <Linkish to={UrlJoin("/", queryB58)}>
             { query || "All Results" }
           </Linkish>
-          <span className={S("browser__header-chevron")}>▶</span>
+          <span className={S("browser__header-chevron")}>➤</span>
           <span className={S("browser__header-last")}>
             {result.name}
           </span>

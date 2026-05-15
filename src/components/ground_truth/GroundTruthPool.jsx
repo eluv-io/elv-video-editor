@@ -240,7 +240,7 @@ const GroundTruthPool = observer(() => {
             <Linkish to="/">
               All Ground Truth
             </Linkish>
-            <span className={S("browser__header-chevron")}>▶</span>
+            <span className={S("browser__header-chevron")}>➤</span>
             <span className={S("browser__header-last")}>
               {pool.name || pool.objectId}
             </span>

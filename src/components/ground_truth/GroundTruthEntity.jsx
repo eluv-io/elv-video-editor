@@ -235,11 +235,11 @@ const GroundTruthEntity = observer(() => {
             <Linkish to="/">
               All Ground Truth
             </Linkish>
-            <span className={S("browser__header-chevron")}>▶</span>
+            <span className={S("browser__header-chevron")}>➤</span>
             <Linkish to={UrlJoin("/", poolId)}>
               {pool.name || pool.objectId}
             </Linkish>
-            <span className={S("browser__header-chevron")}>▶</span>
+            <span className={S("browser__header-chevron")}>➤</span>
             <span className={S("browser__header-last")}>
               {entity.label || entityId}
             </span>
