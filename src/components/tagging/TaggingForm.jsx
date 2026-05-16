@@ -136,6 +136,7 @@ const Form = observer(({options, setOptions}) => {
       {
         asr: { stream: options.options?.asr?.stream || "" },
         euro_asr: { stream: options.options?.euro_asr?.stream || "" },
+        vertical_video: { mode: "movie" },
         celeb: {
           groundTruthPool: options.options?.celeb?.groundTruthPool ||
             Object.keys(groundTruthStore.pools).find(key =>
@@ -212,6 +213,32 @@ const Form = observer(({options, setOptions}) => {
                         data={[
                           { label: "Audio Track: Default", value: "" },
                           ...aiTaggingStore.selectedContentCommonAudioTracks
+                        ]}
+                      />
+                  }
+                  {
+                    !(options[model] || dependentModels.includes(model)) ||
+                    !["vertical_video"].includes(model) ? null :
+                      <Select
+                        value={options.options[model]?.mode}
+                        searchable
+                        maw={200}
+                        mt={-5}
+                        ml={32}
+                        mb={10}
+                        onChange={value => onChange(
+                          "options",
+                          {
+                            ...options.options,
+                            [model]: {
+                              ...(options.options[model] || {}),
+                              mode: value
+                            }
+                          }
+                        )}
+                        data={[
+                          { label: "Movie", value: "movie" },
+                          { label: "Sports", value: "sports" }
                         ]}
                       />
                   }

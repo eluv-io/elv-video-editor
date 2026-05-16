@@ -291,6 +291,13 @@ Focus and Pose - requires Shot
           };
         }
 
+        const mode = options?.options?.[key]?.mode;
+        if(mode) {
+          result.model_params = {
+            mode
+          };
+        }
+
         return result;
       });
 
