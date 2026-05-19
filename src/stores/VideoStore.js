@@ -547,7 +547,7 @@ class VideoStore {
       apiTags.forEach(tag => {
         const frame = parseInt(tag.frame_info?.frame_idx);
 
-        if(isNaN(frame) || typeof frame === "undefined" || !tag.frame_info?.box) {
+        if(isNaN(frame) || typeof frame === "undefined" || (!tag.frame_info?.box && tag.track !== "vertical_video")) {
           console.error("Invalid frame tag", tag);
         }
 

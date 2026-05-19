@@ -516,12 +516,12 @@ const Tag = observer(({track, tag, setTagRef}) => {
 export const TagsList = observer(({mode="tags"}) => {
   const ref = useRef(null);
   const [loading, setLoading] = useState(true);
-  const [scrollRef, setScrollRef] = useState(undefined);
+  //const [scrollRef, setScrollRef] = useState(undefined);
   const [pages, setPages] = useDebouncedState({previous: 1, next: 1}, 250);
   const [update, setUpdate] = useDebouncedState(0, 250);
   const [key] = useDebouncedState(0, 250);
   const [scrollTagId, setScrollTagId] = useState(undefined);
-  const [scrolled, setScrolled] = useState(false);
+  //const [scrolled, setScrolled] = useState(false);
   const [tags, setTags] = useState([]);
   const [pageInfo, setPageInfo] = useState({min: 0, max: 0, center: 0, total: 0});
   const [playheadFrame, setPlayheadFrame] = useState(null);
@@ -555,7 +555,7 @@ export const TagsList = observer(({mode="tags"}) => {
     //setLoading(true);
     // Reset limit when tag content changes
     setPages({previous: 1, next: 1});
-    setScrolled(false);
+    //setScrolled(false);
     setScrollTagId(tagStore.scrollTagId);
     setUpdate(update + 1);
     //setKey(key + 1);
@@ -587,7 +587,7 @@ export const TagsList = observer(({mode="tags"}) => {
     if(!showTagsFromPlayhead) { return; }
 
     setPages({previous: 1, next: 1});
-    setScrolled(false);
+    //setScrolled(false);
     setScrollTagId(tagStore.scrollTagId);
     setUpdate(update + 1);
   }, [playheadFrame, showTagsFromPlayhead]);
@@ -674,7 +674,6 @@ export const TagsList = observer(({mode="tags"}) => {
             .map(tag =>
               <Tag
                 key={`tag-${tag.tagId}`}
-                setTagRef={tag.tagId === scrollTagId ? setScrollRef : undefined}
                 track={tracks[tag.trackKey]}
                 tag={tag}
               />

@@ -520,9 +520,11 @@ class DownloadStore {
       })
     );
 
-    const node = (await this.rootStore.client.Nodes()).fabricURIs[0];
-    const verticalEmbedUrl = new URL(
-      await this.CreateEmbedUrl({
+    let verticalEmbedUrl;
+    if(share.compositionKey === "main" && store.videoObject?.hasVertical) {
+      // TODO: Remove specific vertical node
+      const node = "https://host-76-74-29-29.contentfabric.io";
+      verticalEmbedUrl = await this.CreateEmbedUrl({
         store,
         offeringKey: share.downloadOptions?.offering,
         audioTrackLabel: share.audioTrackLabel,
@@ -533,8 +535,8 @@ class DownloadStore {
         title: share.title,
         vertical: true,
         node
-      })
-    );
+      });
+    }
 
     if(share.downloadJobId) {
       const downloadUrl = new URL(embedUrl.origin);
@@ -555,7 +557,7 @@ class DownloadStore {
       expired: Date.now() > new Date(share.end_time).getTime(),
       clipDetails,
       embedUrl: embedUrl.toString(),
-      verticalEmbedUrl: verticalEmbedUrl.toString()
+      verticalEmbedUrl
     };
   }
 
