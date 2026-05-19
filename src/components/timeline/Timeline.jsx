@@ -31,7 +31,6 @@ import {
   LiveToVodButton,
   MyClipsButton
 } from "@/components/timeline/Controls.jsx";
-import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
@@ -590,10 +589,10 @@ const TrackLabel = observer(({track, taggingJob}) => {
       {
         !taggingJob ||
         !["queued", "running"].includes(taggingJob.status) ||
-        !taggingJob?.tag_details?.tagging_progress ? null :
+        typeof taggingJob.progress === "undefined" ? null :
           <div className={S("timeline-row__progress")}>
             <span>
-              {(FrameAccurateVideo.ParseRat(taggingJob.tag_details.tagging_progress) * 100).toFixed(0)}%
+              {(parseFloat(taggingJob.progress || 0) * 100).toFixed(0)}%
             </span>
             <div className={S("timeline-row__progress-indicator")} />
           </div>

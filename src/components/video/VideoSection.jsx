@@ -42,7 +42,7 @@ const VideoSection = observer(({
   store = store || videoStore;
 
   return (
-    <div className={S("content-block", "video-section")}>
+    <div className={S("content-block", "video-section", vertical ? "video-section--vertical" : "")}>
       <h1 className={S("video-section__title")}>
         <div className={S("ellipsis")}>
           {title || store.name}

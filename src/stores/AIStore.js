@@ -1627,7 +1627,6 @@ class AIStore {
     yield this.AwaitVerticalVideoJobs({objectId, model});
 
     const trackKey = this.rootStore.aiTaggingStore.modelToTrackKeyMapping[model];
-
     let tags = (yield this.rootStore.aiStore.QueryAIAPI({
       objectId,
       path: UrlJoin("/tagstore", objectId, "tags"),
@@ -1635,7 +1634,7 @@ class AIStore {
       queryParams: {
         limit: 1000000,
         has_frame_info: model === "vertical_video",
-        track: trackKey
+        track: model === "vertical_video" ? "vertical_video" : trackKey
       },
       format: "JSON"
     }))?.tags || [];

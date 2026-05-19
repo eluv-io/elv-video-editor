@@ -29,6 +29,12 @@
     height: 100%;
     justify-content: flex-end;
   }
+
+  &--vertical {
+    .video-wrapper {
+      padding-bottom: 41px;
+    }
+  }
 }
 
 .clip-toolbar {

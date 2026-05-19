@@ -131,8 +131,7 @@ class DownloadStore {
 
       let params = {
         format,
-        offering,
-        filename
+        offering
       };
 
       if(composition) {
