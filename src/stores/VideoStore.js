@@ -33,6 +33,7 @@ class VideoStore {
   loading = false;
   initialized = false;
   tagsLoading = false;
+  tagsLastUpdatedAt;
   isVideo = false;
   isLiveToVod = false;
   ready = false;
@@ -233,6 +234,9 @@ class VideoStore {
     this.baseUrl = undefined;
     this.baseStateChannelUrl = undefined;
     this.baseImageUrl = undefined;
+
+    this.tagsLoading = false;
+    this.tagsLastUpdatedAt = undefined;
 
     if(this.tags) {
       this.rootStore.tagStore.ClearTags();
@@ -442,6 +446,20 @@ class VideoStore {
     }
   }
 
+  CheckTagsUpdated = flow(function * () {
+    if(!this.tagsLastUpdatedAt || !this.videoObject.objectId) { return; }
+
+    const lastUpdate = (yield this.rootStore.aiStore.QueryAIAPI({
+      objectId: this.videoObject.objectId,
+      path: UrlJoin("/tagstore", this.videoObject.objectId, "content"),
+      channelAuth: true,
+      queryParams: { ignore_commit_ts: true },
+      format: "JSON"
+    }))?.last_tag_update;
+
+    return lastUpdate !== this.tagsLastUpdatedAt;
+  });
+
   LoadTags = flow(function * () {
     const objectId = this.videoObject.objectId;
     console.time("Load Tags");
@@ -449,6 +467,15 @@ class VideoStore {
     let overlayTags = [];
     try {
       this.tagsLoading = true;
+
+      this.tagsLastUpdatedAt = (yield this.rootStore.aiStore.QueryAIAPI({
+        objectId,
+        path: UrlJoin("/tagstore", objectId, "content"),
+        channelAuth: true,
+        queryParams: { ignore_commit_ts: true },
+        format: "JSON"
+      }))?.last_tag_update;
+
       let apiTracks = (yield this.rootStore.aiStore.QueryAIAPI({
         objectId,
         path: UrlJoin("/tagstore", objectId, "tracks"),
