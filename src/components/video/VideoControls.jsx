@@ -56,11 +56,13 @@ export const SubtitleControls = observer(({store}) => {
   );
 });
 
-export const AudioControls = observer(({store}) => {
-  const tracks = store.audioTracks.map(track => ({
-    label: track.name || track.lang,
-    value: track.id.toString()
-  }));
+export const AudioControls = observer(({store, channels, onChange}) => {
+  const tracks = store.audioTracks
+    .filter(track => !channels || track.channels === channels)
+    .map(track => ({
+      label: track.name || track.lang,
+      value: track.id.toString()
+    }));
 
   if(tracks.length === 1) {
     return null;
@@ -72,7 +74,10 @@ export const AudioControls = observer(({store}) => {
       key={`audio-${store.currentAudioTrack}`}
       value={store.currentAudioTrack?.toString() || "-1"}
       options={tracks}
-      onChange={value => value && store.SetAudioTrack(value)}
+      onChange={value => {
+        value && store.SetAudioTrack({index: value});
+        onChange?.(value);
+      }}
     />
   );
 });

@@ -30,8 +30,13 @@
   gap: 10px;
   height: 45px;
   justify-content: center;
+  max-width: 100%;
   padding-inline: var(--content-inline-padding);
   position: relative;
+
+  &--no-padding {
+    padding-inline: 0;
+  }
 
   &__description {
     align-items: center;
@@ -79,6 +84,7 @@
     align-items: center;
     display: flex;
     gap: 12px;
+    max-width: 100%;
 
     &--tight {
       gap: 3px;

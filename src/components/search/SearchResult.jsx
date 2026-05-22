@@ -283,7 +283,7 @@ const ClipResultPanel = observer(({result}) => {
                   "tags",
                   result.type === "frame" ?
                     `?it=${result.imageTime}&isolate=` :
-                    `?st=${result.startTime}&et=${result.endTime}&isolate=`
+                    `?it=${result.startTime}&st=${result.startTime}&et=${result.endTime}&isolate=`
                 )
               }
             />

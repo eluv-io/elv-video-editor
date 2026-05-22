@@ -713,7 +713,8 @@ export const SMPTEInput = observer(({store, value, onChange, formInput=false, hi
 
   return (
     <Component
-      value={smpteInput}
+      disabled={store.totalFrames === 0}
+      value={store.totalFrames === 0 ? "" : smpteInput}
       monospace
       onChange={event => setSMPTEInput(event.target.value)}
       onKeyDown={event => {

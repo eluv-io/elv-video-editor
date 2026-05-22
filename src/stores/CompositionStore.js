@@ -347,6 +347,8 @@ class CompositionStore {
           clipId
         };
 
+        this.SetClipAudio({clipId});
+
         this.clipIdList = this.clipIdList.toSpliced(index, 0, clipId);
 
         if(this.seek > progress) {
@@ -416,7 +418,39 @@ class CompositionStore {
       },
       label: "Change Offering"
     });
+
+    this.SetClipAudio({clipId});
   });
+
+  SetClipAudio({clipId, audioTrackIndex}) {
+    const clip = this.clips[clipId];
+
+    if(!clip) { return; }
+
+    const store = this.clipStores[clip.storeKey] || this.ClipStore({clipId});
+
+    const audioTracks = store.AudioOptions(clip.offering);
+    let audioTrackInfo = typeof audioTrackIndex !== "undefined" ?
+      audioTracks[parseInt(audioTrackIndex)] :
+      audioTracks.find(track => track.current);
+
+    if(audioTrackInfo && !audioTrackInfo.default) {
+      this.clips[clipId] = {
+        ...this.clips[clipId],
+        audio_track_key: audioTrackInfo.key,
+        audio_track_stream_key: audioTrackInfo.streamKey,
+        audio_track_index: audioTrackInfo.trackId,
+        audio_track_label: audioTrackInfo.label
+      };
+    } else {
+      delete this.clips[clipId].audio_track_key;
+      delete this.clips[clipId].audio_track_stream_key;
+      delete this.clips[clipId].audio_track_index;
+      delete this.clips[clipId].audio_track_label;
+    }
+
+    this.UpdateComposition();
+  }
 
   RemoveClip(clipId) {
     this.PerformAction({
@@ -601,7 +635,7 @@ class CompositionStore {
 
     if(!this.clipStores[key]) {
       // eslint-disable-next-line no-console
-      console.warn("No store for selected clip");
+      console.warn(new Error("No store for selected clip"));
       // eslint-disable-next-line no-console
       console.warn(objectId, offering, clipId, sourceId, key, this.clips[clipId]);
     }
@@ -748,9 +782,12 @@ class CompositionStore {
 
     try {
       const {objectId, compositionKey} = this.compositionObject;
+
       const writeToken = noWriteToken ? undefined :
         yield this.WriteToken({objectId, compositionKey, create: false});
 
+      // TODO: Remove
+      yield this.client.SetNodes({fabricURIs: ["https://host-76-74-35-69.contentfabric.io"]});
       const playoutOptions = (yield this.client.PlayoutOptions({
         objectId,
         writeToken,
@@ -767,6 +804,8 @@ class CompositionStore {
 
       this.compositionPlayoutUrl = playoutUrl.toString();
       this.videoStore.duration = this.compositionDuration;
+
+      yield this.client.ResetRegion();
 
       return playoutUrl;
     } catch(error) {
@@ -801,7 +840,6 @@ class CompositionStore {
       libraryId: sourceLibraryId,
       objectId: sourceObjectId,
       select: [
-        "offerings/*/playout",
         "offerings/*/media_struct/streams/*/rate",
         "/public/name",
       ],
@@ -820,7 +858,6 @@ class CompositionStore {
         offerings.find(offering => offering.includes("default")) || offerings[0];
     }
 
-    const playoutMetadata = sourceMetadata.offerings[offeringKey].playout;
     const offeringOptions = sourceMetadata.offerings?.[offeringKey]?.media_struct?.streams || {};
 
     let frameRate;
@@ -890,7 +927,6 @@ class CompositionStore {
       display_name: name || "Composition",
       key,
       playout_type: "ch_vod",
-      playout: playoutMetadata,
       items,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -986,18 +1022,85 @@ class CompositionStore {
           };
         }
 
+        let audioInfo = store.AudioOptions(clip.offering)
+          .find(track => track.streamKey === clip.audio_track_stream_key);
+
         return {
+          audio_track_stream_key: clip.audio_track_stream_key,
+          has_non_default_audio: clip.audio_track_stream_key && !audioInfo.default,
           display_name: clip.name || "Clip",
           source: sourceLink,
           slice_start_rat: store.FrameToRat(clip.clipInFrame || 0),
           slice_end_rat: store.FrameToRat(clipOutFrame || store.totalFrames - 1),
           duration_rat: store.FrameToRat((clipOutFrame || store.totalFrames - 1) - (clip.clipInFrame || 0)),
           effects: clip.effects,
-          type: "mez_vod"
+          type: "mez_vod",
         };
       });
 
+      let metadata = Unproxy(this.sourceVideoStore.videoObject.metadata.offerings[this.compositionObject.sourceOfferingKey]);
+      let playoutMetadata = metadata.playout;
+      const mediaStruct = metadata.media_struct;
+
+      Object.keys(playoutMetadata.streams).forEach(key => {
+        if(key.startsWith("captions-") || key.includes("_thumbs")) {
+          delete playoutMetadata.streams[key];
+        }
+      });
+
+      const hasNonDefaultAudio = !!items.find(item => item.has_non_default_audio);
+
+      if(hasNonDefaultAudio) {
+        const defaultAudioTrackKey = Object.keys(mediaStruct?.streams || {})
+          .find(key =>
+            mediaStruct.streams[key].codec_type === "audio" &&
+            mediaStruct.streams[key].default_for_media_type
+          );
+
+        const defaultAudioTrackRepKey = Object.keys(metadata.playout.streams[defaultAudioTrackKey].representations)[0];
+        let audioMetadata = {
+          ...playoutMetadata.streams[defaultAudioTrackKey],
+          representations: {
+            [defaultAudioTrackRepKey]: {
+              bit_rate: playoutMetadata.streams[defaultAudioTrackKey].representations[defaultAudioTrackRepKey].bit_rate,
+              codec: playoutMetadata.streams[defaultAudioTrackKey].representations[defaultAudioTrackRepKey].codec,
+              codec_desc: playoutMetadata.streams[defaultAudioTrackKey].representations[defaultAudioTrackRepKey].codec_desc,
+              type: playoutMetadata.streams[defaultAudioTrackKey].representations[defaultAudioTrackRepKey].type,
+              channels: mediaStruct.streams[defaultAudioTrackKey].channels
+            }
+          }
+        };
+
+        playoutMetadata.streams = {
+          video: {
+            ...playoutMetadata.streams.video,
+            media_type: "video",
+            label: mediaStruct.streams.video.label || "video",
+          },
+          audio: {
+            ...audioMetadata,
+            media_type: "audio",
+            label: "audio",
+          }
+        };
+      } else {
+        Object.keys(playoutMetadata.streams).forEach(key => {
+          playoutMetadata.streams[key].label = mediaStruct.streams[key]?.label || key;
+          playoutMetadata.streams[key].media_type = mediaStruct.streams[key]?.codec_type || (key.includes("video") ? "video" : "audio");
+        });
+      }
+
       yield this.client.ReplaceMetadata({
+        libraryId,
+        objectId,
+        writeToken,
+        metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "playout"),
+        metadata: Unproxy(playoutMetadata)
+      });
+
+      console.log(JSON.stringify(playoutMetadata, null, 2));
+
+      yield this.client.DeleteMetadata({
         libraryId,
         objectId,
         writeToken,
@@ -1005,8 +1108,10 @@ class CompositionStore {
         metadata: Unproxy(items)
       });
 
-      /*
       const updatedFields = Unproxy(this.ToV2({items}));
+
+      console.log(JSON.stringify(updatedFields,null,2));
+
       for(const key of Object.keys(updatedFields)) {
         yield this.client.ReplaceMetadata({
           libraryId,
@@ -1016,8 +1121,6 @@ class CompositionStore {
           metadata: updatedFields[key]
         });
       }
-
-       */
 
       yield this.client.ReplaceMetadata({
         libraryId,
@@ -1167,7 +1270,12 @@ class CompositionStore {
       startNum *= endDenom;
       endNum *= startDenom;
 
+      const source = { ...metadata.ch_sources[sourceIndex] };
+      const audioTrackKey = source?.stream_map?.audio;
+      delete source.stream_map;
+
       return {
+        audio_track_stream_key: audioTrackKey,
         display_name: metadata.slice_info?.[index]?.display_name || `Clip ${index}`,
         duration_rat: `${endNum - startNum}/${commonDenom}`,
         slice_start_rat: `${startNum}/${commonDenom}`,
@@ -1176,7 +1284,7 @@ class CompositionStore {
           .filter(effect => effect[1] === index)
           .map(effect => ParseEffect(effect))
           .filter(effect => effect),
-        ...metadata.ch_sources[sourceIndex]
+        ...source
       };
     });
   }
@@ -1187,14 +1295,29 @@ class CompositionStore {
     let slice_effects = [];
     let slice_info = [];
 
+    const hasNonDefaultAudio = !!metadata.items.find(item => item.has_non_default_audio);
+
     for(const item of metadata.items || []) {
-      let sourceIndex = sources.findIndex(source => source.source["/"] === item.source["/"]);
+      let sourceIndex = ch_sources.findIndex(source =>
+        source.source["/"] === item.source["/"] &&
+        (
+          !hasNonDefaultAudio ||
+            source.stream_map?.audio === item.audio_track_stream_key
+        )
+      );
+
       if(sourceIndex < 0) {
-        sourceIndex = sources.length;
+        sourceIndex = ch_sources.length;
         ch_sources[sourceIndex] = {
           source: item.source,
           type: item.type
         };
+
+        if(hasNonDefaultAudio) {
+          ch_sources[sourceIndex].stream_map = {
+            audio: item.audio_track_stream_key
+          };
+        }
       }
 
       const [startNum, startDenom] = ReduceRat(item.slice_start_rat);
@@ -1362,6 +1485,7 @@ class CompositionStore {
 
         const clipInFrame = primarySource.videoHandler.RatToFrame(item.slice_start_rat);
         const clipOutFrame = primarySource.videoHandler.RatToFrame(item.slice_end_rat);
+        const storeKey = `${clipObjectId}-${offeringKey}`;
 
         updatedClipList[clipId] = {
           clipId,
@@ -1372,7 +1496,7 @@ class CompositionStore {
           offering: offeringKey,
           clipInFrame,
           clipOutFrame,
-          storeKey: `${clipObjectId}-${offeringKey}`,
+          storeKey,
           clipKey: `${clipObjectId}-${offeringKey}-${clipInFrame}-${clipOutFrame}`,
           effects: item.effects || [],
           // TODO: Audio
@@ -1388,6 +1512,19 @@ class CompositionStore {
 
         if(clipObjectId !== objectId && !secondarySources.includes(clipObjectId)) {
           secondarySources.push(clipObjectId);
+        }
+
+        if(item.audio_track_stream_key) {
+          const store = this.clipStores[storeKey];
+          const audioTracks = store.AudioOptions(offeringKey);
+          let audioTrackInfo = audioTracks.find(track => track.streamKey === item.audio_track_stream_key);
+
+          if(audioTrackInfo && !audioTrackInfo.default) {
+            updatedClipList[clipId].audio_track_key = audioTrackInfo.key;
+            updatedClipList[clipId].audio_track_stream_key = audioTrackInfo.streamKey;
+            updatedClipList[clipId].audio_track_index = audioTrackInfo.trackId;
+            updatedClipList[clipId].audio_track_label = audioTrackInfo.label;
+          }
         }
 
         return clipId;
@@ -1765,11 +1902,15 @@ class CompositionStore {
     }
 
     if(!this.myCompositions[objectId][compositionKey]?.writeTokenInfo && create) {
+      yield this.client.SetNodes({fabricURIs: ["https://host-76-74-35-69.contentfabric.io"]});
+
       const libraryId = yield this.client.ContentObjectLibraryId({objectId});
       this.myCompositions[objectId][compositionKey].writeTokenInfo = {
         ...(yield this.client.EditContentObject({libraryId, objectId})),
         versionHash: yield this.client.LatestVersionHash({objectId})
       };
+
+      yield this.client.ResetRegion();
 
       this.SaveMyCompositions();
     }

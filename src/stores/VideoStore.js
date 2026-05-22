@@ -1246,8 +1246,14 @@ class VideoStore {
     this.player.streamController.immediateLevelSwitch();
   }
 
-  SetAudioTrack(trackIndex) {
-    this.player.audioTrack = parseInt(trackIndex);
+  SetAudioTrack({index, key}) {
+    if(key) {
+      index = this.AudioOptions(this.offeringKey)
+        .find(track => track.key === key || track.streamKey === key)
+        ?.trackId || 0;
+    }
+
+    this.player.audioTrack = parseInt(index);
     this.player.streamController.immediateLevelSwitch();
   }
 
@@ -1653,8 +1659,10 @@ class VideoStore {
                 return {
                   trackId: this.audioTracks.find(t => t.name === label)?.id,
                   key: repKey,
+                  streamKey,
                   bitrate: rep.bit_rate,
                   default: mediaStruct[streamKey]?.default_for_media_type,
+                  channels: mediaStruct[streamKey]?.channels,
                   current: label === currentAudioTrack?.name,
                   label: label || repKey,
                   string: label ?
