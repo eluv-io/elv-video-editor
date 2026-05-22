@@ -143,6 +143,7 @@ Focus and Pose - requires Shot
           select: [
             "*/playout/streams/*/representations/*/type",
             "*/media_struct/streams/*/label",
+            "*/media_struct/streams/*/language",
             "*/media_struct/streams/*/default_for_media_type"
           ]
         });
@@ -166,6 +167,7 @@ Focus and Pose - requires Shot
             streamKey,
             transcodeId: streamKey.split("__")[1],
             label: metadata[offering].media_struct.streams[streamKey].label,
+            language: metadata[offering].media_struct.streams[streamKey].language,
             isDefault: !!metadata[offering].media_struct.streams[streamKey].default_for_media_type,
           }))
           .sort((a, b) => a.label < b.label ? -1 : 1);
@@ -269,21 +271,6 @@ Focus and Pose - requires Shot
           }
         };
 
-        // Determine proper audio track
-        const stream = options?.options?.[key]?.stream;
-        if(stream) {
-          const streamKey = this.audioTracks[objectId].find(track => track.value === stream)?.streamKey;
-
-          if(streamKey) {
-            result.overrides = {
-              ...result.overrides,
-              scope: {
-                stream: streamKey
-              }
-            };
-          }
-        }
-
         const groundTruthPool = options?.options?.[key]?.groundTruthPool;
         if(groundTruthPool && groundTruthPool !== "default") {
           result.model_params = {
@@ -298,8 +285,40 @@ Focus and Pose - requires Shot
           };
         }
 
+        // Determine proper audio track
+        // Produces one job spec per specified stream
+        const streams = options?.options?.[key]?.streams;
+        if(streams) {
+          result = streams
+            .map(stream => {
+              const spec = {...result};
+              const audioTrackInfo = this.audioTracks[objectId].find(track => track.value === stream);
+
+              if(audioTrackInfo?.streamKey) {
+                spec.caller_info = {
+                  audio_label: audioTrackInfo.label,
+                  audio_language: audioTrackInfo.language,
+                  audio_stream_key: audioTrackInfo.streamKey
+                };
+
+                spec.track_suffix = audioTrackInfo.label;
+                spec.overrides = {
+                  ...result.overrides,
+                  scope: {
+                    stream: audioTrackInfo.streamKey
+                  }
+                };
+              }
+
+              return spec;
+            })
+            .filter(r => r);
+        }
+
         return result;
-      });
+      })
+      // ASR returns multiple jobs, one for each stream
+      .flat();
 
     const tenantId = yield this.client.ContentObjectTenantId({objectId});
     const {jobs} = yield this.rootStore.aiStore.QueryAIAPI({

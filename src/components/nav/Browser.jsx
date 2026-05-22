@@ -1659,7 +1659,17 @@ export const TaggingJobBrowser = observer(() => {
                         </Linkish>
                       </div>
                       <div className={S("browser-table__cell")}>
-                        {aiTaggingStore.modelNames[job.model]}
+                        <div className={S("browser-table__row-title")}>
+                          <div className={S("browser-table__row-title-main")}>
+                            {aiTaggingStore.modelNames[job.model]}
+                          </div>
+                          {
+                            !job?.params?.caller_info?.audio_label ? null :
+                              <div className={S("browser-table__row-title-id")}>
+                                { job?.params?.caller_info?.audio_label }
+                              </div>
+                          }
+                        </div>
                       </div>
                       <div className={S("browser-table__cell")}>
                         {new Date(job.created_at).toLocaleString()}

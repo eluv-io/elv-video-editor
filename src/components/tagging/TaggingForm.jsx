@@ -8,7 +8,7 @@ import {useLocation} from "wouter";
 import { TaggingSelection } from "@/components/nav/Browser.jsx";
 import {IconButton, Linkish, StyledButton} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
-import {Checkbox, Select} from "@mantine/core";
+import {Checkbox, MultiSelect, Select} from "@mantine/core";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 
@@ -53,11 +53,13 @@ const Summary = observer(({options}) => {
                       {aiTaggingStore.modelNames[model]}
                     </div>
                     {
-                      !options.options[model]?.stream ? null :
+                      !options.options[model]?.streams ? null :
                         <div key={`${model}-stream`} className={S("summary-item-option")}>
                           {
                             aiTaggingStore.audioTracks[aiTaggingStore.selectedContent[0].objectId]
-                              .find(option => option.value === options.options[model]?.stream)?.label
+                              .filter(option => options.options[model]?.streams?.includes(option.value))
+                              .map(option => option.label || "")
+                              .join(", ")
                           }
                         </div>
                     }
@@ -134,8 +136,8 @@ const Form = observer(({options, setOptions}) => {
     onChange(
       "options",
       {
-        asr: { stream: options.options?.asr?.stream || "" },
-        euro_asr: { stream: options.options?.euro_asr?.stream || "" },
+        asr: { streams: options.options?.asr?.streams || [""] },
+        euro_asr: { streams: options.options?.euro_asr?.streams || [] },
         vertical_video: { mode: "movie" },
         celeb: {
           groundTruthPool: options.options?.celeb?.groundTruthPool ||
@@ -193,10 +195,11 @@ const Form = observer(({options, setOptions}) => {
                     !(options[model] || dependentModels.includes(model)) ||
                     !["asr", "euro_asr"].includes(model) ||
                     aiTaggingStore.selectedContentCommonAudioTracks.length === 0 ? null :
-                      <Select
-                        value={options.options[model]?.stream}
+                      <MultiSelect
+                        value={options.options[model]?.streams}
                         searchable
-                        maw={200}
+                        clearable
+                        w="80%"
                         mt={-5}
                         ml={32}
                         mb={10}
@@ -206,7 +209,7 @@ const Form = observer(({options, setOptions}) => {
                             ...options.options,
                             [model]: {
                               ...(options.options[model] || {}),
-                              stream: value
+                              streams: value
                             }
                           }
                         )}
