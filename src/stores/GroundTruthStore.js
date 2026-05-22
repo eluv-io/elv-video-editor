@@ -243,6 +243,8 @@ class GroundTruthStore {
       }
     });
 
+    yield this.rootStore.AddGroupPermissions({objectId});
+
     if(!this.contentAdminsGroupAddress) {
       try {
         this.contentAdminsGroupAddress = yield this.client.CallContractMethod({

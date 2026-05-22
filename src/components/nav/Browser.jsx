@@ -994,6 +994,7 @@ export const ObjectBrowser = observer(({
   className=""
 }) => {
   const [queryParams] = useSearchParams();
+  const [selecting, setSelecting] = useState(false);
   filter = filter || decodeURIComponent(queryParams.get(filterQueryParam) || "");
 
   useEffect(() => {
@@ -1003,11 +1004,22 @@ export const ObjectBrowser = observer(({
 
   const library = browserStore.libraries?.[libraryId];
 
+  const onSelect = async args => {
+    setSelecting(true);
+    try {
+      await Select(args);
+    } catch(error) {
+      console.error(error);
+    } finally {
+      setSelecting(false);
+    }
+  };
+
   return (
     <div className={JoinClassNames(S("browser", "browser--object"), className)}>
       {
         !withFilterBar ? null :
-          <SearchBar filterQueryParam={filterQueryParam} Select={Select} />
+          <SearchBar filterQueryParam={filterQueryParam} Select={onSelect} />
       }
       <h1 className={S("browser__header")}>
         <IconButton
@@ -1041,10 +1053,14 @@ export const ObjectBrowser = observer(({
         frameRate={frameRate}
         noDuration={noDuration}
         Path={Path}
-        Select={Select}
+        Select={onSelect}
         Load={async args => await browserStore.ListObjects({libraryId, ...args})}
         Actions={Actions}
       />
+      {
+        !selecting ? null :
+          <Loader className={S("browser__loader")} />
+      }
     </div>
   );
 });
@@ -1059,13 +1075,27 @@ export const LibraryBrowser = observer(({
   className=""
 }) => {
   const [queryParams] = useSearchParams();
+  const [selecting, setSelecting] = useState(false);
   filter = filter || decodeURIComponent(queryParams.get(filterQueryParam) || "");
+
+  const onSelect = async args => {
+    setSelecting(true);
+    try {
+      await Select(args);
+    } catch(error) {
+      console.error(error);
+    } finally {
+      setSelecting(false);
+    }
+  };
+
+  console.log(selecting)
 
   return (
     <div className={JoinClassNames(S("browser", "browser--library"), className)}>
       {
         !withFilterBar ? null :
-          <SearchBar filterQueryParam={filterQueryParam} Select={Select} />
+          <SearchBar filterQueryParam={filterQueryParam} Select={onSelect} />
       }
       {
         !title ? null :
@@ -1077,10 +1107,14 @@ export const LibraryBrowser = observer(({
         filter={filter}
         defaultIcon={LibraryIcon}
         contentType="library"
-        Select={Select}
+        Select={onSelect}
         Path={Path}
         Load={async args => await browserStore.ListLibraries(args)}
       />
+      {
+        !selecting ? null :
+          <Loader className={S("browser__loader")} />
+      }
     </div>
   );
 });

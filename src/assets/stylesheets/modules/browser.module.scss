@@ -141,6 +141,12 @@
     margin-right: 10px;
     text-decoration: underline;
   }
+
+  &__loader {
+    position: absolute;
+    inset: 0 0 0 0;
+    background: rgba(0, 0, 0, 0.3);
+  }
 }
 
 .display-switch {

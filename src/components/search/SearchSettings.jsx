@@ -29,16 +29,16 @@ const SearchIndexBrowseModal = observer(({Select, Cancel}) => {
             libraryId={libraryId}
             noDuration
             Back={() => setLibraryId(undefined)}
-            Select={({objectId, name}) => Select({objectId, name})}
+            Select={async ({objectId, name}) => await Select({objectId, name})}
             className={S("index__browser")}
           /> :
           <LibraryBrowser
             withFilterBar
             filterQueryParam="index"
             title="Select search index"
-            Select={({libraryId, objectId, name}) => {
+            Select={async ({libraryId, objectId, name}) => {
               if(objectId) {
-                Select({objectId, name});
+                await Select({objectId, name});
               } else {
                 setLibraryId(libraryId);
               }
@@ -53,8 +53,6 @@ const SearchIndexBrowseModal = observer(({Select, Cancel}) => {
 export const SearchIndexForm = observer(({options, setOptions}) => {
   const [updatingIndexes, setUpdatingIndexes] = useState([]);
   const [showBrowser, setShowBrowser] = useState(false);
-
-  if(aiStore.searchIndexes.length === 0) { return null; }
 
   let indexUpdateProgress;
   updatingIndexes.forEach(indexId => {
@@ -127,31 +125,26 @@ export const SearchIndexForm = observer(({options, setOptions}) => {
                 }
               </div>
               <div className={S("index__actions")}>
-                {
-                  !index.custom ? null :
-                    <IconButton
-                      label="Remove Search Index"
-                      icon={XIcon}
-                      onClick={async event => {
-                        event.preventDefault();
-                        event.stopPropagation();
+                <IconButton
+                  label="Remove Search Index"
+                  icon={XIcon}
+                  onClick={async event => {
+                    event.preventDefault();
+                    event.stopPropagation();
 
-                        await Confirm({
-                          title: "Remove Index",
-                          text: "Are you sure you want to remove this search index?",
-                          onConfirm: async () => {
-                            try {
-                              await aiStore.RemoveSearchIndex({objectId: index.id});
-                            } catch(error) {
-                              console.error(error);
-                            } finally {
-                              SetSearchIndex({searchIndexId: aiStore.searchIndexes[0].id});
-                            }
-                          }
-                        });
-                      }}
-                    />
-                }
+                    await Confirm({
+                      title: "Remove Index",
+                      text: "Are you sure you want to remove this search index?",
+                      onConfirm: async () => {
+                        try {
+                          await aiStore.RemoveSearchIndex({objectId: index.id});
+                        } catch(error) {
+                          console.error(error);
+                        }
+                      }
+                    });
+                  }}
+                />
                 {
                   !index.canEdit ? null :
                     <IconButton
@@ -195,7 +188,7 @@ export const SearchIndexForm = observer(({options, setOptions}) => {
           size="sm"
           className={S("index__button")}
         >
-          Add Search Index
+          Add Existing Index
         </StyledButton>
 
         {
@@ -381,7 +374,7 @@ const TitlesForm = observer(({options, setOptions}) => {
 
 const SearchSettings = observer(({store, singleObject, Close}) => {
   store = store || aiStore;
-  const [tab, setTab] = useState(singleObject ? "confidence" : "titles");
+  const [tab, setTab] = useState(!aiStore.searchIndex ? "index" : singleObject ? "confidence" : "titles");
   const [options, setOptions] = useState({
     searchIndexId: store.selectedSearchIndexId,
     imageCollectionId: store.selectedCollectionSearchIndexId,
@@ -454,6 +447,7 @@ const SearchSettings = observer(({store, singleObject, Close}) => {
           {
             singleObject ? null :
               <button
+                disabled={!aiStore.searchIndex}
                 className={S("search-settings__tab", tab === "titles" ? "search-settings__tab--active" : "")}
                 onClick={() => setTab("titles")}
               >
@@ -461,12 +455,14 @@ const SearchSettings = observer(({store, singleObject, Close}) => {
               </button>
           }
           <button
+            disabled={!aiStore.searchIndex}
             className={S("search-settings__tab", tab === "confidence" ? "search-settings__tab--active" : "")}
             onClick={() => setTab("confidence")}
           >
             Confidence
           </button>
           <button
+            disabled={!aiStore.searchIndex}
             className={S("search-settings__tab", tab === "fields" ? "search-settings__tab--active" : "")}
             onClick={() => setTab("fields")}
           >
