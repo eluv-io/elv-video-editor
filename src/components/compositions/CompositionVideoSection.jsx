@@ -501,8 +501,10 @@ const CompositionVideoSection = observer(({store, blank=false, clipView=false}) 
     const clip = compositionStore.selectedClip;
     if(typeof clip.audio_track_stream_key !== "undefined") {
       store.SetAudioTrack({key: clip.audio_track_stream_key});
+    } else {
+      store.SetAudioTrack({index: 0});
     }
-  }, [store.audioTracks?.length]);
+  }, [store?.initialized, store.audioTracks?.length, compositionStore?.selectedClipId]);
 
   return (
     <div
