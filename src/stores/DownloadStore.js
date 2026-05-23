@@ -303,6 +303,9 @@ class DownloadStore {
     );
 
     if(compositionKey && compositionKey !== "main") {
+      // TODO: Remove
+      node = "https://host-76-74-35-69.contentfabric.io";
+
       url.searchParams.delete("off");
       url.searchParams.set("ch", compositionKey);
     }
