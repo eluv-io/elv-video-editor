@@ -195,7 +195,7 @@ const ClipSeekBar = observer(() => {
                 style={{aspectRatio: store.aspectRatio}}
                 className={S("thumbnail-hover__image")}
               />
-              <div className={S("thumbnail-hover__time")}>{store.ProgressToSMPTE(progress)}</div>
+              <div className={S("thumbnail-hover__time")}>{store.ProgressToSMPTE(progress, true)}</div>
             </div>
           )
       }

@@ -434,7 +434,7 @@ class CompositionStore {
       audioTracks[parseInt(audioTrackIndex)] :
       audioTracks.find(track => track.current);
 
-    if(audioTrackInfo && !audioTrackInfo.default) {
+    if(audioTrackInfo) {
       this.clips[clipId] = {
         ...this.clips[clipId],
         audio_track_key: audioTrackInfo.key,
@@ -449,7 +449,10 @@ class CompositionStore {
       delete this.clips[clipId].audio_track_label;
     }
 
-    this.UpdateComposition();
+    if(this.clipIdList.includes(clipId)) {
+      // Update composition if we changed one of the composition's clips
+      this.UpdateComposition();
+    }
   }
 
   RemoveClip(clipId) {
@@ -1022,11 +1025,12 @@ class CompositionStore {
           };
         }
 
-        let audioInfo = store.AudioOptions(clip.offering)
-          .find(track => track.streamKey === clip.audio_track_stream_key);
+        let audioInfo =
+          store.AudioOptions(clip.offering).find(track => track.streamKey === clip.audio_track_stream_key) ||
+          store.AudioOptions(clip.offering).find(track => track.default);
 
         return {
-          audio_track_stream_key: clip.audio_track_stream_key,
+          audio_track_stream_key: audioInfo.streamKey,
           has_non_default_audio: clip.audio_track_stream_key && !audioInfo.default,
           display_name: clip.name || "Clip",
           source: sourceLink,
@@ -1058,12 +1062,15 @@ class CompositionStore {
           );
 
         const defaultAudioTrackRepKey = Object.keys(metadata.playout.streams[defaultAudioTrackKey].representations)[0];
+        const codec = playoutMetadata.streams[defaultAudioTrackKey].representations[defaultAudioTrackRepKey].codec;
+        const bitrate = playoutMetadata.streams[defaultAudioTrackKey].representations[defaultAudioTrackRepKey].bit_rate;
+
         let audioMetadata = {
           ...playoutMetadata.streams[defaultAudioTrackKey],
           representations: {
-            [defaultAudioTrackRepKey]: {
-              bit_rate: playoutMetadata.streams[defaultAudioTrackKey].representations[defaultAudioTrackRepKey].bit_rate,
-              codec: playoutMetadata.streams[defaultAudioTrackKey].representations[defaultAudioTrackRepKey].codec,
+            [`audio_${codec}@${bitrate}`]: {
+              codec,
+              bit_rate: bitrate,
               codec_desc: playoutMetadata.streams[defaultAudioTrackKey].representations[defaultAudioTrackRepKey].codec_desc,
               type: playoutMetadata.streams[defaultAudioTrackKey].representations[defaultAudioTrackRepKey].type,
               channels: mediaStruct.streams[defaultAudioTrackKey].channels
@@ -1081,6 +1088,8 @@ class CompositionStore {
             ...audioMetadata,
             media_type: "audio",
             label: "audio",
+            language: "",
+            default_for_media_type: true,
           }
         };
       } else {
@@ -1107,6 +1116,7 @@ class CompositionStore {
       });
 
       const updatedFields = Unproxy(this.ToV2({items}));
+
       for(const key of Object.keys(updatedFields)) {
         yield this.client.ReplaceMetadata({
           libraryId,
@@ -1260,6 +1270,10 @@ class CompositionStore {
     return (metadata.slices || []).map((slice, index) => {
       let [sourceIndex, startNum, startDenom, endNum, endDenom] = slice;
 
+      if(!sourceIndex || sourceIndex < 0) {
+        sourceIndex = 0;
+      }
+
       const commonDenom = startDenom * endDenom;
 
       startNum *= endDenom;
@@ -1308,7 +1322,7 @@ class CompositionStore {
           type: item.type
         };
 
-        if(hasNonDefaultAudio) {
+        if(hasNonDefaultAudio && item.audio_track_stream_key) {
           ch_sources[sourceIndex].stream_map = {
             audio: item.audio_track_stream_key
           };
@@ -1461,69 +1475,77 @@ class CompositionStore {
     let originalClipsList = {};
     let updatedClipList = {};
     this.clipIdList = yield Promise.all(
-      (metadata?.items || []).map(async item => {
-        const clipId = this.rootStore.NextId();
-        const clipVersionHash = ExtractHashFromLink(item.source) || versionHash;
-        const clipObjectId = this.client.utils.DecodeVersionHash(clipVersionHash).objectId;
+      (metadata?.items || [])
+        .map(async item => {
+          try {
+            const clipId = this.rootStore.NextId();
+            const clipVersionHash = ExtractHashFromLink(item.source) || versionHash;
+            const clipObjectId = this.client.utils.DecodeVersionHash(clipVersionHash).objectId;
 
-        if(clipObjectId !== objectId && !secondarySources.includes(clipObjectId)) {
-          secondarySources.push(clipObjectId);
-        }
+            if(clipObjectId !== objectId && !secondarySources.includes(clipObjectId)) {
+              secondarySources.push(clipObjectId);
+            }
 
-        const libraryId = await this.client.ContentObjectLibraryId({objectId: clipObjectId});
-        const offeringKey = item.source["/"].split("/").slice(-1)[0];
+            const libraryId = await this.client.ContentObjectLibraryId({objectId: clipObjectId});
+            const offeringKey = item.source["/"].split("/").slice(-1)[0];
 
-        await this.InitializeVideoStore({
-          objectId: clipObjectId,
-          offering: offeringKey
-        });
+            await this.InitializeVideoStore({
+              objectId: clipObjectId,
+              offering: offeringKey
+            });
 
-        const clipInFrame = primarySource.videoHandler.RatToFrame(item.slice_start_rat);
-        const clipOutFrame = primarySource.videoHandler.RatToFrame(item.slice_end_rat);
-        const storeKey = `${clipObjectId}-${offeringKey}`;
+            const clipInFrame = primarySource.videoHandler.RatToFrame(item.slice_start_rat);
+            const clipOutFrame = primarySource.videoHandler.RatToFrame(item.slice_end_rat);
+            const storeKey = `${clipObjectId}-${offeringKey}`;
 
-        updatedClipList[clipId] = {
-          clipId,
-          name: item.display_name,
-          libraryId,
-          objectId: clipObjectId,
-          versionHash: clipVersionHash,
-          offering: offeringKey,
-          clipInFrame,
-          clipOutFrame,
-          storeKey,
-          clipKey: `${clipObjectId}-${offeringKey}-${clipInFrame}-${clipOutFrame}`,
-          effects: item.effects || [],
-          // TODO: Audio
-          //audioRepresentation: store.audioRepresentation,
-        };
+            updatedClipList[clipId] = {
+              clipId,
+              name: item.display_name,
+              libraryId,
+              objectId: clipObjectId,
+              versionHash: clipVersionHash,
+              offering: offeringKey,
+              clipInFrame,
+              clipOutFrame,
+              storeKey,
+              clipKey: `${clipObjectId}-${offeringKey}-${clipInFrame}-${clipOutFrame}`,
+              effects: item.effects || [],
+              // TODO: Audio
+              //audioRepresentation: store.audioRepresentation,
+            };
 
-        const originalClipId = this.rootStore.NextId();
-        originalClipsList[originalClipId] = {
-          ...updatedClipList[clipId],
-          //effects: [],
-          clipId: originalClipId
-        };
+            const originalClipId = this.rootStore.NextId();
+            originalClipsList[originalClipId] = {
+              ...updatedClipList[clipId],
+              //effects: [],
+              clipId: originalClipId
+            };
 
-        if(clipObjectId !== objectId && !secondarySources.includes(clipObjectId)) {
-          secondarySources.push(clipObjectId);
-        }
+            if(clipObjectId !== objectId && !secondarySources.includes(clipObjectId)) {
+              secondarySources.push(clipObjectId);
+            }
 
-        if(item.audio_track_stream_key) {
-          const store = this.clipStores[storeKey];
-          const audioTracks = store.AudioOptions(offeringKey);
-          let audioTrackInfo = audioTracks.find(track => track.streamKey === item.audio_track_stream_key);
+            if(item.audio_track_stream_key) {
+              const store = this.clipStores[storeKey];
+              const audioTracks = store.AudioOptions(offeringKey);
+              let audioTrackInfo = audioTracks.find(track => track.streamKey === item.audio_track_stream_key);
 
-          if(audioTrackInfo && !audioTrackInfo.default) {
-            updatedClipList[clipId].audio_track_key = audioTrackInfo.key;
-            updatedClipList[clipId].audio_track_stream_key = audioTrackInfo.streamKey;
-            updatedClipList[clipId].audio_track_index = audioTrackInfo.trackId;
-            updatedClipList[clipId].audio_track_label = audioTrackInfo.label;
+              if(audioTrackInfo && !audioTrackInfo.default) {
+                updatedClipList[clipId].audio_track_key = audioTrackInfo.key;
+                updatedClipList[clipId].audio_track_stream_key = audioTrackInfo.streamKey;
+                updatedClipList[clipId].audio_track_index = audioTrackInfo.trackId;
+                updatedClipList[clipId].audio_track_label = audioTrackInfo.label;
+              }
+            }
+
+            return clipId;
+          } catch(error) {
+            console.error("Failed to load composition item");
+            console.error(item);
+            console.error(error);
           }
-        }
-
-        return clipId;
-      })
+        })
+        .filter(id => id)
     );
 
     this.originalClipIdList = Object.values(originalClipsList).map(clip => clip.clipId);
