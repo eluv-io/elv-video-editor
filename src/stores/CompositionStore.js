@@ -1098,8 +1098,6 @@ class CompositionStore {
         metadata: Unproxy(playoutMetadata)
       });
 
-      console.log(JSON.stringify(playoutMetadata, null, 2));
-
       yield this.client.DeleteMetadata({
         libraryId,
         objectId,
@@ -1109,9 +1107,6 @@ class CompositionStore {
       });
 
       const updatedFields = Unproxy(this.ToV2({items}));
-
-      console.log(JSON.stringify(updatedFields,null,2));
-
       for(const key of Object.keys(updatedFields)) {
         yield this.client.ReplaceMetadata({
           libraryId,

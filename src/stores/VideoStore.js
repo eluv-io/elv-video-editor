@@ -1246,15 +1246,24 @@ class VideoStore {
     this.player.streamController.immediateLevelSwitch();
   }
 
-  SetAudioTrack({index, key}) {
-    if(key) {
-      index = this.AudioOptions(this.offeringKey)
-        .find(track => track.key === key || track.streamKey === key)
-        ?.trackId || 0;
-    }
+  SetAudioTrack({index, key, retry=true}) {
+    try {
+      if(key) {
+        index = this.AudioOptions(this.offeringKey)
+          .find(track => track.key === key || track.streamKey === key)
+          ?.trackId || 0;
+      }
 
-    this.player.audioTrack = parseInt(index);
-    this.player.streamController.immediateLevelSwitch();
+      this.player.audioTrack = parseInt(index);
+      this.player.streamController.immediateLevelSwitch();
+    } catch(error) {
+      console.error("Failed to switch audio track " + key || index);
+      console.error(error);
+
+      if(retry) {
+        setTimeout(() => this.SetAudioTrack({index, key, retry: false}), 1000);
+      }
+    }
   }
 
   SetSubtitleTrack(trackIndex) {
