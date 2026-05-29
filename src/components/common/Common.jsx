@@ -434,10 +434,16 @@ export const AsyncButton = observer(({onClick, tooltip, loading, ...props}) => {
   );
 });
 
-export const StyledButton = observer(({icon, variant="primary", size="lg", color="--color-highlight--dark", textColor, children, loading, ...props}) => {
+export const StyledButton = observer(({icon, variant="primary", size="lg", color="--color-highlight--dark", textColor, children, loading, w, ...props}) => {
   const [submitting, setSubmitting] = useState(false);
 
   textColor = variant === "secondary" ? textColor || color : textColor || "";
+
+  props.style = props.style || {};
+
+  if(w) {
+    props.style.width = `${w}px`;
+  }
 
   return (
     <Linkish
@@ -447,9 +453,8 @@ export const StyledButton = observer(({icon, variant="primary", size="lg", color
           async event => {
             if(loading || submitting) { return; }
 
-            setSubmitting(true);
-
             try {
+              setSubmitting(true);
               await props.onClick?.(event);
             } finally {
               setSubmitting(false);

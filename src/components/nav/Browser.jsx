@@ -28,7 +28,7 @@ import {
 import SVG from "react-inlinesvg";
 import {Redirect, Route, useParams, Switch, useLocation, useSearchParams} from "wouter";
 import UrlJoin from "url-join";
-import {Select, Tabs, Tooltip, Progress, Menu} from "@mantine/core";
+import {Select, Tabs, Tooltip, Progress, Menu, Checkbox} from "@mantine/core";
 import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
 import SearchSettings from "@/components/search/SearchSettings.jsx";
 import {Dropzone, IMAGE_MIME_TYPE} from "@mantine/dropzone";
@@ -63,6 +63,7 @@ import PlayIcon from "@/assets/icons/Play.svg";
 import LinkIcon from "@/assets/icons/v2/external-link.svg";
 import ClipIcon from "@/assets/icons/scissors.svg";
 import UploadIcon from "@/assets/icons/fileupload.svg";
+import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -612,6 +613,7 @@ export const BrowserTable = observer(({
   videoOnly,
   frameRate,
   noDuration,
+  LeftActions,
   Actions,
   Delete
 }) => {
@@ -666,6 +668,7 @@ export const BrowserTable = observer(({
           S(
             "browser-table",
             `browser-table--${contentType}`,
+            LeftActions ? `browser-table--${contentType}--with-left-actions` : "",
             Actions || Delete ? `browser-table--${contentType}--with-actions` : "",
             hasActiveItem ? "browser-table--with-active-item" : "",
             noDuration ? `browser-table--${contentType}--no-duration` : ""
@@ -745,6 +748,12 @@ export const BrowserTable = observer(({
                   )
                 }
               >
+                {
+                  !LeftActions ? null :
+                    <div className={S("browser-table__cell")}>
+                      {LeftActions?.({...item, disabled})}
+                    </div>
+                }
                 <div className={S("browser-table__cell")}>
                   {
                     item.image ?
@@ -845,7 +854,7 @@ export const BrowserTable = observer(({
                 {
                   (!Delete || !item.id) && !Actions ? null :
                     <div className={S("browser-table__cell", "browser-table__cell--centered")}>
-                      {Actions?.(item)}
+                      {Actions?.({...item, disabled})}
                       {
                         !Delete || !item.id ? null :
                           <IconButton
@@ -990,6 +999,7 @@ export const ObjectBrowser = observer(({
   videoOnly,
   frameRate,
   noDuration,
+  LeftActions,
   Actions,
   className=""
 }) => {
@@ -1055,6 +1065,7 @@ export const ObjectBrowser = observer(({
         Path={Path}
         Select={onSelect}
         Load={async args => await browserStore.ListObjects({libraryId, ...args})}
+        LeftActions={LeftActions}
         Actions={Actions}
       />
       {
@@ -1088,8 +1099,6 @@ export const LibraryBrowser = observer(({
       setSelecting(false);
     }
   };
-
-  console.log(selecting)
 
   return (
     <div className={JoinClassNames(S("browser", "browser--library"), className)}>
@@ -1402,24 +1411,44 @@ export const GroundTruthPoolBrowser = observer(() => {
   );
 });
 
-export const TaggingSelection = observer(() => {
-  const content = aiTaggingStore.selectedContent;
+export const BrowserSelection = observer(({title, contentIds=[], Remove}) => {
+  const [visibleItems, setVisibleItems] = useState(20);
+  const [loading, setLoading] = useState(contentIds.length > 0);
+  const visibleContentIds = contentIds.slice(0, visibleItems);
+
+  useEffect(() => {
+    if(contentIds.length === 0) { return; }
+
+    setLoading(true);
+
+    Promise.all(
+      visibleContentIds.map(async objectId =>
+        await rootStore.GetObjectName({objectId})
+      )
+    ).finally(() => setLoading(false));
+  }, [visibleItems, contentIds]);
+
   return (
-    <div className={S("tagging-selection")}>
-      <div className={S("tagging-selection__title")}>
-        New Job
+    <div className={S("browser-selection")}>
+      <div className={S("browser-selection__title")}>
+        {title}
       </div>
-      <div className={S("tagging-selection__content")}>
+      <InfiniteScroll
+        withLoader
+        showLoader={loading}
+        Update={() => setVisibleItems(visibleItems + 20)}
+        className={S("browser-selection__content")}
+      >
         {
-          content.length === 0 ?
-            <div className={S("tagging-selection__empty")}>
+          visibleContentIds.length === 0 ?
+            <div className={S("browser-selection__empty")}>
               No Content Selected
             </div> :
-            content.map(({objectId, name}) =>
+            visibleContentIds.map(objectId =>
               <div key={objectId} className={S("tagging-item")}>
                 <div className={S("tagging-item__text")}>
                   <div className={S("tagging-item__title")}>
-                    {name}
+                    {rootStore.objectNames[objectId] || objectId}
                   </div>
                   <CopyableField value={objectId} className={S("tagging-item__id")}>
                     {objectId}
@@ -1429,16 +1458,16 @@ export const TaggingSelection = observer(() => {
                   <IconButton
                     icon={DeleteIcon}
                     label={`Remove ${name}`}
-                    onClick={() => aiTaggingStore.RemoveSelectedContent({objectId})}
+                    onClick={() => Remove(objectId)}
                     className={S("tagging-item__action")}
                   />
                 </div>
               </div>
             )
         }
-      </div>
-      <div className={S("tagging-selection__count")}>
-        { content.length } content object{content.length === 1 ? "" : "s"} selected
+      </InfiniteScroll>
+      <div className={S("browser-selection__count")}>
+        { contentIds.length } content object{contentIds.length === 1 ? "" : "s"} selected
       </div>
     </div>
   );
@@ -1491,17 +1520,14 @@ export const TaggingContentBrowser = observer(() => {
               filterQueryParam={`q${libraryId}`}
               libraryId={libraryId}
               videoOnly
-              Actions={({objectId}) => {
-                const isActive = !!aiTaggingStore.selectedContent.find(other => other.objectId === objectId);
-                return (
-                  <div
-                    key={isActive}
-                    className={S("browser-table__action")}
-                  >
-                    { isActive ? "- Remove" : "+ Add" }
-                  </div>
-                );
-              }}
+              LeftActions={({objectId, disabled}) =>
+                disabled ? null :
+                  <Checkbox
+                    disabled={disabled}
+                    size="xs"
+                    checked={!!aiTaggingStore.selectedContent.find(other => other.objectId === objectId)}
+                  />
+              }
               Back={() => navigate("/new")}
               Select={({objectId, name}) => Select({objectId, name})}
             /> :
@@ -1517,7 +1543,11 @@ export const TaggingContentBrowser = observer(() => {
               }}
             />
         }
-        <TaggingSelection />
+        <BrowserSelection
+          title="New Job"
+          contentIds={aiTaggingStore.selectedContent.map(item => item.objectId)}
+          Remove={objectId => aiTaggingStore.RemoveSelectedContent({objectId})}
+        />
       </div>
       <div className={S("tagging-actions")}>
         <StyledButton to="/" variant="outline">
@@ -1807,6 +1837,55 @@ export const TaggingJobBrowser = observer(() => {
         />
       </div>
     </div>
+  );
+});
+
+export const SearchIndexContentBrowser = observer(({contentIds, setContentIds}) => {
+  const [libraryId, setLibraryId] = useState(undefined);
+
+  const Select = ({objectId}) => {
+    contentIds.find(id => id === objectId) ?
+      setContentIds(contentIds.filter(id => id !== objectId)) :
+      setContentIds([objectId, ...contentIds]);
+  };
+
+  return (
+      <div className={S("search-index-content-browser")}>
+        {
+          libraryId ?
+            <ObjectBrowser
+              libraryId={libraryId}
+              videoOnly
+              Back={() => setLibraryId(undefined)}
+              LeftActions={({objectId, disabled}) =>
+                disabled ? null :
+                  <Checkbox
+                    disabled={disabled}
+                    size="xs"
+                    checked={!!contentIds.find(id => id === objectId)}
+                  />
+              }
+              Select={({objectId, name}) => Select({objectId, name})}
+              className={S("search-index-content-browser__browser")}
+            /> :
+            <LibraryBrowser
+              title="Content Libraries"
+              className={S("search-index-content-browser__browser")}
+              Select={({libraryId, objectId, name}) => {
+                if(objectId) {
+                  Select({objectId, name});
+                } else {
+                  setLibraryId(libraryId);
+                }
+              }}
+            />
+        }
+        <BrowserSelection
+          title="Source Content"
+          contentIds={contentIds}
+          Remove={objectId => setContentIds(contentIds.filter(id => id !== objectId))}
+        />
+      </div>
   );
 });
 

@@ -5,7 +5,7 @@ import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {aiTaggingStore, groundTruthStore, keyboardControlsStore, rootStore} from "@/stores/index.js";
 import {useLocation} from "wouter";
-import { TaggingSelection } from "@/components/nav/Browser.jsx";
+import { BrowserSelection } from "@/components/nav/Browser.jsx";
 import {IconButton, Linkish, StyledButton} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Checkbox, Select} from "@mantine/core";
@@ -401,7 +401,11 @@ const TaggingForm = observer(() => {
             <Summary options={options} /> :
             <Form options={options} setOptions={setOptions} />
         }
-        <TaggingSelection/>
+        <BrowserSelection
+          title="New Job"
+          contentIds={aiTaggingStore.selectedContent.map(item => item.objectId)}
+          Remove={objectId => aiTaggingStore.RemoveSelectedContent({objectId})}
+        />
       </div>
       <div className={S("tagging-actions")}>
         <StyledButton to="/" variant="outline">

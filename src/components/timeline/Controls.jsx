@@ -604,7 +604,7 @@ export const AggregateTagsButton = observer(() => {
 
                 await Promise.all(
                   indexIds.map(async indexId =>
-                    await aiStore.UpdateSearchIndex({
+                    await aiStore.BuildSearchIndex({
                       indexId,
                       aggregate: false
                     })

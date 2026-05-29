@@ -600,7 +600,7 @@ class AIStore {
     localStorage.setItem(`search-collection-index-${this.rootStore.tenantContractId}`, id);
   }
 
-  AddSearchIndex = flow(function * ({objectId, add=true}) {
+  AddSearchIndex = flow(function * ({objectId}) {
     const {name, description} = yield this.client.ContentObjectMetadata({
       libraryId: yield this.client.ContentObjectLibraryId({objectId}),
       objectId: objectId,
@@ -613,6 +613,9 @@ class AIStore {
       versionHash: yield this.client.LatestVersionHash({objectId: this.rootStore.tenantInfoObjectId}),
       metadataSubtree: "public/search/indexes"
     })) || [];
+
+    // Remove existing record if present
+    existingIndexes = existingIndexes.filter(index => index.id !== objectId);
 
     existingIndexes.push({
       name: name || objectId,
@@ -1385,7 +1388,7 @@ class AIStore {
     }
   });
 
-  UpdateSearchIndex = flow(function * ({indexId, aggregate=false}) {
+  BuildSearchIndex = flow(function * ({indexId, aggregate=false}) {
     try {
       const videoObjectId =
         this.rootStore.videoStore.videoObject?.objectId ||
@@ -1434,7 +1437,7 @@ class AIStore {
         libraryId: siteLibraryId,
         objectId: siteId,
         writeToken: siteUpdateWriteToken,
-        commitMessage: "EVIE - Update search index"
+        commitMessage: "EVIE - Rebuild search index"
       });
 
       this.searchIndexUpdateProgress[indexId] = 20;
@@ -1508,18 +1511,22 @@ class AIStore {
           } while(updateStatus?.status !== "finished");
         })
       );
-
-      this.searchIndexUpdateProgress[indexId] = 100;
     } catch(error) {
       console.error("Failed to update search index", indexId);
       console.error(error);
+    } finally {
+      delete this.searchIndexUpdateProgress[indexId];
     }
   });
 
-  CreateSearchIndex = flow(function * ({name="New Search Index", description="", contentIds=[], selectedFields=[]}) {
-    if(!this.searchIndexTemplateInfo) {
-      yield this.LoadSearchIndexTemplateInfo();
-    }
+  CreateSearchIndex = flow(function * ({
+    name="Search Index",
+    description="",
+    contentIds=[],
+    selectedFields=[],
+    configuration
+  }) {
+    yield this.LoadSearchIndexTemplateInfo();
 
     let libraryId;
     if(this.rootStore.tenantContractId.includes(this.rootStore.tenantInfoObjectId.slice(4))) {
@@ -1545,7 +1552,6 @@ class AIStore {
       libraryId = yield this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId});
     }
 
-    //const libraryId = yield this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId});
     const metadata = Unproxy(this.searchIndexTemplateInfo.metadataTemplate);
 
     metadata.indexer.config.fabric.root.library = libraryId;
@@ -1566,6 +1572,25 @@ class AIStore {
 
     metadata.indexer.config.indexer.arguments.fields = fields;
 
+    if(configuration) {
+      metadata.search = {
+        config: {
+          clips: Unproxy(configuration)
+        }
+      };
+    }
+
+    let content = {};
+    yield this.client.utils.LimitedMap(
+      20,
+      contentIds,
+      async (objectId, index) => {
+        content[index] = {
+          "/": UrlJoin("/qfab", await this.client.LatestVersionHash({objectId}), "meta")
+        };
+      }
+    );
+
     const type = Object.values(yield this.client.ContentTypes())
       .find(type => type.name.toLowerCase().includes("index"));
 
@@ -1585,9 +1610,16 @@ class AIStore {
           writeToken: response.writeToken,
           metadata: Unproxy({
             ...metadata,
+            site_map: {
+              searchables: content
+            },
             public: {
-              name: `AI Search Index - ${name}`,
-              description
+              name,
+              description,
+              asset_metadata: {
+                display_title: name,
+                title: name
+              }
             }
           })
         });
@@ -1608,42 +1640,201 @@ class AIStore {
 
     yield this.AddSearchIndex({objectId});
 
-    return metadata;
+    return objectId;
   });
 
-  LoadSearchIndexTemplateInfo = flow(function * () {
-    const {
-      metadata_template,
-      user_field_regex,
-      associated_field_regex
-    } = yield this.client.ContentObjectMetadata({
-      versionHash: yield this.client.LatestVersionHash({objectId: GLOBAL_PROFILE_OBJECT_ID}),
-      metadataSubtree: "public/search/index-templates/tag"
-    });
+  UpdateSearchIndex = flow(function * ({
+    indexId,
+    name="Search Index",
+    contentIds=[],
+    selectedFields=[],
+    configuration
+  }) {
+    yield this.LoadSearchIndexTemplateInfo();
 
-    const fieldList = Object.keys(metadata_template.indexer.config.indexer.arguments.fields);
-    const userFieldRegex = new RegExp(user_field_regex);
-    const associatedFieldRegex = new RegExp(associated_field_regex);
-    const associatedFields = fieldList.filter(field => associatedFieldRegex.test(field));
-    const optionalFields = fieldList.filter(field => !associatedFields.includes(field) && userFieldRegex.test(field));
-    const requiredFields = fieldList.filter(field => !associatedFields.includes(field) && !optionalFields.includes(field));
+    let libraryId = yield this.client.ContentObjectLibraryId({objectId: indexId});
 
-    let associatedFieldMap = {};
-    optionalFields.forEach(field =>
-      associatedFieldMap[field] = {
-        field,
-        associatedFields: associatedFields.filter(associatedField =>
-          associatedField.startsWith(field)
-        )
+    const indexFields = (yield this.client.ContentObjectMetadata({
+      libraryId,
+      objectId: indexId,
+      metadataSubtree: "/indexer/config/indexer/arguments/fields"
+    })) || {};
+    const templateMetadata = Unproxy(this.searchIndexTemplateInfo.metadataTemplate);
+
+    // Copy selected / required fields into new map and set in template
+    let fields = indexFields;
+    this.searchIndexTemplateInfo.requiredFields.forEach(field =>
+      fields[field] = {
+        ...(fields[field] || {}),
+        ...templateMetadata.indexer.config.indexer.arguments.fields[field]
       }
     );
 
-    this.searchIndexTemplateInfo = {
-      metadataTemplate: metadata_template,
-      requiredFields,
-      optionalFields,
-      associatedFields,
-      associatedFieldMap
+    selectedFields.forEach(field => {
+      fields[field] = {
+        ...(fields[field] || {}),
+        ...templateMetadata.indexer.config.indexer.arguments.fields[field]
+      };
+
+      this.searchIndexTemplateInfo.associatedFieldMap[field]?.associatedFields
+        ?.map(associatedField =>
+          fields[associatedField] = {
+            ...(fields[associatedField] || {}),
+            ...templateMetadata.indexer.config.indexer.arguments.fields[associatedField]
+          }
+        );
+    });
+
+    // Remove unselected fields
+    this.searchIndexTemplateInfo.optionalFields.forEach(field => {
+      if(selectedFields.includes(field)) { return; }
+
+      delete fields[field];
+      this.searchIndexTemplateInfo.associatedFieldMap[field]?.associatedFields
+        ?.forEach(associatedField =>
+          delete fields[associatedField]
+        );
+    });
+
+    // Set content links
+    const {contentHashes} = yield this.LoadSearchIndexInfo({indexId});
+    let content = {};
+    yield this.client.utils.LimitedMap(
+      20,
+      contentIds,
+      async (objectId, index) => {
+        content[index] = {
+          "/": UrlJoin("/qfab", contentHashes[objectId] || await this.client.LatestVersionHash({objectId}), "meta")
+        };
+      }
+    );
+
+    yield this.client.EditAndFinalizeContentObject({
+      libraryId,
+      objectId: indexId,
+      commitMessage: "EVIE: Update search index",
+      callback: async response => {
+        await Promise.all(
+          [
+            {field: "public/name", value: name},
+            {field: "public/asset_metadata/display_title", value: name},
+            {field: "public/asset_metadata/title", value: name},
+            {field: "/indexer/config/indexer/arguments/fields", value: fields},
+            {field: "/site_map/searchables", value: content},
+            ...Object.keys(configuration).map(key => (
+              {field: UrlJoin("/search/config/clips", key), value: configuration[key]}
+            ))
+          ]
+            .map(async ({field, value}) =>
+              await this.client.ReplaceMetadata({
+                libraryId,
+                objectId: indexId,
+                writeToken: response.writeToken,
+                metadataSubtree: field,
+                metadata: Unproxy(value)
+              })
+            )
+        );
+      }
+    });
+
+    const existingIndexRecord = this.searchIndexes.find(index => index.id === indexId);
+
+    if(!existingIndexRecord || existingIndexRecord.name !== name) {
+      // Add/update search index to config
+      this.AddSearchIndex({objectId: indexId});
+    }
+  });
+
+  LoadSearchIndexTemplateInfo = flow(function * ({force=false}={}) {
+    return yield this.rootStore.LoadResource({
+      key: "searchTemplateInfo",
+      id: "info",
+      bind: this,
+      force,
+      Load: flow(function * () {
+        const {
+          metadata_template,
+          user_field_regex,
+          associated_field_regex
+        } = yield this.client.ContentObjectMetadata({
+          versionHash: yield this.client.LatestVersionHash({objectId: GLOBAL_PROFILE_OBJECT_ID}),
+          metadataSubtree: "public/search/index-templates/tag"
+        });
+
+        const fieldList = Object.keys(metadata_template.indexer.config.indexer.arguments.fields);
+        const userFieldRegex = new RegExp(user_field_regex);
+        const associatedFieldRegex = new RegExp(associated_field_regex);
+        const associatedFields = fieldList.filter(field => associatedFieldRegex.test(field));
+        const optionalFields = fieldList.filter(field => !associatedFields.includes(field) && userFieldRegex.test(field));
+        const requiredFields = fieldList.filter(field => !associatedFields.includes(field) && !optionalFields.includes(field));
+
+        let associatedFieldMap = {};
+        optionalFields.forEach(field =>
+          associatedFieldMap[field] = {
+            field,
+            associatedFields: associatedFields.filter(associatedField =>
+              associatedField.startsWith(field)
+            )
+          }
+        );
+
+        this.searchIndexTemplateInfo = {
+          metadataTemplate: metadata_template,
+          requiredFields,
+          optionalFields,
+          associatedFields,
+          associatedFieldMap
+        };
+      })
+    });
+  });
+
+  LoadSearchIndexInfo = flow(function * ({indexId}) {
+    const metadata = yield this.client.ContentObjectMetadata({
+      versionHash: yield this.client.LatestVersionHash({objectId: indexId}),
+      select: [
+        "/indexer/config/indexer/arguments/fields",
+        "/search/config/clips",
+        "/site_map/searchables",
+        "/public/name",
+        "/public/asset_metadata/display_title",
+        "/public/asset_metadata/title"
+      ]
+    });
+
+    let contentHashes = {};
+    const contentIds = Object.values(metadata.site_map.searchables || {})
+      .map(link => {
+        try {
+          const versionHash = link["/"].split("/")[2];
+
+          if(!versionHash) { return; }
+
+          const objectId = this.client.utils.DecodeVersionHash(
+            versionHash
+          ).objectId;
+
+          contentHashes[objectId] = versionHash;
+
+          return objectId;
+        } catch(error) {
+          console.error("Error parsing link");
+          console.error(link);
+          console.error(error);
+        }
+      })
+      .filter(id => id);
+
+    return {
+      name:
+        metadata.public?.asset_metadata?.display_title ||
+        metadata.public?.asset_metadata?.title ||
+        metadata.public?.name || indexId,
+      fields: Object.keys(metadata.indexer.config.indexer.arguments.fields || {}),
+      configuration: metadata?.search?.config?.clips || {},
+      contentIds,
+      contentHashes
     };
   });
 
