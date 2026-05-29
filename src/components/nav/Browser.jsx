@@ -32,6 +32,7 @@ import {Select, Tabs, Tooltip, Progress, Menu, Checkbox} from "@mantine/core";
 import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
 import SearchSettings from "@/components/search/SearchSettings.jsx";
 import {Dropzone, IMAGE_MIME_TYPE} from "@mantine/dropzone";
+import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 
 import SettingsIcon from "@/assets/icons/v2/settings.svg";
 import LibraryIcon from "@/assets/icons/v2/library.svg";
@@ -63,7 +64,8 @@ import PlayIcon from "@/assets/icons/Play.svg";
 import LinkIcon from "@/assets/icons/v2/external-link.svg";
 import ClipIcon from "@/assets/icons/scissors.svg";
 import UploadIcon from "@/assets/icons/fileupload.svg";
-import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
+import AddIcon from "@/assets/icons/plus-square.svg";
+import TaggingIcon from "@/assets/icons/tagging.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -989,6 +991,7 @@ const CompositionBrowser = observer(({
 export const ObjectBrowser = observer(({
   libraryId,
   title,
+  belowTitle,
   withFilterBar,
   filter,
   filterQueryParam="q",
@@ -1055,6 +1058,7 @@ export const ObjectBrowser = observer(({
             </>
         }
       </h1>
+      {belowTitle}
       <BrowserTable
         filter={filter}
         defaultIcon={ObjectIcon}
@@ -1078,6 +1082,7 @@ export const ObjectBrowser = observer(({
 
 export const LibraryBrowser = observer(({
   title,
+  belowTitle,
   filter,
   withFilterBar="",
   filterQueryParam="q",
@@ -1112,6 +1117,7 @@ export const LibraryBrowser = observer(({
             { title || "Content Libraries" }
           </h1>
       }
+      {belowTitle}
       <BrowserTable
         filter={filter}
         defaultIcon={LibraryIcon}
@@ -1419,13 +1425,16 @@ export const BrowserSelection = observer(({title, contentIds=[], Remove}) => {
   useEffect(() => {
     if(contentIds.length === 0) { return; }
 
-    setLoading(true);
+    const timeout = setTimeout(() => setLoading(true), 0);
 
     Promise.all(
       visibleContentIds.map(async objectId =>
         await rootStore.GetObjectName({objectId})
       )
-    ).finally(() => setLoading(false));
+    ).finally(() => {
+      clearTimeout(timeout);
+      setLoading(false);
+    });
   }, [visibleItems, contentIds]);
 
   return (
@@ -1456,7 +1465,7 @@ export const BrowserSelection = observer(({title, contentIds=[], Remove}) => {
                 </div>
                 <div className={S("tagging-item__actions")}>
                   <IconButton
-                    icon={DeleteIcon}
+                    icon={XIcon}
                     label={`Remove ${name}`}
                     onClick={() => Remove(objectId)}
                     className={S("tagging-item__action")}
@@ -1473,6 +1482,53 @@ export const BrowserSelection = observer(({title, contentIds=[], Remove}) => {
   );
 });
 
+export const TaggingStepHeader = observer(({step=1}) => {
+  return (
+    <>
+      <h1 className={S("browser__header")}>
+        <Linkish to="/" className={S("browser__header-item")}>
+          <Icon icon={AddIcon} />
+          Create New Job
+        </Linkish>
+      </h1>
+      <div className={S("tagging-step-header")}>
+        <Linkish
+          to={step > 1 ? "/new" : undefined}
+          className={S("tagging-step", "tagging-step__active")}
+        >
+          <div className={S("tagging-step__number", "tagging-step__number--active")}>
+            1
+          </div>
+          <div className={S("tagging-step__text", step > 1 ? "tagging-step__text--active" : "")}>
+            Add Content
+          </div>
+        </Linkish>
+        <div className={S("tagging-step__separator", step > 1 ? "tagging-step__separator--active" : "")}/>
+        <Linkish
+          to={step > 2 ? "/new/configure" : undefined}
+          className={S("tagging-step", step >= 2 ? "tagging-step__active" : "")}
+        >
+          <div className={S("tagging-step__number", step >= 2 ? "tagging-step__number--active" : "")}>
+            2
+          </div>
+          <div className={S("tagging-step__text", step > 2 ? "tagging-step__text--active" : "")}>
+            Model Tracks and Processors
+          </div>
+        </Linkish>
+        <div className={S("tagging-step__separator", step > 2 ? "tagging-step__separator--active" : "")}/>
+        <div className={S("tagging-step")}>
+          <div className={S("tagging-step__number", step >= 3 ? "tagging-step__number--active" : "")}>
+            3
+          </div>
+          <div className={S("tagging-step__text")}>
+            Summary
+          </div>
+        </div>
+      </div>
+    </>
+  );
+});
+
 export const TaggingContentBrowser = observer(() => {
   const {libraryId} = useParams();
   const [, navigate] = useLocation();
@@ -1485,37 +1541,18 @@ export const TaggingContentBrowser = observer(() => {
 
   return (
     <div className={S("browser-page")}>
-      <SearchBar
-        filterQueryParam={`q${libraryId || ""}`}
-        saveByLocation
-        Select={Select}
-      />
-      <h1 className={S("browser__header")}>
-        <IconButton
-          icon={BackIcon}
-          label="Back to Jobs List"
-          to="/"
-          className={S("browser__header-back")}
-        />
-        <Linkish to="/">
-          AI Runtime
-        </Linkish>
-        <span className={S("browser__header-chevron")}>➤</span>
-        <span>
-          New Job
-        </span>
-        <span className={S("browser__header-chevron")}>➤</span>
-        <span className={S("browser__header-last")}>
-          Select Content
-        </span>
-      </h1>
-      <div className={S("browser__header-note")}>
-        Select the video content object(s) you would like to process.
-      </div>
+      <TaggingStepHeader step={1}/>
       <div className={S("tagging-browser")}>
         {
           libraryId ?
             <ObjectBrowser
+              belowTitle={
+                <SearchBar
+                  filterQueryParam={`q${libraryId || ""}`}
+                  saveByLocation
+                  Select={Select}
+                />
+              }
               className={S("browser--tagging")}
               filterQueryParam={`q${libraryId}`}
               libraryId={libraryId}
@@ -1533,6 +1570,13 @@ export const TaggingContentBrowser = observer(() => {
             /> :
             <LibraryBrowser
               title="Content Libraries"
+              belowTitle={
+                <SearchBar
+                  filterQueryParam={`q${libraryId || ""}`}
+                  saveByLocation
+                  Select={Select}
+                />
+              }
               className={S("browser--tagging")}
               Select={({libraryId, objectId, name}) => {
                 if(objectId) {
@@ -1630,13 +1674,18 @@ export const TaggingJobBrowser = observer(() => {
           saveByLocation
           onSubmit={value => setFilter(value)}
         />
-        <h1 className={S("browser__header")}>AI Runtime</h1>
+        <h1 className={S("browser__header")}>
+          <div className={S("browser__header-item")}>
+            <Icon icon={TaggingIcon} className={S("highlight")} />
+            <span>AI Runtime</span>
+          </div>
+        </h1>
         <div className={S("browser__actions")}>
           <StyledButton
             icon={CreateIcon}
             to="/new"
           >
-            New Job(s)
+            New Job
           </StyledButton>
           <div className={S("browser__action", "browser__action--right")}>
             <Select
@@ -1883,6 +1932,7 @@ export const SearchIndexContentBrowser = observer(({contentIds, setContentIds}) 
         <BrowserSelection
           title="Source Content"
           contentIds={contentIds}
+          className={S("browser-selection--search-index")}
           Remove={objectId => setContentIds(contentIds.filter(id => id !== objectId))}
         />
       </div>
