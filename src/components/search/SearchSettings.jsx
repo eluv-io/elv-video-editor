@@ -44,9 +44,8 @@ const FormatFieldName = name => {
 };
 
 const IndexConfigDefaults = {
-  pad_duration: 25,
-  truncate_duration: 6,
-  remove_duration: 10
+  clips_pad_duration: 15,
+  clips_truncate_duration: 120
 };
 
 const SearchIndexContentBrowserModal = observer(({contentIds, Submit, Close}) => {
@@ -278,90 +277,60 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
         <div className={S("index-form__inputs")}>
           <div className={S("index-form__input")}>
             <label>
-              Clip Pad Duration
+              Clip Min Duration
             </label>
             <Slider
               min={0}
-              max={50}
-              value={options.configuration.pad_duration}
+              max={300}
+              value={options.configuration.clips_pad_duration}
               miw={200}
               marks={[
-                {value: IndexConfigDefaults.pad_duration, label: `${IndexConfigDefaults.pad_duration}s`}
+                {value: IndexConfigDefaults.clips_pad_duration, label: `${IndexConfigDefaults.clips_pad_duration}s`}
               ]}
               onChange={value => setOptions({
                 ...options,
-                configuration: {...options.configuration, pad_duration: parseInt(value || 0)}
+                configuration: {...options.configuration, clips_pad_duration: Math.min(parseInt(value || 0), options.configuration.clips_truncate_duration)}
               })}
             />
             <NumberInput
               min={0}
-              max={50}
+              max={300}
               maw={100}
               type="number"
-              value={options.configuration.pad_duration}
+              value={options.configuration.clips_pad_duration}
               onChange={value => setOptions({
                 ...options,
-                configuration: {...options.configuration, pad_duration: parseInt(value || 0)}
+                configuration: {...options.configuration, clips_pad_duration: Math.min(parseInt(value || 0), options.configuration.clips_truncate_duration)}
               })}
             />
             <span>seconds</span>
           </div>
           <div className={S("index-form__input")}>
             <label>
-              Truncate Duration
+              Clip Max Duration
             </label>
             <Slider
-              value={options.configuration.truncate_duration}
+              value={options.configuration.clips_truncate_duration}
               min={0}
-              max={15}
+              max={300}
               miw={200}
               marks={[
-                {value: IndexConfigDefaults.truncate_duration, label: `${IndexConfigDefaults.truncate_duration}s`}
+                {value: IndexConfigDefaults.clips_truncate_duration, label: `${IndexConfigDefaults.clips_truncate_duration}s`}
               ]}
               onChange={value => setOptions({
                 ...options,
-                configuration: {...options.configuration, truncate_duration: parseInt(value || 0)}
+                configuration: {...options.configuration, clips_truncate_duration: Math.max(parseInt(value || 0), options.configuration.clips_pad_duration)}
               })}
             />
             <NumberInput
               maw={100}
               min={0}
-              max={15}
+              max={300}
               type="number"
-              value={options.configuration.truncate_duration}
+              value={options.configuration.clips_truncate_duration}
               onChange={value => setOptions({
                 ...options,
-                configuration: {...options.configuration, truncate_duration: parseInt(value || 0)}
-              })}
-            />
-            <span>seconds</span>
-          </div>
-          <div className={S("index-form__input")}>
-            <label>
-              Minimum Duration
-            </label>
-            <Slider
-              value={options.configuration.remove_duration}
-              miw={200}
-              min={0}
-              max={120}
-              marks={[
-                {value: IndexConfigDefaults.remove_duration, label: `${IndexConfigDefaults.remove_duration}s`}
-              ]}
-              onChange={value => setOptions({
-                ...options,
-                configuration: {...options.configuration, remove_duration: parseInt(value || 0)}
-              })}
-            />
-            <NumberInput
-              maw={100}
-              min={0}
-              max={120}
-              type="number"
-              value={options.configuration.remove_duration}
-              onChange={value => setOptions({
-                ...options,
-                configuration: {...options.configuration, remove_duration: parseInt(value || 0)}
+                configuration: {...options.configuration, clips_truncate_duration: Math.max(parseInt(value || 0), options.configuration.clips_pad_duration)}
               })}
             />
             <span>seconds</span>
@@ -402,9 +371,8 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
                 selectedFields: options.fields,
                 contentIds: options.contentIds,
                 configuration: {
-                  pad_duration: options.configuration.pad_duration,
-                  truncate_duration: options.configuration.truncate_duration,
-                  remove_duration: options.configuration.remove_duration
+                  clips_pad_duration: options.configuration.clips_pad_duration,
+                  clips_truncate_duration: options.configuration.clips_truncate_duration
                 }
               });
             } else {
@@ -414,9 +382,8 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
                 selectedFields: options.fields,
                 contentIds: options.contentIds,
                 configuration: {
-                  pad_duration: options.configuration.pad_duration,
-                  truncate_duration: options.configuration.truncate_duration,
-                  remove_duration: options.configuration.remove_duration
+                  clips_pad_duration: options.configuration.clips_pad_duration,
+                  clips_truncate_duration: options.configuration.clips_truncate_duration
                 }
               });
             }
