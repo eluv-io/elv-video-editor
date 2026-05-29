@@ -1,20 +1,452 @@
 import SearchStyles from "@/assets/stylesheets/modules/search.module.scss";
 
 import {observer} from "mobx-react-lite";
-import {Confirm, CopyableField, Icon, IconButton, Modal, StyledButton} from "@/components/common/Common.jsx";
-import React, {useState} from "react";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {
+  Confirm,
+  CopyableField,
+  FormTextInput,
+  Icon,
+  IconButton, Loader,
+  Modal,
+  StyledButton
+} from "@/components/common/Common.jsx";
+import React, {useEffect, useState} from "react";
+import {Capitalize, CreateModuleClassMatcher} from "@/utils/Utils.js";
 
 import {rootStore, aiStore} from "@/stores/index.js";
-import {Button, Checkbox, Slider, TextInput} from "@mantine/core";
+import {Checkbox, NumberInput, Slider, TextInput} from "@mantine/core";
+import {LibraryBrowser, ObjectBrowser, SearchIndexContentBrowser} from "@/components/nav/Browser.jsx";
 
 import SettingsIcon from "@/assets/icons/v2/settings.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
-import {LibraryBrowser, ObjectBrowser} from "@/components/nav/Browser.jsx";
 import UpdateIndexIcon from "@/assets/icons/v2/reload.svg";
+import AddIcon from "@/assets/icons/v2/plus.svg";
+import EditIcon from "@/assets/icons/Edit.svg";
+import VideoIcon from "@/assets/icons/v2/video.svg";
 
 const S = CreateModuleClassMatcher(SearchStyles);
 
+const visualFields = [
+  "celebrity",
+  "characters",
+  "object",
+  "logo"
+];
+
+const audioLanguageFields = [
+  "speech_to_text",
+  "music",
+  "llava"
+];
+
+const FormatFieldName = name => {
+  return name.replace("_", " ").split(" ").map(token => Capitalize(token)).join(" ");
+};
+
+const IndexConfigDefaults = {
+  pad_duration: 25,
+  truncate_duration: 6,
+  remove_duration: 10
+};
+
+const SearchIndexContentBrowserModal = observer(({contentIds, Submit, Close}) => {
+  const [selectedContentIds, setSelectedContentIds] = useState(contentIds || []);
+
+  return (
+    <Modal
+      opened
+      centered
+      size={1200}
+      onClose={Close}
+      title={
+        <div className={S("search-settings__header")}>
+          <Icon icon={SettingsIcon}/>
+          <span>
+            Select Source Content
+          </span>
+        </div>
+      }
+    >
+      <SearchIndexContentBrowser
+        contentIds={selectedContentIds}
+        setContentIds={setSelectedContentIds}
+      />
+      <div className={S("search-settings__actions")}>
+        <StyledButton
+          onClick={Close}
+          color="--background-active"
+          w={150}
+        >
+          Cancel
+        </StyledButton>
+        <StyledButton
+          onClick={() => Submit(selectedContentIds)}
+          w={150}
+        >
+          Submit
+        </StyledButton>
+      </div>
+    </Modal>
+  );
+});
+
+const CreateSearchIndexForm = observer(({indexId, Close}) => {
+  let defaultOptions = {
+    fields: aiStore.searchIndexTemplateInfo?.optionalFields || [],
+    configuration: {...IndexConfigDefaults},
+  };
+
+  const [loading, setLoading] = useState(true);
+  const [showBrowser, setShowBrowser] = useState(false);
+  const [options, setOptions] = useState({
+    name: "",
+    contentIds: [],
+    ...defaultOptions,
+  });
+
+  useEffect(() => {
+    aiStore.LoadSearchIndexTemplateInfo()
+      .then(async () => {
+        if(indexId) {
+          const {name, fields, contentIds, configuration} = await aiStore.LoadSearchIndexInfo({indexId});
+
+          setOptions({
+            ...options,
+            name,
+            fields,
+            contentIds,
+            configuration: {
+              ...options.configuration,
+              ...configuration
+            }
+          });
+
+          await new Promise(resolve => setTimeout(resolve, 250));
+        } else {
+          setOptions({
+            ...options,
+            fields: aiStore.searchIndexTemplateInfo?.optionalFields || []
+          });
+        }
+
+        setLoading(false);
+      });
+  }, []);
+
+  if(!aiStore.searchIndexTemplateInfo) {
+    return null;
+  }
+
+  return (
+    <Modal
+      opened
+      centered
+      size={1000}
+      onClose={Close}
+      title={
+        <div className={S("search-settings__header")}>
+          <Icon icon={SettingsIcon}/>
+          <span>
+            {
+              indexId ?
+                "Update Search Index" :
+                "Create New Search Index"
+            }
+          </span>
+        </div>
+      }
+    >
+      <div className={S("index-form__section")}>
+        <FormTextInput
+          label="Name"
+          placeholder="Search Index"
+          value={options.name}
+          onChange={event => setOptions({...options, name: event.target.value})}
+        />
+      </div>
+      <div className={S("index-form__section")}>
+        <h2 className={S("index-form__title")}>Source Content</h2>
+        <h2 className={S("index-form__subtitle")}>Add source content(s) to be included in this search index</h2>
+
+        {
+          options.contentIds.length === 0 ?
+            <StyledButton
+              variant="secondary"
+              color="--color-highlight"
+              icon={AddIcon}
+              size="sm"
+              onClick={() => setShowBrowser(true)}
+              className={S("index-form__add")}
+            >
+              Add Source Content
+            </StyledButton> :
+            <div className={S("index-form__content-summary")}>
+              <Icon icon={VideoIcon} />
+              <span>
+                { options.contentIds.length } content object{options.contentIds.length === 1 ? "" : "s"} selected
+              </span>
+              <StyledButton
+                variant="secondary"
+                color="--color-highlight"
+                icon={AddIcon}
+                size="sm"
+                onClick={() => setShowBrowser(true)}
+                className={S("index-form__add")}
+              >
+                Select Source Content
+              </StyledButton>
+            </div>
+        }
+      </div>
+      <div className={S("index-form__section")}>
+        <h2 className={S("index-form__title")}>Search Fields</h2>
+        <h2 className={S("index-form__subtitle")}>
+          Enable or disable specific search fields to define which metadata the search engine uses to control how
+          content is matched and returned in search results.
+        </h2>
+        <div className={S("index-form__fields-section")}>
+          <div className={S("index-form__field-list")}>
+            <h3 className={S("index-form__field-list-title")}>
+              Media Metadata
+            </h3>
+            {
+              aiStore.searchIndexTemplateInfo.requiredFields
+                .filter(field => !field.startsWith("zz"))
+                .map(field =>
+                  <Checkbox
+                    size="sm"
+                    disabled
+                    checked
+                    key={`field-${field}`}
+                    label={FormatFieldName(field)}
+                  />
+                )
+            }
+          </div>
+          <div className={S("index-form__field-list")}>
+            <h3 className={S("index-form__field-list-title")}>
+              Visual Recognition
+            </h3>
+            {
+              aiStore.searchIndexTemplateInfo.optionalFields
+                .filter(field => visualFields.find(otherField => otherField.startsWith(field)))
+                .map(field =>
+                  <Checkbox
+                    size="sm"
+                    key={`field-${field}`}
+                    label={FormatFieldName(field)}
+                    checked={options.fields.includes(field)}
+                    onChange={() => setOptions({
+                      ...options,
+                      fields:
+                        options.fields.includes(field) ?
+                          options.fields.filter(otherField => otherField !== field) :
+                          [...options.fields, field]
+                    })}
+                  />
+                )
+            }
+          </div>
+          <div className={S("index-form__field-list")}>
+            <h3 className={S("index-form__field-list-title")}>
+              Audio & Language
+            </h3>
+            {
+              aiStore.searchIndexTemplateInfo.optionalFields
+                .filter(field => audioLanguageFields.find(otherField => otherField.startsWith(field)))
+                .map(field =>
+                  <Checkbox
+                    size="sm"
+                    key={`field-${field}`}
+                    label={FormatFieldName(field)}
+                    checked={options.fields.includes(field)}
+                    onChange={() => setOptions({
+                      ...options,
+                      fields:
+                        options.fields.includes(field) ?
+                          options.fields.filter(otherField => otherField !== field) :
+                          [...options.fields, field]
+                    })}
+                  />
+                )
+            }
+          </div>
+        </div>
+      </div>
+      <div className={S("index-form__section", "index-form__section--no-border")}>
+        <h2 className={S("index-form__title")}>Clip Search Configuration</h2>
+        <div className={S("index-form__inputs")}>
+          <div className={S("index-form__input")}>
+            <label>
+              Clip Pad Duration
+            </label>
+            <Slider
+              min={0}
+              max={50}
+              value={options.configuration.pad_duration}
+              miw={200}
+              marks={[
+                {value: IndexConfigDefaults.pad_duration, label: `${IndexConfigDefaults.pad_duration}s`}
+              ]}
+              onChange={value => setOptions({
+                ...options,
+                configuration: {...options.configuration, pad_duration: parseInt(value || 0)}
+              })}
+            />
+            <NumberInput
+              min={0}
+              max={50}
+              maw={100}
+              type="number"
+              value={options.configuration.pad_duration}
+              onChange={value => setOptions({
+                ...options,
+                configuration: {...options.configuration, pad_duration: parseInt(value || 0)}
+              })}
+            />
+            <span>seconds</span>
+          </div>
+          <div className={S("index-form__input")}>
+            <label>
+              Truncate Duration
+            </label>
+            <Slider
+              value={options.configuration.truncate_duration}
+              min={0}
+              max={15}
+              miw={200}
+              marks={[
+                {value: IndexConfigDefaults.truncate_duration, label: `${IndexConfigDefaults.truncate_duration}s`}
+              ]}
+              onChange={value => setOptions({
+                ...options,
+                configuration: {...options.configuration, truncate_duration: parseInt(value || 0)}
+              })}
+            />
+            <NumberInput
+              maw={100}
+              min={0}
+              max={15}
+              type="number"
+              value={options.configuration.truncate_duration}
+              onChange={value => setOptions({
+                ...options,
+                configuration: {...options.configuration, truncate_duration: parseInt(value || 0)}
+              })}
+            />
+            <span>seconds</span>
+          </div>
+          <div className={S("index-form__input")}>
+            <label>
+              Minimum Duration
+            </label>
+            <Slider
+              value={options.configuration.remove_duration}
+              miw={200}
+              min={0}
+              max={120}
+              marks={[
+                {value: IndexConfigDefaults.remove_duration, label: `${IndexConfigDefaults.remove_duration}s`}
+              ]}
+              onChange={value => setOptions({
+                ...options,
+                configuration: {...options.configuration, remove_duration: parseInt(value || 0)}
+              })}
+            />
+            <NumberInput
+              maw={100}
+              min={0}
+              max={120}
+              type="number"
+              value={options.configuration.remove_duration}
+              onChange={value => setOptions({
+                ...options,
+                configuration: {...options.configuration, remove_duration: parseInt(value || 0)}
+              })}
+            />
+            <span>seconds</span>
+          </div>
+        </div>
+      </div>
+      <div className={S("search-settings__actions")}>
+        <StyledButton
+          onClick={Close}
+          color="--background-active"
+          w={150}
+        >
+          Cancel
+        </StyledButton>
+        <StyledButton
+          onClick={() => Confirm({
+            title: "Restore Defaults",
+            text: "Are you sure you want to restore the default configuration?",
+            onConfirm: () =>
+              setOptions({
+                ...options,
+                ...defaultOptions
+              })
+          })}
+          variant="secondary"
+          color="--color-border"
+          textColor="--text-secondary"
+          w={150}
+        >
+          Restore Defaults
+        </StyledButton>
+        <StyledButton
+          w={150}
+          onClick={async () => {
+            if(!indexId) {
+              indexId = await aiStore.CreateSearchIndex({
+                name: options.name,
+                selectedFields: options.fields,
+                contentIds: options.contentIds,
+                configuration: {
+                  pad_duration: options.configuration.pad_duration,
+                  truncate_duration: options.configuration.truncate_duration,
+                  remove_duration: options.configuration.remove_duration
+                }
+              });
+            } else {
+              await aiStore.UpdateSearchIndex({
+                indexId,
+                name: options.name,
+                selectedFields: options.fields,
+                contentIds: options.contentIds,
+                configuration: {
+                  pad_duration: options.configuration.pad_duration,
+                  truncate_duration: options.configuration.truncate_duration,
+                  remove_duration: options.configuration.remove_duration
+                }
+              });
+            }
+
+            aiStore.BuildSearchIndex({indexId});
+
+            Close();
+          }}
+        >
+          { indexId ? "Update" : "Create" }
+        </StyledButton>
+      </div>
+      {
+        !showBrowser ? null :
+          <SearchIndexContentBrowserModal
+            contentIds={options.contentIds}
+            Submit={contentIds => {
+              setOptions({...options, contentIds});
+              setShowBrowser(false);
+            }}
+            Close={() => setShowBrowser(false)}
+          />
+      }
+      {
+        !loading ? null :
+          <Loader className={S("index-form__loader")} />
+      }
+    </Modal>
+  );
+});
 
 const SearchIndexBrowseModal = observer(({Select, Cancel}) => {
   const [libraryId, setLibraryId] = useState(undefined);
@@ -29,16 +461,16 @@ const SearchIndexBrowseModal = observer(({Select, Cancel}) => {
             libraryId={libraryId}
             noDuration
             Back={() => setLibraryId(undefined)}
-            Select={({objectId, name}) => Select({objectId, name})}
+            Select={async ({objectId, name}) => await Select({objectId, name})}
             className={S("index__browser")}
           /> :
           <LibraryBrowser
             withFilterBar
             filterQueryParam="index"
             title="Select search index"
-            Select={({libraryId, objectId, name}) => {
+            Select={async ({libraryId, objectId, name}) => {
               if(objectId) {
-                Select({objectId, name});
+                await Select({objectId, name});
               } else {
                 setLibraryId(libraryId);
               }
@@ -51,21 +483,8 @@ const SearchIndexBrowseModal = observer(({Select, Cancel}) => {
 });
 
 export const SearchIndexForm = observer(({options, setOptions}) => {
-  const [updatingIndexes, setUpdatingIndexes] = useState([]);
   const [showBrowser, setShowBrowser] = useState(false);
-
-  if(aiStore.searchIndexes.length === 0) { return null; }
-
-  let indexUpdateProgress;
-  updatingIndexes.forEach(indexId => {
-    const progress = aiStore.searchIndexUpdateProgress[indexId] || 0;
-
-    indexUpdateProgress = indexUpdateProgress ? Math.min(progress, indexUpdateProgress) : progress;
-  });
-
-  if(updatingIndexes.length > 0) {
-    indexUpdateProgress = ((indexUpdateProgress || 0) + (aiStore.tagAggregationProgress || 0)) / 2;
-  }
+  const [showForm, setShowForm] = useState(false);
 
   const SetSearchIndex = ({searchIndexId, imageCollectionId}) => {
     setOptions({
@@ -126,77 +545,75 @@ export const SearchIndexForm = observer(({options, setOptions}) => {
                     </div>
                 }
               </div>
-              <div className={S("index__actions")}>
-                {
-                  !index.custom ? null :
-                    <IconButton
-                      label="Remove Search Index"
-                      icon={XIcon}
-                      onClick={async event => {
-                        event.preventDefault();
-                        event.stopPropagation();
-
-                        await Confirm({
-                          title: "Remove Index",
-                          text: "Are you sure you want to remove this search index?",
-                          onConfirm: async () => {
-                            try {
-                              await aiStore.RemoveSearchIndex({objectId: index.id});
-                            } catch(error) {
-                              console.error(error);
-                            } finally {
-                              SetSearchIndex({searchIndexId: aiStore.searchIndexes[0].id});
-                            }
-                          }
-                        });
-                      }}
-                    />
-                }
+              <div onClick={event => event.stopPropagation()} className={S("index__actions")}>
                 {
                   !index.canEdit ? null :
-                    <IconButton
-                      label="Update Search Index"
-                      icon={UpdateIndexIcon}
-                      loadingProgress={
-                        !updatingIndexes.includes(index.id) ? undefined :
-                          (
-                            (aiStore.tagAggregationProgress || 0) +
-                            (aiStore.searchIndexUpdateProgress[index.id] || 0)
-                          ) / 2
-                      }
-                      onClick={async event => {
-                        event.preventDefault();
-                        event.stopPropagation();
+                    <>
+                      <IconButton
+                        label="Modify Search Index"
+                        icon={EditIcon}
+                        onClick={() => setShowForm(index.id)}
+                      />
+                      <IconButton
+                        label="Update Search Index"
+                        icon={UpdateIndexIcon}
+                        loadingProgress={aiStore.searchIndexUpdateProgress[index.id]}
+                        onClick={async event => {
+                          event.preventDefault();
+                          event.stopPropagation();
 
-                        await Confirm({
-                          title: "Remove Search Index",
-                          text: "Are you sure you want to update this search index?",
-                          onConfirm: async () => {
-                            setUpdatingIndexes([...updatingIndexes, index.id]);
-                            try {
-                              await aiStore.UpdateSearchIndex({indexId: index.id, aggregate: true});
-                            } finally {
-                              setUpdatingIndexes(updatingIndexes.filter(id => id !== index.id));
-                            }
-                          }
-                        });
-                      }}
-                    />
+                          await Confirm({
+                            title: "Remove Search Index",
+                            text: "Are you sure you want to update this search index?",
+                            onConfirm: async () =>
+                              await aiStore.BuildSearchIndex({indexId: index.id, aggregate: true})
+                          });
+                        }}
+                      />
+                    </>
                 }
+                <IconButton
+                  label="Remove Search Index"
+                  icon={XIcon}
+                  onClick={async event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    await Confirm({
+                      title: "Remove Index",
+                      text: "Are you sure you want to remove this search index?",
+                      onConfirm: async () => {
+                        try {
+                          await aiStore.RemoveSearchIndex({objectId: index.id});
+                        } catch(error) {
+                          console.error(error);
+                        }
+                      }
+                    });
+                  }}
+                />
               </div>
             </div>
           )
         }
-        <StyledButton
-          color="--color-border"
-          textColor="--text-secondary"
-          variant="secondary"
-          onClick={() => setShowBrowser("index")}
-          size="sm"
-          className={S("index__button")}
-        >
-          Add Search Index
-        </StyledButton>
+        <div className={S("index__buttons")}>
+          <StyledButton
+            color="--color-border"
+            textColor="--text-secondary"
+            variant="secondary"
+            onClick={() => setShowBrowser("index")}
+            size="md"
+          >
+            Add Existing Index
+          </StyledButton>
+          <StyledButton
+            variant="white"
+            onClick={() => setShowForm(true)}
+            size="md"
+          >
+            Create New Index
+          </StyledButton>
+        </div>
 
         {
           aiStore.searchCollectionIndexes.length === 0 ? null :
@@ -230,6 +647,13 @@ export const SearchIndexForm = observer(({options, setOptions}) => {
             </>
         }
       </div>
+      {
+        !showForm ? null :
+          <CreateSearchIndexForm
+            indexId={typeof showForm === "string" ? showForm : undefined}
+            Close={() => setShowForm(false)}
+          />
+      }
     </>
   );
 });
@@ -381,7 +805,7 @@ const TitlesForm = observer(({options, setOptions}) => {
 
 const SearchSettings = observer(({store, singleObject, Close}) => {
   store = store || aiStore;
-  const [tab, setTab] = useState(singleObject ? "confidence" : "titles");
+  const [tab, setTab] = useState(!aiStore.searchIndex ? "index" : singleObject ? "confidence" : "titles");
   const [options, setOptions] = useState({
     searchIndexId: store.selectedSearchIndexId,
     imageCollectionId: store.selectedCollectionSearchIndexId,
@@ -454,6 +878,7 @@ const SearchSettings = observer(({store, singleObject, Close}) => {
           {
             singleObject ? null :
               <button
+                disabled={!aiStore.searchIndex}
                 className={S("search-settings__tab", tab === "titles" ? "search-settings__tab--active" : "")}
                 onClick={() => setTab("titles")}
               >
@@ -461,12 +886,14 @@ const SearchSettings = observer(({store, singleObject, Close}) => {
               </button>
           }
           <button
+            disabled={!aiStore.searchIndex}
             className={S("search-settings__tab", tab === "confidence" ? "search-settings__tab--active" : "")}
             onClick={() => setTab("confidence")}
           >
             Confidence
           </button>
           <button
+            disabled={!aiStore.searchIndex}
             className={S("search-settings__tab", tab === "fields" ? "search-settings__tab--active" : "")}
             onClick={() => setTab("fields")}
           >
@@ -476,36 +903,35 @@ const SearchSettings = observer(({store, singleObject, Close}) => {
         {form}
       </div>
       <div className={S("search-settings__actions")}>
-        <Button
+        <StyledButton
           onClick={Close}
-          variant="subtle"
-          color="gray.5"
+          color="--background-active"
           w={150}
         >
           Cancel
-        </Button>
-        <Button
+        </StyledButton>
+        <StyledButton
           onClick={() => setOptions({
             ...options,
             ...aiStore.DEFAULT_SEARCH_SETTINGS
           })}
-          variant="outline"
-          color="gray.5"
+          variant="secondary"
+          color="--color-border"
+          textColor="--text-secondary"
           w={150}
         >
           Restore Defaults
-        </Button>
-        <Button
-          autoContrast
-          color="gray.5"
+        </StyledButton>
+        <StyledButton
           w={150}
+          variant="white"
           onClick={() => {
             store.SetSearchSettings(options);
             Close();
           }}
         >
           Apply
-        </Button>
+        </StyledButton>
       </div>
     </Modal>
   );
