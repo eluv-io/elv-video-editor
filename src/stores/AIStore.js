@@ -1592,7 +1592,7 @@ class AIStore {
     );
 
     const type = Object.values(yield this.client.ContentTypes())
-      .find(type => type.name.toLowerCase().includes("index"));
+      .find(type => type.name.toLowerCase().includes("index"))?.id;
 
     let objectId;
     yield this.client.CreateAndFinalizeContentObject({
