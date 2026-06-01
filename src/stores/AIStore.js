@@ -142,6 +142,7 @@ class AIStore {
     yield this.LoadSearchIndexes();
     yield this.LoadMCPExchangeSentinel();
     this.LoadHighlightProfiles();
+    this.StartSearchIndexUpdateStatusWatcher();
   });
 
   QueryAIAPI = flow(function * ({
@@ -320,7 +321,6 @@ class AIStore {
 
     this.rootStore.ClearResource({key: "clipSummary", id: `${objectId}-${startTime}-${endTime}`});
   });
-
 
   GenerateAIHighlights = flow(function * ({
     objectId,
@@ -1344,179 +1344,56 @@ class AIStore {
 
   /* Updates */
 
-  AggregateUserTags = flow(function * ({objectId}) {
-    this.searchIndexUpdateProgress = {};
+  StartSearchIndexUpdateStatusWatcher() {
+    clearInterval(window.searchIndexStatusWatcherInterval);
 
-    let progressInterval;
-    try {
-      this.tagAggregationProgress = 0;
-
-      const libraryId = yield this.client.ContentObjectLibraryId({objectId: objectId});
-      const {writeToken} = yield this.client.EditContentObject({libraryId, objectId});
-
-      this.tagAggregationProgress = 15;
-
-      progressInterval = setInterval(() =>
-        runInAction(() =>
-          this.tagAggregationProgress = Math.min(80, this.tagAggregationProgress + 10)
-        ), 3000
-      );
-
-      yield this.QueryAIAPI({
-        server: "ai",
-        path: UrlJoin("/tagging", objectId, "aggregate"),
-        queryParams: {
-          write_token: writeToken
-        },
-        method: "POST",
-        format: "none",
-        objectId,
-        update: true,
-      });
-
-      clearInterval(progressInterval);
-
-      this.tagAggregationProgress = 90;
-
-      yield this.client.FinalizeContentObject({libraryId, objectId, writeToken});
-    } catch(error) {
-      console.error("Tag aggregation failed:");
-      console.error(error);
-    } finally {
-      clearInterval(progressInterval);
-      this.tagAggregationProgress = 100;
-    }
-  });
-
-  BuildSearchIndex = flow(function * ({indexId, aggregate=false}) {
-    try {
-      const videoObjectId =
-        this.rootStore.videoStore.videoObject?.objectId ||
-        this.rootStore.compositionStore.primarySourceVideoStore?.videoObject?.objectId;
-
-      if(videoObjectId && aggregate) {
-        yield this.AggregateUserTags({objectId: videoObjectId});
-      }
-
-      this.searchIndexUpdateProgress[indexId] = 5;
-      // Perform against a search node
-      const searchURIs = (yield (
-        yield fetch("https://main.net955305.contentfabric.io/config")
-      ).json()).network.services.search_v2;
-
-      yield this.client.SetNodes({fabricURIs: searchURIs});
-
-      this.searchIndexUpdateProgress[indexId] = 12;
-
-      const libraryId = yield this.client.ContentObjectLibraryId({objectId: indexId});
-      const siteId = (yield this.client.ContentObjectMetadata({
-        libraryId,
-        objectId: indexId,
-        metadataSubtree: "/indexer/config/fabric/root/content"
-      })) || indexId;
-
-      const siteLibraryId = yield this.client.ContentObjectLibraryId({objectId: siteId});
-
-      const siteUpdateWriteToken = (yield this.client.EditContentObject({
-        libraryId: siteLibraryId,
-        objectId: siteId
-      })).writeToken;
-
-      yield this.QueryAIAPI({
-        server: "ai",
-        path: UrlJoin("/search", "q", siteUpdateWriteToken, "update_site"),
-        method: "POST",
-        format: "none",
-        objectId: siteId,
-        update: true,
-      });
-
-      this.searchIndexUpdateProgress[indexId] = 12;
-
-      yield this.client.FinalizeContentObject({
-        libraryId: siteLibraryId,
-        objectId: siteId,
-        writeToken: siteUpdateWriteToken,
-        commitMessage: "EVIE - Rebuild search index"
-      });
-
-      this.searchIndexUpdateProgress[indexId] = 20;
-      yield new Promise(resolve => setTimeout(resolve, 2000));
-      this.searchIndexUpdateProgress[indexId] = 25;
-
-      const crawlWriteToken = (yield this.client.EditContentObject({libraryId, objectId: indexId})).writeToken;
-
-      this.searchIndexUpdateProgress[indexId] = 30;
-
-      yield this.QueryAIAPI({
-        server: "ai",
-        path: UrlJoin("/search", "q", crawlWriteToken, "crawl"),
-        method: "POST",
-        objectId: indexId,
-        update: true
-      });
-
-      this.searchIndexUpdateProgress[indexId] = 35;
-
-      let crawlStatus = {};
-      do {
-        yield new Promise(resolve => setTimeout(resolve, 5000));
-        crawlStatus = yield this.QueryAIAPI({
+    const UpdateStatus = async () => {
+      try {
+        let {jobs} = await this.QueryAIAPI({
           server: "ai",
-          path: UrlJoin("/search", "q", crawlWriteToken, "crawl_status"),
-          objectId: indexId,
-          update: true
+          path: UrlJoin("/qmanager", "jobs"),
+          method: "GET",
+          objectId: this.rootStore.tenantInfoObjectId
         });
-      } while(crawlStatus.state !== "terminated");
-      this.searchIndexUpdateProgress[indexId] = 40;
 
-      yield this.client.FinalizeContentObject({
-        libraryId,
-        objectId: indexId,
-        writeToken: crawlWriteToken,
-        commitMessage: "EVIE - Recrawl search index"
-      });
+        jobs = jobs.filter(job => !["succeeded", "failed", "cancelled"].includes(job?.status));
 
-      this.searchIndexUpdateProgress[indexId] = 45;
-      yield new Promise(resolve => setTimeout(resolve, 2000));
-      this.searchIndexUpdateProgress[indexId] = 50;
+        if(jobs.length === 0) {
+          runInAction(() => this.searchIndexUpdateProgress = {});
+          clearInterval(window.searchIndexStatusWatcherInterval);
+          return;
+        }
 
-      yield this.client.ResetRegion();
+        let progress = {};
+        for(const job of jobs) {
+          progress[job.qid] = 50;
+        }
 
-      let updateProgress = [0, 0];
-      yield Promise.all(
-        ["ai", "ai-02"].map(async (server, i) => {
-          await this.QueryAIAPI({
-            server,
-            path: UrlJoin("/search", "q", indexId, "search_update"),
-            method: "POST",
-            objectId: indexId,
-            update: true
-          });
+        runInAction(() => this.searchIndexUpdateProgress = progress);
+      } catch(error) {
+        console.error("Failed to get search index update status:");
+        console.error(error);
+      }
+    };
 
-          let updateStatus;
-          do {
-            await new Promise(resolve => setTimeout(resolve, 5000));
+    UpdateStatus();
 
-            updateStatus = await this.QueryAIAPI({
-              server,
-              path: UrlJoin("/search", "q", indexId, "update_status"),
-              objectId: indexId,
-              update: true
-            });
+    window.searchIndexStatusWatcherInterval = setInterval(UpdateStatus, 8000);
+  }
 
-            updateProgress[i] = 25 * (updateStatus?.progress || 0);
+  BuildSearchIndex = flow(function * ({indexId}) {
+    yield this.QueryAIAPI({
+      server: "ai",
+      path: UrlJoin("/qmanager", "q", indexId, "jobs"),
+      method: "POST",
+      objectId: indexId,
+      body: {
+        type: "index_update"
+      },
+      update: true
+    });
 
-            runInAction(() => this.searchIndexUpdateProgress[indexId] = 50 + updateProgress[0] + updateProgress[1]);
-          } while(updateStatus?.status !== "finished");
-        })
-      );
-    } catch(error) {
-      console.error("Failed to update search index", indexId);
-      console.error(error);
-    } finally {
-      delete this.searchIndexUpdateProgress[indexId];
-    }
+    this.StartSearchIndexUpdateStatusWatcher();
   });
 
   CreateSearchIndex = flow(function * ({
@@ -1524,6 +1401,7 @@ class AIStore {
     description="",
     contentIds=[],
     selectedFields=[],
+    selectedCustomFields=[],
     configuration
   }) {
     yield this.LoadSearchIndexTemplateInfo();
@@ -1568,6 +1446,17 @@ class AIStore {
       this.searchIndexTemplateInfo.associatedFieldMap[field]?.associatedFields?.map(associatedField =>
         fields[associatedField] = metadata.indexer.config.indexer.arguments.fields[associatedField]
       );
+    });
+
+    selectedCustomFields.forEach(field => {
+      const label = this.searchIndexTemplateInfo.customFieldLabels[field];
+      fields[field] = {
+        "options": {},
+        "paths": [
+            `site_map.searchables.*.video_tags.metadata_tags.*.metadata_tags.shot_tags.tags.text.${label}.text`
+        ],
+        "type": "text"
+      };
     });
 
     metadata.indexer.config.indexer.arguments.fields = fields;
@@ -1648,6 +1537,7 @@ class AIStore {
     name="Search Index",
     contentIds=[],
     selectedFields=[],
+    selectedCustomFields=[],
     configuration
   }) {
     yield this.LoadSearchIndexTemplateInfo();
@@ -1685,6 +1575,17 @@ class AIStore {
         );
     });
 
+    selectedCustomFields.forEach(field => {
+      const label = this.searchIndexTemplateInfo.customFieldLabels[field];
+      fields[field] = {
+        "options": {},
+        "paths": [
+          `site_map.searchables.*.video_tags.metadata_tags.*.metadata_tags.shot_tags.tags.text.${label}.text`
+        ],
+        "type": "text"
+      };
+    });
+
     // Remove unselected fields
     this.searchIndexTemplateInfo.optionalFields.forEach(field => {
       if(selectedFields.includes(field)) { return; }
@@ -1694,6 +1595,12 @@ class AIStore {
         ?.forEach(associatedField =>
           delete fields[associatedField]
         );
+    });
+
+    this.searchIndexTemplateInfo.customFields.forEach(field => {
+      if(selectedCustomFields.includes(field)) { return; }
+
+      delete fields[field];
     });
 
     // Set content links
@@ -1779,12 +1686,33 @@ class AIStore {
           }
         );
 
+        const customTracks = (yield this.client.ContentObjectMetadata({
+          versionHash: yield this.client.LatestVersionHash({objectId: this.rootStore.tenantInfoObjectId}),
+          metadataSubtree: "public/search/custom_tracks"
+        })) || [];
+        let customFieldLabels = {};
+        const customFields = customTracks
+          .filter(track => !!track?.name)
+          .sort((a, b) => a.label.toLowerCase() < b.label.toLowerCase() ? -1 : 1)
+          .map(track => {
+            customFieldLabels[track.name] = track.label;
+
+            return track.name;
+          });
+
         this.searchIndexTemplateInfo = {
           metadataTemplate: metadata_template,
           requiredFields,
           optionalFields,
           associatedFields,
-          associatedFieldMap
+          associatedFieldMap,
+          allDefaultFields: [
+            ...requiredFields,
+            ...optionalFields,
+            ...associatedFields
+          ],
+          customFields,
+          customFieldLabels
         };
       })
     });
@@ -1826,16 +1754,88 @@ class AIStore {
       })
       .filter(id => id);
 
+    const fields = Object.keys(metadata.indexer.config.indexer.arguments.fields || {});
+    const customFields = fields.filter(field => this.searchIndexTemplateInfo?.customFields?.includes(field));
+
     return {
       name:
         metadata.public?.asset_metadata?.display_title ||
         metadata.public?.asset_metadata?.title ||
         metadata.public?.name || indexId,
-      fields: Object.keys(metadata.indexer.config.indexer.arguments.fields || {}),
+      fields,
+      customFields,
       configuration: metadata?.search?.config?.clips || {},
       contentIds,
       contentHashes
     };
+  });
+
+  AddSearchIndexFields = flow(function * ({objectIds}) {
+    yield this.LoadSearchIndexTemplateInfo();
+
+    const excludedFields = [
+      "auto_captions",
+      "focus",
+      "llava_caption",
+      "optical_character_recognition",
+      "shot_detection",
+      "vertical_video"
+    ];
+
+    const fields = {};
+    yield this.client.utils.LimitedMap(
+      10,
+      objectIds,
+      async objectId => {
+        const {tracks} = await this.rootStore.aiStore.QueryAIAPI({
+          objectId,
+          path: UrlJoin("/tagstore", objectId, "tracks"),
+          format: "JSON"
+        });
+
+        tracks
+          .filter(track =>
+            !this.searchIndexTemplateInfo.allDefaultFields.includes(track.name) &&
+            !this.searchIndexTemplateInfo.customFields.includes(track.name) &&
+            !excludedFields.includes(track.name)
+          )
+          .forEach(track => fields[track.name] = track);
+      }
+    );
+
+    if(Object.keys(fields).length === 0) {
+      return;
+    }
+
+    const objectId = this.rootStore.tenantInfoObjectId;
+    const libraryId = yield this.client.ContentObjectLibraryId({objectId});
+    const customTracks = (yield this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      metadataSubtree: "public/search/custom_tracks"
+    })) || [];
+
+    yield this.client.EditAndFinalizeContentObject({
+      libraryId,
+      objectId,
+      commitMessage: "Add custom indexable tracks",
+      callback: async ({writeToken}) => {
+        await this.client.ReplaceMetadata({
+          libraryId,
+          objectId,
+          writeToken,
+          metadataSubtree: "public/search/custom_tracks",
+          metadata: [
+            ...customTracks,
+            ...Object.values(fields)
+          ]
+        });
+      }
+    });
+
+    yield new Promise(resolve => setTimeout(resolve, 2000));
+
+    yield this.LoadSearchIndexTemplateInfo({force: true});
   });
 
   LoadPoseInfo = flow(function * () {

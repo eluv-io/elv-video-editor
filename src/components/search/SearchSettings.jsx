@@ -23,6 +23,7 @@ import UpdateIndexIcon from "@/assets/icons/v2/reload.svg";
 import AddIcon from "@/assets/icons/v2/plus.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
 import VideoIcon from "@/assets/icons/v2/video.svg";
+import SearchIcon from "@/assets/icons/v2/search.svg";
 
 const S = CreateModuleClassMatcher(SearchStyles);
 
@@ -92,6 +93,7 @@ const SearchIndexContentBrowserModal = observer(({contentIds, Submit, Close}) =>
 const CreateSearchIndexForm = observer(({indexId, Close}) => {
   let defaultOptions = {
     fields: aiStore.searchIndexTemplateInfo?.optionalFields || [],
+    customFields: aiStore.searchIndexTemplateInfo?.customFields || [],
     configuration: {...IndexConfigDefaults},
   };
 
@@ -107,12 +109,13 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
     aiStore.LoadSearchIndexTemplateInfo()
       .then(async () => {
         if(indexId) {
-          const {name, fields, contentIds, configuration} = await aiStore.LoadSearchIndexInfo({indexId});
-
+          const {name, fields, customFields, contentIds, configuration} = await aiStore.LoadSearchIndexInfo({indexId});
+          
           setOptions({
             ...options,
             name,
             fields,
+            customFields,
             contentIds,
             configuration: {
               ...options.configuration,
@@ -198,7 +201,35 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
         }
       </div>
       <div className={S("index-form__section")}>
-        <h2 className={S("index-form__title")}>Search Fields</h2>
+        <h2 className={S("index-form__title")}>
+          <span>Search Fields</span>
+          {
+            options.contentIds.length === 0 ? null :
+              <StyledButton
+                size="sm"
+                icon={SearchIcon}
+                onClick={async () => {
+                  const initialCustomFields = aiStore.searchIndexTemplateInfo?.customFields || [];
+                  await aiStore.AddSearchIndexFields({objectIds: options.contentIds});
+
+                  const newCustomFields = (aiStore.searchIndexTemplateInfo?.customFields || [])
+                    .filter(field => !initialCustomFields.includes(field));
+
+                  if(newCustomFields.length > 0) {
+                    setOptions({
+                      ...options,
+                      customFields: [
+                        ...options.customFields,
+                        ...newCustomFields
+                      ]
+                    });
+                  }
+                }}
+              >
+                Check for Additional Fields
+              </StyledButton>
+          }
+        </h2>
         <h2 className={S("index-form__subtitle")}>
           Enable or disable specific search fields to define which metadata the search engine uses to control how
           content is matched and returned in search results.
@@ -270,6 +301,32 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
                 )
             }
           </div>
+          {
+            aiStore.searchIndexTemplateInfo.customFields.length === 0 ? null :
+              <div className={S("index-form__field-list")}>
+                <h3 className={S("index-form__field-list-title")}>
+                  Additional Fields
+                </h3>
+                {
+                  aiStore.searchIndexTemplateInfo.customFields
+                    .map(field =>
+                      <Checkbox
+                        size="sm"
+                        key={`field-${field}`}
+                        label={aiStore.searchIndexTemplateInfo.customFieldLabels[field] || FormatFieldName(field)}
+                        checked={options.customFields.includes(field)}
+                        onChange={() => setOptions({
+                          ...options,
+                          customFields:
+                            options.customFields.includes(field) ?
+                              options.customFields.filter(otherField => otherField !== field) :
+                              [...options.customFields, field]
+                        })}
+                      />
+                    )
+                }
+              </div>
+          }
         </div>
       </div>
       <div className={S("index-form__section", "index-form__section--no-border")}>
@@ -289,7 +346,10 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
               ]}
               onChange={value => setOptions({
                 ...options,
-                configuration: {...options.configuration, clips_pad_duration: Math.min(parseInt(value || 0), options.configuration.clips_truncate_duration)}
+                configuration: {
+                  ...options.configuration,
+                  clips_pad_duration: Math.min(parseInt(value || 0), options.configuration.clips_truncate_duration)
+                }
               })}
             />
             <NumberInput
@@ -369,6 +429,7 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
               indexId = await aiStore.CreateSearchIndex({
                 name: options.name,
                 selectedFields: options.fields,
+                selectedCustomFields: options.customFields,
                 contentIds: options.contentIds,
                 configuration: {
                   clips_pad_duration: options.configuration.clips_pad_duration,
@@ -380,6 +441,7 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
                 indexId,
                 name: options.name,
                 selectedFields: options.fields,
+                selectedCustomFields: options.customFields,
                 contentIds: options.contentIds,
                 configuration: {
                   clips_pad_duration: options.configuration.clips_pad_duration,
