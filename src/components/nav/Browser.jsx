@@ -678,6 +678,10 @@ export const BrowserTable = observer(({
         }
       >
         <div className={S("browser-table__row", "browser-table__row--header")}>
+          {
+            !LeftActions ? null :
+              <div className={S("browser-table__cell", "browser-table__cell--header")}/>
+          }
           <div className={S("browser-table__cell", "browser-table__cell--header")}>
             Name
           </div>
@@ -1909,10 +1913,13 @@ export const SearchIndexContentBrowser = observer(({contentIds, setContentIds}) 
   };
 
   return (
+    <>
+      <SearchBar filterQueryParam="si" Select={Select} />
       <div className={S("search-index-content-browser")}>
         {
           libraryId ?
             <ObjectBrowser
+              filterQueryParam="si"
               libraryId={libraryId}
               videoOnly
               Back={() => setLibraryId(undefined)}
@@ -1928,6 +1935,7 @@ export const SearchIndexContentBrowser = observer(({contentIds, setContentIds}) 
               className={S("search-index-content-browser__browser")}
             /> :
             <LibraryBrowser
+              filterQueryParam="si"
               title="Content Libraries"
               className={S("search-index-content-browser__browser")}
               Select={({libraryId, objectId, name}) => {
@@ -1946,6 +1954,7 @@ export const SearchIndexContentBrowser = observer(({contentIds, setContentIds}) 
           Remove={objectId => setContentIds(contentIds.filter(id => id !== objectId))}
         />
       </div>
+      </>
   );
 });
 

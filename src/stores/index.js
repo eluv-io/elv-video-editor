@@ -354,7 +354,7 @@ class RootStore {
     });
   });
 
-  AddGroupPermissions = flow(function * ({objectId, groups=["tenant_admin", "tenant_users", "content_admin"]}) {
+  AddGroupPermissions = flow(function * ({objectId, groups=["content_admin"]}) {
     const permissions = [
       { group: "tenant_admin", permission: "manage" },
       { group: "tenant_users", permission: "access" },
