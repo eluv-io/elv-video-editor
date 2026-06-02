@@ -11,7 +11,6 @@ class AIStore {
   searchCollectionIndexes = [];
   searchIndexTemplateInfo;
   searchIndexCustomFields = {};
-  customSearchIndexIds = [];
   selectedSearchIndexId;
   selectedCollectionSearchIndexId;
   searchIndexUpdateProgress = {};
@@ -556,27 +555,6 @@ class AIStore {
 
       this.searchIndexes = searchIndexes;
 
-      let customSearchIndexIds = yield this.client.walletClient.ProfileMetadata({
-        type: "app",
-        appId: "video-editor",
-        mode: "private",
-        key: `custom-search-indexes${this.rootStore.localhost ? "-dev" : ""}`
-      });
-
-      if(customSearchIndexIds) {
-        try {
-          this.customSearchIndexIds = JSON.parse(customSearchIndexIds);
-
-          yield Promise.all(
-            this.customSearchIndexIds.map(async objectId =>
-              await this.AddSearchIndex({objectId, add: false})
-            )
-          );
-        } catch(error) {
-          console.error("Error parsing custom search indexes");
-        }
-      }
-
       const savedIndexId = localStorage.getItem(`search-index-${this.rootStore.tenantContractId}`);
       this.SetSelectedSearchIndex(
         savedIndexId && this.searchIndexes?.find(index => index.id === savedIndexId) ?
@@ -693,17 +671,6 @@ class AIStore {
         }
       });
     }
-
-    this.customSearchIndexIds = this.customSearchIndexIds
-      .filter(id => id !== objectId);
-
-    yield this.client.walletClient.SetProfileMetadata({
-      type: "app",
-      appId: "video-editor",
-      mode: "private",
-      key: `custom-search-indexes${this.rootStore.localhost ? "-dev" : ""}`,
-      value: Unproxy(this.customSearchIndexIds)
-    });
 
     // Reload search indexes
     yield new Promise(resolve => setTimeout(resolve, 2000));

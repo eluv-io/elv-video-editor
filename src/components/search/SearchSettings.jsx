@@ -95,6 +95,7 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
     configuration: {...IndexConfigDefaults},
   };
 
+  const [initialOptions, setInitialOptions] = useState({});
   const [loading, setLoading] = useState(true);
   const [showBrowser, setShowBrowser] = useState(false);
   const [options, setOptions] = useState({
@@ -119,6 +120,12 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
               ...options.configuration,
               ...configuration
             }
+          });
+
+          setInitialOptions({
+            fields,
+            customFields,
+            contentIds
           });
 
           await new Promise(resolve => setTimeout(resolve, 250));
@@ -433,6 +440,8 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
                   clips_truncate_duration: options.configuration.clips_truncate_duration
                 }
               });
+
+              await aiStore.BuildSearchIndex({indexId});
             } else {
               await aiStore.UpdateSearchIndex({
                 indexId,
@@ -445,9 +454,16 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
                   clips_truncate_duration: options.configuration.clips_truncate_duration
                 }
               });
-            }
 
-            await aiStore.BuildSearchIndex({indexId});
+              const optionsChanged =
+                JSON.stringify(options.contentIds.slice().sort()) !== JSON.stringify((initialOptions.contentIds || []).slice().sort()) ||
+                JSON.stringify(options.fields.slice().sort()) !== JSON.stringify((initialOptions.fields || []).slice().sort()) ||
+                JSON.stringify(options.customFields.slice().sort()) !== JSON.stringify((initialOptions.customFields || []).slice().sort());
+
+              if(optionsChanged) {
+                await aiStore.BuildSearchIndex({indexId});
+              }
+            }
 
             Close();
           }}
