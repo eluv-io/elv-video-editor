@@ -314,19 +314,30 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
                 {
                   Object.values(aiStore.searchIndexCustomFields[indexId || "new"])
                     .map(({name, label}) =>
-                      <Checkbox
-                        size="sm"
-                        key={`field-${name}`}
-                        label={label || FormatFieldName(name)}
-                        checked={options.customFields.includes(name)}
-                        onChange={() => setOptions({
-                          ...options,
-                          customFields:
-                            options.customFields.includes(name) ?
-                              options.customFields.filter(otherField => otherField !== name) :
-                              [...options.customFields, name]
-                        })}
-                      />
+                      <div key={`field-${name}`} className={S("index-form__field-list-custom-item")}>
+                        <Checkbox
+                          size="sm"
+                          label={label || FormatFieldName(name)}
+                          checked={options.customFields.includes(name)}
+                          onChange={() => setOptions({
+                            ...options,
+                            customFields:
+                              options.customFields.includes(name) ?
+                                options.customFields.filter(otherField => otherField !== name) :
+                                [...options.customFields, name]
+                          })}
+                        />
+                        <IconButton
+                          icon={XIcon}
+                          small
+                          onClick={() => Confirm({
+                            title: "Remove additional field",
+                            text: "Are you sure you want to remove this field from the index?",
+                            onConfirm: () => aiStore.RemoveSearchIndexCustomField({indexId: indexId || "new", field: name})
+                          })}
+                          className={S("index-form__field-list-remove")}
+                        />
+                      </div>
                     )
                 }
               </div>
@@ -346,7 +357,7 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
               value={options.configuration.clips_pad_duration}
               miw={200}
               marks={[
-                {value: IndexConfigDefaults.clips_pad_duration, label: `${IndexConfigDefaults.clips_pad_duration}s`}
+                {value: options.configuration.clips_pad_duration, label: `${options.configuration.clips_pad_duration}s`}
               ]}
               onChange={value => setOptions({
                 ...options,
@@ -379,7 +390,7 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
               max={300}
               miw={200}
               marks={[
-                {value: IndexConfigDefaults.clips_truncate_duration, label: `${IndexConfigDefaults.clips_truncate_duration}s`}
+                {value: options.configuration.clips_truncate_duration, label: `${options.configuration.clips_truncate_duration}s`}
               ]}
               onChange={value => setOptions({
                 ...options,

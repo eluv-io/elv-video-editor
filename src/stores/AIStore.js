@@ -434,23 +434,7 @@ class AIStore {
         .filter(h => h)
         .map(versionHash => this.client.utils.DecodeVersionHash(versionHash).objectId);
 
-      // TODO: Better way of getting title names
-      let indexedTitles = [];
-      if(indexedTitleIds.length < 20) {
-        indexedTitles = (
-          yield this.client.utils.LimitedMap(
-            5,
-            indexedTitleIds,
-            async objectId => ({
-              objectId,
-              name: await this.rootStore.GetObjectName({objectId})
-            })
-          )
-        )
-          .sort((a, b) => a.name?.toLowerCase() < b.name?.toLowerCase() ? -1 : 1);
-      } else {
-        indexedTitles = indexedTitleIds.map(objectId => ({objectId, name: objectId}));
-      }
+      const indexedTitles = indexedTitleIds.map(objectId => ({objectId, name: objectId}));
 
       const indexerInfo = yield this.client.ContentObjectMetadata({
         versionHash,
@@ -510,7 +494,7 @@ class AIStore {
         indexedTitles
       };
     } catch(error) {
-      console.error("Unable to load search fields", error);
+      console.error("Unable to load search fields", id, error);
     }
 
     return {};
@@ -1798,44 +1782,13 @@ class AIStore {
       ...(this.searchIndexCustomFields[indexId] || []),
       ...fields
     };
-
-    /*
-    if(Object.keys(fields).length === 0) {
-      return;
-    }
-
-    const objectId = this.rootStore.tenantInfoObjectId;
-    const libraryId = yield this.client.ContentObjectLibraryId({objectId});
-    const customTracks = (yield this.client.ContentObjectMetadata({
-      libraryId,
-      objectId,
-      metadataSubtree: "public/search/custom_tracks"
-    })) || [];
-
-    yield this.client.EditAndFinalizeContentObject({
-      libraryId,
-      objectId,
-      commitMessage: "Add custom indexable tracks",
-      callback: async ({writeToken}) => {
-        await this.client.ReplaceMetadata({
-          libraryId,
-          objectId,
-          writeToken,
-          metadataSubtree: "public/search/custom_tracks",
-          metadata: [
-            ...customTracks,
-            ...Object.values(fields)
-          ]
-        });
-      }
-    });
-
-    yield new Promise(resolve => setTimeout(resolve, 2000));
-
-    yield this.LoadSearchIndexTemplateInfo({force: true});
-
-     */
   });
+
+  RemoveSearchIndexCustomField({indexId, field}) {
+    if(this.searchIndexCustomFields[indexId]) {
+      delete this.searchIndexCustomFields[indexId][field];
+    }
+  }
 
   LoadPoseInfo = flow(function * () {
     return yield this.client.ContentObjectMetadata({
