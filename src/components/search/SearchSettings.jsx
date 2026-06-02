@@ -17,6 +17,7 @@ import {FormatFieldName, CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {rootStore, aiStore} from "@/stores/index.js";
 import {Checkbox, NumberInput, Slider, TextInput} from "@mantine/core";
 import {LibraryBrowser, ObjectBrowser, SearchIndexContentBrowser} from "@/components/nav/Browser.jsx";
+import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 
 import SettingsIcon from "@/assets/icons/v2/settings.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
@@ -781,8 +782,28 @@ const ClipDurationForm = observer(({options, setOptions}) => {
 
 const TitlesForm = observer(({options, setOptions}) => {
   const [filter, setFilter] = useState("");
-
+  const [visibleItems, setVisibleItems] = useState(20);
   const searchIndex = aiStore.searchIndexes.find(index => index.id === options.searchIndexId);
+  const visibleTitles = (searchIndex?.indexedTitles || [])
+    .map(({objectId, name}) => ({objectId, name: rootStore.objectNames[objectId] || name}))
+    .slice(0, visibleItems);
+  const [loading, setLoading] = useState(visibleTitles.length > 0);
+
+  useEffect(() => {
+    if(visibleTitles.length === 0) { return; }
+
+    const timeout = setTimeout(() => setLoading(true), 0);
+
+    Promise.all(
+      visibleTitles
+        .map(async ({objectId}) =>
+          await rootStore.GetObjectName({objectId})
+        )
+    ).finally(() => {
+      clearTimeout(timeout);
+      setLoading(false);
+    });
+  }, [visibleItems, visibleTitles]);
 
   return (
     <div className={S("search-settings__form")}>
@@ -792,15 +813,20 @@ const TitlesForm = observer(({options, setOptions}) => {
         placeholder="Search"
         className={S("search-settings__search")}
       />
-      <div className={S("search-settings__options-list")}>
+      <InfiniteScroll
+        withLoader
+        showLoader={loading}
+        Update={() => setVisibleItems(visibleItems + 20)}
+        className={S("search-settings__options-list")}
+      >
         {
-          searchIndex?.indexedTitles
-            ?.filter(({name, objectId}) =>
+          visibleTitles
+            .filter(({name, objectId}) =>
               !filter ||
               name?.toLowerCase()?.includes(filter.toLowerCase()) ||
               objectId?.toLowerCase()?.includes(filter.toLowerCase())
             )
-            ?.map(({name, objectId}) => {
+            .map(({objectId, name}) => {
               const active = options.objectIds.includes(objectId);
 
               const Toggle = () =>
@@ -827,7 +853,7 @@ const TitlesForm = observer(({options, setOptions}) => {
               );
             })
         }
-      </div>
+      </InfiniteScroll>
     </div>
   );
 });
