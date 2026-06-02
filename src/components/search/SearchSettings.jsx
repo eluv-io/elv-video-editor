@@ -228,7 +228,7 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
           }
         </h2>
         <h2 className={S("index-form__subtitle")}>
-          Enable or disable specific search fields to define which metadata the search engine uses to control how content is matched and returned in search results.
+          Select metadata fields to be included in the index.
         </h2>
         <div className={S("index-form__fields-section")}>
           <div className={S("index-form__field-list")}>
