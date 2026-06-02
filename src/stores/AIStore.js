@@ -1,14 +1,16 @@
 import {flow, makeAutoObservable, runInAction} from "mobx";
 import UrlJoin from "url-join";
-import {HashString, ParseSearchQuery, Slugify, Unproxy} from "@/utils/Utils.js";
+import {FormatFieldName, HashString, ParseSearchQuery, Slugify, Unproxy} from "@/utils/Utils.js";
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 
 const GLOBAL_PROFILE_OBJECT_ID = "iq__3MVS3kjshtnAodRv4qLebBvH3oXb";
 
 class AIStore {
+  searchIndexesLoading = false;
   searchIndexes = [];
   searchCollectionIndexes = [];
   searchIndexTemplateInfo;
+  searchIndexCustomFields = {};
   customSearchIndexIds = [];
   selectedSearchIndexId;
   selectedCollectionSearchIndexId;
@@ -423,11 +425,15 @@ class AIStore {
 
     try {
       const versionHash = yield this.client.LatestVersionHash({objectId: id});
-
-      const indexedTitleIds = (yield this.client.ContentObjectMetadata({
+      const indexedLinks = (yield this.client.ContentObjectMetadata({
         versionHash,
-        metadataSubtree: "indexer/permissions/sorted_ids"
-      })) || [];
+        metadataSubtree: "site_map/searchables"
+      })) || {};
+
+      const indexedTitleIds = Object.values(indexedLinks)
+        .map(link => link["/"].split("/")[2])
+        .filter(h => h)
+        .map(versionHash => this.client.utils.DecodeVersionHash(versionHash).objectId);
 
       // TODO: Better way of getting title names
       let indexedTitles = [];
@@ -512,78 +518,86 @@ class AIStore {
   });
 
   LoadSearchIndexes = flow(function * () {
-    const metadata = (yield this.client.ContentObjectMetadata({
-      versionHash: yield this.client.LatestVersionHash({objectId: this.rootStore.tenantInfoObjectId}),
-      metadataSubtree: "public/search",
-      select: [
-        "indexes",
-        "image_collections"
-      ]
-    })) || {};
+    this.searchIndexesLoading = true;
+    try {
+      const metadata = (yield this.client.ContentObjectMetadata({
+        versionHash: yield this.client.LatestVersionHash({objectId: this.rootStore.tenantInfoObjectId}),
+        metadataSubtree: "public/search",
+        select: [
+          "indexes",
+          "image_collections"
+        ]
+      })) || {};
 
-    this.searchCollectionIndexes = (metadata?.image_collections || []);
-    this.selectedCollectionSearchIndexId = this.searchCollectionIndexes[0]?.id;
+      this.searchCollectionIndexes = (metadata?.image_collections || []);
+      this.selectedCollectionSearchIndexId = this.searchCollectionIndexes[0]?.id;
 
-    let searchIndexes = (metadata.indexes || [])
-      .filter((x, i, a) => a.findIndex(other => x.id === other.id) === i);
+      let searchIndexes = (metadata.indexes || [])
+        .filter((x, i, a) => a.findIndex(other => x.id === other.id) === i);
 
-    searchIndexes = (yield Promise.all(
-      searchIndexes.map(async searchIndex => {
+      searchIndexes = (yield Promise.all(
+        searchIndexes.map(async searchIndex => {
+          try {
+            return ({
+              ...searchIndex,
+              ...(await this.GetSearchFields(searchIndex)),
+              canEdit: await this.client.CallContractMethod({
+                contractAddress: this.client.utils.HashToAddress(searchIndex.id),
+                methodName: "canEdit"
+              })
+            });
+          } catch(error) {
+            console.error(`Failed to load search index ${searchIndex.name} (${searchIndex.id})`);
+            console.error(error);
+          }
+        })
+      ))
+        .filter(searchIndex => searchIndex && !!searchIndex.fields);
+
+      this.searchIndexes = searchIndexes;
+
+      let customSearchIndexIds = yield this.client.walletClient.ProfileMetadata({
+        type: "app",
+        appId: "video-editor",
+        mode: "private",
+        key: `custom-search-indexes${this.rootStore.localhost ? "-dev" : ""}`
+      });
+
+      if(customSearchIndexIds) {
         try {
-          return ({
-            ...searchIndex,
-            ...(await this.GetSearchFields(searchIndex)),
-            canEdit: await this.client.CallContractMethod({
-              contractAddress: this.client.utils.HashToAddress(searchIndex.id),
-              methodName: "canEdit"
-            })
-          });
+          this.customSearchIndexIds = JSON.parse(customSearchIndexIds);
+
+          yield Promise.all(
+            this.customSearchIndexIds.map(async objectId =>
+              await this.AddSearchIndex({objectId, add: false})
+            )
+          );
         } catch(error) {
-          console.error(`Failed to load search index ${searchIndex.name} (${searchIndex.id})`);
-          console.error(error);
+          console.error("Error parsing custom search indexes");
         }
-      })
-    ))
-      .filter(searchIndex => searchIndex && !!searchIndex.fields);
-
-    this.searchIndexes = searchIndexes;
-
-    let customSearchIndexIds = yield this.client.walletClient.ProfileMetadata({
-      type: "app",
-      appId: "video-editor",
-      mode: "private",
-      key: `custom-search-indexes${this.rootStore.localhost ? "-dev" : ""}`
-    });
-
-    if(customSearchIndexIds) {
-      try {
-        this.customSearchIndexIds = JSON.parse(customSearchIndexIds);
-
-        yield Promise.all(
-          this.customSearchIndexIds.map(async objectId =>
-            await this.AddSearchIndex({objectId, add: false})
-          )
-        );
-      } catch(error) {
-        console.error("Error parsing custom search indexes");
       }
+
+      const savedIndexId = localStorage.getItem(`search-index-${this.rootStore.tenantContractId}`);
+      this.SetSelectedSearchIndex(
+        savedIndexId && this.searchIndexes?.find(index => index.id === savedIndexId) ?
+          savedIndexId :
+          this.searchIndexes[0]?.id
+      );
+
+      const savedCollectionIndexId = localStorage.getItem(`search-collection-index-${this.rootStore.tenantContractId}`);
+      this.SetSelectedCollectionSearchIndex(
+        savedCollectionIndexId && this.searchCollectionIndexes?.find(index => index.id === savedCollectionIndexId) ?
+          savedCollectionIndexId :
+          this.searchCollectionIndexes[0]?.id
+      );
+
+      this.rootStore.compositionStore.selectedSearchIndexId = this.selectedSearchIndexId;
+    } catch(error) {
+      console.error("Error loading search indexes:");
+      console.error(error);
+    } finally {
+      this.searchIndexesLoading = false;
     }
-
-    const savedIndexId = localStorage.getItem(`search-index-${this.rootStore.tenantContractId}`);
-    this.SetSelectedSearchIndex(
-      savedIndexId && this.searchIndexes?.find(index => index.id === savedIndexId) ?
-        savedIndexId :
-        this.searchIndexes[0]?.id
-    );
-
-    const savedCollectionIndexId = localStorage.getItem(`search-collection-index-${this.rootStore.tenantContractId}`);
-    this.SetSelectedCollectionSearchIndex(
-      savedCollectionIndexId && this.searchCollectionIndexes?.find(index => index.id === savedCollectionIndexId) ?
-        savedCollectionIndexId :
-        this.searchCollectionIndexes[0]?.id
-    );
-
-    this.rootStore.compositionStore.selectedSearchIndexId = this.selectedSearchIndexId;
   });
 
   SetSelectedSearchIndex(id) {
@@ -1368,7 +1382,7 @@ class AIStore {
 
         let progress = {};
         for(const job of jobs) {
-          progress[job.qid] = 50;
+          progress[job.qid] = (100 * (job.status_details?.progress || 0)) || 1;
         }
 
         runInAction(() => this.searchIndexUpdateProgress = progress);
@@ -1451,7 +1465,7 @@ class AIStore {
     });
 
     selectedCustomFields.forEach(field => {
-      const label = this.searchIndexTemplateInfo.customFieldLabels[field];
+      const label = this.searchIndexCustomFields.new?.[field]?.label || FormatFieldName(field);
       fields[field] = {
         "options": {},
         "paths": [
@@ -1462,6 +1476,7 @@ class AIStore {
     });
 
     metadata.indexer.config.indexer.arguments.fields = fields;
+    metadata.indexer.config.indexer.arguments.custom_fields = Unproxy(this.searchIndexCustomFields.new || {});
 
     if(configuration) {
       metadata.search = {
@@ -1531,6 +1546,9 @@ class AIStore {
 
     yield this.AddSearchIndex({objectId});
 
+    this.searchIndexCustomFields[objectId] = this.searchIndexCustomFields.new || {};
+    delete this.searchIndexCustomFields.new;
+
     return objectId;
   });
 
@@ -1578,7 +1596,7 @@ class AIStore {
     });
 
     selectedCustomFields.forEach(field => {
-      const label = this.searchIndexTemplateInfo.customFieldLabels[field];
+      const label = this.searchIndexCustomFields[indexId]?.[field] || FormatFieldName(field);
       fields[field] = {
         "options": {},
         "paths": [
@@ -1599,7 +1617,7 @@ class AIStore {
         );
     });
 
-    this.searchIndexTemplateInfo.customFields.forEach(field => {
+    Object.keys(this.searchIndexCustomFields[indexId] || {}).forEach(field => {
       if(selectedCustomFields.includes(field)) { return; }
 
       delete fields[field];
@@ -1629,6 +1647,7 @@ class AIStore {
             {field: "public/asset_metadata/display_title", value: name},
             {field: "public/asset_metadata/title", value: name},
             {field: "/indexer/config/indexer/arguments/fields", value: fields},
+            {field: "/indexer/config/indexer/arguments/custom_fields", value: this.searchIndexCustomFields[indexId] || {}},
             {field: "/site_map/searchables", value: content},
             ...Object.keys(configuration).map(key => (
               {field: UrlJoin("/search/config/clips", key), value: configuration[key]}
@@ -1648,10 +1667,13 @@ class AIStore {
     });
 
     const existingIndexRecord = this.searchIndexes.find(index => index.id === indexId);
-
     if(!existingIndexRecord || existingIndexRecord.name !== name) {
       // Add/update search index to config
-      this.AddSearchIndex({objectId: indexId});
+      yield this.AddSearchIndex({objectId: indexId});
+    } else {
+      // Otherwise, update
+      yield new Promise(resolve => setTimeout(resolve, 1000));
+      yield this.LoadSearchIndexes();
     }
   });
 
@@ -1688,20 +1710,6 @@ class AIStore {
           }
         );
 
-        const customTracks = (yield this.client.ContentObjectMetadata({
-          versionHash: yield this.client.LatestVersionHash({objectId: this.rootStore.tenantInfoObjectId}),
-          metadataSubtree: "public/search/custom_tracks"
-        })) || [];
-        let customFieldLabels = {};
-        const customFields = customTracks
-          .filter(track => !!track?.name)
-          .sort((a, b) => a.label.toLowerCase() < b.label.toLowerCase() ? -1 : 1)
-          .map(track => {
-            customFieldLabels[track.name] = track.label;
-
-            return track.name;
-          });
-
         this.searchIndexTemplateInfo = {
           metadataTemplate: metadata_template,
           requiredFields,
@@ -1712,76 +1720,90 @@ class AIStore {
             ...requiredFields,
             ...optionalFields,
             ...associatedFields
-          ],
-          customFields,
-          customFieldLabels
+          ]
         };
       })
     });
   });
 
-  LoadSearchIndexInfo = flow(function * ({indexId}) {
-    const metadata = yield this.client.ContentObjectMetadata({
-      versionHash: yield this.client.LatestVersionHash({objectId: indexId}),
-      select: [
-        "/indexer/config/indexer/arguments/fields",
-        "/search/config/clips",
-        "/site_map/searchables",
-        "/public/name",
-        "/public/asset_metadata/display_title",
-        "/public/asset_metadata/title"
-      ]
-    });
+  LoadSearchIndexInfo = flow(function * ({indexId, force}) {
+    return yield this.rootStore.LoadResource({
+      key: "loadSearchIndexInfo",
+      id: indexId,
+      bind: this,
+      ttl: 30,
+      force,
+      Load: flow(function* () {
+        const metadata = yield this.client.ContentObjectMetadata({
+          versionHash: yield this.client.LatestVersionHash({objectId: indexId}),
+          select: [
+            "/indexer/config/indexer/arguments/fields",
+            "/indexer/config/indexer/arguments/custom_fields",
+            "/search/config/clips",
+            "/site_map/searchables",
+            "/public/name",
+            "/public/asset_metadata/display_title",
+            "/public/asset_metadata/title"
+          ]
+        });
 
-    let contentHashes = {};
-    const contentIds = Object.values(metadata.site_map.searchables || {})
-      .map(link => {
-        try {
-          const versionHash = link["/"].split("/")[2];
+        let contentHashes = {};
+        const contentIds = Object.values(metadata.site_map.searchables || {})
+          .map(link => {
+            try {
+              const versionHash = link["/"].split("/")[2];
 
-          if(!versionHash) { return; }
+              if(!versionHash) {
+                return;
+              }
 
-          const objectId = this.client.utils.DecodeVersionHash(
-            versionHash
-          ).objectId;
+              const objectId = this.client.utils.DecodeVersionHash(
+                versionHash
+              ).objectId;
 
-          contentHashes[objectId] = versionHash;
+              contentHashes[objectId] = versionHash;
 
-          return objectId;
-        } catch(error) {
-          console.error("Error parsing link");
-          console.error(link);
-          console.error(error);
-        }
+              return objectId;
+            } catch(error) {
+              console.error("Error parsing link");
+              console.error(link);
+              console.error(error);
+            }
+          })
+          .filter(id => id);
+
+        const fields = Object.keys(metadata.indexer.config.indexer.arguments.fields || {});
+        const customFieldInfo = metadata.indexer.config.indexer.arguments?.custom_fields || {};
+        const customFields = fields.filter(field => customFieldInfo[field]);
+
+        this.searchIndexCustomFields[indexId] = metadata.indexer.config.indexer.arguments?.custom_fields || {};
+
+        return {
+          name:
+            metadata.public?.asset_metadata?.display_title ||
+            metadata.public?.asset_metadata?.title ||
+            metadata.public?.name || indexId,
+          fields,
+          customFields,
+          customFieldInfo,
+          configuration: metadata?.search?.config?.clips || {},
+          contentIds,
+          contentHashes
+        };
       })
-      .filter(id => id);
-
-    const fields = Object.keys(metadata.indexer.config.indexer.arguments.fields || {});
-    const customFields = fields.filter(field => this.searchIndexTemplateInfo?.customFields?.includes(field));
-
-    return {
-      name:
-        metadata.public?.asset_metadata?.display_title ||
-        metadata.public?.asset_metadata?.title ||
-        metadata.public?.name || indexId,
-      fields,
-      customFields,
-      configuration: metadata?.search?.config?.clips || {},
-      contentIds,
-      contentHashes
-    };
+    });
   });
 
-  AddSearchIndexFields = flow(function * ({objectIds}) {
+  AddSearchIndexFields = flow(function * ({indexId, objectIds}) {
     yield this.LoadSearchIndexTemplateInfo();
 
     const excludedFields = [
-      "auto_captions",
       "focus",
-      "llava_caption",
-      "optical_character_recognition",
-      "shot_detection",
-      "vertical_video"
+      "vertical_video",
+      "character",
+      "pose",
+      ...Object.keys(this.rootStore.aiTaggingStore.modelToTrackKeyMapping),
+      ...Object.keys(this.rootStore.aiTaggingStore.trackKeyToModelMapping)
     ];
 
     const fields = {};
@@ -1798,13 +1820,19 @@ class AIStore {
         tracks
           .filter(track =>
             !this.searchIndexTemplateInfo.allDefaultFields.includes(track.name) &&
-            !this.searchIndexTemplateInfo.customFields.includes(track.name) &&
+            !this.searchIndexCustomFields[indexId]?.[track.name] &&
             !excludedFields.includes(track.name)
           )
           .forEach(track => fields[track.name] = track);
       }
     );
 
+    this.searchIndexCustomFields[indexId] = {
+      ...(this.searchIndexCustomFields[indexId] || []),
+      ...fields
+    };
+
+    /*
     if(Object.keys(fields).length === 0) {
       return;
     }
@@ -1838,6 +1866,8 @@ class AIStore {
     yield new Promise(resolve => setTimeout(resolve, 2000));
 
     yield this.LoadSearchIndexTemplateInfo({force: true});
+
+     */
   });
 
   LoadPoseInfo = flow(function * () {

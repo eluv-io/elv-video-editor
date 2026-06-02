@@ -6,12 +6,13 @@ import {
   CopyableField,
   FormTextInput,
   Icon,
-  IconButton, Loader,
+  IconButton,
+  Loader,
   Modal,
   StyledButton
 } from "@/components/common/Common.jsx";
 import React, {useEffect, useState} from "react";
-import {Capitalize, CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {FormatFieldName, CreateModuleClassMatcher} from "@/utils/Utils.js";
 
 import {rootStore, aiStore} from "@/stores/index.js";
 import {Checkbox, NumberInput, Slider, TextInput} from "@mantine/core";
@@ -39,10 +40,6 @@ const audioLanguageFields = [
   "music",
   "llava"
 ];
-
-const FormatFieldName = name => {
-  return name.replace("_", " ").split(" ").map(token => Capitalize(token)).join(" ");
-};
 
 const IndexConfigDefaults = {
   clips_pad_duration: 15,
@@ -93,7 +90,7 @@ const SearchIndexContentBrowserModal = observer(({contentIds, Submit, Close}) =>
 const CreateSearchIndexForm = observer(({indexId, Close}) => {
   let defaultOptions = {
     fields: aiStore.searchIndexTemplateInfo?.optionalFields || [],
-    customFields: aiStore.searchIndexTemplateInfo?.customFields || [],
+    customFields: Object.keys(aiStore.searchIndexCustomFields[indexId || "new"] || {}),
     configuration: {...IndexConfigDefaults},
   };
 
@@ -209,10 +206,10 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
                 size="sm"
                 icon={SearchIcon}
                 onClick={async () => {
-                  const initialCustomFields = aiStore.searchIndexTemplateInfo?.customFields || [];
-                  await aiStore.AddSearchIndexFields({objectIds: options.contentIds});
+                  const initialCustomFields = Object.keys(aiStore.searchIndexCustomFields[indexId || "new"] || {});
+                  await aiStore.AddSearchIndexFields({indexId: indexId || "new", objectIds: options.contentIds});
 
-                  const newCustomFields = (aiStore.searchIndexTemplateInfo?.customFields || [])
+                  const newCustomFields = Object.keys(aiStore.searchIndexCustomFields[indexId || "new"] || {})
                     .filter(field => !initialCustomFields.includes(field));
 
                   if(newCustomFields.length > 0) {
@@ -231,8 +228,7 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
           }
         </h2>
         <h2 className={S("index-form__subtitle")}>
-          Enable or disable specific search fields to define which metadata the search engine uses to control how
-          content is matched and returned in search results.
+          Enable or disable specific search fields to define which metadata the search engine uses to control how content is matched and returned in search results.
         </h2>
         <div className={S("index-form__fields-section")}>
           <div className={S("index-form__field-list")}>
@@ -302,25 +298,25 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
             }
           </div>
           {
-            aiStore.searchIndexTemplateInfo.customFields.length === 0 ? null :
+            Object.keys(aiStore.searchIndexCustomFields[indexId || "new"] || {}).length === 0 ? null :
               <div className={S("index-form__field-list")}>
                 <h3 className={S("index-form__field-list-title")}>
                   Additional Fields
                 </h3>
                 {
-                  aiStore.searchIndexTemplateInfo.customFields
-                    .map(field =>
+                  Object.values(aiStore.searchIndexCustomFields[indexId || "new"])
+                    .map(({name, label}) =>
                       <Checkbox
                         size="sm"
-                        key={`field-${field}`}
-                        label={aiStore.searchIndexTemplateInfo.customFieldLabels[field] || FormatFieldName(field)}
-                        checked={options.customFields.includes(field)}
+                        key={`field-${name}`}
+                        label={label || FormatFieldName(name)}
+                        checked={options.customFields.includes(name)}
                         onChange={() => setOptions({
                           ...options,
                           customFields:
-                            options.customFields.includes(field) ?
-                              options.customFields.filter(otherField => otherField !== field) :
-                              [...options.customFields, field]
+                            options.customFields.includes(name) ?
+                              options.customFields.filter(otherField => otherField !== name) :
+                              [...options.customFields, name]
                         })}
                       />
                     )
@@ -450,7 +446,7 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
               });
             }
 
-            aiStore.BuildSearchIndex({indexId});
+            await aiStore.BuildSearchIndex({indexId});
 
             Close();
           }}
@@ -682,6 +678,10 @@ export const SearchIndexForm = observer(({options, setOptions}) => {
             indexId={typeof showForm === "string" ? showForm : undefined}
             Close={() => setShowForm(false)}
           />
+      }
+      {
+        !aiStore.searchIndexesLoading ? null :
+          <Loader className={S("search-settings__loader")} />
       }
     </>
   );

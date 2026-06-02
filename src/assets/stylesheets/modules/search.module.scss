@@ -374,10 +374,19 @@
     animation: var(--animation-fadein) 0.4s ease;
     height: 400px;
     overflow: hidden;
+    position: relative;
 
     &--scrollable {
       overflow-y: auto;
     }
+  }
+
+  &__loader {
+    animation: none;
+    background: var(--background-modal);
+    inset: 0;
+    position: absolute;
+    z-index: 10;
   }
 
   &__search {
