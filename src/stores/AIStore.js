@@ -892,7 +892,7 @@ class AIStore {
             imageUrl.pathname = result.image_url.split("?")[0];
 
             const params = new URLSearchParams(result.image_url.split("?")[1]);
-            params.keys().forEach((key, value) => imageUrl.searchParams.set(key, value));
+            params.keys().forEach(key => imageUrl.searchParams.set(key, params.get(key)));
           }
         }
 
@@ -919,10 +919,12 @@ class AIStore {
               subtitle = `${subtitle} (${FrameAccurateVideo.TimeToString({time: endTime - startTime})})`;
             }
 
-            imageUrl.searchParams.set("t", startTime.toFixed(2));
+            if(!imageUrl.searchParams.has("t")) {
+              imageUrl.searchParams.set("t", startTime.toFixed(2));
+            }
           }
 
-          if(chunkStartTime) {
+          if(chunkStartTime && !imageUrl.searchParams.has("t")) {
             imageUrl.searchParams.set("t", (chunkStartTime / 1000).toFixed(2));
           }
         }

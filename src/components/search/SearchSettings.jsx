@@ -110,7 +110,7 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
       .then(async () => {
         if(indexId) {
           const {name, fields, customFields, contentIds, configuration} = await aiStore.LoadSearchIndexInfo({indexId});
-          
+
           setOptions({
             ...options,
             name,
