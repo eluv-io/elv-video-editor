@@ -552,6 +552,24 @@
     font-weight: 800;
   }
 
+  &__field-list-custom-item {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+
+    &:hover {
+      .index-form__field-list-remove {
+        opacity: 1;
+        transition-delay: 0.5s;
+      }
+    }
+  }
+
+  &__field-list-remove {
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
   &__inputs {
     display: flex;
     flex-direction: column;
