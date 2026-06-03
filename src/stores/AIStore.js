@@ -787,7 +787,11 @@ class AIStore {
       ...this.titles,
       ...(yield Promise.all(
         this.titleSearchIndex.indexedTitles
-          .sort((a, b) => a.name < b.name ? -1 : 1)
+          .sort((a, b) =>
+            a.name === b.name ?
+              (a.objectId < b.objectId ? -1 : 1) :
+              a.name < b.name ? -1 : 1
+          )
           .slice(start, start + limit)
           .map(async ({objectId}) => {
             const libraryId = await this.client.ContentObjectLibraryId({objectId});
@@ -803,7 +807,11 @@ class AIStore {
           })
       ))
     ]
-      .sort((a, b) => a.name < b.name ? -1 : 1);
+      .sort((a, b) =>
+        a.name === b.name ?
+          (a.objectId < b.objectId ? -1 : 1) :
+          a.name < b.name ? -1 : 1
+      );
   });
 
   IsTitle({objectId}) {
