@@ -29,6 +29,8 @@ class AIStore {
     key: 0
   };
 
+  previousSearchQueries = {};
+
   searchSettings = this.DEFAULT_SEARCH_SETTINGS;
 
   searchResults = {};
@@ -143,6 +145,7 @@ class AIStore {
     yield this.LoadSearchIndexes();
     yield this.LoadMCPExchangeSentinel();
     this.LoadHighlightProfiles();
+    this.LoadSearchQueries();
     this.StartSearchIndexUpdateStatusWatcher();
   });
 
@@ -699,6 +702,10 @@ class AIStore {
         const mode = parsedQuery.mode;
         query = parsedQuery.query;
 
+        if(initial) {
+          this.SaveSearchQuery({mode, query});
+        }
+
         const resultsKey = `${this.searchSettings.key}-${query}-${mode}-${this.searchImageFrameUrl || ""}`;
 
         if(this.searchResults.key === resultsKey) {
@@ -782,7 +789,7 @@ class AIStore {
         this.titleSearchIndex.indexedTitles
           .sort((a, b) => a.name < b.name ? -1 : 1)
           .slice(start, start + limit)
-          .map(async ({name, objectId}) => {
+          .map(async ({objectId}) => {
             const libraryId = await this.client.ContentObjectLibraryId({objectId});
             const imageUrl = new URL(baseTitleImageUrl);
             imageUrl.pathname = UrlJoin("qlibs", libraryId, "q", objectId, "meta/public/asset_metadata/images/poster_vertical/default");
@@ -791,11 +798,12 @@ class AIStore {
               libraryId,
               objectId: objectId,
               imageUrl: imageUrl.toString(),
-              name: name || await this.rootStore.GetObjectName({objectId})
+              name: await this.rootStore.GetObjectName({objectId})
             };
           })
       ))
-    ];
+    ]
+      .sort((a, b) => a.name < b.name ? -1 : 1);
   });
 
   IsTitle({objectId}) {
@@ -1465,7 +1473,7 @@ class AIStore {
     if(configuration) {
       metadata.search = {
         config: {
-          clips: Unproxy(configuration)
+          query: Unproxy(configuration)
         }
       };
     }
@@ -1634,7 +1642,7 @@ class AIStore {
             {field: "/indexer/config/indexer/arguments/custom_fields", value: this.searchIndexCustomFields[indexId] || {}},
             {field: "/site_map/searchables", value: content},
             ...Object.keys(configuration).map(key => (
-              {field: UrlJoin("/search/config/clips", key), value: configuration[key]}
+              {field: UrlJoin("/search/config/query", key), value: configuration[key]}
             ))
           ]
             .map(async ({field, value}) =>
@@ -1723,7 +1731,7 @@ class AIStore {
           select: [
             "/indexer/config/indexer/arguments/fields",
             "/indexer/config/indexer/arguments/custom_fields",
-            "/search/config/clips",
+            "/search/config/query",
             "/site_map/searchables",
             "/public/name",
             "/public/asset_metadata/display_title",
@@ -1770,7 +1778,7 @@ class AIStore {
           fields,
           customFields,
           customFieldInfo,
-          configuration: metadata?.search?.config?.clips || {},
+          configuration: metadata?.search?.config?.query || {},
           contentIds,
           contentHashes
         };
@@ -2177,6 +2185,57 @@ class AIStore {
     } finally {
       delete this.verticalVideoProcessingStatus[objectId];
     }
+  });
+
+  LoadSearchQueries = flow(function * () {
+    try {
+      const queries = yield this.rootStore.client.walletClient.ProfileMetadata({
+        type: "app",
+        appId: "video-editor",
+        mode: "private",
+        key: `search-queries-${this.rootStore.tenantContractId}-${this.rootStore.localhost ? "-dev" : ""}`
+      });
+
+      if(queries) {
+        this.previousSearchQueries = JSON.parse(this.client.utils.FromB64(queries));
+      }
+    } catch(error) {
+      console.error("Failed loading previous search queries");
+      console.error(error);
+    }
+  });
+
+  SaveSearchQuery = flow(function * ({mode, query}) {
+    if(!mode || !query) { return; }
+
+    const initialQueries = JSON.stringify(this.previousSearchQueries);
+
+    if(!this.previousSearchQueries[this.selectedSearchIndexId]) {
+      this.previousSearchQueries[this.selectedSearchIndexId] = {};
+    }
+
+    this.previousSearchQueries[this.selectedSearchIndexId][mode] = [
+      query,
+      ...(this.previousSearchQueries[this.selectedSearchIndexId][mode] || [])
+    ]
+      .filter(q => q)
+      .filter((x, i, a) => a.findIndex(q => q === x) === i)
+      .slice(0, 10);
+
+    if(JSON.stringify(this.previousSearchQueries) === initialQueries) {
+      // No change
+      return;
+    }
+
+    yield this.rootStore.client.walletClient.SetProfileMetadata({
+      type: "app",
+      appId: "video-editor",
+      mode: "private",
+      key: `search-queries-${this.rootStore.tenantContractId}-${this.rootStore.localhost ? "-dev" : ""}`,
+      value: this.rootStore.client.utils.B64(
+        JSON.stringify(this.previousSearchQueries || {})
+      )
+    });
   });
 }
 

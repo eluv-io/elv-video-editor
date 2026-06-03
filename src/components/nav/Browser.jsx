@@ -28,7 +28,7 @@ import {
 import SVG from "react-inlinesvg";
 import {Redirect, Route, useParams, Switch, useLocation, useSearchParams} from "wouter";
 import UrlJoin from "url-join";
-import {Select, Tabs, Tooltip, Progress, Menu, Checkbox} from "@mantine/core";
+import {Select, Tabs, Tooltip, Progress, Menu, Checkbox, Autocomplete} from "@mantine/core";
 import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
 import SearchSettings from "@/components/search/SearchSettings.jsx";
 import {Dropzone, IMAGE_MIME_TYPE} from "@mantine/dropzone";
@@ -237,6 +237,169 @@ export const SearchBar = observer(({
         </div>
       </div>
     </div>
+  );
+});
+
+
+export const AISearchBar = observer(({basePath="~/search", initialQuery="", initialMode, onObjectSelect, clipOnly=false, placeholder, BeforeSubmit}) => {
+  const lastMode = localStorage.getItem(`search-mode-${rootStore.tenantContractId}`);
+  const [input, setInput] = useState(initialQuery);
+  const [mode, setMode] = useState(clipOnly ? "clip" : lastMode || initialMode || "clip");
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [,navigate] = useLocation();
+
+  const Submit = async ({mode, query}={}) => {
+    query = query || input;
+    BeforeSubmit?.({mode, query});
+
+    if(mode === "frame-image") {
+      navigate(UrlJoin(basePath, rootStore.client.utils.B58("frame-image:")));
+      return;
+    }
+
+    if(!query && mode !== "clip") {
+      navigate(UrlJoin(basePath));
+      return;
+    }
+
+    if(["ilib", "iq__", "hq__", "0x"].find(prefix => query.trim().startsWith(prefix))) {
+      const item = await browserStore.LookupContent(query);
+
+      if(item && Object.keys(item).length > 0) {
+        return onObjectSelect ? onObjectSelect({item, navigate}) : ContentBrowserSelect({item, navigate});
+      }
+    }
+
+    let term = query;
+    if(mode) {
+      term = `${mode}:${query.trim()}`;
+    }
+
+    navigate(UrlJoin(basePath, rootStore.client.utils.B58(term)));
+  };
+
+  useEffect(() => {
+    localStorage.setItem(`search-mode-${rootStore.tenantContractId}`, mode.toString());
+  }, [mode]);
+
+  return (
+    <>
+      <div className={S("search-bar-container")}>
+        <div className={S("search-bar-container__search-icon", aiStore.customSearchSettingsActive ? "search-bar-container__search-icon--active" : "")}>
+          <IconButton
+            onClick={() => setShowSettingsModal(true)}
+            icon={SettingsIcon}
+          />
+        </div>
+        <div className={S("search-input-container", "search-input-container--ai")}>
+          <Tooltip
+            openDelay={1000}
+            label={
+              <div className={S("tooltip", "tooltip--uncapped")}>
+                <div className={S("tooltip__item")}>
+                  <div className={S("tooltip__label")}>
+                    Prompt Response:
+                  </div>
+                  <div className={S("tooltip__content")}>
+                    <p>
+                      { aiStore.searchResults.currentResponse || "" }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            }
+            disabled={mode !== "prompt" || aiStore.searchResults.prompt !== input || !aiStore.searchResults.currentResponse}
+            className={S("tooltip")}
+          >
+            <Autocomplete
+              value={input}
+              comboboxProps={{ transitionProps: { transition: "fade", duration: 300, enterDelay: 100 } }}
+              data={aiStore.previousSearchQueries[aiStore.selectedSearchIndexId]?.[mode] || []}
+              placeholder={
+                placeholder ? placeholder :
+                  mode === "prompt" ? "Prompt the title library" :
+                    mode.startsWith("frame") ? "Search for images by phrase or keyword" :
+                      mode === "music" ? "Search for music by phrase or keyword" :
+                        "Search within content by phrase or keyword"
+              }
+              onChange={value => setInput(value)}
+              onOptionSubmit={value => {
+                setInput(value);
+                Submit({mode: mode === "frame-image" ? "frame" : mode, query: value});
+              }}
+              onKeyDown={async event => {
+                if(event.key !== "Enter") { return; }
+
+                Submit({mode: mode === "frame-image" ? "frame" : mode});
+                //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
+              }}
+              classNames={{
+                root: S("ai-search-bar"),
+                wrapper: S("ai-search-bar_wrapper"),
+                input: S("ai-search-bar__input"),
+                dropdown: S("ai-search-bar__dropdown"),
+                option: S("ai-search-bar__option"),
+              }}
+              leftSectionWidth={80}
+              leftSection={
+                <div className={S("search-input-container__button-left")}>
+                  {
+                    clipOnly ? null :
+                      <ModeSelectionMenu
+                        mode={mode}
+                        setMode={mode => {
+                          if(mode === "frame-image") {
+                            setInput("");
+                          }
+
+                          setMode(mode);
+
+                          if(mode === "frame-image") {
+                            // Only submit if we are doing search from image
+                            aiStore.ClearSearchResults();
+                            Submit({mode});
+                          } else {
+                            setInput("");
+                            if(initialQuery) {
+                              navigate(basePath);
+                            }
+                          }
+                        }}
+                        className={S("search-input-container__menu-button")}
+                      />
+                  }
+                  <Icon icon={AISparkleIcon} className={S("search-input-container__ai-icon")}/>
+                </div>
+              }
+              rightSectionWidth={100}
+              rightSection={
+                <div className={S("ai-search-bar__right-actions")}>
+                  {
+                    !input ? null :
+                      <IconButton
+                        label="Clear"
+                        icon={XIcon}
+                        noHover
+                        onClick={() => setInput("")}
+                      />
+                  }
+                  <IconButton
+                    label="Search"
+                    icon={SearchArrowIcon}
+                    noHover
+                    onClick={() => Submit(mode)}
+                  />
+                </div>
+              }
+            />
+          </Tooltip>
+        </div>
+      </div>
+      {
+        !showSettingsModal ? null :
+          <SearchSettings Close={() => setShowSettingsModal(false)}/>
+      }
+    </>
   );
 });
 
@@ -472,146 +635,12 @@ const ModeSelectionMenu = observer(({mode, setMode, className=""}) => {
   );
 });
 
-export const AISearchBar = observer(({basePath="~/search", initialQuery="", initialMode, onObjectSelect, clipOnly=false, placeholder, BeforeSubmit}) => {
-  const lastMode = localStorage.getItem(`search-mode-${rootStore.tenantContractId}`);
-  const [input, setInput] = useState(initialQuery);
-  const [mode, setMode] = useState(clipOnly ? "clip" : lastMode || initialMode || "clip");
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [,navigate] = useLocation();
-
-  const Submit = async (mode) => {
-    BeforeSubmit?.({mode, query: input});
-
-    if(mode === "frame-image") {
-      navigate(UrlJoin(basePath, rootStore.client.utils.B58("frame-image:")));
-      return;
-    }
-
-    if(!input && mode !== "clip") {
-      navigate(UrlJoin(basePath));
-      return;
-    }
-
-    if(["ilib", "iq__", "hq__", "0x"].find(prefix => input.trim().startsWith(prefix))) {
-      const item = await browserStore.LookupContent(input);
-
-      if(item && Object.keys(item).length > 0) {
-        return onObjectSelect ? onObjectSelect({item, navigate}) : ContentBrowserSelect({item, navigate});
-      }
-    }
-
-    let term = input;
-    if(mode) {
-      term = `${mode}:${input.trim()}`;
-    }
-
-    navigate(UrlJoin(basePath, rootStore.client.utils.B58(term)));
-  };
-
-  useEffect(() => {
-    localStorage.setItem(`search-mode-${rootStore.tenantContractId}`, mode.toString());
-  }, [mode]);
-
-  return (
-    <>
-      <div className={S("search-bar-container")}>
-        <div className={S("search-bar-container__search-icon", aiStore.customSearchSettingsActive ? "search-bar-container__search-icon--active" : "")}>
-          <IconButton
-            onClick={() => setShowSettingsModal(true)}
-            icon={SettingsIcon}
-          />
-        </div>
-        <div className={S("search-input-container", "search-input-container--ai")}>
-          <div className={S("search-input-container__button-left")}>
-            {
-              clipOnly ? null :
-                <ModeSelectionMenu
-                  mode={mode}
-                  setMode={mode => {
-                    if(mode === "frame-image") {
-                      setInput("");
-                    }
-
-                    setMode(mode);
-
-                    if(mode === "frame-image") {
-                      // Only submit if we are doing search from image
-                      aiStore.ClearSearchResults();
-                      Submit(mode);
-                    } else {
-                      setInput("");
-                      if(initialQuery) {
-                        navigate(basePath);
-                      }
-                    }
-                  }}
-                  className={S("search-input-container__menu-button")}
-                />
-            }
-            <Icon icon={AISparkleIcon} className={S("search-input-container__ai-icon")} />
-          </div>
-          <Tooltip
-            openDelay={1000}
-            label={
-              <div className={S("tooltip", "tooltip--uncapped")}>
-                <div className={S("tooltip__item")}>
-                  <div className={S("tooltip__label")}>
-                    Prompt Response:
-                  </div>
-                  <div className={S("tooltip__content")}>
-                    <p>
-                      { aiStore.searchResults.currentResponse || "" }
-                    </p>
-                  </div>
-                </div>
-              </div>
-            }
-            disabled={mode !== "prompt" || aiStore.searchResults.prompt !== input || !aiStore.searchResults.currentResponse}
-            className={S("tooltip")}
-          >
-            <input
-              value={input}
-              placeholder={
-                placeholder ? placeholder :
-                  mode === "prompt" ? "Prompt the title library" :
-                    mode.startsWith("frame") ? "Search for images by phrase or keyword" :
-                      mode === "music" ? "Search for music by phrase or keyword" :
-                        "Search within content by phrase or keyword"
-              }
-              onChange={event => setInput(event.target.value)}
-              onKeyDown={async event => {
-                if(event.key !== "Enter") { return; }
-
-                Submit(mode === "frame-image" ? "frame" : mode);
-                //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
-              }}
-              className={S("search-bar", "search-bar--ai", clipOnly ? "search-bar--ai-clip-only" : "")}
-            />
-          </Tooltip>
-          <div className={S("search-input-container__right-buttons")}>
-            <IconButton
-              label="Search"
-              icon={SearchArrowIcon}
-              noHover
-              onClick={() => Submit(mode)}
-            />
-          </div>
-        </div>
-      </div>
-      {
-        !showSettingsModal ? null :
-          <SearchSettings Close={() => setShowSettingsModal(false)} />
-      }
-    </>
-  );
-});
-
 export const BrowserTable = observer(({
   filter,
   Load,
   Select,
   defaultIcon,
-  contentType="library",
+  contentType = "library",
   videoOnly,
   frameRate,
   noDuration,
