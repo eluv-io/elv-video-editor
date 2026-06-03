@@ -1311,7 +1311,7 @@ class AIStore {
 
   /* Updates */
 
-  StartSearchIndexUpdateStatusWatcher() {
+  async StartSearchIndexUpdateStatusWatcher() {
     clearInterval(window.searchIndexStatusWatcherInterval);
 
     const UpdateStatus = async () => {
@@ -1323,7 +1323,10 @@ class AIStore {
           objectId: this.rootStore.tenantInfoObjectId
         });
 
-        jobs = jobs.filter(job => !["succeeded", "failed", "cancelled"].includes(job?.status));
+        jobs = jobs.filter(job =>
+          !["succeeded", "failed", "cancelled"].includes(job?.status) &&
+          !job?.stop_requested
+        );
 
         if(jobs.length === 0) {
           runInAction(() => this.searchIndexUpdateProgress = {});
@@ -1343,7 +1346,7 @@ class AIStore {
       }
     };
 
-    UpdateStatus();
+    await UpdateStatus();
 
     window.searchIndexStatusWatcherInterval = setInterval(UpdateStatus, 8000);
   }
@@ -1361,6 +1364,36 @@ class AIStore {
     });
 
     this.StartSearchIndexUpdateStatusWatcher();
+  });
+
+  CancelSearchIndexBuild = flow(function * ({indexId}) {
+    let {jobs} = yield this.QueryAIAPI({
+      server: "ai",
+      path: UrlJoin("/qmanager", "jobs"),
+      method: "GET",
+      objectId: this.rootStore.tenantInfoObjectId
+    });
+
+    jobs = jobs.filter(job =>
+      job.qid === indexId &&
+      !["succeeded", "failed", "cancelled"].includes(job?.status) &&
+      !job?.stop_requested
+    );
+
+    yield Promise.all(
+      jobs.map(async job =>
+        await this.QueryAIAPI({
+          server: "ai",
+          path: UrlJoin("/qmanager", "jobs", job.id, "stop"),
+          method: "POST",
+          objectId: this.rootStore.tenantInfoObjectId
+        })
+      )
+    );
+
+    yield new Promise(resolve => setTimeout(resolve, 1000));
+
+    yield this.StartSearchIndexUpdateStatusWatcher();
   });
 
   CreateSearchIndex = flow(function * ({

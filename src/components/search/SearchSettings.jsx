@@ -20,7 +20,7 @@ import {LibraryBrowser, ObjectBrowser, SearchIndexContentBrowser} from "@/compon
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 
 import SettingsIcon from "@/assets/icons/v2/settings.svg";
-import XIcon from "@/assets/icons/v2/x.svg";
+import TrashIcon from "@/assets/icons/trash.svg";
 import UpdateIndexIcon from "@/assets/icons/v2/reload.svg";
 import AddIcon from "@/assets/icons/v2/plus.svg";
 import EditIcon from "@/assets/icons/Edit.svg";
@@ -328,7 +328,7 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
                           })}
                         />
                         <IconButton
-                          icon={XIcon}
+                          icon={TrashIcon}
                           small
                           onClick={() => Confirm({
                             title: "Remove additional field",
@@ -609,6 +609,7 @@ export const SearchIndexForm = observer(({options, setOptions}) => {
                       />
                       <IconButton
                         label="Update Search Index"
+                        loadingLabel="Search index updating, click to cancel."
                         icon={UpdateIndexIcon}
                         loadingProgress={aiStore.searchIndexUpdateProgress[index.id]}
                         onClick={async event => {
@@ -619,7 +620,18 @@ export const SearchIndexForm = observer(({options, setOptions}) => {
                             title: "Remove Search Index",
                             text: "Are you sure you want to update this search index?",
                             onConfirm: async () =>
-                              await aiStore.BuildSearchIndex({indexId: index.id, aggregate: true})
+                              await aiStore.BuildSearchIndex({indexId: index.id})
+                          });
+                        }}
+                        onCancel={async event => {
+                          event.preventDefault();
+                          event.stopPropagation();
+
+                          await Confirm({
+                            title: "Cancel Search Index Update",
+                            text: "Are you sure you want to cancel the pending update to this search index?",
+                            onConfirm: async () =>
+                              await aiStore.CancelSearchIndexBuild({indexId: index.id})
                           });
                         }}
                       />
@@ -627,7 +639,7 @@ export const SearchIndexForm = observer(({options, setOptions}) => {
                 }
                 <IconButton
                   label="Remove Search Index"
-                  icon={XIcon}
+                  icon={TrashIcon}
                   onClick={async event => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -943,7 +955,7 @@ const SearchSettings = observer(({store, singleObject, Close}) => {
                     })
                   }
                 >
-                  <Icon icon={XIcon} />
+                  <Icon icon={TrashIcon} />
                 </button>
               </div>
             )
