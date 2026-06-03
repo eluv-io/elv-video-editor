@@ -282,6 +282,11 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
     localStorage.setItem(`search-mode-${rootStore.tenantContractId}`, mode.toString());
   }, [mode]);
 
+  let autocompleteOptions = aiStore.previousSearchQueries[aiStore.selectedSearchIndexId]?.[mode] || [];
+  if(autocompleteOptions.length === 1 && autocompleteOptions[0] === input) {
+    autocompleteOptions = [];
+  }
+
   return (
     <>
       <div className={S("search-bar-container")}>
@@ -314,7 +319,7 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
             <Autocomplete
               value={input}
               comboboxProps={{ transitionProps: { transition: "fade", duration: 300, enterDelay: 100 } }}
-              data={aiStore.previousSearchQueries[aiStore.selectedSearchIndexId]?.[mode] || []}
+              data={autocompleteOptions}
               placeholder={
                 placeholder ? placeholder :
                   mode === "prompt" ? "Prompt the title library" :
