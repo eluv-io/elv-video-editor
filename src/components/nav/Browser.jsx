@@ -282,8 +282,10 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
     localStorage.setItem(`search-mode-${rootStore.tenantContractId}`, mode.toString());
   }, [mode]);
 
-  let autocompleteOptions = aiStore.previousSearchQueries[aiStore.selectedSearchIndexId]?.[mode] || [];
-  if(autocompleteOptions.length === 1 && autocompleteOptions[0] === input) {
+  let autocompleteOptions = (aiStore.previousSearchQueries[aiStore.selectedSearchIndexId]?.[mode] || [])
+    .filter(option => option.toLowerCase().includes(input?.toLowerCase()));
+
+  if(autocompleteOptions.length === 1 && autocompleteOptions[0]?.toLowerCase() === input?.toLowerCase()) {
     autocompleteOptions = [];
   }
 
