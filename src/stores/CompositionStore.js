@@ -770,9 +770,7 @@ class CompositionStore {
 
       return playoutUrl;
     } catch(error) {
-
       console.error("Error getting composition playout url:");
-
       console.error(error);
 
       if(retry < 2) {

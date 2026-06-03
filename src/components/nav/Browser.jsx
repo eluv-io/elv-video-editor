@@ -712,6 +712,9 @@ export const BrowserTable = observer(({
             let disabled, message;
             if(deleting) {
               disabled = true;
+            } else if(item.disabled) {
+              disabled = true;
+              message = item.disabledMessage || "";
             } else if(item.forbidden) {
               disabled = true;
               message = "You do not have access to this object";
@@ -937,7 +940,7 @@ const CompositionBrowser = observer(({
               name: `Main Content - ${selectedObject.name}`,
               objectId: selectedObject.objectId,
               duration: selectedObject.duration,
-              lastModified: selectedObject.lastModified
+              lastModified: selectedObject.lastModified,
             },
             ...(selectedObject.channels.map(channel =>
               ({id: channel.compositionKey, name: `Composition - ${channel.name || channel.label}`, ...channel})

@@ -174,6 +174,7 @@ class BrowserStore {
               "channel/offerings/*/display_name",
               "channel/offerings/*/updated_at",
               "channel/offerings/*/items",
+              "channel/offerings/*/slices",
               "assets",
               "offerings/*/media_struct/duration_rat",
               "offerings/*/media_struct/streams/*/rate",
@@ -224,6 +225,8 @@ class BrowserStore {
                 }
 
                 return {
+                  disabled: !!channel.slices,
+                  disabledMessage: "This composition cannot be opened here. Please go to dev.contentfabric.io.",
                   objectId,
                   compositionKey: channelKey,
                   label: channel.display_name || channelKey,
@@ -483,11 +486,12 @@ class BrowserStore {
         }
 
         if(item.compositionKey) {
+          const composition = objectDetails[item.objectId]?.channels?.find(channel =>
+            channel.compositionKey === item.compositionKey
+          );
           if(
             !this.rootStore.compositionStore.myCompositions[item.objectId]?.[item.compositionKey] &&
-            !objectDetails[item.objectId]?.channels?.find(channel =>
-              channel.compositionKey === item.compositionKey
-            )
+            !composition
           ) {
             // eslint-disable-next-line no-console
             console.warn("Removing deleted composition from my library: ", item.objectId, item.compositionKey);
@@ -498,6 +502,8 @@ class BrowserStore {
 
           return {
             ...item,
+            disabled: composition.disabled,
+            disabledMessage: "This composition cannot be opened here. Please go to dev.contentfabric.io.",
             source: objectDetails[item.objectId],
             duration: this.FormatDuration(item.duration),
             lastModified: this.FormatDate(item.accessedAt)
