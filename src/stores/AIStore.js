@@ -159,7 +159,7 @@ class AIStore {
     format="json",
     allowStatus=[],
   }) {
-    const url = new URL(`https://${server}.contentfabric.io/`);
+    const url = new URL(`http://localhost:8110`);
     url.pathname = path;
 
     Object.keys(queryParams).forEach(key =>
@@ -420,8 +420,9 @@ class AIStore {
   GetSearchFields = flow(function * ({id}) {
     if(!id) { return; }
 
+    let versionHash;
     try {
-      const versionHash = yield this.client.LatestVersionHash({objectId: id});
+      versionHash = yield this.client.LatestVersionHash({objectId: id});
 
       const indexedTitleIds = (yield this.client.ContentObjectMetadata({
         versionHash,
@@ -455,7 +456,7 @@ class AIStore {
         ]
       });
 
-      if(!indexerInfo) { return; }
+      if(!indexerInfo) { return {versionHash}; }
 
       let musicSupported = false;
       const fuzzySearchFields = {};
@@ -505,9 +506,8 @@ class AIStore {
       };
     } catch(error) {
       console.error("Unable to load search fields", error);
+      return {versionHash};
     }
-
-    return {};
   });
 
   LoadSearchIndexes = flow(function * () {
@@ -536,7 +536,7 @@ class AIStore {
         })
       }))
     ))
-      .filter(searchIndexes => !!searchIndexes.fields);
+      .filter(searchIndexes => !!searchIndexes.versionHash);
 
     this.searchIndexes = searchIndexes;
 
@@ -778,14 +778,14 @@ class AIStore {
     let {results, contents, pagination} = (yield this.QueryAIAPI({
       //update: true,
       objectId: this.searchIndex.id,
-      path: UrlJoin(this.searchSettings.cache ? "mlcache" : "", "search", "q", this.searchIndex.versionHash, "rep", "search"),
+      path: UrlJoin(this.searchIndex.id, "clip_search"),
       queryParams: {
         terms: query,
         search_fields:
           mode === "music" ? "f_music" :
             this.searchSettings.fields.length > 0 ?
               this.searchSettings.fields.join(",") :
-              Object.keys(this.searchIndex.fields).join(","),
+              Object.keys(this.searchIndex.fields || {}).join(","),
         sort: mode === "music" ? "f_music" : null,
         start,
         limit,
@@ -802,6 +802,7 @@ class AIStore {
 
     results = results || contents;
 
+    // this requires a versionHash
     const baseUrl = yield this.client.Rep({
       versionHash: this.searchIndex.versionHash,
       rep: "frame",
@@ -862,7 +863,7 @@ class AIStore {
         }
 
         titleImageUrl = new URL(baseTitleImageUrl);
-        titleImageUrl.pathname = UrlJoin("qlibs", result.qlib_id, "q", result.id, "meta/public/asset_metadata/images/poster_vertical/default");
+        titleImageUrl.pathname = UrlJoin("q", result.id, "meta/public/asset_metadata/images/poster_vertical/default");
 
         let score = result.score;
         // Score is provided as an array of scores
@@ -871,9 +872,9 @@ class AIStore {
         }
 
         return {
-          libraryId: result.qlib_id,
+          libraryId: "",
           objectId: result.id,
-          versionHash: result.hash,
+          versionHash: result.id,
           imageUrl: imageUrl?.toString(),
           titleImageUrl: titleImageUrl?.toString(),
           filePath: type === "image" ? result.prefix : undefined,
