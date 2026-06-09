@@ -397,7 +397,7 @@ export const TagSidePanel = observer(({setElement}) => {
   return (
     <div ref={setElement} className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
-        <SidebarFilter delay={1000} rightSideContent={<TagSwitch />} store={tagStore} label="Search within tags" />
+        <SidebarFilter delay={1000} rightSideContent={<TagSwitch />} store={tagStore} label="Filter within tags" />
         <TrackSelection mode="tags" />
         <TagsList mode="tags" />
 
@@ -464,7 +464,7 @@ export const AssetSidePanel = observer(() => {
   return (
     <div className={S("content-block", "side-panel-section")}>
       <div className={S("side-panel")}>
-        <SidebarFilter store={assetStore} label="Search assets" />
+        <SidebarFilter store={assetStore} label="Filter within tags" />
         <TrackSelection mode="assets" />
         <Assets />
       </div>
