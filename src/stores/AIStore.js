@@ -794,6 +794,7 @@ class AIStore {
         clips: type === "video",
         clip_include_source_tags: true,
         get_chunks: true,
+        debug: true,
         max_total: 100,
         min_score: this.searchSettings.minConfidence / 100,
         filters: this.searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR"),
