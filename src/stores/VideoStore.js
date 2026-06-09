@@ -420,12 +420,13 @@ class VideoStore {
       this.initialized = true;
       this.ready = true;
 
+      this.rootStore.assetStore.SetAssets(videoObject.metadata.assets);
+
       if(!this.tags || !this.isVideo) {
         return;
       }
 
-      // Load tags and assets
-      this.rootStore.assetStore.SetAssets(videoObject.metadata.assets);
+      // Load tags
       this.rootStore.downloadStore.LoadDownloadJobInfo();
       this.LoadTags();
     } catch(error) {
