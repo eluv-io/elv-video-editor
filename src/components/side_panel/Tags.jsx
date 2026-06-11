@@ -564,7 +564,7 @@ export const TagsList = observer(({mode="tags"}) => {
     videoStore.scaleMax,
     trackStore.tracks.length,
     tagStore.filter,
-    //tagStore.selectedTagIds,
+    tagStore.selectedTagIds,
     tagStore.isolatedTag,
     Object.keys(trackStore.activeTracks).length,
     Object.keys(trackStore.visibleClipTracks).length,

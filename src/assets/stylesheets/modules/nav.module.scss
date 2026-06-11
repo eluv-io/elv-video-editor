@@ -46,6 +46,7 @@
 
 .active-menu {
   padding: 0 10px 10px;
+  position: relative;
 
   &__container {
     background: var(--background-modal);
@@ -57,6 +58,7 @@
     color: var(--text-secondary);
     font-size: 14px;
     font-weight: 600;
+    margin-bottom: 5px;
   }
 
   &__name {
@@ -71,5 +73,11 @@
 
   &__button {
      margin-top: 10px;
+  }
+
+  &__browse {
+    position: absolute;
+    right: 0;
+    top: 0;
   }
 }

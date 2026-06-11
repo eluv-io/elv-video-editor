@@ -505,7 +505,7 @@ export const CompositionSidePanel = observer(() => {
           <Linkish
             className={S("ellipsis")}
             onClick={() => {
-              navigate("/compositions");
+              navigate("/compositions?root=");
               compositionStore.Reset();
             }}
           >
