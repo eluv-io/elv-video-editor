@@ -1,6 +1,8 @@
 :root {
-  --color-highlight: #BD6DFF;
-  --color-highlight--dark: #563e6c;
+  --color-highlight: #9551dc;
+  --color-highlight--dark: #743fab;
+
+  // --color-highlight--dark: #563e6c;
   --rgb-color-highlight: 188, 118, 236;
   --color-highlight-secondary: #7787ec;
   --background-primary: #151515;
@@ -23,6 +25,7 @@
   --content-inline-padding: 20px;
   --color-border: #5C5B5F;
   --background-search-input: #322b37;
+  --background-search-input-active: #443b4b;
 
   /* Note: Gutter sizes are doubled due to resize handles */
   --gutter-size-x: 3px;

@@ -38,7 +38,11 @@
   width: 100%;
 
   &--tagging {
-    --row-height: 50px;
+    --row-height: 48px;
+
+    .browser__header {
+      margin: 10px 0 0;
+    }
   }
 
   &__header {
@@ -58,6 +62,12 @@
       overflow: hidden;
       white-space: nowrap;
     }
+  }
+
+  &__header-item {
+    align-items: center;
+    display: flex;
+    gap: 10px;
   }
 
   &__header-back {
@@ -140,6 +150,12 @@
     font-weight: 400;
     margin-right: 10px;
     text-decoration: underline;
+  }
+
+  &__loader {
+    background: rgb(0 0 0 / 30%);
+    inset: 0;
+    position: absolute;
   }
 }
 
@@ -236,28 +252,6 @@
     gap: 10px;
     position: absolute;
     right: 20px;
-
-    * {
-      color: var(--text-tertiary);
-    }
-  }
-
-  &--ai {
-    flex-grow: 1;
-
-    * {
-      color: var(--text-primary)!important;
-    }
-
-    input {
-      background-color: var(--background-search-input);
-      height: 50px;
-
-      &::placeholder {
-        color: var(--text-secondary);
-        font-size: 18px;
-      }
-    }
   }
 }
 
@@ -322,6 +316,61 @@
 
   &--error {
     box-shadow: 0 0 10px #800!important;
+  }
+}
+
+.ai-search-bar {
+  width: 100%;
+
+  &__wrapper {
+    width: 100%;
+  }
+
+  &__input {
+    background-color: var(--background-search-input);
+    border: 0;
+    border-radius: 30px;
+    font-size: 18px;
+    height: 50px;
+
+    * {
+      color: var(--text-primary) !important;
+    }
+
+    &::placeholder {
+      color: var(--text-secondary);
+      font-size: 18px;
+    }
+  }
+
+  &__dropdown {
+    background-color: var(--background-search-input);
+    border: 0;
+    border-radius: 10px;
+  }
+
+  &__option {
+    font-size: 16px;
+    font-weight: 600;
+    transition: background-color 0.25s ease-out;
+
+    &:hover,
+    &:focus-visible {
+      background-color: var(--background-search-input-active);
+    }
+  }
+
+  &__right-actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding-right: 15px;
+    width: 100%;
+
+    * {
+      animation: var(--animation-fadein) 0.55s ease;
+    }
   }
 }
 
@@ -392,9 +441,21 @@
       }
     }
 
+    &--with-left-actions {
+      .browser-table__row {
+        grid-template-columns: 40px 1fr 100px 150px;
+      }
+    }
+
     &--with-actions {
       .browser-table__row {
         grid-template-columns: 1fr 100px 150px 100px;
+      }
+
+      &.browser-table--with-left-actions {
+        .browser-table__row {
+          grid-template-columns: 40px 40px 1fr 100px 150px 100px;
+        }
       }
     }
   }
@@ -565,8 +626,13 @@
 
   &__action {
     animation: var(--animation-fadein) 0.55s ease-out;
+    color: var(--text-tertiary);
     font-size: 12px;
     font-weight: 600;
+
+    &--highlight {
+      color: var(--text-primary);
+    }
   }
 
   @media screen and (height <= 900px) {
@@ -612,7 +678,21 @@
   height: calc(100vh - 260px);
 
   &--form {
-    height: calc(100vh - 190px);
+    height: calc(100vh - 260px);
+  }
+}
+
+.search-index-content-browser {
+  display: grid;
+  gap: 30px;
+  grid-template-columns: 1fr 450px;
+  height: calc(100vh - 260px);
+
+  &__browser {
+    max-height: 100%;
+    min-height: unset;
+
+    --row-height: 45px;
   }
 }
 
@@ -623,7 +703,7 @@
   margin-top: 20px;
 }
 
-.tagging-selection {
+.browser-selection {
   background: var(--background-secondary);
   border-radius: 5px;
   display: flex;
@@ -631,6 +711,11 @@
   gap: 10px;
   height: calc(100vh - 275px);
   padding: 15px 20px;
+
+  &--search-index {
+    background: transparent;
+    border-left: 1px solid var(--table-border-color);
+  }
 
   &__title {
     border-bottom: 1px solid var(--table-border-color);
@@ -659,6 +744,58 @@
     height: 100%;
     justify-content: center;
     text-align: center;
+  }
+}
+
+.tagging-step-header {
+  align-items: center;
+  display: flex;
+  gap: 30px;
+  margin: 25px 0;
+
+  * {
+    transition: color 0.25s ease, background-color 0.25s ease, border 0.25s ease;
+  }
+}
+
+.tagging-step {
+  align-items: center;
+  display: flex;
+  font-weight: 700;
+  gap: 15px;
+
+  &__number {
+    align-items: center;
+    border: 2px solid var(--text-secondary);
+    border-radius: 100%;
+    display: flex;
+    font-weight: 800;
+    height: 30px;
+    justify-content: center;
+    width: 30px;
+
+    &--active {
+      background-color: var(--color-highlight--dark);
+      border: 2px solid transparent;
+    }
+  }
+
+  &__text {
+    font-size: 20px;
+
+    &--active {
+      color: var(--text-highlight);
+    }
+  }
+
+  &__separator {
+    background-color: var(--text-secondary);
+    height: 2px;
+    width: 100px;
+
+    &--active {
+      background-color: var(--color-highlight--dark);
+    }
   }
 }
 

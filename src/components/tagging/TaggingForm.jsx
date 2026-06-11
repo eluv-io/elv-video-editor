@@ -5,12 +5,10 @@ import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {aiTaggingStore, groundTruthStore, keyboardControlsStore, rootStore} from "@/stores/index.js";
 import {useLocation} from "wouter";
-import { TaggingSelection } from "@/components/nav/Browser.jsx";
-import {IconButton, Linkish, StyledButton} from "@/components/common/Common.jsx";
+import {BrowserSelection, TaggingStepHeader} from "@/components/nav/Browser.jsx";
+import {StyledButton} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Checkbox, MultiSelect, Select} from "@mantine/core";
-
-import BackIcon from "@/assets/icons/v2/back.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles, TaggingStyles);
 
@@ -366,45 +364,18 @@ const TaggingForm = observer(() => {
 
   return (
     <div className={S("browser-page")}>
-      <h1 className={S("browser__header", "header")}>
-        <IconButton
-          icon={BackIcon}
-          label="Back to Content Selection"
-          to="/new"
-          className={S("browser__header-back")}
-        />
-        <Linkish to="/">
-          AI Runtime
-        </Linkish>
-        <span className={S("browser__header-chevron")}>➤</span>
-        <span>
-          New Job
-        </span>
-        <span className={S("browser__header-chevron")}>➤</span>
-        <Linkish to="/new" className={S("browser__header-last")}>
-          Select Content
-        </Linkish>
-        <span className={S("browser__header-chevron")}>➤</span>
-        <Linkish to={showSummary ? "/new/configure" : ""}>
-          Model Track(s) & Processors
-        </Linkish>
-        {
-          !showSummary ? null :
-            <>
-              <span className={S("browser__header-chevron")}>➤</span>
-              <span>
-                Summary
-              </span>
-            </>
-        }
-      </h1>
+      <TaggingStepHeader step={showSummary ? 3 : 2} />
       <div className={S("tagging-browser", "tagging-browser--form")}>
         {
           showSummary ?
             <Summary options={options} /> :
             <Form options={options} setOptions={setOptions} />
         }
-        <TaggingSelection/>
+        <BrowserSelection
+          title="New Job"
+          contentIds={aiTaggingStore.selectedContent.map(item => item.objectId)}
+          Remove={objectId => aiTaggingStore.RemoveSelectedContent({objectId})}
+        />
       </div>
       <div className={S("tagging-actions")}>
         <StyledButton to="/" variant="outline">

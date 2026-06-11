@@ -197,6 +197,10 @@ export const Slugify = str =>
     .replace(/[^a-z0-9-_]/g,"")
     .replace(/-+/g, "_");
 
+export const FormatFieldName = name => {
+  return name.replace("_", " ").split(" ").map(token => Capitalize(token)).join(" ");
+};
+
 export const ScaleImage = (url, width) => {
   if(!url) { return ""; }
 

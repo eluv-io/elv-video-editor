@@ -2,9 +2,8 @@ import TimelineStyles from "@/assets/stylesheets/modules/timeline.module.scss";
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
-import {aiStore, compositionStore, editStore, videoStore} from "@/stores/index.js";
+import {compositionStore, editStore, videoStore} from "@/stores/index.js";
 import {
-  AsyncButton,
   ClipTimeInfo,
   Confirm,
   FormTextArea,
@@ -15,18 +14,16 @@ import {
   StyledButton
 } from "@/components/common/Common.jsx";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
-import {Button, Checkbox, Tooltip} from "@mantine/core";
+import {Button, Tooltip} from "@mantine/core";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {DownloadModal} from "@/components/download/Download.jsx";
 import {ShareModal} from "@/components/download/Share.jsx";
 
 import ClipIcon from "@/assets/icons/v2/clip.svg";
 import LiveToVodIcon from "@/assets/icons/v2/live-to-vod.svg";
-import AggregateIcon from "@/assets/icons/v2/settings.svg";
 import DeleteIcon from "@/assets/icons/trash.svg";
 import DownloadIcon from "@/assets/icons/v2/download.svg";
 import ShareIcon from "@/assets/icons/v2/share.svg";
-
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -504,121 +501,5 @@ export const LiveToVodButton = observer(() => {
       }}
       loadingProgress={progress}
     />
-  );
-});
-
-const AggregateModal = observer(({indexes, setIndexes, Update, Close}) => {
-  return (
-    <Modal
-      withCloseButton={false}
-      title={<div className={S("form__title")}>Aggregate User Tags</div>}
-      opened
-      centered
-      onClose={Close}
-    >
-      <div className={S("form__message")}>
-        This will aggregate your user defined tags and update the specified search indexes so this content will be
-        searchable based on your tags.
-      </div>
-      <div className={S("form__message")}>
-        Note: Any unsaved changes will be saved before aggregation.
-      </div>
-      <div className={S("form__inputs")}>
-        <div className={S("form__section-header")}>
-          Search Indexes:
-        </div>
-        {
-          aiStore.searchIndexes.map(index =>
-            <Checkbox
-              mb="sm"
-              ml="sm"
-              key={`index-${index.id}`}
-              checked={indexes.includes(index.id)}
-              label={index.name}
-              onChange={() =>
-                indexes.includes(index.id) ?
-                  setIndexes(indexes.filter(i => i !== index.id)) :
-                  setIndexes([...indexes, index.id])
-              }
-            />
-          )
-        }
-      </div>
-      <div className={S("form__actions")}>
-        <Button
-          variant="subtle"
-          color="gray.5"
-          onClick={Close}
-        >
-          Cancel
-        </Button>
-        <AsyncButton
-          onClick={() => {
-            Update(indexes);
-            Close();
-          }}
-        >
-          Confirm
-        </AsyncButton>
-      </div>
-    </Modal>
-  );
-});
-
-export const AggregateTagsButton = observer(() => {
-  const [showModal, setShowModal] = useState(false);
-  const [indexes, setIndexes] = useState([]);
-  const [updating, setUpdating] = useState(false);
-
-  let progress;
-  if(updating) {
-    progress = (
-      aiStore.tagAggregationProgress +
-      indexes.reduce((acc, indexId) => acc + (aiStore.searchIndexUpdateProgress[indexId] || 0), 0)
-    ) / (indexes.length + 1);
-  }
-
-  return (
-    <>
-      <IconButton
-        icon={AggregateIcon}
-        label="Aggregate User Tags"
-        onClick={() => setShowModal(true)}
-        loadingProgress={Math.min(95, progress)}
-      />
-      {
-        !showModal ? null :
-          <AggregateModal
-            indexes={indexes}
-            setIndexes={setIndexes}
-            Close={() => setShowModal(false)}
-            Update={async indexIds => {
-              setUpdating(true);
-
-              try {
-                if(editStore.HasUnsavedChanges("tags") || editStore.HasUnsavedChanges("clips")) {
-                  await editStore.Save();
-                }
-
-                await aiStore.AggregateUserTags({objectId: videoStore.videoObject?.objectId});
-
-                await Promise.all(
-                  indexIds.map(async indexId =>
-                    await aiStore.UpdateSearchIndex({
-                      indexId,
-                      aggregate: false
-                    })
-                  )
-                );
-              } catch(error) {
-                console.error("Error aggregating or updating indexes: ");
-                console.error(error);
-              } finally {
-                setUpdating(false);
-              }
-            }}
-          />
-      }
-    </>
   );
 });

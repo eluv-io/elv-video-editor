@@ -333,13 +333,12 @@ class BrowserStore {
       libraryId,
       filterOptions: {
         select: [
-          "public/name",
-          "public/display_image"
+          "public/name"
         ],
         filter: filters,
         start: (page-1) * perPage,
         limit: perPage,
-        sort: "public/name"
+        //sort: "public/name"
       }
     });
 
