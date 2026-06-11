@@ -448,7 +448,16 @@ class AIStore {
         ]
       });
 
-      if(!indexerInfo) { return; }
+      if(!indexerInfo) {
+        return {
+          fields: {},
+          eventTracks: [],
+          type: "index",
+          musicSupported: true,
+          versionHash,
+          indexedTitles
+        };
+      }
 
       let musicSupported = false;
       const fuzzySearchFields = {};
@@ -511,6 +520,7 @@ class AIStore {
         metadataSubtree: "public/search",
         select: [
           "indexes",
+          "indexes_vectorstore",
           "image_collections"
         ]
       })) || {};
@@ -518,7 +528,10 @@ class AIStore {
       this.searchCollectionIndexes = (metadata?.image_collections || []);
       this.selectedCollectionSearchIndexId = this.searchCollectionIndexes[0]?.id;
 
-      let searchIndexes = (metadata.indexes || [])
+      let searchIndexes = [
+        ...((metadata.indexes_vectorstore || []).map(index => ({...index, isV2: true}))),
+        ...(metadata.indexes || [])
+      ]
         .filter((x, i, a) => a.findIndex(other => x.id === other.id) === i);
 
       searchIndexes = (yield Promise.all(
@@ -824,8 +837,12 @@ class AIStore {
     const type = this.searchIndex.type?.includes("assets") ? "image" : "video";
     let {results, contents, pagination} = (yield this.QueryAIAPI({
       //update: true,
+      server: this.searchIndex.isV2 ? "ai-04" : undefined,
       objectId: this.searchIndex.id,
-      path: UrlJoin(this.searchSettings.cache ? "mlcache" : "", "search", "q", this.searchIndex.versionHash, "rep", "search"),
+      path:
+        this.searchIndex.isV2 ?
+          UrlJoin("vector_search", this.searchIndex.id, "clip_search") :
+          UrlJoin(this.searchSettings.cache ? "mlcache" : "", "search", "q", this.searchIndex.versionHash, "rep", "search"),
       queryParams: {
         terms: query,
         search_fields:
@@ -844,6 +861,7 @@ class AIStore {
         max_total: 100,
         min_score: this.searchSettings.minConfidence / 100,
         filters: this.searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR"),
+        debug: !!this.searchIndex.isV2
       }
     })) || {};
 
@@ -858,6 +876,12 @@ class AIStore {
       }
     });
 
+    results = yield Promise.all(
+      results.map(async result => ({
+        ...result,
+        libraryId: result.qlib_id || await this.client.ContentObjectLibraryId({objectId: result.id})
+      }))
+    )
 
     const baseTitleImageUrl = yield this.client.FabricUrl({});
     return {
@@ -911,7 +935,7 @@ class AIStore {
         }
 
         titleImageUrl = new URL(baseTitleImageUrl);
-        titleImageUrl.pathname = UrlJoin("qlibs", result.qlib_id, "q", result.id, "meta/public/asset_metadata/images/poster_vertical/default");
+        titleImageUrl.pathname = UrlJoin("qlibs", result.libraryId, "q", result.id, "meta/public/asset_metadata/images/poster_vertical/default");
 
         let score = result.score;
         // Score is provided as an array of scores
@@ -920,7 +944,7 @@ class AIStore {
         }
 
         return {
-          libraryId: result.qlib_id,
+          libraryId: result.libraryId,
           objectId: result.id,
           versionHash: result.hash,
           imageUrl: imageUrl?.toString(),
