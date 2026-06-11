@@ -12,7 +12,7 @@ const MantineTheme = createTheme({
       "#a368cd",
       "#8f5cb5",
       "#7d509d",
-      "#6b4586",
+      "#743fab",
       "#593a70",
       "#482f5a",
       "#382446",

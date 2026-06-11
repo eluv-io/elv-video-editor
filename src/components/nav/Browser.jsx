@@ -28,10 +28,11 @@ import {
 import SVG from "react-inlinesvg";
 import {Redirect, Route, useParams, Switch, useLocation, useSearchParams} from "wouter";
 import UrlJoin from "url-join";
-import {Select, Tabs, Tooltip, Progress, Menu} from "@mantine/core";
+import {Select, Tabs, Tooltip, Progress, Menu, Checkbox, Autocomplete} from "@mantine/core";
 import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
 import SearchSettings from "@/components/search/SearchSettings.jsx";
 import {Dropzone, IMAGE_MIME_TYPE} from "@mantine/dropzone";
+import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 
 import SettingsIcon from "@/assets/icons/v2/settings.svg";
 import LibraryIcon from "@/assets/icons/v2/library.svg";
@@ -63,6 +64,8 @@ import PlayIcon from "@/assets/icons/Play.svg";
 import LinkIcon from "@/assets/icons/v2/external-link.svg";
 import ClipIcon from "@/assets/icons/scissors.svg";
 import UploadIcon from "@/assets/icons/fileupload.svg";
+import AddIcon from "@/assets/icons/plus-square.svg";
+import TaggingIcon from "@/assets/icons/tagging.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
 
@@ -234,6 +237,176 @@ export const SearchBar = observer(({
         </div>
       </div>
     </div>
+  );
+});
+
+
+export const AISearchBar = observer(({basePath="~/search", initialQuery="", initialMode, onObjectSelect, clipOnly=false, placeholder, BeforeSubmit}) => {
+  const lastMode = localStorage.getItem(`search-mode-${rootStore.tenantContractId}`);
+  const [input, setInput] = useState(initialQuery);
+  const [mode, setMode] = useState(clipOnly ? "clip" : lastMode || initialMode || "clip");
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [,navigate] = useLocation();
+
+  const Submit = async ({mode, query}={}) => {
+    query = query || input;
+    BeforeSubmit?.({mode, query});
+
+    if(mode === "frame-image") {
+      navigate(UrlJoin(basePath, rootStore.client.utils.B58("frame-image:")));
+      return;
+    }
+
+    if(!query && mode !== "clip") {
+      navigate(UrlJoin(basePath));
+      return;
+    }
+
+    if(["ilib", "iq__", "hq__", "0x"].find(prefix => query.trim().startsWith(prefix))) {
+      const item = await browserStore.LookupContent(query);
+
+      if(item && Object.keys(item).length > 0) {
+        return onObjectSelect ? onObjectSelect({item, navigate}) : ContentBrowserSelect({item, navigate});
+      }
+    }
+
+    let term = query;
+    if(mode) {
+      term = `${mode}:${query.trim()}`;
+    }
+
+    navigate(UrlJoin(basePath, rootStore.client.utils.B58(term)));
+  };
+
+  useEffect(() => {
+    localStorage.setItem(`search-mode-${rootStore.tenantContractId}`, mode.toString());
+  }, [mode]);
+
+  let autocompleteOptions = (aiStore.previousSearchQueries[aiStore.selectedSearchIndexId]?.[mode] || [])
+    .filter(option => option.toLowerCase().includes(input?.toLowerCase()));
+
+  if(autocompleteOptions.length === 1 && autocompleteOptions[0]?.toLowerCase() === input?.toLowerCase()) {
+    autocompleteOptions = [];
+  }
+
+  return (
+    <>
+      <div className={S("search-bar-container")}>
+        <div className={S("search-bar-container__search-icon", aiStore.customSearchSettingsActive ? "search-bar-container__search-icon--active" : "")}>
+          <IconButton
+            onClick={() => setShowSettingsModal(true)}
+            icon={SettingsIcon}
+          />
+        </div>
+        <div className={S("search-input-container", "search-input-container--ai")}>
+          <Tooltip
+            openDelay={1000}
+            label={
+              <div className={S("tooltip", "tooltip--uncapped")}>
+                <div className={S("tooltip__item")}>
+                  <div className={S("tooltip__label")}>
+                    Prompt Response:
+                  </div>
+                  <div className={S("tooltip__content")}>
+                    <p>
+                      { aiStore.searchResults.currentResponse || "" }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            }
+            disabled={mode !== "prompt" || aiStore.searchResults.prompt !== input || !aiStore.searchResults.currentResponse}
+            className={S("tooltip")}
+          >
+            <Autocomplete
+              value={input}
+              comboboxProps={{ transitionProps: { transition: "fade", duration: 300, enterDelay: 100 } }}
+              data={autocompleteOptions}
+              placeholder={
+                placeholder ? placeholder :
+                  mode === "prompt" ? "Prompt the title library" :
+                    mode.startsWith("frame") ? "Search for images by phrase or keyword" :
+                      mode === "music" ? "Search for music by phrase or keyword" :
+                        "Search within content by phrase or keyword"
+              }
+              onChange={value => setInput(value)}
+              onOptionSubmit={value => {
+                setInput(value);
+                Submit({mode: mode === "frame-image" ? "frame" : mode, query: value});
+              }}
+              onKeyDown={async event => {
+                if(event.key !== "Enter") { return; }
+
+                Submit({mode: mode === "frame-image" ? "frame" : mode});
+                //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
+              }}
+              classNames={{
+                root: S("ai-search-bar"),
+                wrapper: S("ai-search-bar_wrapper"),
+                input: S("ai-search-bar__input"),
+                dropdown: S("ai-search-bar__dropdown"),
+                option: S("ai-search-bar__option"),
+              }}
+              leftSectionWidth={80}
+              leftSection={
+                <div className={S("search-input-container__button-left")}>
+                  {
+                    clipOnly ? null :
+                      <ModeSelectionMenu
+                        mode={mode}
+                        setMode={mode => {
+                          if(mode === "frame-image") {
+                            setInput("");
+                          }
+
+                          setMode(mode);
+
+                          if(mode === "frame-image") {
+                            // Only submit if we are doing search from image
+                            aiStore.ClearSearchResults();
+                            Submit({mode});
+                          } else {
+                            setInput("");
+                            if(initialQuery) {
+                              navigate(basePath);
+                            }
+                          }
+                        }}
+                        className={S("search-input-container__menu-button")}
+                      />
+                  }
+                  <Icon icon={AISparkleIcon} className={S("search-input-container__ai-icon")}/>
+                </div>
+              }
+              rightSectionWidth={100}
+              rightSection={
+                <div className={S("ai-search-bar__right-actions")}>
+                  {
+                    !input ? null :
+                      <IconButton
+                        label="Clear"
+                        icon={XIcon}
+                        noHover
+                        onClick={() => setInput("")}
+                      />
+                  }
+                  <IconButton
+                    label="Search"
+                    icon={SearchArrowIcon}
+                    noHover
+                    onClick={() => Submit(mode)}
+                  />
+                </div>
+              }
+            />
+          </Tooltip>
+        </div>
+      </div>
+      {
+        !showSettingsModal ? null :
+          <SearchSettings Close={() => setShowSettingsModal(false)}/>
+      }
+    </>
   );
 });
 
@@ -469,149 +642,16 @@ const ModeSelectionMenu = observer(({mode, setMode, className=""}) => {
   );
 });
 
-export const AISearchBar = observer(({basePath="~/search", initialQuery="", initialMode, onObjectSelect, clipOnly=false, placeholder, BeforeSubmit}) => {
-  const lastMode = localStorage.getItem(`search-mode-${rootStore.tenantContractId}`);
-  const [input, setInput] = useState(initialQuery);
-  const [mode, setMode] = useState(clipOnly ? "clip" : lastMode || initialMode || "clip");
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [,navigate] = useLocation();
-
-  const Submit = async (mode) => {
-    BeforeSubmit?.({mode, query: input});
-
-    if(mode === "frame-image") {
-      navigate(UrlJoin(basePath, rootStore.client.utils.B58("frame-image:")));
-      return;
-    }
-
-    if(!input && mode !== "clip") {
-      navigate(UrlJoin(basePath));
-      return;
-    }
-
-    if(["ilib", "iq__", "hq__", "0x"].find(prefix => input.trim().startsWith(prefix))) {
-      const item = await browserStore.LookupContent(input);
-
-      if(item && Object.keys(item).length > 0) {
-        return onObjectSelect ? onObjectSelect({item, navigate}) : ContentBrowserSelect({item, navigate});
-      }
-    }
-
-    let term = input;
-    if(mode) {
-      term = `${mode}:${input.trim()}`;
-    }
-
-    navigate(UrlJoin(basePath, rootStore.client.utils.B58(term)));
-  };
-
-  useEffect(() => {
-    localStorage.setItem(`search-mode-${rootStore.tenantContractId}`, mode.toString());
-  }, [mode]);
-
-  return (
-    <>
-      <div className={S("search-bar-container")}>
-        <div className={S("search-bar-container__search-icon", aiStore.customSearchSettingsActive ? "search-bar-container__search-icon--active" : "")}>
-          <IconButton
-            onClick={() => setShowSettingsModal(true)}
-            icon={SettingsIcon}
-          />
-        </div>
-        <div className={S("search-input-container", "search-input-container--ai")}>
-          <div className={S("search-input-container__button-left")}>
-            {
-              clipOnly ? null :
-                <ModeSelectionMenu
-                  mode={mode}
-                  setMode={mode => {
-                    if(mode === "frame-image") {
-                      setInput("");
-                    }
-
-                    setMode(mode);
-
-                    if(mode === "frame-image") {
-                      // Only submit if we are doing search from image
-                      aiStore.ClearSearchResults();
-                      Submit(mode);
-                    } else {
-                      setInput("");
-                      if(initialQuery) {
-                        navigate(basePath);
-                      }
-                    }
-                  }}
-                  className={S("search-input-container__menu-button")}
-                />
-            }
-            <Icon icon={AISparkleIcon} className={S("search-input-container__ai-icon")} />
-          </div>
-          <Tooltip
-            openDelay={1000}
-            label={
-              <div className={S("tooltip", "tooltip--uncapped")}>
-                <div className={S("tooltip__item")}>
-                  <div className={S("tooltip__label")}>
-                    Prompt Response:
-                  </div>
-                  <div className={S("tooltip__content")}>
-                    <p>
-                      { aiStore.searchResults.currentResponse || "" }
-                    </p>
-                  </div>
-                </div>
-              </div>
-            }
-            disabled={mode !== "prompt" || aiStore.searchResults.prompt !== input || !aiStore.searchResults.currentResponse}
-            className={S("tooltip")}
-          >
-            <input
-              value={input}
-              placeholder={
-                placeholder ? placeholder :
-                  mode === "prompt" ? "Prompt the title library" :
-                    mode.startsWith("frame") ? "Search for images by phrase or keyword" :
-                      mode === "music" ? "Search for music by phrase or keyword" :
-                        "Search within content by phrase or keyword"
-              }
-              onChange={event => setInput(event.target.value)}
-              onKeyDown={async event => {
-                if(event.key !== "Enter") { return; }
-
-                Submit(mode === "frame-image" ? "frame" : mode);
-                //navigate(UrlJoin(basePath, rootStore.client.utils.B58(input)));
-              }}
-              className={S("search-bar", "search-bar--ai", clipOnly ? "search-bar--ai-clip-only" : "")}
-            />
-          </Tooltip>
-          <div className={S("search-input-container__right-buttons")}>
-            <IconButton
-              label="Search"
-              icon={SearchArrowIcon}
-              noHover
-              onClick={() => Submit(mode)}
-            />
-          </div>
-        </div>
-      </div>
-      {
-        !showSettingsModal ? null :
-          <SearchSettings Close={() => setShowSettingsModal(false)} />
-      }
-    </>
-  );
-});
-
 export const BrowserTable = observer(({
   filter,
   Load,
   Select,
   defaultIcon,
-  contentType="library",
+  contentType = "library",
   videoOnly,
   frameRate,
   noDuration,
+  LeftActions,
   Actions,
   Delete
 }) => {
@@ -666,6 +706,7 @@ export const BrowserTable = observer(({
           S(
             "browser-table",
             `browser-table--${contentType}`,
+            LeftActions ? `browser-table--${contentType}--with-left-actions` : "",
             Actions || Delete ? `browser-table--${contentType}--with-actions` : "",
             hasActiveItem ? "browser-table--with-active-item" : "",
             noDuration ? `browser-table--${contentType}--no-duration` : ""
@@ -673,6 +714,10 @@ export const BrowserTable = observer(({
         }
       >
         <div className={S("browser-table__row", "browser-table__row--header")}>
+          {
+            !LeftActions ? null :
+              <div className={S("browser-table__cell", "browser-table__cell--header")}/>
+          }
           <div className={S("browser-table__cell", "browser-table__cell--header")}>
             Name
           </div>
@@ -745,6 +790,12 @@ export const BrowserTable = observer(({
                   )
                 }
               >
+                {
+                  !LeftActions ? null :
+                    <div className={S("browser-table__cell")}>
+                      {LeftActions?.({...item, disabled})}
+                    </div>
+                }
                 <div className={S("browser-table__cell")}>
                   {
                     item.image ?
@@ -845,7 +896,7 @@ export const BrowserTable = observer(({
                 {
                   (!Delete || !item.id) && !Actions ? null :
                     <div className={S("browser-table__cell", "browser-table__cell--centered")}>
-                      {Actions?.(item)}
+                      {Actions?.({...item, disabled})}
                       {
                         !Delete || !item.id ? null :
                           <IconButton
@@ -980,6 +1031,7 @@ const CompositionBrowser = observer(({
 export const ObjectBrowser = observer(({
   libraryId,
   title,
+  belowTitle,
   withFilterBar,
   filter,
   filterQueryParam="q",
@@ -990,10 +1042,12 @@ export const ObjectBrowser = observer(({
   videoOnly,
   frameRate,
   noDuration,
+  LeftActions,
   Actions,
   className=""
 }) => {
   const [queryParams] = useSearchParams();
+  const [selecting, setSelecting] = useState(false);
   filter = filter || decodeURIComponent(queryParams.get(filterQueryParam) || "");
 
   useEffect(() => {
@@ -1003,11 +1057,22 @@ export const ObjectBrowser = observer(({
 
   const library = browserStore.libraries?.[libraryId];
 
+  const onSelect = async args => {
+    setSelecting(true);
+    try {
+      await Select(args);
+    } catch(error) {
+      console.error(error);
+    } finally {
+      setSelecting(false);
+    }
+  };
+
   return (
     <div className={JoinClassNames(S("browser", "browser--object"), className)}>
       {
         !withFilterBar ? null :
-          <SearchBar filterQueryParam={filterQueryParam} Select={Select} />
+          <SearchBar filterQueryParam={filterQueryParam} Select={onSelect} />
       }
       <h1 className={S("browser__header")}>
         <IconButton
@@ -1033,6 +1098,7 @@ export const ObjectBrowser = observer(({
             </>
         }
       </h1>
+      {belowTitle}
       <BrowserTable
         filter={filter}
         defaultIcon={ObjectIcon}
@@ -1041,16 +1107,22 @@ export const ObjectBrowser = observer(({
         frameRate={frameRate}
         noDuration={noDuration}
         Path={Path}
-        Select={Select}
+        Select={onSelect}
         Load={async args => await browserStore.ListObjects({libraryId, ...args})}
+        LeftActions={LeftActions}
         Actions={Actions}
       />
+      {
+        !selecting ? null :
+          <Loader className={S("browser__loader")} />
+      }
     </div>
   );
 });
 
 export const LibraryBrowser = observer(({
   title,
+  belowTitle,
   filter,
   withFilterBar="",
   filterQueryParam="q",
@@ -1059,13 +1131,25 @@ export const LibraryBrowser = observer(({
   className=""
 }) => {
   const [queryParams] = useSearchParams();
+  const [selecting, setSelecting] = useState(false);
   filter = filter || decodeURIComponent(queryParams.get(filterQueryParam) || "");
+
+  const onSelect = async args => {
+    setSelecting(true);
+    try {
+      await Select(args);
+    } catch(error) {
+      console.error(error);
+    } finally {
+      setSelecting(false);
+    }
+  };
 
   return (
     <div className={JoinClassNames(S("browser", "browser--library"), className)}>
       {
         !withFilterBar ? null :
-          <SearchBar filterQueryParam={filterQueryParam} Select={Select} />
+          <SearchBar filterQueryParam={filterQueryParam} Select={onSelect} />
       }
       {
         !title ? null :
@@ -1073,14 +1157,19 @@ export const LibraryBrowser = observer(({
             { title || "Content Libraries" }
           </h1>
       }
+      {belowTitle}
       <BrowserTable
         filter={filter}
         defaultIcon={LibraryIcon}
         contentType="library"
-        Select={Select}
+        Select={onSelect}
         Path={Path}
         Load={async args => await browserStore.ListLibraries(args)}
       />
+      {
+        !selecting ? null :
+          <Loader className={S("browser__loader")} />
+      }
     </div>
   );
 });
@@ -1368,24 +1457,47 @@ export const GroundTruthPoolBrowser = observer(() => {
   );
 });
 
-export const TaggingSelection = observer(() => {
-  const content = aiTaggingStore.selectedContent;
+export const BrowserSelection = observer(({title, contentIds=[], Remove}) => {
+  const [visibleItems, setVisibleItems] = useState(20);
+  const [loading, setLoading] = useState(contentIds.length > 0);
+  const visibleContentIds = contentIds.slice(0, visibleItems);
+
+  useEffect(() => {
+    if(contentIds.length === 0) { return; }
+
+    const timeout = setTimeout(() => setLoading(true), 0);
+
+    Promise.all(
+      visibleContentIds.map(async objectId =>
+        await rootStore.GetObjectName({objectId})
+      )
+    ).finally(() => {
+      clearTimeout(timeout);
+      setLoading(false);
+    });
+  }, [visibleItems, contentIds]);
+
   return (
-    <div className={S("tagging-selection")}>
-      <div className={S("tagging-selection__title")}>
-        New Job
+    <div className={S("browser-selection")}>
+      <div className={S("browser-selection__title")}>
+        {title}
       </div>
-      <div className={S("tagging-selection__content")}>
+      <InfiniteScroll
+        withLoader
+        showLoader={loading}
+        Update={() => setVisibleItems(visibleItems + 20)}
+        className={S("browser-selection__content")}
+      >
         {
-          content.length === 0 ?
-            <div className={S("tagging-selection__empty")}>
+          visibleContentIds.length === 0 ?
+            <div className={S("browser-selection__empty")}>
               No Content Selected
             </div> :
-            content.map(({objectId, name}) =>
+            visibleContentIds.map(objectId =>
               <div key={objectId} className={S("tagging-item")}>
                 <div className={S("tagging-item__text")}>
                   <div className={S("tagging-item__title")}>
-                    {name}
+                    {rootStore.objectNames[objectId] || objectId}
                   </div>
                   <CopyableField value={objectId} className={S("tagging-item__id")}>
                     {objectId}
@@ -1393,20 +1505,67 @@ export const TaggingSelection = observer(() => {
                 </div>
                 <div className={S("tagging-item__actions")}>
                   <IconButton
-                    icon={DeleteIcon}
+                    icon={XIcon}
                     label={`Remove ${name}`}
-                    onClick={() => aiTaggingStore.RemoveSelectedContent({objectId})}
+                    onClick={() => Remove(objectId)}
                     className={S("tagging-item__action")}
                   />
                 </div>
               </div>
             )
         }
-      </div>
-      <div className={S("tagging-selection__count")}>
-        { content.length } content object{content.length === 1 ? "" : "s"} selected
+      </InfiniteScroll>
+      <div className={S("browser-selection__count")}>
+        { contentIds.length } content object{contentIds.length === 1 ? "" : "s"} selected
       </div>
     </div>
+  );
+});
+
+export const TaggingStepHeader = observer(({step=1}) => {
+  return (
+    <>
+      <h1 className={S("browser__header")}>
+        <Linkish to="/" className={S("browser__header-item")}>
+          <Icon icon={AddIcon} />
+          Create New Job
+        </Linkish>
+      </h1>
+      <div className={S("tagging-step-header")}>
+        <Linkish
+          to={step > 1 ? "/new" : undefined}
+          className={S("tagging-step", "tagging-step__active")}
+        >
+          <div className={S("tagging-step__number", "tagging-step__number--active")}>
+            1
+          </div>
+          <div className={S("tagging-step__text", step > 1 ? "tagging-step__text--active" : "")}>
+            Add Content
+          </div>
+        </Linkish>
+        <div className={S("tagging-step__separator", step > 1 ? "tagging-step__separator--active" : "")}/>
+        <Linkish
+          to={step > 2 ? "/new/configure" : undefined}
+          className={S("tagging-step", step >= 2 ? "tagging-step__active" : "")}
+        >
+          <div className={S("tagging-step__number", step >= 2 ? "tagging-step__number--active" : "")}>
+            2
+          </div>
+          <div className={S("tagging-step__text", step > 2 ? "tagging-step__text--active" : "")}>
+            Model Tracks and Processors
+          </div>
+        </Linkish>
+        <div className={S("tagging-step__separator", step > 2 ? "tagging-step__separator--active" : "")}/>
+        <div className={S("tagging-step")}>
+          <div className={S("tagging-step__number", step >= 3 ? "tagging-step__number--active" : "")}>
+            3
+          </div>
+          <div className={S("tagging-step__text")}>
+            Summary
+          </div>
+        </div>
+      </div>
+    </>
   );
 });
 
@@ -1422,57 +1581,42 @@ export const TaggingContentBrowser = observer(() => {
 
   return (
     <div className={S("browser-page")}>
-      <SearchBar
-        filterQueryParam={`q${libraryId || ""}`}
-        saveByLocation
-        Select={Select}
-      />
-      <h1 className={S("browser__header")}>
-        <IconButton
-          icon={BackIcon}
-          label="Back to Jobs List"
-          to="/"
-          className={S("browser__header-back")}
-        />
-        <Linkish to="/">
-          AI Runtime
-        </Linkish>
-        <span className={S("browser__header-chevron")}>➤</span>
-        <span>
-          New Job
-        </span>
-        <span className={S("browser__header-chevron")}>➤</span>
-        <span className={S("browser__header-last")}>
-          Select Content
-        </span>
-      </h1>
-      <div className={S("browser__header-note")}>
-        Select the video content object(s) you would like to process.
-      </div>
+      <TaggingStepHeader step={1}/>
       <div className={S("tagging-browser")}>
         {
           libraryId ?
             <ObjectBrowser
+              belowTitle={
+                <SearchBar
+                  filterQueryParam={`q${libraryId || ""}`}
+                  saveByLocation
+                  Select={Select}
+                />
+              }
               className={S("browser--tagging")}
               filterQueryParam={`q${libraryId}`}
               libraryId={libraryId}
               videoOnly
-              Actions={({objectId}) => {
-                const isActive = !!aiTaggingStore.selectedContent.find(other => other.objectId === objectId);
-                return (
-                  <div
-                    key={isActive}
-                    className={S("browser-table__action")}
-                  >
-                    { isActive ? "- Remove" : "+ Add" }
-                  </div>
-                );
-              }}
+              LeftActions={({objectId, disabled}) =>
+                disabled ? null :
+                  <Checkbox
+                    disabled={disabled}
+                    size="xs"
+                    checked={!!aiTaggingStore.selectedContent.find(other => other.objectId === objectId)}
+                  />
+              }
               Back={() => navigate("/new")}
               Select={({objectId, name}) => Select({objectId, name})}
             /> :
             <LibraryBrowser
               title="Content Libraries"
+              belowTitle={
+                <SearchBar
+                  filterQueryParam={`q${libraryId || ""}`}
+                  saveByLocation
+                  Select={Select}
+                />
+              }
               className={S("browser--tagging")}
               Select={({libraryId, objectId, name}) => {
                 if(objectId) {
@@ -1483,7 +1627,11 @@ export const TaggingContentBrowser = observer(() => {
               }}
             />
         }
-        <TaggingSelection />
+        <BrowserSelection
+          title="New Job"
+          contentIds={aiTaggingStore.selectedContent.map(item => item.objectId)}
+          Remove={objectId => aiTaggingStore.RemoveSelectedContent({objectId})}
+        />
       </div>
       <div className={S("tagging-actions")}>
         <StyledButton to="/" variant="outline">
@@ -1566,13 +1714,18 @@ export const TaggingJobBrowser = observer(() => {
           saveByLocation
           onSubmit={value => setFilter(value)}
         />
-        <h1 className={S("browser__header")}>AI Runtime</h1>
+        <h1 className={S("browser__header")}>
+          <div className={S("browser__header-item")}>
+            <Icon icon={TaggingIcon} className={S("highlight")} />
+            <span>AI Runtime</span>
+          </div>
+        </h1>
         <div className={S("browser__actions")}>
           <StyledButton
             icon={CreateIcon}
             to="/new"
           >
-            New Job(s)
+            New Job
           </StyledButton>
           <div className={S("browser__action", "browser__action--right")}>
             <Select
@@ -1783,6 +1936,61 @@ export const TaggingJobBrowser = observer(() => {
         />
       </div>
     </div>
+  );
+});
+
+export const SearchIndexContentBrowser = observer(({contentIds, setContentIds}) => {
+  const [libraryId, setLibraryId] = useState(undefined);
+
+  const Select = ({objectId}) => {
+    contentIds.find(id => id === objectId) ?
+      setContentIds(contentIds.filter(id => id !== objectId)) :
+      setContentIds([objectId, ...contentIds]);
+  };
+
+  return (
+    <>
+      <SearchBar filterQueryParam="si" Select={Select} />
+      <div className={S("search-index-content-browser")}>
+        {
+          libraryId ?
+            <ObjectBrowser
+              filterQueryParam="si"
+              libraryId={libraryId}
+              videoOnly
+              Back={() => setLibraryId(undefined)}
+              LeftActions={({objectId, disabled}) =>
+                disabled ? null :
+                  <Checkbox
+                    disabled={disabled}
+                    size="xs"
+                    checked={!!contentIds.find(id => id === objectId)}
+                  />
+              }
+              Select={({objectId, name}) => Select({objectId, name})}
+              className={S("search-index-content-browser__browser")}
+            /> :
+            <LibraryBrowser
+              filterQueryParam="si"
+              title="Content Libraries"
+              className={S("search-index-content-browser__browser")}
+              Select={({libraryId, objectId, name}) => {
+                if(objectId) {
+                  Select({objectId, name});
+                } else {
+                  setLibraryId(libraryId);
+                }
+              }}
+            />
+        }
+        <BrowserSelection
+          title="Source Content"
+          contentIds={contentIds}
+          className={S("browser-selection--search-index")}
+          Remove={objectId => setContentIds(contentIds.filter(id => id !== objectId))}
+        />
+      </div>
+      </>
   );
 });
 

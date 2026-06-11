@@ -235,6 +235,7 @@ export const IconButton = forwardRef(function IconButtonFunction({
   tooltipProps={},
   unstyled=false,
   loading=false,
+  loadingLabel,
   loadingProgress,
   children,
   openDelay=500,
@@ -244,6 +245,7 @@ export const IconButton = forwardRef(function IconButtonFunction({
   small,
   withinPortal=true,
   noHover,
+  onCancel,
   ...props
 }, ref) {
   const [submitting, setSubmitting] = useState(false);
@@ -285,6 +287,8 @@ export const IconButton = forwardRef(function IconButtonFunction({
     );
   }
 
+  label = loading && loadingLabel ? loadingLabel : label;
+
   const button = (
     <Linkish
       {...props}
@@ -292,16 +296,17 @@ export const IconButton = forwardRef(function IconButtonFunction({
       disabled={disabled}
       aria-label={props["aria-label"] || label || ""}
       onClick={
-        !props.onClick || loading || submitting ? undefined :
-          async event => {
-            const loadingTimeout = setTimeout(() => setSubmitting(true), 100);
-            try {
-              await props.onClick(event);
-            } finally {
-              clearTimeout(loadingTimeout);
-              setSubmitting(false);
+        loading && onCancel ? onCancel :
+          !props.onClick || loading || submitting ? undefined :
+            async event => {
+              const loadingTimeout = setTimeout(() => setSubmitting(true), 100);
+              try {
+                await props.onClick(event);
+              } finally {
+                clearTimeout(loadingTimeout);
+                setSubmitting(false);
+              }
             }
-          }
       }
       className={
         JoinClassNames(
@@ -434,10 +439,16 @@ export const AsyncButton = observer(({onClick, tooltip, loading, ...props}) => {
   );
 });
 
-export const StyledButton = observer(({icon, variant="primary", size="lg", color="--color-highlight--dark", textColor, children, loading, ...props}) => {
+export const StyledButton = observer(({icon, variant="primary", size="lg", color="--color-highlight--dark", textColor, children, loading, w, ...props}) => {
   const [submitting, setSubmitting] = useState(false);
 
   textColor = variant === "secondary" ? textColor || color : textColor || "";
+
+  props.style = props.style || {};
+
+  if(w) {
+    props.style.width = `${w}px`;
+  }
 
   return (
     <Linkish
@@ -447,9 +458,8 @@ export const StyledButton = observer(({icon, variant="primary", size="lg", color
           async event => {
             if(loading || submitting) { return; }
 
-            setSubmitting(true);
-
             try {
+              setSubmitting(true);
               await props.onClick?.(event);
             } finally {
               setSubmitting(false);

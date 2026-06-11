@@ -354,6 +354,39 @@ class RootStore {
     });
   });
 
+  AddGroupPermissions = flow(function * ({objectId, groups=["content_admin"]}) {
+    const permissions = [
+      { group: "tenant_admin", permission: "manage" },
+      { group: "tenant_users", permission: "access" },
+      { group: "content_admin", permission: "manage" }
+    ]
+      .filter(permission => groups.includes(permission.group));
+
+    yield Promise.all(
+      permissions.map(async ({group, permission}) => {
+        try {
+          const groupAddress = await this.client.CallContractMethod({
+            contractAddress: this.client.utils.HashToAddress(this.tenantContractId),
+            methodName: "groupsMapping",
+            methodArgs: [group, 0],
+            formatArguments: true,
+          });
+
+          if(groupAddress) {
+            await this.client.AddContentObjectGroupPermission({
+              objectId,
+              groupAddress: groupAddress,
+              permission
+            });
+          }
+        } catch(error) {
+          console.error(`Unable to find group ${group} for object permissions`);
+          console.error(error);
+        }
+      })
+    );
+  });
+
   // Ensure the specified load method is called only once unless forced
   LoadResource = flow(function * ({key, id, force=false, ttl, Load, bind}) {
     if(force || (ttl && this._resources[key]?.[id] && Date.now() - this._resources[key][id].retrievedAt > ttl * 1000)) {
