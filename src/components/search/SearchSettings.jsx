@@ -602,11 +602,16 @@ export const SearchIndexForm = observer(({options, setOptions}) => {
                 {
                   !index.canEdit ? null :
                     <>
-                      <IconButton
-                        label="Modify Search Index"
-                        icon={EditIcon}
-                        onClick={() => setShowForm(index.id)}
-                      />
+                      {
+                        index.isV2 ? null :
+                          <>
+                            <IconButton
+                              label="Modify Search Index"
+                              icon={EditIcon}
+                              onClick={() => setShowForm(index.id)}
+                            />
+                          </>
+                      }
                       <IconButton
                         label="Update Search Index"
                         loadingLabel="Search index updating, click to cancel."
