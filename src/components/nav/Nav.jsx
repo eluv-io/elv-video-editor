@@ -1,8 +1,8 @@
 import NavStyles from "@/assets/stylesheets/modules/nav.module.scss";
 
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
-import {aiStore, compositionStore, editStore, rootStore, videoStore} from "@/stores";
+import {aiStore, browserStore, compositionStore, editStore, rootStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Confirm, CopyableField, IconButton, StyledButton} from "@/components/common/Common";
 import UrlJoin from "url-join";
@@ -25,15 +25,26 @@ const S = CreateModuleClassMatcher(NavStyles);
 let menuTimeout;
 const ActiveItem = observer(() => {
   const [show, setShow] = useState(false);
+  const [selectedItemInfo, setSelectedItemInfo] = useState(undefined);
+
+  useEffect(() => {
+    if(!rootStore.selectedObjectId) {
+      setSelectedItemInfo(undefined);
+      return;
+    }
+
+    browserStore.ObjectDetails({objectId: rootStore.selectedObjectId})
+      .then(info => setSelectedItemInfo(info));
+  }, [rootStore.selectedObjectId]);
 
   if(!rootStore.selectedObjectId) { return; }
 
   const Hover = () => {
     clearTimeout(menuTimeout);
-    menuTimeout = setTimeout(() => setShow(true), 250);
+    menuTimeout = setTimeout(() => setShow(true), 50);
   };
 
-  const Blur = () => menuTimeout = setTimeout(() => setShow(false), 250);
+  const Blur = () => menuTimeout = setTimeout(() => setShow(false), 500);
 
   return (
     <Popover
@@ -89,6 +100,18 @@ const ActiveItem = observer(() => {
           >
             Clear Active Item
           </StyledButton>
+          {
+            !selectedItemInfo?.hasChannels ? null :
+              <IconButton
+                icon={SourceIcon}
+                to={UrlJoin("/browse", selectedItemInfo.libraryId, selectedItemInfo.objectId)}
+                onClick={() => setShow(false)}
+                label="Go to Browser Page"
+                small
+                faded
+                className={S("active-menu__browse")}
+              />
+          }
         </div>
       </Popover.Dropdown>
     </Popover>

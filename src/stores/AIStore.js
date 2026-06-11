@@ -881,7 +881,7 @@ class AIStore {
         ...result,
         libraryId: result.qlib_id || await this.client.ContentObjectLibraryId({objectId: result.id})
       }))
-    )
+    );
 
     const baseTitleImageUrl = yield this.client.FabricUrl({});
     return {

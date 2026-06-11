@@ -461,8 +461,12 @@ class BrowserStore {
           console.error("Error retrieving my library item:");
           console.error(error);
 
-          if((typeof error === "string" && error.includes("deleted")) || error.status === 404) {
-            objectDetails[objectId] = "deleted";
+          if((typeof error === "string" && error.includes("deleted"))) {
+            if(error.status === 404) {
+              objectDetails[objectId] = "deleted";
+            } else if(error.status === 401) {
+              objectDetails[objectId] = "unauthorized";
+            }
           }
         }
       })
@@ -474,6 +478,12 @@ class BrowserStore {
         if(objectDetails[item.objectId] === "deleted") {
           // eslint-disable-next-line no-console
           console.warn("Removing deleted library item: ", item);
+          this.RemoveMyLibraryItem(item);
+          itemsDeleted = true;
+          return;
+        } else if(objectDetails[item.objectId] === "unauthorized") {
+          // eslint-disable-next-line no-console
+          console.warn("Removing unauthorized library item: ", item);
           this.RemoveMyLibraryItem(item);
           itemsDeleted = true;
           return;
@@ -508,7 +518,8 @@ class BrowserStore {
           lastModified: this.FormatDate(item.accessedAt)
         };
       })
-    ));
+    ))
+      .filter(item => item && item.objectId);
 
     if(itemsDeleted) {
       // Items were deleted - redo listing to ensure pagination is correct

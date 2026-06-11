@@ -334,7 +334,10 @@ export const CompositionBrowser = observer(() => {
   const [selectedObjectInfo, setSelectedObjectInfo] = useState(undefined);
   const [myLibraryInfo, setMyLibraryInfo] = useState({content: []});
   const [deleting, setDeleting] = useState(false);
-  const [selectedObjectId, setSelectedObjectId] = useState(rootStore.selectedObjectId);
+  const [selectedObjectId, setSelectedObjectId] = useState(
+    new URLSearchParams(window.location.search).has("root") ? undefined :
+      rootStore.selectedObjectId
+  );
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -357,14 +360,21 @@ export const CompositionBrowser = observer(() => {
     if(selectedObjectId) {
       setLoading(true);
       browserStore.LookupContent(selectedObjectId)
-        .then(info => setSelectedObjectInfo(info || {}))
+        .then(info => {
+          if(info?.objectId) {
+            setSelectedObjectInfo(info);
+          } else {
+            setSelectedObjectId(undefined);
+            setSelectedObjectInfo(undefined);
+          }
+        })
         .finally(() => setLoading(false));
     }
   }, [selectedObjectId, deleting]);
 
   let compositions = myLibraryInfo.content;
   if(selectedObjectId) {
-    if(!selectedObjectInfo) {
+    if(!selectedObjectInfo || !selectedObjectInfo.objectId) {
       return <Loader />;
     }
 
