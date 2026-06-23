@@ -72,7 +72,10 @@ const Video = observer(({
 
     if(vertical) {
       // TODO: Remove
-      playoutUrl.hostname = "host-76-74-29-29.contentfabric.io";
+      playoutUrl.hostname = [
+        "host-76-74-29-29.contentfabric.io",
+        "host-76-74-29-7.contentfabric.io"
+      ][Math.random() < 0.5 ? 0 : 1];
       playoutUrl.searchParams.set("v", "1");
     }
 
@@ -173,7 +176,16 @@ const Video = observer(({
     window.player = hlsPlayer;
 
     Callback?.(video);
-  }, [video, playoutUrl, reloadIndex]);
+  }, [reloadIndex]);
+
+  // Debounce load to preven double-loading
+  useEffect(() => {
+    if(!video || !playoutUrl) { return; }
+
+    let timeout = setTimeout(() => setReloadIndex(reloadIndex + 1), 100);
+
+    return () => clearTimeout(timeout);
+  }, [video, playoutUrl]);
 
   useEffect(() => {
     return () => {
