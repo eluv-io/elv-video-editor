@@ -319,7 +319,10 @@ export const VerticalVideoSidebar = observer(({title, clipInfo, Close}) => {
   // TODO: Remove
   useEffect(() => {
     rootStore.client.SetNodes({
-      fabricURIs: ["https://host-76-74-29-29.contentfabric.io"]
+      fabricURIs: [
+        "https://host-76-74-29-29.contentfabric.io",
+        "https://host-76-74-29-7.contentfabric.io"
+      ]
     });
 
     return () => rootStore.client.ResetRegion();
