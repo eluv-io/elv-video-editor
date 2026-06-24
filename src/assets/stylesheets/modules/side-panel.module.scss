@@ -792,6 +792,20 @@
     max-height: 210px;
     max-width: 210px;
   }
+
+  &__additional-info-header {
+    font-size: 12px;
+    font-weight: 600;
+    margin: 20px 0 5px;
+  }
+
+  &__additional-info {
+    background-color: var(--background-active);
+    border-radius: 5px;
+    font-size: 12px;
+    padding: 5px 10px;
+    white-space: pre-wrap;
+  }
 }
 
 .add-asset {
