@@ -389,6 +389,18 @@ export const TagDetails = observer(() => {
             <label>Duration:</label>
             <span>{videoStore.TimeToString({time: duration, includeFractionalSeconds: true})}</span>
           </div>
+
+          {
+            !tag.tag?.additional_info ? null :
+              <>
+                <div className={S("tag-details__additional-info-header")}>
+                  Additional Info
+                </div>
+                <pre className={S("tag-details__additional-info")}>
+                  {JSON.stringify(tag.tag.additional_info, null, 2)}
+                </pre>
+              </>
+          }
         </div>
       </div>
       {
