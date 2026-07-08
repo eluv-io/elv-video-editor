@@ -854,7 +854,7 @@ export const GroundTruthEntityForm = observer(({
 
   let errorMessages = [];
   const matchingLabelEntity = Object.values(pool?.metadata?.entities || {})
-    .find((e, index) => (!entity || entity.index !== index) && e.label?.toLowerCase() === formData.label?.toLowerCase());
+    .find(e => (!entity || entity.id !== e.id) && e.label?.toLowerCase() === formData.label?.toLowerCase());
 
   if(!formData.label) {
     errorMessages.push("Label must be specified");
