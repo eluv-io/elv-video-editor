@@ -141,7 +141,8 @@ const Form = observer(({options, setOptions}) => {
           groundTruthPool: options.options?.celeb?.groundTruthPool ||
             Object.keys(groundTruthStore.pools).find(key =>
               groundTruthStore.pools[key].order === 0
-            )
+            ) ||
+            Object.keys(groundTruthStore.pools)[0]
         }
       }
     );
@@ -280,7 +281,6 @@ const Form = observer(({options, setOptions}) => {
                   {
                     !options[model] ||
                     model !== "celeb" ||
-                    Object.keys(groundTruthStore.pools).length <= 1 ? null :
                       <Select
                         value={options.options[model]?.groundTruthPool || ""}
                         searchable
