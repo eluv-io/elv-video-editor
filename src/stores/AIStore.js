@@ -895,6 +895,7 @@ class AIStore {
     );
 
     const baseTitleImageUrl = yield this.client.FabricUrl({});
+    const type = this.searchIndex.type?.includes("assets") ? "image" : "video";
     return {
       pagination,
       results: (contents || []).map(result => {
