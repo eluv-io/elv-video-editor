@@ -34,6 +34,7 @@ class AIStore {
   searchSettings = this.DEFAULT_SEARCH_SETTINGS;
 
   searchResults = {};
+  selectedSearchResults = [];
   activePromptSearchId;
   searchImageFrame;
   searchImageFrameUrl;
@@ -1347,6 +1348,15 @@ class AIStore {
 
   ClearSearchResults() {
     this.searchResults = {};
+  }
+
+  ToggleSelectedSearchResult(index) {
+    index = parseInt(index);
+    if(this.selectedSearchResults.includes(index)) {
+      this.selectedSearchResults = this.selectedSearchResults.filter(i => i !== index);
+    } else {
+      this.selectedSearchResults = [...this.selectedSearchResults, index];
+    }
   }
 
   /* Updates */
