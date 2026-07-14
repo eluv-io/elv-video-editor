@@ -834,23 +834,24 @@ class AIStore {
       .find(index => index.indexedTitles.find(title => title.objectId === objectId));
   }
 
-  ClipSearch = flow(function * ({mode, query, start, limit}) {
-    const type = this.searchIndex.type?.includes("assets") ? "image" : "video";
-    let {results, contents, pagination} = (yield this.QueryAIAPI({
+  PerformClipSearch = flow(function * ({mode, searchIndex, searchSettings, query, start, limit}) {
+    const type = searchIndex.type?.includes("assets") ? "image" : "video";
+
+    return (yield this.QueryAIAPI({
       //update: true,
-      server: this.searchIndex.isV2 ? "ai-04" : undefined,
-      objectId: this.searchIndex.id,
+      server: searchIndex.isV2 ? "ai-04" : undefined,
+      objectId: searchIndex.id,
       path:
-        this.searchIndex.isV2 ?
-          UrlJoin("vector_search", this.searchIndex.id, "clip_search") :
-          UrlJoin(this.searchSettings.cache ? "mlcache" : "", "search", "q", this.searchIndex.versionHash, "rep", "search"),
+        searchIndex.isV2 ?
+          UrlJoin("vector_search", searchIndex.id, "clip_search") :
+          UrlJoin(searchSettings.cache ? "mlcache" : "", "search", "q", searchIndex.versionHash, "rep", "search"),
       queryParams: {
         terms: query,
         search_fields:
           mode === "music" ? "f_music" :
-            this.searchSettings.fields.length > 0 ?
-              this.searchSettings.fields.join(",") :
-              Object.keys(this.searchIndex.fields).join(","),
+            searchSettings.fields.length > 0 ?
+              searchSettings.fields.join(",") :
+              Object.keys(searchIndex.fields).join(","),
         sort: mode === "music" ? "f_music" : null,
         start,
         limit,
@@ -860,13 +861,22 @@ class AIStore {
         clip_include_source_tags: true,
         get_chunks: true,
         max_total: 100,
-        min_score: this.searchSettings.minConfidence / 100,
-        filters: this.searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR"),
-        debug: !!this.searchIndex.isV2
+        min_score: searchSettings.minConfidence / 100,
+        filters: searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR"),
+        debug: !!searchIndex.isV2
       }
-    })) || {};
+    })) || {}
+  })
 
-    results = results || contents;
+  ClipSearch = flow(function * ({mode, query, start, limit}) {
+    let {contents, pagination} = yield this.PerformClipSearch({
+      mode,
+      searchIndex: this.searchIndex,
+      searchSettings: this.searchSettings,
+      query,
+      start,
+      limit
+    });
 
     const baseUrl = yield this.client.Rep({
       versionHash: this.searchIndex.versionHash,
@@ -877,8 +887,8 @@ class AIStore {
       }
     });
 
-    results = yield Promise.all(
-      results.map(async result => ({
+    contents = yield Promise.all(
+      contents.map(async result => ({
         ...result,
         libraryId: result.qlib_id || await this.client.ContentObjectLibraryId({objectId: result.id})
       }))
@@ -887,7 +897,7 @@ class AIStore {
     const baseTitleImageUrl = yield this.client.FabricUrl({});
     return {
       pagination,
-      results: (results || []).map(result => {
+      results: (contents || []).map(result => {
         let imageUrl, titleImageUrl;
         if(result.image_url || result.prefix) {
           imageUrl = new URL(baseUrl);

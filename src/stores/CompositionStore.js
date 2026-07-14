@@ -1055,11 +1055,12 @@ class CompositionStore {
       const hasNonDefaultAudio = !!items.find(item => item.has_non_default_audio);
 
       if(hasNonDefaultAudio) {
-        const defaultAudioTrackKey = Object.keys(mediaStruct?.streams || {})
-          .find(key =>
-            mediaStruct.streams[key].codec_type === "audio" &&
-            mediaStruct.streams[key].default_for_media_type
-          );
+        const defaultAudioTrackKey =
+          Object.keys(mediaStruct?.streams || {})
+            .find(key =>
+              mediaStruct.streams[key].codec_type === "audio" &&
+              mediaStruct.streams[key].default_for_media_type
+            ) || Object.keys(mediaStruct?.streams || [])[0];
 
         const defaultAudioTrackRepKey = Object.keys(metadata.playout.streams[defaultAudioTrackKey].representations)[0];
         const codec = playoutMetadata.streams[defaultAudioTrackKey].representations[defaultAudioTrackRepKey].codec;
@@ -1116,7 +1117,6 @@ class CompositionStore {
       });
 
       const updatedFields = Unproxy(this.ToV2({items}));
-
       for(const key of Object.keys(updatedFields)) {
         yield this.client.ReplaceMetadata({
           libraryId,
@@ -2062,28 +2062,12 @@ class CompositionStore {
       )
     ) { return; }
 
-    const clips = (yield this.rootStore.aiStore.QueryAIAPI({
-      server: "ai",
-      objectId: index.id,
-      path: UrlJoin("search", "q", index.id, "rep", "search"),
-      channelAuth: true,
-      queryParams: {
-        terms: query,
-        search_fields:
-          this.searchSettings.fields.length > 0 ?
-            this.searchSettings.fields.join(",") :
-            Object.keys(index.fields).join(","),
-        display_fields: "all",
-        clips: true,
-        clips_include_source_tags: true,
-        get_chunks: true,
-        debug: true,
-        max_total: 100,
-        min_score: this.searchSettings.minConfidence / 100,
-        start: 0,
-        limit: 100,
-        filters: this.searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR")
-      }
+    const clips = (yield this.rootStore.aiStore.PerformClipSearch({
+      searchIndex: index,
+      searchSettings: this.searchSettings,
+      query,
+      start: 0,
+      limit: 100
     }))?.contents || [];
 
     const sourceIdsToLoad = clips
@@ -2166,7 +2150,8 @@ class CompositionStore {
       const name = (
         clip.sources?.[0]?.fields?.f_zz_ui_name_1?.[0] ||
         clip.sources?.[0]?.fields?.f_zz_ui_name_2?.[0] ||
-        clip.sources?.[0]?.fields?.f_display_title?.[0]
+        clip.sources?.[0]?.fields?.f_display_title?.[0] ||
+        clip.name
       );
 
       const description = (
