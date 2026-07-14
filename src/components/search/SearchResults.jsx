@@ -11,9 +11,9 @@ import {AISearchBar, CardDisplaySwitch} from "@/components/nav/Browser.jsx";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
 import UrlJoin from "url-join";
 import {EntityCard, EntityListItem} from "@/components/common/EntityLists.jsx";
+import {Tooltip} from "@mantine/core";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
-import {Tooltip} from "@mantine/core";
 
 const S = CreateModuleClassMatcher(BrowserStyles, SearchStyles);
 
@@ -28,6 +28,7 @@ export const GroupedSearchResults = observer(({
   groupClassName=""
 }) => {
   let {queryB58, resultIndex} = useParams();
+  const [initialScrollDone, setInitialScrollDone] = useState(false);
 
   if(!aiStore.searchIndex) { return null; }
 
@@ -86,12 +87,15 @@ export const GroupedSearchResults = observer(({
                     listItem={showList}
                     key={`result-${result.resultIndex}`}
                     onRender={
-                      resultIndex !== result.resultIndex ? undefined :
-                        element => setTimeout(() =>
+                      initialScrollDone || resultIndex !== result.resultIndex ? undefined :
+                        element => setTimeout(() => {
                           element?.parentElement?.scrollTo({
                             top: element.getBoundingClientRect().top - 200
-                          })
-                        , 100)
+                          });
+                          setInitialScrollDone(true);
+                          }, 100
+                        )
+
                     }
                     link={UrlJoin("/", queryB58 || "", result.resultIndex.toString())}
                     id={result.objectId}
@@ -120,6 +124,7 @@ export const GroupedSearchResults = observer(({
 
 export const SearchResults = observer(({mode, showList, scrollPreservationKey, className=""}) => {
   let {queryB58, resultIndex} = useParams();
+  const [initialScrollDone, setInitialScrollDone] = useState(false);
 
   if(!aiStore.searchIndex) { return null; }
 
@@ -155,12 +160,15 @@ export const SearchResults = observer(({mode, showList, scrollPreservationKey, c
             listItem={showList}
             key={`result-${index}`}
             onRender={
-              resultIndex !== index ? undefined :
-                element => setTimeout(() =>
-                  element?.parentElement?.scrollTo({
-                    top: element.getBoundingClientRect().top - 200
-                  })
-                , 100)
+              initialScrollDone || resultIndex !== index ? undefined :
+                element => setTimeout(() => {
+                    element?.parentElement?.scrollTo({
+                      top: element.getBoundingClientRect().top - 200
+                    });
+                    setInitialScrollDone(true);
+                  }, 100
+                )
+
             }
             link={
               result.type === "frame" && result.frame ?

@@ -4,7 +4,7 @@ import {observer} from "mobx-react-lite";
 import {CopyableField, Icon, Linkish, LoaderImage} from "@/components/common/Common.jsx";
 import ImageIcon from "@/assets/icons/picture.svg";
 import AnchorIcon from "@/assets/icons/v2/anchor.svg";
-import {Menu, Tooltip} from "@mantine/core";
+import {Checkbox, Menu, Tooltip} from "@mantine/core";
 import {CreateModuleClassMatcher, JoinClassNames, SP} from "@/utils/Utils.js";
 import React, {useState} from "react";
 import MenuIcon from "@/assets/icons/v2/dots-vertical.svg";
@@ -71,6 +71,8 @@ export const EntityListItem = observer(({
   small,
   actions,
   tooltip,
+  selected,
+  toggleSelected,
   aspectRatio="square"
 }) =>
   <Tooltip
@@ -154,6 +156,24 @@ export const EntityListItem = observer(({
       </div>
       <div onClick={SP()} className={S("entity-list-item__actions")}>
         { actions }
+        {
+          !toggleSelected ? null :
+            <div
+              onClick={event => {
+                event.stopPropagation();
+                event.preventDefault();
+                toggleSelected();
+              }}
+              className={S("entity-card__checkbox-container")}
+            >
+              <Checkbox
+                key={selected}
+                size="xs"
+                className={S("entity-card__checkbox")}
+                checked={!!selected}
+              />
+            </div>
+        }
       </div>
     </Linkish>
   </Tooltip>
@@ -177,6 +197,8 @@ export const EntityCard = observer(({
   aspectRatio="square",
   onRender,
   showImageTooltip=false,
+  selected,
+  toggleSelected,
   className=""
 }) => {
   return (
@@ -235,6 +257,24 @@ export const EntityCard = observer(({
           {
             !modified ? null :
               <div className={S("entity-card__modified-indicator")}/>
+          }
+          {
+            !toggleSelected ? null :
+              <div
+                onClick={event => {
+                  event.stopPropagation();
+                  event.preventDefault();
+                  toggleSelected();
+                }}
+                className={S("entity-card__checkbox-container")}
+              >
+                <Checkbox
+                  key={selected}
+                  size="xs"
+                  className={S("entity-card__checkbox")}
+                  checked={!!selected}
+                />
+              </div>
           }
         </Linkish>
       </Tooltip>

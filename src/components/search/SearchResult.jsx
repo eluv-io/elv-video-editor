@@ -488,7 +488,7 @@ const SearchResult = observer(() => {
                   groupClassName={S("result-page__grouped-side-panel-list")}
                 /> :
                 <SearchResults
-                  key={`result-${queryB58}-${resultIndex}`}
+                  key={`result-${queryB58}`}
                   scrollPreservationKey="side-panel"
                   className={S("result-page__side-panel")}
                 />
