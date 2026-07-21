@@ -939,10 +939,11 @@
   position: relative;
   transition: opacity 0.25s ease;
 
+  &:focus-visible,
   &:hover {
     opacity: 0.8;
 
-    .clip__action {
+    .clip__actions {
       opacity: 1;
     }
   }
@@ -985,16 +986,29 @@
     font-size: 10px;
   }
 
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    transition: opacity 0.25s ease;
+    opacity: 0;
+    z-index: 10;
+  }
+
   &__action {
     background-color: var(--background-active);
     border-radius: 5px;
     color: var(--text-primary);
-    opacity: 0;
-    position: absolute;
-    right: 10px;
-    top: 10px;
-    transition: opacity 0.25s ease;
-    z-index: 10;
+
+    &--link {
+      svg {
+        height: 12px;
+        width: 12px;
+      }
+    }
   }
 }
 

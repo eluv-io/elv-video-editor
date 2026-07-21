@@ -29,7 +29,7 @@ class CompositionStore {
 
   clips = {};
   clipIdList = [];
-  originalClipIdList = [];
+  selectedClipIdList = [];
   selectedClipId;
   selectedClipSource;
   originalSelectedClipId;
@@ -84,7 +84,7 @@ class CompositionStore {
     this.clips = {};
     this.secondarySourceIds = [];
     this.clipIdList = [];
-    this.originalClipIdList = [];
+    this.selectedClipIdList = [];
     this.aiClipIds = [];
     this.allMyClipIds = {};
     this.searchClipIds = {};
@@ -189,8 +189,8 @@ class CompositionStore {
     return this.sources[this.selectedSourceId];
   }
 
-  get originalClips() {
-    return this.originalClipIdList
+  get selectedClips() {
+    return this.selectedClipIdList
       .map(clipId => this.clips[clipId])
       .filter(clip => clip);
   }
@@ -350,6 +350,11 @@ class CompositionStore {
         this.SetClipAudio({clipId});
 
         this.clipIdList = this.clipIdList.toSpliced(index, 0, clipId);
+        this.selectedClipIdList = [
+          ...this.selectedClipIdList,
+          clipId
+        ]
+          .filter((x, i, a) => a.indexOf(x) === i);
 
         if(this.seek > progress) {
           // Clip inserted before playhead - push ahead
@@ -462,7 +467,10 @@ class CompositionStore {
         const clip = this.clipList.find(clip => clip.clipId === clipId);
 
         this.clipIdList = this.clipIdList.filter(id => id !== clipId);
-        delete this.clips[clipId];
+
+        if(!this.selectedClipIdList.includes(clipId)) {
+          delete this.clips[clipId];
+        }
 
         if(this.videoStore.frame > clip.startFrame) {
           // Clip deleted before playhead - pull back
@@ -472,6 +480,23 @@ class CompositionStore {
     });
 
     if(this.selectedClipId === clipId) {
+      this.SetSelectedClip({clipId: this.sourceFullClipId, source: "source-content"});
+    }
+  }
+
+  RemoveSelectedClip(clipId) {
+    this.PerformAction({
+      label: "Remove Selected Clip",
+      Action: () => {
+        this.selectedClipIdList = this.selectedClipIdList.filter(id => id !== clipId);
+
+        if(!this.clipIdList.includes(clipId)) {
+          delete this.clips[clipId];
+        }
+      }
+    });
+
+    if(this.originalSelectedClipId === clipId) {
       this.SetSelectedClip({clipId: this.sourceFullClipId, source: "source-content"});
     }
   }
@@ -771,6 +796,22 @@ class CompositionStore {
     }
 
     return clipId;
+  });
+
+  CreateClipEmbedUrl = flow(function * ({clipId}) {
+    const clip = this.clips[clipId];
+
+    if(!clip) { return;}
+
+    return yield this.rootStore.downloadStore.CreateEmbedUrl({
+      store: this.ClipStore({clipId}),
+      objectId: clip.objectId,
+      clipInFrame: clip.clipInFrame,
+      clipOutFrame: clip.clipOutFrame,
+      offeringKey: clip.offering,
+      // TODO: Audio selection
+      audioTrackLabel: clip.audioTrackLabel
+    });
   });
 
   CompositionProgressToSMPTE(progress) {
@@ -1472,7 +1513,7 @@ class CompositionStore {
 
     // Determine secondary sources from explicit list in metadata and by looking at all item links
     let secondarySources = metadata.selected_sources || metadata.sources || [];
-    let originalClipsList = {};
+    let selectedClipsList = {};
     let updatedClipList = {};
     this.clipIdList = yield Promise.all(
       (metadata?.items || [])
@@ -1515,7 +1556,7 @@ class CompositionStore {
             };
 
             const originalClipId = this.rootStore.NextId();
-            originalClipsList[originalClipId] = {
+            selectedClipsList[originalClipId] = {
               ...updatedClipList[clipId],
               //effects: [],
               clipId: originalClipId
@@ -1548,7 +1589,7 @@ class CompositionStore {
         .filter(id => id)
     );
 
-    this.originalClipIdList = Object.values(originalClipsList).map(clip => clip.clipId);
+    this.selectedClipIdList = Object.values(selectedClipsList).map(clip => clip.clipId);
 
     // Initialize secondary sources
     yield Promise.all(
@@ -1563,7 +1604,7 @@ class CompositionStore {
     this.clips = {
       ...this.clips,
       ...updatedClipList,
-      ...originalClipsList
+      ...selectedClipsList
     };
 
     this.videoStore.name = this.compositionObject.name;
@@ -1785,6 +1826,7 @@ class CompositionStore {
 
     const originalData = {
       clipIdList: Unproxy(this.clipIdList),
+      selectedClipIdList: Unproxy(this.selectedClipIdList),
       clips: Unproxy(this.clips)
     };
 
@@ -1800,6 +1842,7 @@ class CompositionStore {
           ...originalData.clips
         };
         this.clipIdList = originalData.clipIdList;
+        this.selectedClipIdList = originalData.selectedClipIdList;
       },
       addedAt: Date.now(),
       ...attrs

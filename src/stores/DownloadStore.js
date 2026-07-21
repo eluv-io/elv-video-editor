@@ -270,15 +270,19 @@ class DownloadStore {
 
   CreateEmbedUrl = flow(function * ({
     store,
+    objectId,
     offeringKey,
     compositionKey,
     audioTrackLabel,
     clipInFrame,
     clipOutFrame,
+    clipInTime,
+    clipOutTime,
     shareId,
     title,
     vertical,
-    node
+    node,
+    tokenDuration=7*24*60*60*1000
   }) {
     let options = {
       autoplay: true,
@@ -288,17 +292,23 @@ class DownloadStore {
       options.offerings = [offeringKey];
     }
 
-    if(clipInFrame > 0 || clipOutFrame <= store.totalFrames - 1) {
-      const offset = compositionKey && compositionKey !== "main" ? 0 : store.primaryContentClipPoints.clipInFrame || 0;
-      options.clipStart = store.FrameToTime((clipInFrame || 0) - offset);
-      options.clipEnd = store.FrameToTime((clipOutFrame || store.totalFrames - 1) - offset);
+    if(!!store && (clipInFrame > 0 || clipOutFrame <= store.totalFrames - 2)) {
+      options.clipStart = store.FrameToTime((clipInFrame || 0));
+      options.clipEnd = store.FrameToTime((clipOutFrame || store.totalFrames - 1));
+    } else if(clipInTime > 0 || clipOutTime) {
+      options.clipStart = clipInTime;
+      options.clipEnd = clipOutTime;
     }
 
     const url = new URL(
       yield this.rootStore.client.EmbedUrl({
-        objectId: store.videoObject.objectId,
-        duration: 7 * 24 * 60 * 60 * 1000,
-        options
+        objectId: objectId || store.videoObject.objectId,
+        duration: tokenDuration,
+        options,
+        additionalParameters: {
+          // Ignore trimming
+          it: true
+        }
       })
     );
 

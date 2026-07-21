@@ -2,8 +2,8 @@ import SidePanelStyles from "@/assets/stylesheets/modules/side-panel.module.scss
 
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
-import {CreateModuleClassMatcher, DragHandler, StorageHandler} from "@/utils/Utils.js";
-import {aiStore, browserStore, compositionStore, rootStore, trackStore} from "@/stores/index.js";
+import {Copy, CreateModuleClassMatcher, DragHandler, StorageHandler} from "@/utils/Utils.js";
+import {aiStore, browserStore, compositionStore, downloadStore, rootStore, trackStore} from "@/stores/index.js";
 import {
   ClipTimeInfo,
   Confirm,
@@ -28,6 +28,7 @@ import DeleteIcon from "@/assets/icons/trash.svg";
 import ChevronUpIcon from "@/assets/icons/chevron-up.svg";
 import ChevronDownIcon from "@/assets/icons/chevron-down.svg";
 import BackIcon from "@/assets/icons/v2/back.svg";
+import LinkIcon from "@/assets/icons/v2/link.svg";
 
 const S = CreateModuleClassMatcher(SidePanelStyles);
 
@@ -92,33 +93,69 @@ const SidePanelClip = observer(({clip, showTagLink=false}) => {
             </div>
         }
       </div>
-      {
-        !compositionStore.myClipIds.includes(clip.clipId) ? null :
-          <IconButton
-            icon={XIcon}
-            small
-            className={S("clip__action")}
-            onClick={async event => {
-              event.stopPropagation();
+      <div className={S("clip__actions")}>
+        <IconButton
+          icon={LinkIcon}
+          label="Copy Shareable URL"
+          small
+          className={S("clip__action", "clip__action--link")}
+          onClick={async event => {
+            event.stopPropagation();
 
-              await Confirm({
-                title: "Remove from My Clips",
-                text: "Are you sure you want to remove this clip?",
-                onConfirm: () => compositionStore.RemoveMyClip(clip.clipId)
-              });
-            }}
-          />
-      }
-      {
-        !showTagLink ? null :
-          <IconButton
-            label="View in Tag Editor"
-            to={UrlJoin("/", clip.objectId, `tags?sf=${clip.clipInFrame}&ef=${clip.clipOutFrame}&isolate=true`)}
-            icon={TagIcon}
-            small
-            className={S("clip__action")}
-          />
-      }
+            await Copy(
+              await downloadStore.CreateShortUrl(
+                await compositionStore.CreateClipEmbedUrl({clipId: clip.clipId})
+              )
+            );
+          }}
+        />
+        {
+          !showTagLink ? null :
+            <IconButton
+              label="View in Tag Editor"
+              to={UrlJoin("/", clip.objectId, `tags?sf=${clip.clipInFrame}&ef=${clip.clipOutFrame}&isolate=true`)}
+              icon={TagIcon}
+              small
+              className={S("clip__action")}
+            />
+        }
+        {
+          !compositionStore.myClipIds.includes(clip.clipId) ? null :
+            <IconButton
+              icon={XIcon}
+              small
+              label="Remove from My Clips"
+              className={S("clip__action")}
+              onClick={async event => {
+                event.stopPropagation();
+
+                await Confirm({
+                  title: "Remove from My Clips",
+                  text: "Are you sure you want to remove this clip?",
+                  onConfirm: () => compositionStore.RemoveMyClip(clip.clipId)
+                });
+              }}
+            />
+        }
+        {
+          !compositionStore.selectedClipIdList.includes(clip.clipId) ? null :
+            <IconButton
+              icon={XIcon}
+              small
+              label="Remove from Selected Clips"
+              className={S("clip__action")}
+              onClick={async event => {
+                event.stopPropagation();
+
+                await Confirm({
+                  title: "Remove from Selected Clips",
+                  text: "Are you sure you want to remove this clip?",
+                  onConfirm: () => compositionStore.RemoveSelectedClip(clip.clipId)
+                });
+              }}
+            />
+        }
+      </div>
     </div>
   );
 });
@@ -217,9 +254,7 @@ const AIClips = observer(() => {
   const [clipSource, setClipSource] = useState("highlights");
   const clipIds = clipSource === "search" ?
     compositionStore.searchClipIds[compositionStore.selectedSourceId] || [] :
-    compositionStore.originalClips
-      //.filter(clip => clip.objectId === compositionStore.selectedSourceId)
-      .map(clip => clip.clipId);
+    compositionStore.selectedClipIdList;
 
   useEffect(() => {
     if(!compositionStore.filter) {

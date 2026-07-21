@@ -219,12 +219,15 @@ class ControlStore {
   }
 
   RemoveClip() {
-    if(
-      this.rootStore.compositionStore.selectedClipId === "new" ||
-      !this.rootStore.compositionStore.selectedClipId
-    ) { return; }
+    const clipId = this.rootStore.compositionStore.selectedClipId;
 
-    this.rootStore.compositionStore.RemoveClip(this.rootStore.compositionStore.selectedClipId);
+    if(!clipId) { return; }
+
+    if(this.rootStore.compositionStore.clipIdList.includes(clipId)) {
+      this.rootStore.compositionStore.RemoveClip(this.rootStore.compositionStore.selectedClipId);
+    } else if(this.rootStore.compositionStore.selectedClipIdList.includes(this.rootStore.compositionStore.originalSelectedClipId)) {
+      this.rootStore.compositionStore.RemoveSelectedClip(this.rootStore.compositionStore.originalSelectedClipId);
+    }
   }
 
   SetMarkIn() {
