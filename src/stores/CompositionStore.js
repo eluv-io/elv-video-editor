@@ -832,7 +832,7 @@ class CompositionStore {
         yield this.WriteToken({objectId, compositionKey, create: false});
 
       // TODO: Remove
-      yield this.client.SetNodes({fabricURIs: ["https://host-76-74-35-69.contentfabric.io"]});
+      yield this.client.SetNodes({fabricURIs: ["https://host-76-74-35-66.contentfabric.io"]});
       const playoutOptions = (yield this.client.PlayoutOptions({
         objectId,
         writeToken,
