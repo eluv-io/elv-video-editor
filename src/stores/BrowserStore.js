@@ -441,7 +441,8 @@ class BrowserStore {
       )
       .filter(item =>
         !type ||
-        (type === "composition" && item.compositionKey)
+        (type === "composition" && item.compositionKey) ||
+        (type === "source" && !item.compositionKey)
       );
 
     const contentLength = content.length;

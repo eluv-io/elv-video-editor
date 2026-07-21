@@ -452,9 +452,9 @@
         grid-template-columns: 1fr 100px 150px 100px;
       }
 
-      &.browser-table--with-left-actions {
+      &.browser-table--object--with-left-actions {
         .browser-table__row {
-          grid-template-columns: 40px 40px 1fr 100px 150px 100px;
+          grid-template-columns: 40px 1fr 100px 150px 100px;
         }
       }
     }
@@ -475,6 +475,12 @@
   &--my-library {
     .browser-table__row {
       grid-template-columns: 1fr 1fr 100px 150px 100px;
+    }
+
+    &--with-left-actions {
+      .browser-table__row {
+        grid-template-columns: 40px 1fr 1fr 100px 150px 100px;
+      }
     }
   }
 
@@ -675,10 +681,14 @@
   display: grid;
   gap: 30px;
   grid-template-columns: 1fr 450px;
-  height: calc(100vh - 260px);
+  height: calc(100vh - 250px);
 
-  &--form {
-    height: calc(100vh - 260px);
+  .browser-selection {
+    height: calc(100vh - 255px);
+  }
+
+  * {
+    --row-height: 45px;
   }
 }
 
@@ -801,7 +811,7 @@
 
 .tagging-item {
   align-items: center;
-  animation: var(--animation-fadein) 0.25s ease-out;
+  animation: var(--animation-fadein) 0.3s ease-in;
   border-bottom: 1px solid var(--table-border-color);
   display: grid;
   gap: 10px;

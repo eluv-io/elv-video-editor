@@ -64,7 +64,6 @@ import PlayIcon from "@/assets/icons/Play.svg";
 import LinkIcon from "@/assets/icons/v2/external-link.svg";
 import ClipIcon from "@/assets/icons/scissors.svg";
 import UploadIcon from "@/assets/icons/fileupload.svg";
-import AddIcon from "@/assets/icons/plus-square.svg";
 import TaggingIcon from "@/assets/icons/tagging.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
@@ -644,6 +643,7 @@ const ModeSelectionMenu = observer(({mode, setMode, className=""}) => {
 
 export const BrowserTable = observer(({
   filter,
+  filterQueryParam,
   Load,
   Select,
   defaultIcon,
@@ -665,6 +665,10 @@ export const BrowserTable = observer(({
       (window.innerHeight < 900 ? 8 : 10) - (hasActiveItem ? 2 : 0)
   });
   const [deleting, setDeleting] = useState(undefined);
+
+  if(filterQueryParam) {
+    filter = filter || decodeURIComponent(new URLSearchParams(window.location.search).get(filterQueryParam) || "");
+  }
 
   const LoadPage = page => {
     if(loading) { return; }
@@ -1465,7 +1469,7 @@ export const BrowserSelection = observer(({title, contentIds=[], Remove}) => {
   useEffect(() => {
     if(contentIds.length === 0) { return; }
 
-    const timeout = setTimeout(() => setLoading(true), 0);
+    const timeout = setTimeout(() => setLoading(true), 250);
 
     Promise.all(
       visibleContentIds.map(async objectId =>
@@ -1523,19 +1527,24 @@ export const BrowserSelection = observer(({title, contentIds=[], Remove}) => {
 });
 
 export const TaggingStepHeader = observer(({step=1}) => {
+  let backLink = "/";
+  if(step >= 3) {
+    backLink = "/new/configure";
+  } else if(step === 2) {
+    backLink = "/new";
+  }
+
   return (
     <>
-      <h1 className={S("browser__header")}>
-        <Linkish to="/" className={S("browser__header-item")}>
-          <Icon icon={AddIcon} />
-          Create New Job
-        </Linkish>
-      </h1>
       <div className={S("tagging-step-header")}>
         <Linkish
           to={step > 1 ? "/new" : undefined}
           className={S("tagging-step", "tagging-step__active")}
         >
+          <IconButton
+            icon={BackIcon}
+            to={backLink}
+          />
           <div className={S("tagging-step__number", "tagging-step__number--active")}>
             1
           </div>
@@ -1572,6 +1581,7 @@ export const TaggingStepHeader = observer(({step=1}) => {
 export const TaggingContentBrowser = observer(() => {
   const {libraryId} = useParams();
   const [, navigate] = useLocation();
+  const [tab, setTab] = useState("browse");
 
   const Select = ({objectId, name}) => {
     aiTaggingStore.selectedContent.find(other => other.objectId === objectId) ?
@@ -1582,51 +1592,80 @@ export const TaggingContentBrowser = observer(() => {
   return (
     <div className={S("browser-page")}>
       <TaggingStepHeader step={1}/>
+
       <div className={S("tagging-browser")}>
-        {
-          libraryId ?
-            <ObjectBrowser
-              belowTitle={
-                <SearchBar
-                  filterQueryParam={`q${libraryId || ""}`}
-                  saveByLocation
-                  Select={Select}
-                />
-              }
-              className={S("browser--tagging")}
-              filterQueryParam={`q${libraryId}`}
-              libraryId={libraryId}
-              videoOnly
-              LeftActions={({objectId, disabled}) =>
-                disabled ? null :
-                  <Checkbox
-                    disabled={disabled}
-                    size="xs"
-                    checked={!!aiTaggingStore.selectedContent.find(other => other.objectId === objectId)}
-                  />
-              }
-              Back={() => navigate("/new")}
-              Select={({objectId, name}) => Select({objectId, name})}
-            /> :
-            <LibraryBrowser
-              title="Content Libraries"
-              belowTitle={
-                <SearchBar
-                  filterQueryParam={`q${libraryId || ""}`}
-                  saveByLocation
-                  Select={Select}
-                />
-              }
-              className={S("browser--tagging")}
-              Select={({libraryId, objectId, name}) => {
-                if(objectId) {
-                  Select({objectId, name});
-                } else {
-                  navigate(UrlJoin("/", "new", libraryId));
-                }
-              }}
+        <div className={S("tagging-browser__browser")}>
+          <div className={S("browser-page__filters")}>
+            <Tabs value={tab} onChange={setTab} color="var(--text-secondary)">
+              <Tabs.List fz={24} fw={800}>
+                <Tabs.Tab px="xs" mr="sm" value="browse" className={tab !== "browse" ? S("tab--inactive") : ""}>
+                  Content
+                </Tabs.Tab>
+                <Tabs.Tab px="xs" value="my-library" className={tab !== "my-library" ? S("tab--inactive") : ""}>
+                  My Library
+                </Tabs.Tab>
+              </Tabs.List>
+            </Tabs>
+            <SearchBar
+              Select={Select}
+              filterQueryParam={libraryId ? `q${libraryId}` : "q"}
+              className={S("browser-page__filter-input")}
             />
-        }
+          </div>
+          {
+            tab === "my-library" ?
+              <div className={S("browser", "browser--my-library", "browser--tagging")}>
+                <h1 className={S("browser__header")}>
+                  My Library
+                </h1>
+                <BrowserTable
+                  filterQueryParam="q-my-library"
+                  defaultIcon={ObjectIcon}
+                  contentType="object"
+                  Select={Select}
+                  LeftActions={({objectId, disabled}) =>
+                    disabled ? null :
+                      <Checkbox
+                        disabled={disabled}
+                        size="xs"
+                        checked={!!aiTaggingStore.selectedContent.find(other => other.objectId === objectId)}
+                      />
+                  }
+                  Delete={async args => browserStore.RemoveMyLibraryItem(args)}
+                  Load={async args => await browserStore.ListMyLibrary({...args, type: "source"})}
+                />
+              </div> :
+              libraryId ?
+                <ObjectBrowser
+                  className={S("browser--tagging")}
+                  filterQueryParam={`q${libraryId}`}
+                  libraryId={libraryId}
+                  videoOnly
+                  LeftActions={({objectId, disabled}) =>
+                    disabled ? null :
+                      <Checkbox
+                        disabled={disabled}
+                        size="xs"
+                        checked={!!aiTaggingStore.selectedContent.find(other => other.objectId === objectId)}
+                      />
+                  }
+                  Back={() => navigate("/new")}
+                  Select={({objectId, name}) => Select({objectId, name})}
+                /> :
+                <LibraryBrowser
+                  title="Content Libraries"
+                  className={S("browser--tagging")}
+                  filterQueryParam="q"
+                  Select={({libraryId, objectId, name}) => {
+                    if(objectId) {
+                      Select({objectId, name});
+                    } else {
+                      navigate(UrlJoin("/", "new", libraryId));
+                    }
+                  }}
+                />
+          }
+        </div>
         <BrowserSelection
           title="New Job"
           contentIds={aiTaggingStore.selectedContent.map(item => item.objectId)}

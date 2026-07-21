@@ -44,7 +44,7 @@ const ActiveItem = observer(() => {
     menuTimeout = setTimeout(() => setShow(true), 50);
   };
 
-  const Blur = () => menuTimeout = setTimeout(() => setShow(false), 500);
+  const Blur = ({timeout=500}) => menuTimeout = setTimeout(() => setShow(false), timeout);
 
   return (
     <Popover
@@ -83,23 +83,35 @@ const ActiveItem = observer(() => {
           <CopyableField value={rootStore.selectedObjectId} className={S("active-menu__id")}>
             { rootStore.selectedObjectId }
           </CopyableField>
-          <StyledButton
-            size="md"
-            className={S("active-menu__button")}
-            onClick={() => {
-              setShow(false);
-              Confirm({
-                title: "Clear Active Item",
-                text: "Would you like to clear the active item?",
-                onConfirm: () => {
-                  rootStore.Navigate("/");
-                  rootStore.SetSelectedObjectId(undefined, "");
-                }
-              });
-            }}
-          >
-            Clear Active Item
-          </StyledButton>
+          <div className={S("active-menu__actions")}>
+            <StyledButton
+              size="md"
+              variant="secondary"
+              color="--text-secondary"
+              className={S("active-menu__button")}
+              onClick={() => {
+                setShow(false);
+                Confirm({
+                  title: "Clear Active Item",
+                  text: "Would you like to clear the active item?",
+                  onConfirm: () => {
+                    rootStore.Navigate("/");
+                    rootStore.SetSelectedObjectId(undefined, "");
+                  }
+                });
+              }}
+            >
+              Clear Active Item
+            </StyledButton>
+            <StyledButton
+              size="md"
+              className={S("active-menu__button")}
+              to={"/" + rootStore.selectedObjectId}
+              onClick={() => Blur({timeout: 0})}
+            >
+              Open Active Item
+            </StyledButton>
+          </div>
           {
             !selectedItemInfo?.hasChannels ? null :
               <IconButton

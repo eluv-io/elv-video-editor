@@ -85,12 +85,17 @@ Focus and Pose - requires Shot
     return this.trackKeyToModelMapping[key];
   }
 
-  AddSelectedContent({objectId, name}) {
+  async AddSelectedContent({objectId, name}) {
+    await this.rootStore.GetObjectName({objectId});
+
     if(this.selectedContent.find(item => item.objectId === objectId)) {
       return;
     }
 
-    this.selectedContent.push({objectId, name});
+    this.selectedContent = [
+      {objectId, name},
+      ...(this.selectedContent || [])
+    ];
 
     // Preload audio track info
     this.GetAudioTracks({objectId});

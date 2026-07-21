@@ -865,8 +865,8 @@ class AIStore {
         filters: searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR"),
         debug: !!searchIndex.isV2
       }
-    })) || {}
-  })
+    })) || {};
+  });
 
   ClipSearch = flow(function * ({mode, query, start, limit}) {
     let {contents, pagination} = yield this.PerformClipSearch({
