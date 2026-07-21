@@ -4,9 +4,9 @@ import SearchStyles from "@/assets/stylesheets/modules/search.module.scss";
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {Redirect, useParams} from "wouter";
-import {rootStore, aiStore} from "@/stores/index.js";
+import {rootStore, aiStore, downloadStore} from "@/stores/index.js";
 import {CopyableField, Icon, IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher, ParseSearchQuery} from "@/utils/Utils.js";
+import {Copy, CreateModuleClassMatcher, ParseSearchQuery} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 import Player from "@/components/common/Player.jsx";
 import {ShareModal} from "@/components/download/Share.jsx";
@@ -29,6 +29,7 @@ import DownloadIcon from "@/assets/icons/download.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
 import TitleIcon from "@/assets/icons/titles.svg";
+import EmbedLinkIcon from "@/assets/icons/v2/link.svg"
 
 import AIImageGray from "@/assets/images/composition-manual.svg";
 import AIImageColor from "@/assets/images/composition-ai.svg";
@@ -286,6 +287,20 @@ const ClipResultPanel = observer(({result}) => {
                     `?st=${result.startTime}&et=${result.endTime}&isolate=`
                 )
               }
+            />
+            <IconButton
+              label="Copy Shareable URL"
+              className={S("result__action")}
+              icon={EmbedLinkIcon}
+              onClick={async () => Copy(
+                await downloadStore.CreateShortUrl(
+                  await downloadStore.CreateEmbedUrl({
+                    objectId: result.objectId,
+                    clipInTime: result.startTime || 0,
+                    clipOutTime: result.endTime
+                  })
+                )
+              )}
             />
             <IconButton
               label="Share"
