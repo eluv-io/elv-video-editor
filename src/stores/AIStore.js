@@ -2108,7 +2108,7 @@ class AIStore {
       }
 
       // Retrieve tags, generating if necessary
-      const shotTags = yield this.RetrieveVerticalVideoTags({objectId, model: "shot"});
+      let shotTags = yield this.RetrieveVerticalVideoTags({objectId, model: "shot"});
       let verticalVideoTags = yield this.RetrieveVerticalVideoTags({objectId, model: "vertical_video"});
 
       if(shotTags.length !== verticalVideoTags.length) {
@@ -2117,40 +2117,45 @@ class AIStore {
 
       console.info("Processing tags");
 
-      // 1. Sort the tags by frame_idx to ensure chronological processing
+      // Sort both tag arrays by frame_idx to ensure chronological processing
+      shotTags = shotTags.sort((a, b) => {
+        return (a.frame_info?.frame_idx || 0) - (b.frame_info?.frame_idx || 0);
+      });
       verticalVideoTags = verticalVideoTags.sort((a, b) => {
         return (a.frame_info?.frame_idx || 0) - (b.frame_info?.frame_idx || 0);
       });
 
-      const xValues = [];
-      let expectedNextFrame = verticalVideoTags.length > 0 ? verticalVideoTags[0].frame_info.frame_idx : 0;
+      // Verify each pair has matching start_time and end_time
+      for(let i = 0; i < shotTags.length; i++) {
+        const shot = shotTags[i];
+        const vt = verticalVideoTags[i];
+        if(shot.start_time !== vt.start_time || shot.end_time !== vt.end_time) {
+          throw Error(
+            `Mismatch between shot / vertical video tag times at index ${i}: ` +
+            `Shot [${shot.start_time}, ${shot.end_time}] Vertical [${vt.start_time}, ${vt.end_time}]`
+          );
+        }
+      }
 
-      let breaks = 0;
-      // 2. Iterate and validate
+      // Build xValues, filling in missing frames:
+      //   - frames before the first shot get 0.5
+      //   - frames in gaps between shots get the last xValue of the preceding shot
+      const xValues = [];
+
       verticalVideoTags.forEach(tag => {
         const currentFrameIdx = tag.frame_info?.frame_idx ?? 0;
         const coords = tag.additional_info?.["x-coordinates"] || [];
 
-        // Emit warning if there is a gap or overlap in frame indices
-        if(currentFrameIdx !== expectedNextFrame) {
-          breaks += 1;
-          if(breaks < 4) {
-            console.info(
-              `[Warning] Continuity break at Tag ID: ${tag.id}. ` +
-              `Expected frame_idx ${expectedNextFrame}, but found ${currentFrameIdx}.`
-            );
+        if (xValues.length < currentFrameIdx) {
+          const lastXValue = (xValues.length) ? xValues[-1] : Math.round(0.5 * 10000);
+	  while(xValues.length < currentFrameIdx) {
+	    xValues.push(lastXValue);
           }
         }
 
-        // Add coordinates to our list
         coords.forEach(x => {
-          // Fixed point with 4 decimal places
           xValues.push(Math.round(x * 10000));
         });
-
-        // Calculate what the next frame_idx should be
-        // (Current index + number of samples provided in this tag)
-        expectedNextFrame = currentFrameIdx + coords.length;
       });
 
       // 3. Pack into Buffer as 4-byte Little Endian integers
@@ -2158,10 +2163,6 @@ class AIStore {
       xValues.forEach((value, i) => {
         buffer.writeInt32LE(value, i * 4);
       });
-
-      if(breaks > 0) {
-        throw Error(`There were ${breaks} breaks in continuity. Err`);
-      }
 
       const editResponse = yield this.client.EditContentObject({
         libraryId,
