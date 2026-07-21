@@ -354,7 +354,8 @@ class CompositionStore {
           ...this.selectedClipIdList,
           clipId
         ]
-          .filter((x, i, a) => a.indexOf(x) === i);
+          .filter((x, i, a) => a.indexOf(x) === i)
+          .filter((x, i, a) => a.findIndex(otherClipId => this.clips[otherClipId].clipKey === this.clips[x].clipKey) === i);
 
         if(this.seek > progress) {
           // Clip inserted before playhead - push ahead

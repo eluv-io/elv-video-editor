@@ -29,7 +29,7 @@ import DownloadIcon from "@/assets/icons/download.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
 import TitleIcon from "@/assets/icons/titles.svg";
-import EmbedLinkIcon from "@/assets/icons/v2/link.svg"
+import EmbedLinkIcon from "@/assets/icons/v2/link.svg";
 
 import AIImageGray from "@/assets/images/composition-manual.svg";
 import AIImageColor from "@/assets/images/composition-ai.svg";
