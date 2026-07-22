@@ -268,22 +268,22 @@ Focus and Pose - requires Shot
 
     const params = [...this.segmentModels, ...this.frameModels, ...this.processorModels]
       .filter(key => options[key] || dependentModels.includes(key))
-      .map(key => {
+      .map(model => {
         let result = {
-          model: key,
+          model,
           overrides: {
-            replace: options.replace
+            replace: !options.modelOptions[model]?.noReplace
           }
         };
 
-        const groundTruthPool = options?.options?.[key]?.groundTruthPool;
+        const groundTruthPool = options?.modelOptions?.[model]?.groundTruthPool;
         if(groundTruthPool && groundTruthPool !== "default") {
           result.model_params = {
             ground_truth: groundTruthPool
           };
         }
 
-        const mode = options?.options?.[key]?.mode;
+        const mode = options?.modelOptions?.[model]?.mode;
         if(mode) {
           result.model_params = {
             mode
@@ -292,7 +292,7 @@ Focus and Pose - requires Shot
 
         // Determine proper audio track
         // Produces one job spec per specified stream
-        const streams = options?.options?.[key]?.streams;
+        const streams = options?.modelOptions?.[model]?.streams;
         if(streams) {
           result = streams
             .map(stream => {
@@ -337,10 +337,7 @@ Focus and Pose - requires Shot
         tenant: tenantId
       },
       body: {
-        jobs: params,
-        options: {
-          replace: options.replace
-        }
+        jobs: params
       }
     });
 
