@@ -2119,7 +2119,7 @@ class AIStore {
 
       // Sort both tag arrays by frame_idx to ensure chronological processing
       shotTags = shotTags.sort((a, b) => {
-        return (a.frame_info?.frame_idx || 0) - (b.frame_info?.frame_idx || 0);
+        return ((a.start_time ?? 0) - (b.start_time ?? 0)) || ((a.end_time ?? 0) - (b.end_time ?? 0));
       });
       verticalVideoTags = verticalVideoTags.sort((a, b) => {
         return (a.frame_info?.frame_idx || 0) - (b.frame_info?.frame_idx || 0);
