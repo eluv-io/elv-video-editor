@@ -2146,11 +2146,16 @@ class AIStore {
         const currentFrameIdx = tag.frame_info?.frame_idx ?? 0;
         const coords = tag.additional_info?.["x-coordinates"] || [];
 
-        if (xValues.length < currentFrameIdx) {
-          const lastXValue = (xValues.length) ? xValues[-1] : Math.round(0.5 * 10000);
-	  while(xValues.length < currentFrameIdx) {
-	    xValues.push(lastXValue);
+        if(xValues.length < currentFrameIdx) {
+          const lastXValue = xValues.length ? xValues[xValues.length - 1] : Math.round(0.5 * 10000);
+          while(xValues.length < currentFrameIdx) {
+            xValues.push(lastXValue);
           }
+        } else if(xValues.length > currentFrameIdx) {
+          throw Error(
+            `Overlap in vertical video tag frame indices at Tag ID: ${tag.id}. ` +
+            `Current frame_idx ${currentFrameIdx} is before already-populated frame ${xValues.length}.`
+          );
         }
 
         coords.forEach(x => {
