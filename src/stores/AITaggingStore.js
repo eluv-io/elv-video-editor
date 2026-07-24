@@ -17,14 +17,8 @@ class AITaggingStore {
 
   audioTracks = {};
 
-  /*
-  Speaker recognition - needs STT
-Chapters - requires STT
-Evidence - requires STT, GIT, LLava, Shot, Speaker
-Character - requires Celeb
-Focus and Pose - requires Shot
-
-   */
+  // TODO: Make model dependency map keep track of both deps and dep on
+  // Note: this is further filled out by the model api
   modelDependencyMap = {
     "speaker": [
       "asr"
@@ -35,7 +29,6 @@ Focus and Pose - requires Shot
     "evidence": [
       "asr",
       "llava",
-      "git", // ??
       "shot",
       "speaker"
     ],
@@ -52,6 +45,8 @@ Focus and Pose - requires Shot
       "shot"
     ]
   };
+
+  modelRelationMap = {};
 
   constructor(rootStore) {
     this.rootStore = rootStore;
@@ -110,11 +105,82 @@ Focus and Pose - requires Shot
     this.selectedContent = [];
   }
 
+  GetRelatedModels({modelKey, trackKey}) {
+    if(modelKey) {
+      trackKey = this.modelToTrackKeyMapping[modelKey]?.[0];
+    } else {
+      modelKey = this.trackKeyToModelMapping[trackKey];
+    }
+
+    if(!modelKey || !trackKey) {
+      return {
+        models: {
+          allRelatedModelKeys: [],
+          dependencies: [],
+          dependencyOf: [],
+          siblings: []
+        },
+        tracks: {
+          allRelatedTrackKeys: [],
+          dependencies: [],
+          dependencyOf: [],
+          siblings: []
+        }
+      };
+    }
+
+    // All info retrieved as model keys, converted to track keys
+    const dependencies = this.modelDependencyMap[modelKey];
+
+    let dependencyOf = [];
+    Object.keys(this.modelDependencyMap).forEach(otherModelKey => {
+      if(this.modelDependencyMap[otherModelKey]?.includes(modelKey)) {
+        dependencyOf.push(otherModelKey);
+      }
+    });
+
+    const siblingTracks = this.modelToTrackKeyMapping[modelKey]
+      .filter(otherTrackKey => otherTrackKey !== trackKey)
+      .map(trackKey => this.trackKeyToModelMapping[trackKey]);
+
+    // Convert list of model keys to track keys
+    const Convert = list => list
+      .map(key => this.modelToTrackKeyMapping[key])
+      .flat()
+      .filter(trackKey => trackKey);
+
+    const dependencyTracks = Convert(dependencies);
+    const dependencyOfTracks = Convert(dependencyOf);
+
+    return {
+      models: {
+        allRelatedModelKeys: [
+          ...dependencies,
+          ...dependencyOf,
+        ],
+        dependencies,
+        dependencyOf,
+        outputTracks: siblingTracks
+      },
+      tracks: {
+        allRelatedTrackKeys: [
+          ...dependencyTracks,
+          ...dependencyOfTracks,
+          ...siblingTracks
+        ],
+        dependencies: dependencyTracks,
+        dependencyOf: dependencyOfTracks,
+        siblings: siblingTracks
+      }
+    };
+  }
+
   GetTaggingModels = flow(function * () {
     let {models} = (yield this.rootStore.aiStore.QueryAIAPI({
       path: UrlJoin("tagging-live", "models")
     })) || {models: []};
 
+    // Fill out model names, types and model <-> track mapping
     for(const model of models) {
       this.modelNames[model.name] = model.description;
 
@@ -126,10 +192,23 @@ Focus and Pose - requires Shot
         this.segmentModels.push(model.name);
       }
 
+      this.modelToTrackKeyMapping[model.name] = (model.tag_tracks || [])
+        .map(({name}) => name)
+        .filter(name => name);
+
       for(const track of model.tag_tracks || []) {
         this.trackKeyToModelMapping[track.name] = model.name;
-        this.modelToTrackKeyMapping[model.name] = track.name;
       }
+    }
+
+    // Fill out model dependencies
+    for(const model of models) {
+      this.modelDependencyMap[model.name] = (model.dependencies || [])
+        .map(trackKey => this.trackKeyToModelMapping[trackKey]);
+    }
+
+    for(const model of models) {
+      this.modelRelationMap[model.name] = this.GetRelatedModels({modelKey: model.name});
     }
   });
 

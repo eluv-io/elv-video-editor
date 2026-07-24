@@ -27,6 +27,7 @@ class TrackStore {
   tracks = [];
   audioTracks = [];
   selectedTrack;
+  primaryTrackKey;
   activeTracks = {};
   activeClipTracks = {};
   editingTrack = false;
@@ -122,6 +123,28 @@ class TrackStore {
       .filter((track, index, array) => array.findIndex(otherTrack => otherTrack.key === track.key) === index);
   }
 
+  get relatedTracks() {
+    const mainTrackKey = this.primaryTrackKey || (Object.keys(this.activeTracks).length === 1 && Object.keys(this.activeTracks)[0]);
+    const mainModelKey = this.rootStore.aiTaggingStore.trackKeyToModelMapping[mainTrackKey];
+    const relations = this.rootStore.aiTaggingStore.modelRelationMap[mainModelKey];
+
+    if(!relations) { return null; }
+
+    // Remove all tracks that do not exist on this content
+    let relatedTracks = {...relations.tracks};
+    Object.keys(relatedTracks).forEach(key =>
+      relatedTracks[key] = relatedTracks[key]
+        .filter(trackKey => trackKey && !!this.tracks.find(track => track.key === trackKey))
+    );
+
+    if(relatedTracks.allRelatedTrackKeys.length === 0) {
+      // No related tracks exist on this content
+      return null;
+    }
+
+    return relatedTracks;
+  }
+
   Reset() {
     this.tracks = [];
     this.audioTracks = [];
@@ -137,6 +160,7 @@ class TrackStore {
     this.selectedTrack = undefined;
     this.activeTracks = {};
     this.activeClipTracks = {};
+    this.primaryTrackKey = undefined;
     this.editingTrack = false;
   }
 
@@ -728,11 +752,25 @@ class TrackStore {
 
   /* User Actions */
 
+  SetShowRelatedTracks(primaryTrackKey) {
+    this.primaryTrackKey = primaryTrackKey;
+
+    this.relatedTracks.allRelatedTrackKeys
+      .map(trackKey =>
+        this.ToggleTrackSelected(trackKey, true)
+      );
+
+    this.primaryTrackKey = primaryTrackKey;
+  }
+
   ResetActiveTracks() {
     this.activeTracks = {};
+    this.primaryTrackKey = undefined;
   }
 
   ToggleTrackSelected(key, value) {
+    this.primaryTrackKey = undefined;
+
     if(typeof value !== "undefined") {
       value ?
         this.activeTracks[key] = true :

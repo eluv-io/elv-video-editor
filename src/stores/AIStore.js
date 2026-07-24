@@ -1849,7 +1849,8 @@ class AIStore {
       "pose",
       ...Object.keys(this.rootStore.aiTaggingStore.modelToTrackKeyMapping),
       ...Object.keys(this.rootStore.aiTaggingStore.trackKeyToModelMapping)
-    ];
+    ]
+      .flat();
 
     const fields = {};
     yield this.client.utils.LimitedMap(
@@ -2061,48 +2062,52 @@ class AIStore {
   RetrieveVerticalVideoTags = flow(function * ({objectId, model}) {
     yield this.AwaitVerticalVideoJobs({objectId, model});
 
-    const trackKey = this.rootStore.aiTaggingStore.modelToTrackKeyMapping[model];
-    let tags = (yield this.rootStore.aiStore.QueryAIAPI({
-      objectId,
-      path: UrlJoin("/tagstore", objectId, "tags"),
-      channelAuth: true,
-      queryParams: {
-        limit: 1000000,
-        has_frame_info: model === "vertical_video",
-        track: model === "vertical_video" ? "vertical_video" : trackKey
-      },
-      format: "JSON"
-    }))?.tags || [];
+    const trackKeys = this.rootStore.aiTaggingStore.modelToTrackKeyMapping[model];
+    yield Promise.all(
+      trackKeys.map(async trackKey => {
+        let tags = (await this.rootStore.aiStore.QueryAIAPI({
+          objectId,
+          path: UrlJoin("/tagstore", objectId, "tags"),
+          channelAuth: true,
+          queryParams: {
+            limit: 1000000,
+            has_frame_info: model === "vertical_video",
+            track: model === "vertical_video" ? "vertical_video" : trackKey
+          },
+          format: "JSON"
+        }))?.tags || [];
 
-    if(tags.length === 0) {
-      // No tags, must submit and wait for vertical video job
-      console.info(`No ${model} tags present, starting job`);
-      yield this.rootStore.aiTaggingStore.SubmitTaggingJob({
-        objectId,
-        options: { [model]: true }
-      });
+        if(tags.length === 0) {
+          // No tags, must submit and wait for vertical video job
+          console.info(`No ${model} tags present, starting job`);
+          await this.rootStore.aiTaggingStore.SubmitTaggingJob({
+            objectId,
+            options: {[model]: true}
+          });
 
-      yield new Promise(resolve => setTimeout(resolve, 5000));
+          await new Promise(resolve => setTimeout(resolve, 5000));
 
-      yield this.AwaitVerticalVideoJobs({objectId, model});
+          await this.AwaitVerticalVideoJobs({objectId, model});
 
-      // Re-query tags
-      tags = (yield this.rootStore.aiStore.QueryAIAPI({
-        objectId,
-        path: UrlJoin("/tagstore", objectId, "tags"),
-        channelAuth: true,
-        queryParams: {
-          limit: 1000000,
-          has_frame_info: model === "vertical_video",
-          track: trackKey
-        },
-        format: "JSON"
-      }))?.tags || [];
+          // Re-query tags
+          tags = (await this.rootStore.aiStore.QueryAIAPI({
+            objectId,
+            path: UrlJoin("/tagstore", objectId, "tags"),
+            channelAuth: true,
+            queryParams: {
+              limit: 1000000,
+              has_frame_info: model === "vertical_video",
+              track: trackKey
+            },
+            format: "JSON"
+          }))?.tags || [];
 
-      if(tags.length === 0) {
-        throw Error("Failed to generate tags");
-      }
-    }
+          if(tags.length === 0) {
+            throw Error("Failed to generate tags");
+          }
+        }
+      })
+    );
 
     this.verticalVideoProcessingStatus[objectId][`${model}_progress`] = 100;
 

@@ -9,7 +9,6 @@ import {
   keyboardControlsStore,
   rootStore,
   tagStore,
-  trackStore,
   videoStore
 } from "@/stores/index.js";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
@@ -60,10 +59,6 @@ const TagsAndClipsView = observer(({mode}) => {
     return () => resizeObserver?.disconnect();
   }, [sidePanel]);
 
-  const trackCount = mode === "tags" ?
-    trackStore.metadataTracks.length :
-    trackStore.clipTracks.length;
-
   return (
     <>
       {
@@ -80,7 +75,7 @@ const TagsAndClipsView = observer(({mode}) => {
           />
       }
       <PanelGroup key={videoStore.dropFrame} direction="vertical" className="panel-group">
-        <Panel id="top" order={1} defaultSize={Math.max(40, 60 - trackCount * 3)} minSize={25}>
+        <Panel id="top" order={1} defaultSize={Math.max(50)} minSize={25}>
           <PanelGroup direction="horizontal" className="panel-group">
             <Panel id="side-panel" order={1} style={{"--panel-width": `${sidePanelDimensions?.width}px`}} defaultSize={30} minSize={100 * 425 / window.innerWidth}>
               {
