@@ -2700,8 +2700,13 @@ class AIStore {
         this.searchIndexCustomFields[indexId] = metadata?.custom_fields || {};
 
         let config = indexInfo?.config?.search?.clip_search?.defaults || {};
-        config.clips_pad_duration = config.clips_min_duration;
-        config.clips_truncate_duration = config.clips_max_duration;
+        if(config.clips_min_duration) {
+          config.clips_pad_duration = config.clips_min_duration;
+        }
+
+        if(config.clips_max_duration) {
+          config.clips_truncate_duration = config.clips_max_duration;
+        }
 
         return {
           name:
