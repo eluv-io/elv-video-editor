@@ -217,9 +217,7 @@ class CompositionStore {
 
   get selectedClipStore() {
     if(this.selectedClipId && !this.clipStores[this.selectedClip?.storeKey]) {
-      // eslint-disable-next-line no-console
       console.warn("No store for selected clip");
-      // eslint-disable-next-line no-console
       console.warn(this.selectedClipId, this.selectedClip);
     }
 
@@ -663,9 +661,7 @@ class CompositionStore {
     }
 
     if(!this.clipStores[key]) {
-      // eslint-disable-next-line no-console
       console.warn(new Error("No store for selected clip"));
-      // eslint-disable-next-line no-console
       console.warn(objectId, offering, clipId, sourceId, key, this.clips[clipId]);
     }
 
@@ -1224,8 +1220,6 @@ class CompositionStore {
 
     if(writeTokenInfo && writeTokenInfo.versionHash !== latestVersionHash) {
       // Write token is based on old version. Discard and generate a new one
-
-      // eslint-disable-next-line no-console
       console.warn("Write token for this composition is based on previous version. Retrieving new write token.");
 
       const compositionMetadata = yield this.client.ContentObjectMetadata({
@@ -1297,7 +1291,6 @@ class CompositionStore {
       const [type,,durationNum, durationDenom] = effect;
 
       if(!effectTypes[type]) {
-        // eslint-disable-next-line no-console
         console.warn("Unknown effect:", effect);
         return;
       }
@@ -2133,9 +2126,7 @@ class CompositionStore {
       ];
 
       if(!sourceClip) {
-        // eslint-disable-next-line no-console
         console.warn("No source clip found for search result");
-        // eslint-disable-next-line no-console
         console.warn(clip);
         continue;
       }

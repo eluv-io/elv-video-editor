@@ -155,7 +155,6 @@ export const LoadVideo = async ({
               });
             }
           } catch(error) {
-            // eslint-disable-next-line no-console
             console.warn(`Unable to load offering details for ${offering}`);
           }
         })
@@ -339,11 +338,8 @@ export const CreateTrackIntervalTree = (tags, label, offset=0) => {
     try {
       intervalTree.insert(tag.startTime + offset, tag.endTime + offset, tag.tagId);
     } catch(error) {
-      // eslint-disable-next-line no-console
       console.warn(`Invalid tag in track '${label}'`);
-      // eslint-disable-next-line no-console
       console.warn(JSON.stringify(tag, null, 2));
-      // eslint-disable-next-line no-console
       console.warn(error);
     }
   });

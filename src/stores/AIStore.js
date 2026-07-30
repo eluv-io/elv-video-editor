@@ -41,6 +41,7 @@ class AIStore {
 
   _authTokens = {};
   verticalVideoProcessingStatus = {};
+  indexCreateProgress = {};
 
   titleIndex;
   titles = [];
@@ -593,10 +594,14 @@ class AIStore {
     localStorage.setItem(`search-collection-index-${this.rootStore.tenantContractId}`, id);
   }
 
-  AddSearchIndex = flow(function * ({objectId}) {
+  AddSearchIndex = flow(function * ({objectId, isV2}) {
+    const libraryId = yield this.client.ContentObjectLibraryId({objectId});
+    isV2 = isV2 || !!(yield this.client.ContentObjectMetadata({libraryId, objectId, metadataSubtree: "indexer"}));
+    const metadataKey = isV2 ? "indexes_vectorstore" : "indexes";
+
     const {name, description} = yield this.client.ContentObjectMetadata({
-      libraryId: yield this.client.ContentObjectLibraryId({objectId}),
-      objectId: objectId,
+      libraryId,
+      objectId,
       metadataSubtree: "public",
       select: ["name", "description"]
     });
@@ -604,7 +609,7 @@ class AIStore {
     // Update index list in config object
     let existingIndexes = (yield this.client.ContentObjectMetadata({
       versionHash: yield this.client.LatestVersionHash({objectId: this.rootStore.tenantInfoObjectId}),
-      metadataSubtree: "public/search/indexes"
+      metadataSubtree: UrlJoin("public/search", metadataKey)
     })) || [];
 
     // Remove existing record if present
@@ -615,7 +620,8 @@ class AIStore {
       description: description || "",
       id: objectId,
       type: "vector",
-      version: 1
+      version: 1,
+      isV2
     });
 
     yield this.client.EditAndFinalizeContentObject({
@@ -627,7 +633,7 @@ class AIStore {
           libraryId: await this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId}),
           objectId: this.rootStore.tenantInfoObjectId,
           writeToken,
-          metadataSubtree: "public/search/indexes",
+          metadataSubtree: UrlJoin("public/search", metadataKey),
           metadata: Unproxy(existingIndexes)
         });
       }
@@ -639,11 +645,15 @@ class AIStore {
   });
 
   RemoveSearchIndex = flow(function * ({objectId}) {
+    const index = this.searchIndexes.find(index => index.id === objectId);
+
+    if(!index) { return; }
+
     const libraryId = yield this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId});
     const indexes = (yield this.client.ContentObjectMetadata({
       libraryId,
       objectId: this.rootStore.tenantInfoObjectId,
-      metadataSubtree: "public/search/indexes",
+      metadataSubtree: UrlJoin("public/search", index.isV2 ? "indexes_vectorstore" : "indexes")
     })) || [];
 
     if(indexes.find(index => index.id === objectId)) {
@@ -664,7 +674,7 @@ class AIStore {
             libraryId,
             objectId: this.rootStore.tenantInfoObjectId,
             writeToken,
-            metadataSubtree: "public/search/indexes",
+            metadataSubtree: UrlJoin("public/search", index.isV2 ? "indexes_vectorstore" : "indexes"),
             metadata: Unproxy(
               indexes.filter(index => index.id !== objectId)
             )
@@ -1183,7 +1193,6 @@ class AIStore {
     let fullText = "";
     do {
       if(this.activePromptSearchId !== streamId) {
-        // eslint-disable-next-line no-console
         console.warn("Another prompt search has been started - aborting");
         return;
       }
@@ -1230,7 +1239,6 @@ class AIStore {
             this.UpdatePromptSearchResults({message: fullText + "\n"});
           }
         } catch (e) {
-          // eslint-disable-next-line no-console
           console.warn("malformed sse: " + jsonStr);
         }
       }
@@ -1376,7 +1384,9 @@ class AIStore {
     clearInterval(window.searchIndexStatusWatcherInterval);
 
     const UpdateStatus = async () => {
+      let progress = {};
       try {
+        // V1 indexes
         let {jobs} = await this.QueryAIAPI({
           server: "ai",
           path: UrlJoin("/qmanager", "jobs"),
@@ -1389,21 +1399,35 @@ class AIStore {
           !job?.stop_requested
         );
 
-        if(jobs.length === 0) {
-          runInAction(() => this.searchIndexUpdateProgress = {});
-          clearInterval(window.searchIndexStatusWatcherInterval);
-          return;
-        }
-
-        let progress = {};
         for(const job of jobs) {
           progress[job.qid] = (100 * (job.status_details?.progress || 0)) || 1;
         }
-
-        runInAction(() => this.searchIndexUpdateProgress = progress);
       } catch(error) {
         console.error("Failed to get search index update status:");
         console.error(error);
+      }
+
+      const v2Indexes = this.searchIndexes.filter(index => index.isV2);
+      await Promise.all(
+        v2Indexes.map(async index => {
+          let status = await this.QueryAIAPI({
+            server: "ai-04",
+            path: UrlJoin("elv-indexer", "indexes", index.id, "status"),
+            method: "GET",
+            objectId: this.rootStore.tenantInfoObjectId,
+            authTokenInHeader: true
+          });
+
+          if(status?.progress > 0 && status?.progress < 0.99) {
+            progress[index.id] = (100 * (status?.progress || 0)) || 1;
+          }
+        })
+      );
+
+      runInAction(() => this.searchIndexUpdateProgress = progress);
+      if(Object.keys(progress).length === 0) {
+        // No active jobs - clear interval
+        clearInterval(window.searchIndexStatusWatcherInterval);
       }
     };
 
@@ -1413,6 +1437,13 @@ class AIStore {
   }
 
   BuildSearchIndex = flow(function * ({indexId}) {
+    const searchIndex = this.searchIndexes.find(index => index.id === indexId);
+
+    if(searchIndex?.isV2) {
+      console.warn(`BuildSearchIndex called on V2 index ${searchIndex.name} ${searchIndex.id} - skipping`);
+      return;
+    }
+
     yield this.QueryAIAPI({
       server: "ai",
       path: UrlJoin("/qmanager", "q", indexId, "jobs"),
@@ -2293,6 +2324,398 @@ class AIStore {
       value: this.rootStore.client.utils.B64(
         JSON.stringify(this.previousSearchQueries || {})
       )
+    });
+  });
+
+  V2SearchConfig({selectedFields, configuration}) {
+    let config = {
+      "indexer": {
+        "document": {
+          "aggregation": {
+            "track": "shot_detection"
+          }
+        },
+        "fields": {
+          "title": {
+            "source": {
+              "fabric_paths": [
+                "public.asset_metadata.display_title",
+                "public.asset_metadata.title"
+              ]
+            }
+          }
+        }
+      },
+      "search": {
+        "clip_search": {
+          "defaults": {
+            "rerank_level": "document",
+            "rerank_user_query": true,
+            "clips_min_duration": configuration?.clips_pad_duration || 10,
+            "clips_max_duration": configuration?.clips_truncate_duration || 30
+          }
+        }
+      }
+    };
+
+    selectedFields.forEach(field =>
+      config.indexer.fields[field] = {
+        source: {
+          tag_tracks: [field]
+        }
+      }
+    );
+
+    return config;
+  }
+
+  // Search Index
+  CreateSearchIndexV2 = flow(function * ({
+    name="Search Index",
+    description="",
+    contentIds=[],
+    selectedFields=[],
+    selectedCustomFields=[],
+    configuration
+  }) {
+    try {
+      let libraryId;
+      if(this.rootStore.tenantContractId.includes(this.rootStore.tenantInfoObjectId.slice(4))) {
+        // No tenant info object, using tenant object. Must find a library;
+        const libraryIds = yield this.client.ContentLibraries();
+        for(const id of libraryIds) {
+          const name = (yield this.client.ContentObjectMetadata({
+            versionHash: yield this.client.LatestVersionHash({objectId: `iq__${id.slice(4)}`}),
+            metadataSubtree: "public/name"
+          })) || "";
+
+          if(name.toLowerCase().includes("propert")) {
+            libraryId = id;
+            break;
+          }
+        }
+
+        if(!libraryId) {
+          libraryId = libraryIds[0];
+        }
+      } else {
+        // Just use same library as tenant info object
+        libraryId = yield this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId});
+      }
+
+      this.indexCreateProgress = 30;
+
+      // Create the object and set permissions
+      const type = Object.values(yield this.client.ContentTypes())
+        .find(type => type.name.toLowerCase().includes("index"))?.id;
+      this.indexCreateProgress = 35;
+
+      let objectId;
+      yield this.client.CreateAndFinalizeContentObject({
+        libraryId,
+        options: {type},
+        commitMessage: "EVIE: Create search index",
+        callback: async response => {
+          objectId = response.objectId;
+
+          runInAction(() => this.indexCreateProgress = 50);
+
+          await this.client.MergeMetadata({
+            libraryId,
+            objectId,
+            writeToken: response.writeToken,
+            metadata: Unproxy({
+              public: {
+                name,
+                description,
+                asset_metadata: {
+                  display_title: name,
+                  title: name
+                }
+              }
+            })
+          });
+        }
+      });
+
+      this.indexCreateProgress = 60;
+
+      if(!objectId) {
+        throw Error("Something went wrong");
+      }
+
+      yield this.client.SetPermission({
+        libraryId,
+        objectId,
+        permission: "editable"
+      });
+
+      this.indexCreateProgress = 70;
+
+      yield this.rootStore.AddGroupPermissions({objectId});
+
+      // Create the collection
+      const collectionResponse = yield this.rootStore.aiStore.QueryAIAPI({
+        server: "ai-04",
+        objectId,
+        path: "/vector_store/collections",
+        method: "POST",
+        channelAuth: true,
+        body: {
+          name: `${name} Collection`,
+          qids: [objectId],
+          tenant: this.rootStore.tenantContractId
+        },
+        format: "JSON"
+      });
+
+      // Add contents to the collection
+      yield this.rootStore.aiStore.QueryAIAPI({
+        server: "ai-04",
+        objectId,
+        path: UrlJoin("/vector_store", "collections", collectionResponse.collection_id, "contents"),
+        method: "POST",
+        channelAuth: true,
+        body: {
+          qids: contentIds
+        },
+        format: "JSON"
+      });
+
+      this.indexCreateProgress = 80;
+
+      // Create the index
+      const config = this.V2SearchConfig({
+        selectedFields: [...selectedFields, ...selectedCustomFields],
+        configuration
+      });
+
+      yield this.rootStore.aiStore.QueryAIAPI({
+        server: "ai-04",
+        objectId,
+        path: UrlJoin("/vector_store", "indexes", objectId),
+        method: "POST",
+        channelAuth: true,
+        body: {
+          collection_id: collectionResponse.collection_id,
+          name: `${name} Index`,
+          type: "clip-search",
+          config
+        },
+        format: "JSON"
+      });
+
+      this.indexCreateProgress = 90;
+
+      yield this.rootStore.aiStore.QueryAIAPI({
+        server: "ai-04",
+        objectId,
+        path: UrlJoin("/elv-indexer", "indexes", objectId, "crawl"),
+        method: "POST",
+        authTokenInHeader: true,
+        channelAuth: true,
+        format: "JSON"
+      });
+
+      // TODO: Await crawl;
+      /*
+          const crawlStatus = yield this.rootStore.aiStore.QueryAIAPI({
+        server: "ai-04",
+        objectId,
+        path: UrlJoin("/elv-indexer", "indexes", objectId, "crawl", crawlResponse.handle),
+        method: "GET",
+        authTokenInHeader: true,
+        channelAuth: true,
+        format: "JSON"
+      });
+       */
+
+      yield this.AddSearchIndex({objectId, isV2: true});
+
+      this.searchIndexCustomFields[objectId] = this.searchIndexCustomFields.new || {};
+      delete this.searchIndexCustomFields.new;
+
+      this.StartSearchIndexUpdateStatusWatcher();
+
+      return objectId;
+    } finally {
+      this.indexCreateProgress = undefined;
+    }
+  });
+
+  UpdateSearchIndexV2 = flow(function * ({
+    indexId,
+    name="Search Index",
+    contentIds=[],
+    selectedFields=[],
+    selectedCustomFields=[],
+    configuration
+  }) {
+    const objectId = indexId;
+    const indexInfo = yield this.rootStore.aiStore.QueryAIAPI({
+      server: "ai-04",
+      objectId,
+      path: UrlJoin("/vector_store", "indexes", objectId),
+      method: "GET",
+      channelAuth: true,
+      format: "JSON"
+    });
+
+    const collectionId = indexInfo.collection_id;
+    const collectionInfo = yield this.rootStore.aiStore.QueryAIAPI({
+      server: "ai-04",
+      objectId,
+      path: UrlJoin("/vector_store", "collections", collectionId),
+      method: "GET",
+      channelAuth: true,
+      format: "JSON"
+    });
+
+    // Update content
+    const toAdd = contentIds.filter(id => !collectionInfo.qids.includes(id));
+    const toRemove = collectionInfo.qids.filter(id => !contentIds.includes(id));
+
+    if(toAdd) {
+      yield this.rootStore.aiStore.QueryAIAPI({
+        server: "ai-04",
+        objectId,
+        path: UrlJoin("/vector_store", "collections", collectionId, "contents"),
+        method: "POST",
+        channelAuth: true,
+        format: "JSON",
+        body: {
+          qids: toAdd
+        }
+      });
+    }
+
+    if(toRemove) {
+      yield this.rootStore.aiStore.QueryAIAPI({
+        server: "ai-04",
+        objectId,
+        path: UrlJoin("/vector_store", "collections", collectionId, "contents"),
+        method: "DELETE",
+        channelAuth: true,
+        format: "JSON",
+        body: {
+          qids: toRemove
+        }
+      });
+    }
+
+    this.indexCreateProgress = 60;
+
+    // Update config
+    let indexConfig = indexInfo.config;
+    const updatedIndexConfig = this.V2SearchConfig({
+      selectedFields: [...selectedFields, ...selectedCustomFields],
+      configuration
+    });
+
+    // Change only the parts of the config we want to change
+    indexConfig.indexer.fields = updatedIndexConfig.indexer.fields;
+    indexConfig.search.clip_search.defaults = {
+      ...indexConfig.search.clip_search.defaults || {},
+      ...updatedIndexConfig.search.clip_search.defaults
+    };
+
+    yield this.rootStore.aiStore.QueryAIAPI({
+      server: "ai-04",
+      objectId,
+      path: UrlJoin("/vector_store", "indexes", objectId),
+      method: "PATCH",
+      channelAuth: true,
+      body: {
+        name: `${name} Index`,
+        config: indexConfig
+      },
+      format: "JSON"
+    });
+
+    this.indexCreateProgress = 80;
+
+    if(toAdd.length > 0) {
+      yield this.rootStore.aiStore.QueryAIAPI({
+        server: "ai-04",
+        objectId,
+        path: UrlJoin("/elv-indexer", "indexes", objectId, "crawl"),
+        method: "POST",
+        channelAuth: true,
+        authTokenInHeader: true,
+        format: "JSON"
+      });
+    }
+  });
+
+  LoadSearchIndexInfoV2 = flow(function * ({indexId, force}) {
+    return yield this.rootStore.LoadResource({
+      key: "loadSearchIndexInfoV2",
+      id: indexId,
+      bind: this,
+      ttl: 30,
+      force,
+      Load: flow(function* () {
+        const metadata = yield this.client.ContentObjectMetadata({
+          versionHash: yield this.client.LatestVersionHash({objectId: indexId}),
+          select: [
+            "custom_fields",
+            "/public/name",
+            "/public/asset_metadata/display_title",
+            "/public/asset_metadata/title"
+          ]
+        });
+
+        const indexInfo = yield this.rootStore.aiStore.QueryAIAPI({
+          server: "ai-04",
+          objectId: indexId,
+          path: UrlJoin("/vector_store", "indexes", indexId),
+          method: "GET",
+          authTokenInHeader: true,
+          format: "JSON"
+        });
+
+        const collectionInfo = yield this.rootStore.aiStore.QueryAIAPI({
+          server: "ai-04",
+          objectId: indexId,
+          path: UrlJoin("/vector_store", "collections", indexInfo.collection_id),
+          method: "GET",
+          authTokenInHeader: true,
+          format: "JSON"
+        });
+
+        let allSelectedFields = [];
+        Object.keys(indexInfo?.config?.indexer?.fields || {}).forEach(field =>
+          allSelectedFields = [
+            ...allSelectedFields,
+            ...(indexInfo.config.indexer.fields[field].source.tag_tracks || [])
+          ]
+        );
+
+        allSelectedFields = allSelectedFields
+          .filter((x, i, a) => a.findIndex(q => q === x) === i);
+
+        const customFieldInfo = metadata?.custom_fields || {};
+        const customFields = allSelectedFields.filter(field => customFieldInfo[field]);
+
+        this.searchIndexCustomFields[indexId] = metadata?.custom_fields || {};
+
+        let config = indexInfo?.config?.search?.clip_search?.defaults || {};
+        config.clips_pad_duration = config.clips_min_duration;
+        config.clips_truncate_duration = config.clips_max_duration;
+
+        return {
+          name:
+            indexInfo.name ||
+            metadata.public?.asset_metadata?.display_title ||
+            metadata.public?.asset_metadata?.title ||
+            metadata.public?.name || indexId,
+          fields: allSelectedFields,
+          customFields,
+          customFieldInfo,
+          configuration: config,
+          contentIds: collectionInfo.qids
+        };
+      })
     });
   });
 }

@@ -546,7 +546,7 @@ const TrackLabel = observer(({track, taggingJob}) => {
     } else if(trackStore.relatedTracks.dependencyOf?.includes(track.key)) {
       role = "Dependency Of";
       roleIcon = DependencyOfArrowIcon;
-      roleDescription = "This track is a dependency of the primary track";
+      roleDescription = "This track is dependent on the primary track";
     } else if(trackStore.relatedTracks.dependencies?.includes(track.key)) {
       role = "Dependency";
       roleIcon = DependencyArrowIcon;
@@ -588,6 +588,11 @@ const TrackLabel = observer(({track, taggingJob}) => {
             withinPortal
             icon={roleIcon}
             label={roleDescription}
+            unstyled
+            tooltipProps={{
+              position: "end",
+              offset: 180
+            }}
             className={S("timeline-row__relation-icon")}
           />
       }

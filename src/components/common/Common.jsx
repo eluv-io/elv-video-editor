@@ -439,7 +439,18 @@ export const AsyncButton = observer(({onClick, tooltip, loading, ...props}) => {
   );
 });
 
-export const StyledButton = observer(({icon, variant="primary", size="lg", color="--color-highlight--dark", textColor="--text-primary", children, loading, w, ...props}) => {
+export const StyledButton = observer(({
+  icon,
+  variant="primary",
+  size="lg",
+  color="--color-highlight--dark",
+  textColor="--text-primary",
+  children,
+  loading,
+  loadingProgress,
+  w,
+  ...props
+}) => {
   const [submitting, setSubmitting] = useState(false);
 
   textColor = variant === "secondary" ? textColor || color : textColor || "";
@@ -495,7 +506,17 @@ export const StyledButton = observer(({icon, variant="primary", size="lg", color
       {
         !submitting && !loading ? null :
           <div className={S("styled-button__loader-container")}>
-            <Loader className={S("styled-button__loader")} />
+            {
+              loadingProgress ?
+                <RingProgress
+                  size={25}
+                  thickness={3}
+                  transitionDuration={500}
+                  rootColor="var(--text-tertiary)"
+                  sections={[{value: loadingProgress, color: "var(--color-highlight"}]}
+                /> :
+                <Loader className={S("styled-button__loader")} />
+            }
           </div>
       }
     </Linkish>

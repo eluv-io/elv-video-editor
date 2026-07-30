@@ -181,7 +181,6 @@ class RootStore {
     }
 
     if(!this.tenantInfoObjectId) {
-      // eslint-disable-next-line no-console
       console.warn(`Tenant info object ID (public/ml_config) not set for this tenant (${this.tenantContractId})`);
       this.tenantInfoObjectId = this.tenantContractId.replace(/^iten/, "iq__");
     }

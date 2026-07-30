@@ -753,7 +753,6 @@ export const BrowserTable = observer(({
         {
           (content || []).map(item => {
             if(!item) {
-              // eslint-disable-next-line no-console
               console.warn("Browser table missing item", content);
               return null;
             }

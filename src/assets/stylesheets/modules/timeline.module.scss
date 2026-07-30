@@ -94,7 +94,7 @@
 }
 
 .timeline-row {
-  animation: var(--animation-fadein) 0.5s ease;
+  animation: var(--animation-fadein) 0.75s ease;
   background: var(--background-primary);
   display: grid;
   gap: 3px;
@@ -214,8 +214,11 @@
   }
 
   &__relation-icon {
+    align-items: center;
     color: var(--color-highlight--dark);
+    display: flex;
     height: 30px;
+    justify-content: center;
     margin-right: 5px;
     min-height: 30px;
     min-width: 30px;

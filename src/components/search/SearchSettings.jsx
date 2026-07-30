@@ -42,6 +42,21 @@ const audioLanguageFields = [
   "llava"
 ];
 
+const v2Visual = {
+  "celebrity_detection": "Celebrity",
+  "character": "Characters",
+  "logo": "Logo",
+  "object_detection": "Object",
+  "scene_description": "Scene Description"
+};
+
+const v2Audio = {
+  "llava_caption": "Llava",
+  "auto_captions": "Speech to Text",
+  "music_detection": "Music",
+  "transcription": "Transcription"
+};
+
 const IndexConfigDefaults = {
   clips_pad_duration: 15,
   clips_truncate_duration: 120
@@ -89,6 +104,8 @@ const SearchIndexContentBrowserModal = observer(({contentIds, Submit, Close}) =>
 });
 
 const CreateSearchIndexForm = observer(({indexId, Close}) => {
+  const index = aiStore.searchIndexes.find(index => index.id === indexId);
+  const isV2 = !indexId || index?.isV2;
   let defaultOptions = {
     fields: aiStore.searchIndexTemplateInfo?.optionalFields || [],
     customFields: Object.keys(aiStore.searchIndexCustomFields[indexId || "new"] || {}),
@@ -108,7 +125,10 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
     aiStore.LoadSearchIndexTemplateInfo()
       .then(async () => {
         if(indexId) {
-          const {name, fields, customFields, contentIds, configuration} = await aiStore.LoadSearchIndexInfo({indexId});
+          const {name, fields, customFields, contentIds, configuration} =
+            isV2 ?
+              await aiStore.LoadSearchIndexInfoV2({indexId}) :
+              await aiStore.LoadSearchIndexInfo({indexId});
 
           setOptions({
             ...options,
@@ -132,7 +152,7 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
         } else {
           setOptions({
             ...options,
-            fields: aiStore.searchIndexTemplateInfo?.optionalFields || []
+            fields: [...Object.keys(v2Visual), ...Object.keys(v2Audio)]
           });
         }
 
@@ -143,6 +163,22 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
   if(!aiStore.searchIndexTemplateInfo) {
     return null;
   }
+
+  const visualFieldList = (
+    isV2 ?
+      Object.keys(v2Visual).map(key => ({label: v2Visual[key], value: key})) :
+      aiStore.searchIndexTemplateInfo.optionalFields
+        .filter(field => visualFields.find(otherField => otherField.startsWith(field)))
+        .map(field => ({label: FormatFieldName(field), value: field}))
+  );
+
+  const audioFieldList = (
+    isV2 ?
+      Object.keys(v2Audio).map(key => ({label: v2Audio[key], value: key})) :
+      aiStore.searchIndexTemplateInfo.optionalFields
+        .filter(field => audioLanguageFields.find(otherField => otherField.startsWith(field)))
+        .map(field => ({label: FormatFieldName(field), value: field}))
+  );
 
   return (
     <Modal
@@ -262,20 +298,19 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
               Visual Recognition
             </h3>
             {
-              aiStore.searchIndexTemplateInfo.optionalFields
-                .filter(field => visualFields.find(otherField => otherField.startsWith(field)))
-                .map(field =>
+              visualFieldList
+                .map(({label, value}) =>
                   <Checkbox
                     size="sm"
-                    key={`field-${field}`}
-                    label={FormatFieldName(field)}
-                    checked={options.fields.includes(field)}
+                    key={`field-${value}`}
+                    label={label}
+                    checked={options.fields.includes(value)}
                     onChange={() => setOptions({
                       ...options,
                       fields:
-                        options.fields.includes(field) ?
-                          options.fields.filter(otherField => otherField !== field) :
-                          [...options.fields, field]
+                        options.fields.includes(value) ?
+                          options.fields.filter(otherField => otherField !== value) :
+                          [...options.fields, value]
                     })}
                   />
                 )
@@ -286,20 +321,19 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
               Audio & Language
             </h3>
             {
-              aiStore.searchIndexTemplateInfo.optionalFields
-                .filter(field => audioLanguageFields.find(otherField => otherField.startsWith(field)))
-                .map(field =>
+              audioFieldList
+                .map(({label, value}) =>
                   <Checkbox
                     size="sm"
-                    key={`field-${field}`}
-                    label={FormatFieldName(field)}
-                    checked={options.fields.includes(field)}
+                    key={`field-${value}`}
+                    label={label}
+                    checked={options.fields.includes(value)}
                     onChange={() => setOptions({
                       ...options,
                       fields:
-                        options.fields.includes(field) ?
-                          options.fields.filter(otherField => otherField !== field) :
-                          [...options.fields, field]
+                        options.fields.includes(value) ?
+                          options.fields.filter(otherField => otherField !== value) :
+                          [...options.fields, value]
                     })}
                   />
                 )
@@ -439,9 +473,10 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
         </StyledButton>
         <StyledButton
           w={150}
+          loadingProgress={aiStore.indexCreateProgress}
           onClick={async () => {
             if(!indexId) {
-              indexId = await aiStore.CreateSearchIndex({
+              indexId = await aiStore.CreateSearchIndexV2({
                 name: options.name,
                 selectedFields: options.fields,
                 selectedCustomFields: options.customFields,
@@ -452,8 +487,21 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
                 }
               });
 
-              await aiStore.BuildSearchIndex({indexId});
+              //await aiStore.BuildSearchIndex({indexId});
+            } else if(isV2) {
+              await aiStore.UpdateSearchIndexV2({
+                indexId,
+                name: options.name,
+                selectedFields: options.fields,
+                selectedCustomFields: options.customFields,
+                contentIds: options.contentIds,
+                configuration: {
+                  clips_pad_duration: options.configuration.clips_pad_duration,
+                  clips_truncate_duration: options.configuration.clips_truncate_duration
+                }
+              });
             } else {
+              // Update V1
               await aiStore.UpdateSearchIndex({
                 indexId,
                 name: options.name,
@@ -602,44 +650,49 @@ export const SearchIndexForm = observer(({options, setOptions}) => {
                 {
                   !index.canEdit ? null :
                     <>
-                      {
-                        index.isV2 ? null :
-                          <>
-                            <IconButton
-                              label="Modify Search Index"
-                              icon={EditIcon}
-                              onClick={() => setShowForm(index.id)}
-                            />
-                          </>
-                      }
                       <IconButton
-                        label="Update Search Index"
-                        loadingLabel="Search index updating, click to cancel."
-                        icon={UpdateIndexIcon}
-                        loadingProgress={aiStore.searchIndexUpdateProgress[index.id]}
-                        onClick={async event => {
-                          event.preventDefault();
-                          event.stopPropagation();
-
-                          await Confirm({
-                            title: "Remove Search Index",
-                            text: "Are you sure you want to update this search index?",
-                            onConfirm: async () =>
-                              await aiStore.BuildSearchIndex({indexId: index.id})
-                          });
-                        }}
-                        onCancel={async event => {
-                          event.preventDefault();
-                          event.stopPropagation();
-
-                          await Confirm({
-                            title: "Cancel Search Index Update",
-                            text: "Are you sure you want to cancel the pending update to this search index?",
-                            onConfirm: async () =>
-                              await aiStore.CancelSearchIndexBuild({indexId: index.id})
-                          });
-                        }}
+                        label="Modify Search Index"
+                        icon={EditIcon}
+                        onClick={() => setShowForm(index.id)}
                       />
+                      {
+                        index.isV2 ?
+                          !aiStore.searchIndexUpdateProgress[index.id] ? null :
+                            <IconButton
+                              label="Update Search Index"
+                              loadingLabel="Search index updating"
+                              icon={UpdateIndexIcon}
+                              loadingProgress={aiStore.searchIndexUpdateProgress[index.id]}
+                            /> :
+                            <IconButton
+                              label="Update Search Index"
+                              loadingLabel="Search index updating, click to cancel."
+                              icon={UpdateIndexIcon}
+                              loadingProgress={aiStore.searchIndexUpdateProgress[index.id]}
+                              onClick={async event => {
+                                event.preventDefault();
+                                event.stopPropagation();
+
+                                await Confirm({
+                                  title: "Update Search Index",
+                                  text: "Are you sure you want to update this search index?",
+                                  onConfirm: async () =>
+                                    await aiStore.BuildSearchIndex({indexId: index.id})
+                                });
+                              }}
+                              onCancel={async event => {
+                                event.preventDefault();
+                                event.stopPropagation();
+
+                                await Confirm({
+                                  title: "Cancel Search Index Update",
+                                  text: "Are you sure you want to cancel the pending update to this search index?",
+                                  onConfirm: async () =>
+                                    await aiStore.CancelSearchIndexBuild({indexId: index.id})
+                                });
+                              }}
+                            />
+                      }
                     </>
                 }
                 <IconButton

@@ -477,13 +477,11 @@ class BrowserStore {
     content = (yield Promise.all(
       content.map(async item => {
         if(objectDetails[item.objectId] === "deleted") {
-          // eslint-disable-next-line no-console
           console.warn("Removing deleted library item: ", item);
           this.RemoveMyLibraryItem(item);
           itemsDeleted = true;
           return;
         } else if(objectDetails[item.objectId] === "unauthorized") {
-          // eslint-disable-next-line no-console
           console.warn("Removing unauthorized library item: ", item);
           this.RemoveMyLibraryItem(item);
           itemsDeleted = true;
@@ -499,7 +497,6 @@ class BrowserStore {
               channel.compositionKey === item.compositionKey
             )
           ) {
-            // eslint-disable-next-line no-console
             console.warn("Removing deleted composition from my library: ", item.objectId, item.compositionKey);
             this.RemoveMyLibraryItem(item);
             itemsDeleted = true;
