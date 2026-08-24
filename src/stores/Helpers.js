@@ -32,7 +32,7 @@ export const LoadVideo = async ({
         "offerings/*/exit_point_rat",
         "offerings/*/media_struct/duration_rat",
         "offerings/*/media_struct/streams/*/rate",
-        "offerings/*/media_struct/streams/*/duration/rat",
+        "offerings/*/media_struct/streams/*/duration",
         "offerings/*/media_struct/streams/*/codec_type",
         //"offerings/*/media_struct/streams/*/sources",
         "offerings/*/media_struct/streams/*/label",
@@ -173,9 +173,14 @@ export const LoadVideo = async ({
           metadata.offerings[videoObject.offeringKey].media_struct.streams[streamKey].codec_type === "video"
         );
 
-      videoObject.duration = FrameAccurateVideo.ParseRat(
-        metadata.offerings[videoObject.offeringKey].media_struct.streams[videoObject.streamKey].duration.rat
-      );
+      const durationRat = metadata.offerings[videoObject.offeringKey].media_struct.streams[videoObject.streamKey]?.duration?.rat;
+      if(durationRat) {
+        videoObject.duration = FrameAccurateVideo.ParseRat(durationRat);
+      } else {
+        const timebase = FrameAccurateVideo.ParseRat(metadata.offerings[videoObject.offeringKey].media_struct.streams[videoObject.streamKey].duration.time_base);
+        const ts = metadata.offerings[videoObject.offeringKey].media_struct.streams[videoObject.streamKey].duration.ts;
+        videoObject.duration = timebase * ts;
+      }
 
       videoObject.timecode = metadata.offerings[videoObject.offeringKey].media_struct.streams[videoObject.streamKey].tags?.timecode;
 
