@@ -245,7 +245,7 @@ class TitleStore {
     });
   });
 
-  GenerateTitleSynopsis = flow(function * ({objectId, style="extended"}) {
+  GenerateTitleSynopsis = flow(function * ({objectId, style="extended", prompt=""}) {
     const {synopsis} = yield this.rootStore.aiStore.QueryAIAPI({
       server: "ai",
       method: "GET",
@@ -254,7 +254,8 @@ class TitleStore {
       channelAuth: true,
       queryParams: {
         regenerate: true,
-        style
+        style,
+        personal_prompt: prompt
       }
     });
 
@@ -263,6 +264,7 @@ class TitleStore {
       label: `Generate ${style} synopsis for ${yield this.rootStore.GetObjectName({objectId})}`,
       type: "titles",
       action: "generateSynopsis",
+      page: "titles",
       modifiedItem: originalSynopsis,
       Action: () => {
         if(!this.titles[objectId].metadata.ai_derived_media) {
@@ -310,6 +312,7 @@ class TitleStore {
     this.rootStore.editStore.PerformAction({
       label: `Regenerate clip summary for ${yield this.rootStore.GetObjectName({objectId})} clip with prompt ${prompt}`,
       type: "titles",
+      page: "titles",
       action: "generateSummary",
       modifiedItem: originalSummary,
       Action: () => {

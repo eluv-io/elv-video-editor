@@ -14,7 +14,6 @@ const S = CreateModuleClassMatcher(BrowserStyles, SearchStyles);
 
 let batchSize = 20;
 const TitleResults = observer(() => {
-
   return (
     <InfiniteScroll
       scrollPreservationKey="titles"

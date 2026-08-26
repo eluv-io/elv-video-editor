@@ -20,8 +20,6 @@ import VerticalIcon from "@/assets/icons/vertical.svg";
 import PinIcon from "@/assets/icons/v2/pin.svg";
 import SubmitIcon from "@/assets/icons/v2/search-arrow.svg";
 
-
-
 const S = CreateModuleClassMatcher(TitleStyles);
 
 const Summary = observer(({title, clipInfo}) => {
@@ -214,7 +212,6 @@ const TitleClip = observer(() => {
                       <DownloadModalButton store={title.videoStore} />
                     </>
                 }
-
               </div>
             </div>
           </div>

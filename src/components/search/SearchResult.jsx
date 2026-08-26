@@ -4,14 +4,14 @@ import SearchStyles from "@/assets/stylesheets/modules/search.module.scss";
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {Redirect, useParams} from "wouter";
-import {rootStore, aiStore, downloadStore} from "@/stores/index.js";
+import {rootStore, aiStore, downloadStore, titleStore} from "@/stores/index.js";
 import {CopyableField, Icon, IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
 import {Copy, CreateModuleClassMatcher, ParseSearchQuery} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 import Player from "@/components/common/Player.jsx";
 import {ShareModal} from "@/components/download/Share.jsx";
 import {DownloadModal} from "@/components/download/Download.jsx";
-import {Tabs} from "@mantine/core";
+import {Tabs, Textarea} from "@mantine/core";
 import {AISearchBar} from "@/components/nav/Browser.jsx";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {GroupedSearchResults, SearchResults} from "@/components/search/SearchResults.jsx";
@@ -33,11 +33,14 @@ import EmbedLinkIcon from "@/assets/icons/v2/link.svg";
 
 import AIImageGray from "@/assets/images/composition-manual.svg";
 import AIImageColor from "@/assets/images/composition-ai.svg";
+import SubmitIcon from "@/assets/icons/v2/search-arrow.svg";
+import {Synopsis} from "@/components/titles/Title.jsx";
 
 
 const S = CreateModuleClassMatcher(BrowserStyles, SearchStyles);
 
 const Summary = observer(({result}) => {
+  const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [summary, setSummary] = useState(false);
@@ -45,6 +48,8 @@ const Summary = observer(({result}) => {
   const [showSummary, setShowSummary] = useState(result.type !== "video");
 
   const Generate = async ({cacheOnly, regenerate}={}) => {
+    setGenerating(true);
+
     try {
       if(result.type === "video") {
         const summary = await aiStore.GenerateClipSummary({
@@ -52,7 +57,8 @@ const Summary = observer(({result}) => {
           startTime: result.startTime,
           endTime: result.endTime,
           cacheOnly,
-          regenerate
+          regenerate,
+          prompt
         });
 
         setSummary(summary);
@@ -62,7 +68,8 @@ const Summary = observer(({result}) => {
             objectId: result.objectId,
             filePath: result.filePath,
             cacheOnly,
-            regenerate
+            regenerate,
+            prompt
           })
         );
       }
@@ -165,29 +172,62 @@ const Summary = observer(({result}) => {
   }
 
   return (
-    <div className={S("result__text")}>
-      <div className={S("result__title")}>
-        <Icon icon={AIIcon} className={S("result__icon")} />
-        <span>{summary.title}</span>
+    <>
+      <div className={S("result__text")}>
+        <div className={S("result__title")}>
+          <Icon icon={AIIcon} className={S("result__icon")}/>
+          <span>{summary.title}</span>
+        </div>
+        <div className={S("result__summary")}>
+          {summary.summary}
+        </div>
+        <div className={S("result__text-actions")}>
+          <IconButton
+            disabled={!summary}
+            icon={RegenerateIcon}
+            onClick={async () => Generate({regenerate: true})}
+            className={S("result__text-action")}
+          />
+          <IconButton
+            disabled={!summary}
+            icon={XIcon}
+            onClick={async () => await Delete()}
+            className={S("result__text-action")}
+          />
+        </div>
       </div>
-      <div className={S("result__summary")}>
-        { summary.summary }
-      </div>
-      <div className={S("result__text-actions")}>
-        <IconButton
-          disabled={!summary}
-          icon={RegenerateIcon}
-          onClick={async () => Generate({regenerate: true})}
-          className={S("result__text-action")}
+      <div className={S("result__prompt-container")}>
+        <Textarea
+          autosize
+          leftSection={<Icon icon={AIIcon}/>}
+          value={prompt}
+          onChange={event => setPrompt(event.target.value)}
+          placeholder="How would you like to personalize this?"
+          onKeyDown={event => {
+            // Shift + enter is newline
+            if(event.shiftKey) { return; }
+
+            if(event.key === "Enter") {
+              event.preventDefault();
+              event.stopPropagation();
+              Generate({regenerate: true, prompt});
+            }
+          }}
+          rightSection={
+            !generating ?
+              <IconButton
+                onClick={async () => await Generate({regenerate: true, prompt})}
+                icon={SubmitIcon}
+              /> :
+              <Loader loaderClassName={S("ai-text-input__loader")}/>
+          }
+          className={S("result__prompt")}
+          classNames={{
+            input: S("ai-text-input__input")
+          }}
         />
-        <IconButton
-          disabled={!summary}
-          icon={XIcon}
-          onClick={async () => await Delete()}
-          className={S("result__text-action")}
-        />
       </div>
-    </div>
+    </>
   );
 });
 
@@ -214,6 +254,8 @@ const ClipResultPanel = observer(({result}) => {
     clip.clipOutFrame === clipVideoStore.TimeToFrame(result.endTime || clipVideoStore.duration)
   );
 
+  const title = titleStore.titles[result.objectId];
+
   return (
     <>
       <div className={S("result")}>
@@ -238,21 +280,39 @@ const ClipResultPanel = observer(({result}) => {
         </div>
         <div className={S("result__actions")}>
           <div className={S("result__actions--left")}>
-            <StyledButton
-              size="sm"
-              icon={showFull ? ClipIcon : PlayIcon}
-              onClick={() => setShowFull(!showFull)}
-            >
-              { showFull ? "Play Clip" : "Play Full Length" }
-            </StyledButton>
             {
-              showFull ? null :
-                <div className={S("result__time")}>
-                  { result.subtitle }
-                </div>
-            }
+              showFull ?
+                <div
+                  title={title?.title || ""}
+                  className={S("result__title", "result__title--full", "ellipsis")}
+                >
+                  {title?.title || ""}
+                </div> :
+                <>
+                  <StyledButton
+                    size="sm"
+                    icon={PlayIcon}
+                    onClick={() => setShowFull(true)}
+                  >
+                    Play Full Length
+                  </StyledButton>
+                  <div className={S("result__time")}>
+                    { result.subtitle }
+                  </div>
+                </>
+              }
           </div>
           <div className={S("result__actions--right")}>
+            {
+              !showFull ? null :
+                <StyledButton
+                  size="sm"
+                  icon={ClipIcon}
+                  onClick={() => setShowFull(false)}
+                >
+                  Play Clip
+                </StyledButton>
+            }
             {
               !aiStore.IsTitle({objectId: result.objectId}) ? null :
                 <StyledButton
@@ -316,7 +376,29 @@ const ClipResultPanel = observer(({result}) => {
             />
           </div>
         </div>
-        <Summary result={result} />
+        {
+          showFull ?
+            <>
+              {
+                !title?.metadata?.ai_derived_media?.topics ? null :
+                  <div className={S("result__tags")}>
+                    {
+                      title.metadata.ai_derived_media.topics
+                        .slice(0, 6)
+                        .map(tag =>
+                          <div key={tag} className={S("result__tag")}>
+                            {tag}
+                          </div>
+                        )
+                    }
+                  </div>
+              }
+              <div className={S("result__synopsis-container")}>
+                <Synopsis title={titleStore.titles[result.objectId]} compact />
+              </div>
+            </> :
+            <Summary result={result} />
+        }
       </div>
       {
         !showShareModal ? null :
@@ -457,6 +539,8 @@ const SearchResult = observer(() => {
       rootStore.searchVideoStore.SetVideo({objectId: result.objectId})
         .then(() => rootStore.searchVideoStore.SetClipMark({inTime: result.startTime, outTime: result.endTime}));
     }
+
+    titleStore.LoadTitle({titleId: result.objectId});
   }, [result, queryB58, resultIndex]);
 
   if(!result) {

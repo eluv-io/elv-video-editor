@@ -15,64 +15,114 @@ import {
 } from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher, Capitalize} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
-import {Select, TextInput, Tooltip} from "@mantine/core";
+import {Select, Textarea, TextInput, Tooltip} from "@mantine/core";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import GenerateIcon from "@/assets/icons/rotate-ccw.svg";
 import SearchArrowIcon from "@/assets/icons/v2/search-arrow.svg";
+import SubmitIcon from "@/assets/icons/v2/search-arrow.svg";
 
 const S = CreateModuleClassMatcher(TitleStyles);
 
-export const Synopsis = observer(({title}) => {
-  const synopses = title.metadata.ai_derived_media?.synopses || {};
+export const Synopsis = observer(({title, compact=false}) => {
+  const synopses = title?.metadata?.ai_derived_media?.synopses || {};
   const [synopsisType, setSynopsisType] = useState(
     Object.keys(synopses).includes("extended") ? "extended" : Object.keys(synopses)[0] || "extended"
   );
+  const [prompt, setPrompt] = useState("");
+  const [generating, setGenerating] = useState(false);
+
+  const Generate = async () => {
+    setGenerating(true);
+
+    try {
+      await titleStore.GenerateTitleSynopsis({objectId: title.objectId, style: synopsisType, prompt});
+    } catch(error) {
+      console.error(error);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  if(!title) { return null; }
 
   return (
-    <div className={S("synopsis")}>
-      <div className={S("synopsis__type")}>
-        <Icon icon={AIIcon} className={S("synopsis__icon")} />
-        <div className={S("synopsis__title")}>
-          Synopsis
+    <div className={S("synopsis-container")}>
+      <div className={S("synopsis", compact ? "synopsis--compact" : "")}>
+        <div className={S("synopsis__type")}>
+          <Icon icon={AIIcon} className={S("synopsis__icon")}/>
+          <div className={S("synopsis__title")}>
+            Synopsis
+          </div>
+          <Linkish
+            onClick={() => setSynopsisType("oneliner")}
+            className={S("synopsis__type", synopsisType === "oneliner" ? "synopsis__type--active" : "")}
+          >
+            Logline (One Line)
+          </Linkish>
+          <Linkish
+            onClick={() => setSynopsisType("sales")}
+            className={S("synopsis__type", synopsisType === "sales" ? "synopsis__type--active" : "")}
+          >
+            Marketing (Paragraph)
+          </Linkish>
+          <Linkish
+            onClick={() => setSynopsisType("extended")}
+            className={S("synopsis__type", synopsisType === "extended" ? "synopsis__type--active" : "")}
+          >
+            Extended
+          </Linkish>
+          <Linkish
+            onClick={() => setSynopsisType("social")}
+            className={S("synopsis__type", synopsisType === "social" ? "synopsis__type--active" : "")}
+          >
+            Social
+          </Linkish>
+          <div className={S("synopsis__buttons")}>
+            <CopyButton label="Copy synopsis" value={synopsisType} small/>
+            <IconButton
+              icon={GenerateIcon}
+              label={synopses[synopsisType] ? "Regenerate Synopsis" : "Generate Synopsis"}
+              onClick={Generate}
+              className={S("synopsis__button", "synopsis__button--generate")}
+            />
+          </div>
         </div>
-        <Linkish
-          onClick={() => setSynopsisType("oneliner")}
-          className={S("synopsis__type", synopsisType === "oneliner" ? "synopsis__type--active" : "")}
-        >
-          Logline (One Line)
-        </Linkish>
-        <Linkish
-          onClick={() => setSynopsisType("sales")}
-          className={S("synopsis__type", synopsisType === "sales" ? "synopsis__type--active" : "")}
-        >
-          Marketing (Paragraph)
-        </Linkish>
-        <Linkish
-          onClick={() => setSynopsisType("extended")}
-          className={S("synopsis__type", synopsisType === "extended" ? "synopsis__type--active" : "")}
-        >
-          Extended
-        </Linkish>
-        <Linkish
-          onClick={() => setSynopsisType("social")}
-          className={S("synopsis__type", synopsisType === "social" ? "synopsis__type--active" : "")}
-        >
-          Social
-        </Linkish>
-        <div className={S("synopsis__buttons")}>
-          <CopyButton label="Copy synopsis" value={synopsisType} small />
-          <IconButton
-            icon={GenerateIcon}
-            label={synopses[synopsisType] ? "Regenerate Synopsis" : "Generate Synopsis"}
-            onClick={async () => titleStore.GenerateTitleSynopsis({objectId: title.objectId, style: synopsisType})}
-            className={S("synopsis__button", "synopsis__button--generate")}
-          />
+        <div key={synopsisType} className={S("synopsis__text")}>
+          {synopses[synopsisType] || "Not Generated"}
         </div>
       </div>
-      <div key={synopsisType} className={S("synopsis__text")}>
-        { synopses[synopsisType] || "Not Generated" }
+      <div className={S("summary__prompt-container")}>
+        <Textarea
+          autosize
+          leftSection={<Icon icon={AIIcon}/>}
+          value={prompt}
+          onChange={event => setPrompt(event.target.value)}
+          placeholder="How would you like to personalize this?"
+          onKeyDown={event => {
+            // Shift + enter is newline
+            if(event.shiftKey) { return; }
+
+            if(event.key === "Enter") {
+              event.preventDefault();
+              event.stopPropagation();
+              Generate();
+            }
+          }}
+          rightSection={
+            !generating ?
+              <IconButton
+                onClick={Generate}
+                icon={SubmitIcon}
+              /> :
+              <Loader loaderClassName={S("ai-text-input__loader")}/>
+          }
+          className={S("summary__prompt")}
+          classNames={{
+            input: S("ai-text-input__input")
+          }}
+        />
       </div>
     </div>
   );
