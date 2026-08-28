@@ -312,7 +312,7 @@ class AIStore {
   });
 
   DeleteClipSummary = flow(function * ({objectId, startTime, endTime}) {
-    yield this.rootStore.aiStore.QueryAIAPI({
+    yield this.QueryAIAPI({
       server: "ai",
       method: "DELETE",
       path: UrlJoin("mlcache", "summary", "q", objectId, "rep", "summarize"),
@@ -429,6 +429,44 @@ class AIStore {
 
     try {
       const versionHash = yield this.client.LatestVersionHash({objectId: id});
+      const indexerInfo = yield this.client.ContentObjectMetadata({
+        versionHash,
+        metadataSubtree: "indexer/config/indexer/arguments",
+        select: [
+          "fields",
+          "document/prefix"
+        ]
+      });
+
+      if(!indexerInfo) {
+        // V2 - Get info from API
+        let info = yield this.QueryAIAPI({
+          server: "ai-04",
+          path: UrlJoin("vector_search", "indexes", id),
+          method: "GET",
+          objectId: this.rootStore.tenantInfoObjectId,
+          authTokenInHeader: true
+        });
+
+        let fields = {};
+        info?.fields?.map(field =>
+          fields[field.name] = {
+            ...field,
+            value: true
+          }
+        )
+
+        return {
+          fields,
+          eventTracks: [],
+          type: "index",
+          musicSupported: true,
+          versionHash,
+          indexedTitles: (info?.qids || [])
+            .map(objectId => ({objectId, name: objectId}))
+        };
+      }
+
       const indexedLinks = (yield this.client.ContentObjectMetadata({
         versionHash,
         metadataSubtree: "site_map/searchables"
@@ -441,25 +479,6 @@ class AIStore {
 
       const indexedTitles = indexedTitleIds.map(objectId => ({objectId, name: objectId}));
 
-      const indexerInfo = yield this.client.ContentObjectMetadata({
-        versionHash,
-        metadataSubtree: "indexer/config/indexer/arguments",
-        select: [
-          "fields",
-          "document/prefix"
-        ]
-      });
-
-      if(!indexerInfo) {
-        return {
-          fields: {},
-          eventTracks: [],
-          type: "index",
-          musicSupported: true,
-          versionHash,
-          indexedTitles
-        };
-      }
 
       let musicSupported = false;
       const fuzzySearchFields = {};
