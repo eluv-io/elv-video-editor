@@ -473,7 +473,10 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
         </StyledButton>
         <StyledButton
           w={150}
-          loadingProgress={aiStore.indexCreateProgress}
+          loadingProgress={
+            isV2 ? undefined :
+              aiStore.indexCreateProgress
+          }
           onClick={async () => {
             if(!indexId) {
               indexId = await aiStore.CreateSearchIndexV2({
@@ -636,8 +639,13 @@ export const SearchIndexForm = observer(({options, setOptions}) => {
               className={S("index__option", options.searchIndexId === index.id ? "index__option--active" : "")}
             >
               <div className={S("index__text")}>
-                <div className={S("index__option-name", "ellipsis")}>
-                  {index.name || index.id}
+                <div className={S("index__option-name")}>
+                  <span className={S("ellipsis")}>
+                    {index.name || index.id}
+                  </span>
+                  <div className={S("index__option-gen", index.isV2 ? "index__option-gen--2" : "")}>
+                    {index.isV2 ? "Gen 2" : "Gen 1"}
+                  </div>
                 </div>
                 {
                   !index.name ? null :

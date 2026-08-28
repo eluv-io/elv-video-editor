@@ -551,7 +551,21 @@
   }
 
   &__option-name {
-    color: var(--text-primary);
+    align-items: center;
+    display: flex;
+    gap: 10px;
+  }
+
+  &__option-gen {
+    background-color: var(--background-toolbar--active);
+    border-radius: 5px;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 4px;
+
+    &--2 {
+      background-color: var(--color-highlight);
+    }
   }
 
   &__option-id {

@@ -28,7 +28,7 @@ import {
 import SVG from "react-inlinesvg";
 import {Redirect, Route, useParams, Switch, useLocation, useSearchParams} from "wouter";
 import UrlJoin from "url-join";
-import {Select, Tabs, Tooltip, Progress, Menu, Checkbox, Autocomplete} from "@mantine/core";
+import {Select, Tabs, Tooltip, Progress, Menu, Checkbox, Autocomplete, RingProgress} from "@mantine/core";
 import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
 import SearchSettings from "@/components/search/SearchSettings.jsx";
 import {Dropzone, IMAGE_MIME_TYPE} from "@mantine/dropzone";
@@ -247,6 +247,8 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [,navigate] = useLocation();
 
+  const indexUpdateProgress = aiStore.searchIndexUpdateProgress[aiStore.selectedSearchIndexId];
+
   const Submit = async ({mode, query}={}) => {
     query = query || input;
     BeforeSubmit?.({mode, query});
@@ -388,6 +390,21 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
                         noHover
                         onClick={() => setInput("")}
                       />
+                  }
+                  {
+                    mode !== "clip" || !indexUpdateProgress  ? null :
+                      <Tooltip
+                        openDelay={500}
+                        label={`Search index '${aiStore.searchIndex.name}' is updating (${indexUpdateProgress.toFixed(0)}%)`}
+                      >
+                        <RingProgress
+                          size={25}
+                          thickness={3}
+                          transitionDuration={500}
+                          rootColor="var(--text-tertiary)"
+                          sections={[{value: indexUpdateProgress, color: "var(--color-highlight"}]}
+                        />
+                      </Tooltip>
                   }
                   <IconButton
                     label="Search"

@@ -513,7 +513,7 @@ export const StyledButton = observer(({
                   thickness={3}
                   transitionDuration={500}
                   rootColor="var(--text-tertiary)"
-                  sections={[{value: loadingProgress, color: "var(--color-highlight"}]}
+                  sections={[{value: loadingProgress, color: `var(${textColor}, white)`}]}
                 /> :
                 <Loader className={S("styled-button__loader")} />
             }
