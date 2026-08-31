@@ -114,6 +114,7 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
   };
 
   const [initialOptions, setInitialOptions] = useState({});
+  const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [showBrowser, setShowBrowser] = useState(false);
   const [options, setOptions] = useState({
@@ -447,6 +448,12 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
           </div>
         </div>
       </div>
+      {
+        !errorMessage ? null :
+          <div className={S("search-settings__error")}>
+            { errorMessage }
+          </div>
+      }
       <div className={S("search-settings__actions")}>
         <StyledButton
           onClick={Close}
@@ -479,56 +486,64 @@ const CreateSearchIndexForm = observer(({indexId, Close}) => {
               aiStore.indexCreateProgress
           }
           onClick={async () => {
-            if(!indexId) {
-              indexId = await aiStore.CreateSearchIndexV2({
-                name: options.name,
-                selectedFields: options.fields,
-                selectedCustomFields: options.customFields,
-                contentIds: options.contentIds,
-                configuration: {
-                  clips_pad_duration: options.configuration.clips_pad_duration,
-                  clips_truncate_duration: options.configuration.clips_truncate_duration
-                }
-              });
+            setErrorMessage("");
 
-              //await aiStore.BuildSearchIndex({indexId});
-            } else if(isV2) {
-              await aiStore.UpdateSearchIndexV2({
-                indexId,
-                name: options.name,
-                selectedFields: options.fields,
-                selectedCustomFields: options.customFields,
-                contentIds: options.contentIds,
-                configuration: {
-                  clips_pad_duration: options.configuration.clips_pad_duration,
-                  clips_truncate_duration: options.configuration.clips_truncate_duration
-                }
-              });
-            } else {
-              // Update V1
-              await aiStore.UpdateSearchIndex({
-                indexId,
-                name: options.name,
-                selectedFields: options.fields,
-                selectedCustomFields: options.customFields,
-                contentIds: options.contentIds,
-                configuration: {
-                  clips_pad_duration: options.configuration.clips_pad_duration,
-                  clips_truncate_duration: options.configuration.clips_truncate_duration
-                }
-              });
+            try {
+              if(!indexId) {
+                indexId = await aiStore.CreateSearchIndexV2({
+                  name: options.name,
+                  selectedFields: options.fields,
+                  selectedCustomFields: options.customFields,
+                  contentIds: options.contentIds,
+                  configuration: {
+                    clips_pad_duration: options.configuration.clips_pad_duration,
+                    clips_truncate_duration: options.configuration.clips_truncate_duration
+                  }
+                });
 
-              const optionsChanged =
-                JSON.stringify(options.contentIds.slice().sort()) !== JSON.stringify((initialOptions.contentIds || []).slice().sort()) ||
-                JSON.stringify(options.fields.slice().sort()) !== JSON.stringify((initialOptions.fields || []).slice().sort()) ||
-                JSON.stringify(options.customFields.slice().sort()) !== JSON.stringify((initialOptions.customFields || []).slice().sort());
+                //await aiStore.BuildSearchIndex({indexId});
+              } else if(isV2) {
+                await aiStore.UpdateSearchIndexV2({
+                  indexId,
+                  name: options.name,
+                  selectedFields: options.fields,
+                  selectedCustomFields: options.customFields,
+                  contentIds: options.contentIds,
+                  configuration: {
+                    clips_pad_duration: options.configuration.clips_pad_duration,
+                    clips_truncate_duration: options.configuration.clips_truncate_duration
+                  }
+                });
+              } else {
+                // Update V1
+                await aiStore.UpdateSearchIndex({
+                  indexId,
+                  name: options.name,
+                  selectedFields: options.fields,
+                  selectedCustomFields: options.customFields,
+                  contentIds: options.contentIds,
+                  configuration: {
+                    clips_pad_duration: options.configuration.clips_pad_duration,
+                    clips_truncate_duration: options.configuration.clips_truncate_duration
+                  }
+                });
 
-              if(optionsChanged) {
-                await aiStore.BuildSearchIndex({indexId});
+                const optionsChanged =
+                  JSON.stringify(options.contentIds.slice().sort()) !== JSON.stringify((initialOptions.contentIds || []).slice().sort()) ||
+                  JSON.stringify(options.fields.slice().sort()) !== JSON.stringify((initialOptions.fields || []).slice().sort()) ||
+                  JSON.stringify(options.customFields.slice().sort()) !== JSON.stringify((initialOptions.customFields || []).slice().sort());
+
+                if(optionsChanged) {
+                  await aiStore.BuildSearchIndex({indexId});
+                }
               }
-            }
 
-            Close();
+              Close();
+            } catch(error) {
+              console.error("Failed to create/update search index:");
+              console.error(error);
+              setErrorMessage("Something went wrong, please try again");
+            }
           }}
         >
           { indexId ? "Update" : "Create" }

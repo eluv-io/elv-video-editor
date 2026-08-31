@@ -417,6 +417,14 @@
     }
   }
 
+  &__error {
+    color: var(--text-error);
+    font-size: 12px;
+    font-weight: 600;
+    margin: 10px 0;
+    text-align: right;
+  }
+
   &__actions {
     align-items: center;
     border-top: 1px solid var(--table-border-color);

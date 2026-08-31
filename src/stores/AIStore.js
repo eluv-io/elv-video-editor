@@ -454,7 +454,7 @@ class AIStore {
             ...field,
             value: true
           }
-        )
+        );
 
         return {
           fields,
