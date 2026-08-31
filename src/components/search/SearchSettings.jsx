@@ -47,7 +47,8 @@ const v2Visual = {
   "character": "Characters",
   "logo": "Logo",
   "object_detection": "Object",
-  "scene_description": "Scene Description"
+  "scene_description": "Scene Description",
+  "evidence": "Evidence"
 };
 
 const v2Audio = {
