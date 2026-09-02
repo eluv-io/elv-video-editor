@@ -462,8 +462,8 @@ class AIStore {
           type: "index",
           musicSupported: true,
           versionHash,
-          indexedTitles: (info?.qids || [])
-            .map(objectId => ({objectId, name: objectId}))
+          indexedTitles: (info?.titles || [])
+            .map(({qid, title}) => ({objectId: qid, name: title || qid}))
         };
       }
 
@@ -866,6 +866,38 @@ class AIStore {
   PerformClipSearch = flow(function * ({mode, searchIndex, searchSettings, query, start, limit}) {
     const type = searchIndex.type?.includes("assets") ? "image" : "video";
 
+    const queryParams = {
+      terms: query,
+      search_fields:
+        mode === "music" ? "f_music" :
+          searchSettings.fields.length > 0 ?
+            searchSettings.fields.join(",") :
+            Object.keys(searchIndex.fields).join(","),
+      sort: mode === "music" ? "f_music" : null,
+      start,
+      limit,
+      display_fields:
+        mode === "music" ? "f_music" : "all",
+      clips: type === "video",
+      clip_include_source_tags: true,
+      get_chunks: true,
+      max_total: 100,
+      min_score: searchSettings.minConfidence / 100,
+      debug: !!searchIndex.isV2
+    };
+
+    if(!queryParams.search_fields) {
+      delete queryParams.search_fields;
+    }
+
+    if(searchSettings.objectIds.length > 0) {
+      if(searchIndex.isV2) {
+        queryParams.qid = Unproxy(searchSettings.objectIds);
+      } else {
+        queryParams.filters = searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR");
+      }
+    }
+
     return (yield this.QueryAIAPI({
       //update: true,
       server: searchIndex.isV2 ? "ai-04" : undefined,
@@ -874,26 +906,8 @@ class AIStore {
         searchIndex.isV2 ?
           UrlJoin("vector_search", searchIndex.id, "clip_search") :
           UrlJoin(searchSettings.cache ? "mlcache" : "", "search", "q", searchIndex.versionHash, "rep", "search"),
-      queryParams: {
-        terms: query,
-        search_fields:
-          mode === "music" ? "f_music" :
-            searchSettings.fields.length > 0 ?
-              searchSettings.fields.join(",") :
-              Object.keys(searchIndex.fields).join(","),
-        sort: mode === "music" ? "f_music" : null,
-        start,
-        limit,
-        display_fields:
-          mode === "music" ? "f_music" : "all",
-        clips: type === "video",
-        clip_include_source_tags: true,
-        get_chunks: true,
-        max_total: 100,
-        min_score: searchSettings.minConfidence / 100,
-        filters: searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR"),
-        debug: !!searchIndex.isV2
-      }
+      queryParams
+
     })) || {};
   });
 
