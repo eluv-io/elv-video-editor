@@ -441,6 +441,7 @@ export const AsyncButton = observer(({onClick, tooltip, loading, ...props}) => {
 
 export const StyledButton = observer(({
   icon,
+  label,
   variant="primary",
   size="lg",
   color="--color-highlight--dark",
@@ -449,6 +450,8 @@ export const StyledButton = observer(({
   loading,
   loadingProgress,
   w,
+  withinPortal=true,
+  tooltipProps={},
   ...props
 }) => {
   const [submitting, setSubmitting] = useState(false);
@@ -461,7 +464,7 @@ export const StyledButton = observer(({
     props.style.width = `${w}px`;
   }
 
-  return (
+  const button =(
     <Linkish
       {...props}
       onClick={
@@ -500,9 +503,12 @@ export const StyledButton = observer(({
             <Icon icon={icon} className={S("styled-button__icon")} />
           </div>
       }
-      <div className={S("styled-button__children")}>
-        {children}
-      </div>
+      {
+        !children ? null :
+          <div className={S("styled-button__children")}>
+            {children}
+          </div>
+      }
       {
         !submitting && !loading ? null :
           <div className={S("styled-button__loader-container")}>
@@ -520,6 +526,22 @@ export const StyledButton = observer(({
           </div>
       }
     </Linkish>
+  );
+
+  if(!label) {
+    return button;
+  }
+
+  return (
+    <Tooltip
+      {...tooltipProps}
+      openDelay={500}
+      withinPortal={withinPortal}
+      label={label}
+      events={{ hover: true, focus: true, touch: false }}
+    >
+      { button }
+    </Tooltip>
   );
 });
 

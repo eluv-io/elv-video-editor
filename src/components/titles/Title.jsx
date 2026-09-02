@@ -13,7 +13,7 @@ import {
   Loader,
   LoaderImage
 } from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher, Capitalize} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, Capitalize, FormatTitleAttributes} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 import {Select, Textarea, TextInput, Tooltip} from "@mantine/core";
 
@@ -25,10 +25,10 @@ import SubmitIcon from "@/assets/icons/v2/search-arrow.svg";
 
 const S = CreateModuleClassMatcher(TitleStyles);
 
-export const Synopsis = observer(({title, compact=false}) => {
+export const Synopsis = observer(({title, initialSynopsisKey="extended", compact=false}) => {
   const synopses = title?.metadata?.ai_derived_media?.synopses || {};
   const [synopsisType, setSynopsisType] = useState(
-    Object.keys(synopses).includes("extended") ? "extended" : Object.keys(synopses)[0] || "extended"
+    Object.keys(synopses).includes(initialSynopsisKey) ? initialSynopsisKey : Object.keys(synopses)[0] || "extended"
   );
   const [prompt, setPrompt] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -80,7 +80,7 @@ export const Synopsis = observer(({title, compact=false}) => {
             Social
           </Linkish>
           <div className={S("synopsis__buttons")}>
-            <CopyButton label="Copy synopsis" value={synopsisType} small/>
+            <CopyButton label="Copy Synopsis" value={synopses[synopsisType]} small/>
             <IconButton
               icon={GenerateIcon}
               label={synopses[synopsisType] ? "Regenerate Synopsis" : "Generate Synopsis"}
@@ -268,26 +268,6 @@ const Clips = observer(({title}) => {
   );
 });
 
-const GetAttributes = (info={}) => {
-  let year = info.release_year || info.us_release_year;
-  if(info.release_date) {
-    year = new Date(info.release_date).getFullYear();
-  }
-
-  let rating = info.mpaa_rating;
-  let runtime = info.runtime;
-  if(runtime) {
-    const hours = Math.floor(parseInt(runtime) / 60);
-    const minutes = parseInt(runtime) % 60;
-
-    runtime = hours ? `${hours}h ${minutes}m` : `${minutes}m`;
-  }
-
-  return [year, rating, runtime]
-    .filter(a => a)
-    .join(" • ");
-};
-
 const Title = observer(() => {
   const {titleId} = useParams();
   const title = titleStore.titles[titleId];
@@ -325,7 +305,7 @@ const Title = observer(() => {
           </div>
           <div className={S("info__attributes")}>
             <div className={S("info__attributes-text")}>
-              { GetAttributes(title.metadata.info) }
+              { FormatTitleAttributes(title.metadata.info) }
             </div>
             <Linkish
               to={UrlJoin("~/titles/", titleId, "metadata")}

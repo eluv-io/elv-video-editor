@@ -17,6 +17,7 @@ import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {GroupedSearchResults, SearchResults} from "@/components/search/SearchResults.jsx";
 import VideoStore from "@/stores/VideoStore.js";
 import {AddMyClipModal} from "@/components/timeline/Controls.jsx";
+import {Synopsis} from "@/components/titles/Title.jsx";
 
 import BackIcon from "@/assets/icons/v2/back.svg";
 import PlayIcon from "@/assets/icons/Play.svg";
@@ -34,7 +35,6 @@ import EmbedLinkIcon from "@/assets/icons/v2/link.svg";
 import AIImageGray from "@/assets/images/composition-manual.svg";
 import AIImageColor from "@/assets/images/composition-ai.svg";
 import SubmitIcon from "@/assets/icons/v2/search-arrow.svg";
-import {Synopsis} from "@/components/titles/Title.jsx";
 
 
 const S = CreateModuleClassMatcher(BrowserStyles, SearchStyles);
@@ -393,9 +393,7 @@ const ClipResultPanel = observer(({result}) => {
                     }
                   </div>
               }
-              <div className={S("result__synopsis-container")}>
-                <Synopsis title={titleStore.titles[result.objectId]} compact />
-              </div>
+              <Synopsis title={titleStore.titles[result.objectId]} compact />
             </> :
             <Summary result={result} />
         }

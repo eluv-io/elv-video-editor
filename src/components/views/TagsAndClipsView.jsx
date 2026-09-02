@@ -2,7 +2,7 @@ import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {ClipSidePanel, TagSidePanel} from "@/components/side_panel/SidePanel.jsx";
 import VideoSection from "@/components/video/VideoSection.jsx";
-import {ClipTimeline, TagTimeline} from "@/components/timeline/Timeline.jsx";
+import {ClipTimeline, SummaryTimeline, TagTimeline} from "@/components/timeline/Timeline.jsx";
 import {
   editStore,
   groundTruthStore,
@@ -13,18 +13,23 @@ import {
 } from "@/stores/index.js";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {ProgressModal} from "@/components/common/Common.jsx";
+import SynopsisSection from "@/components/timeline/SynopsisSection.jsx";
 
 const TagsAndClipsView = observer(({mode}) => {
   const [sidePanel, setSidePanel] = useState(undefined);
   const [sidePanelDimensions, setSidePanelDimensions] = useState(undefined);
+  const [resetBottomSize, setResetBottomSize] = useState(false);
+
+  const showingAlternateView = videoStore.showSynopsisView || videoStore.showSummaryView;
 
   useEffect(() => {
     rootStore.SetPage(mode);
     keyboardControlsStore.SetActiveStore(videoStore);
-    groundTruthStore.LoadGroundTruthPools();
-    videoStore.LoadMyClips({objectId: videoStore.videoObject?.objectId});
 
     if(videoStore.ready) {
+      groundTruthStore.LoadGroundTruthPools();
+      videoStore.LoadMyClips({objectId: videoStore.videoObject?.objectId});
+
       const clipPoints = videoStore.ParseClipParams();
 
       if(!clipPoints) { return; }
@@ -59,6 +64,23 @@ const TagsAndClipsView = observer(({mode}) => {
     return () => resizeObserver?.disconnect();
   }, [sidePanel]);
 
+  useEffect(() => {
+    return () => {
+      videoStore.ToggleShowVertical(false);
+      videoStore.ToggleShowSummaryView(false);
+      videoStore.ToggleShowSynopsisView(false);
+    };
+  }, []);
+
+  // After closing alternate view, set the max size for a moment to resize the bottom panel
+  useEffect(() => {
+    if(!showingAlternateView) {
+      setResetBottomSize(true);
+
+      setTimeout(() => setResetBottomSize(false), 100);
+    }
+  }, [showingAlternateView]);
+
   return (
     <>
       {
@@ -86,16 +108,40 @@ const TagsAndClipsView = observer(({mode}) => {
             </Panel>
             <PanelResizeHandle />
             <Panel id="content" order={2}>
-              <VideoSection showOverlay showFrameSearch showSave />
+              <VideoSection showOverlay showFrameSearch showSave showSynopsis showVertical />
             </Panel>
+            {
+            !videoStore.showVertical || !videoStore.verticalVideoStore ? null :
+              <>
+                <PanelResizeHandle />
+                <Panel id="right" order={3}>
+                  <VideoSection
+                    name="Vertical Video"
+                    store={videoStore.verticalVideoStore}
+                    vertical
+                    Close={() => videoStore.ToggleShowVertical(false)}
+                  />
+                </Panel>
+              </>
+          }
           </PanelGroup>
         </Panel>
         <PanelResizeHandle />
-        <Panel minSize={25} id="bottom" order={2}>
+        <Panel
+          id="bottom"
+          order={2}
+          defaultSize={40}
+          minSize={showingAlternateView ? 55 : undefined}
+          maxSize={resetBottomSize ? 50 : undefined}
+        >
           {
-            mode === "tags" ?
-              <TagTimeline /> :
-              <ClipTimeline />
+            videoStore.showSynopsisView ?
+              <SynopsisSection /> :
+              videoStore.showSummaryView ?
+                <SummaryTimeline /> :
+                mode === "tags" ?
+                  <TagTimeline /> :
+                  <ClipTimeline />
           }
         </Panel>
       </PanelGroup>

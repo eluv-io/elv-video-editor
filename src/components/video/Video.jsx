@@ -34,6 +34,7 @@ const Video = observer(({
   showFrameSearch,
   showVertical,
   showProgress,
+  compact,
   fullscreenContainer,
   playoutUrl,
   blank,
@@ -240,7 +241,7 @@ const Video = observer(({
                   <div className={S("video-controls__left")}>
                     <PlayPauseButton store={store}/>
                     <VolumeControls store={store}/>
-                    <VideoTime store={store}/>
+                    <VideoTime store={store} compact={compact}/>
                   </div>
                   <div className={S("video-controls__spacer")}/>
                   {
@@ -257,11 +258,11 @@ const Video = observer(({
                   <div className={S("video-controls__right")}>
                     {
                       !showVertical ? null :
-                        <ShowVerticalButton store={store} />
+                        <ShowVerticalButton store={store} compact={compact} />
                     }
                     {
                       !showFrameSearch ? null :
-                        <SearchFrameButton store={store} />
+                        <SearchFrameButton store={store} compact={compact} />
                     }
                     {
                       !showFrameDownload ? null :

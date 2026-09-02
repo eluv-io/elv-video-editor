@@ -30,6 +30,8 @@ class TitleStore {
   }
 
   LoadTitle = flow(function * ({titleId}) {
+    if(!titleId) { return; }
+
     return yield this.rootStore.LoadResource({
       id: "titles",
       key: titleId,
@@ -48,8 +50,6 @@ class TitleStore {
         });
 
         const name = metadata?.asset_metadata?.display_title || metadata?.asset_metadata?.title || metadata?.name;
-        const videoStore = new VideoStore(this.rootStore, {tags: false, channel: false, thumbnails: true, id: `title-store-${name}`});
-        yield videoStore.SetVideo({objectId: titleId});
 
         const baseFrameUrl = yield this.client.Rep({
           versionHash,
@@ -67,12 +67,30 @@ class TitleStore {
           name: metadata?.name,
           title: name,
           metadata: metadata?.asset_metadata || {},
-          videoStore: videoStore,
+          videoStore: undefined,
           baseFrameUrl,
           compositionVideoStores: {}
         };
 
         return this.titles[titleId];
+      })
+    });
+  });
+
+  LoadTitleVideoStore = flow(function * ({titleId}) {
+    if(!titleId) { return; }
+
+    return yield this.rootStore.LoadResource({
+      id: "titleVideoStore",
+      key: titleId,
+      bind: this,
+      Load: flow(function * () {
+        yield this.LoadTitle({titleId});
+
+        const videoStore = new VideoStore(this.rootStore, {tags: false, channel: false, thumbnails: true, id: `title-store-${name}`});
+        yield videoStore.SetVideo({objectId: titleId});
+
+        this.titles[titleId].videoStore = videoStore;
       })
     });
   });

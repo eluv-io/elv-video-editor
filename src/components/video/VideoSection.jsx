@@ -11,7 +11,7 @@ import {
   OfferingControls,
   PlaybackRateControl,
   QualityControls,
-  SubtitleControls, TimecodeOffsetToggle,
+  SubtitleControls, SynopsisButton, TimecodeOffsetToggle,
 } from "@/components/video/VideoControls";
 import Video from "@/components/video/Video";
 import {Confirm, StyledButton} from "@/components/common/Common.jsx";
@@ -22,15 +22,19 @@ const S = CreateModuleClassMatcher(VideoStyles);
 
 const VideoSection = observer(({
   store,
-  title,
+  name,
+  simple=false,
   vertical=false,
   showOverlay,
   showFrameSearch,
   showSave,
+  showSynopsis,
   showVertical,
   setShowVertical,
   Close
 }) => {
+  const objectId = videoStore.videoObject?.objectId;
+
   useEffect(() => {
     if(store) { return; }
 
@@ -41,11 +45,13 @@ const VideoSection = observer(({
 
   store = store || videoStore;
 
+  const isVerticalShowing = videoStore.showVertical && !!videoStore.verticalVideoStore;
+
   return (
     <div className={S("content-block", "video-section", vertical ? "video-section--vertical" : "")}>
       <h1 className={S("video-section__title")}>
         <div className={S("ellipsis")}>
-          {title || store.name}
+          {name || store.name}
         </div>
         {
           !showSave ? null :
@@ -60,9 +66,7 @@ const VideoSection = observer(({
                   await Confirm({
                     title: "Save Changes",
                     text: "Warning: Thumbnails are currently generating for this content. If you don't finalize the thumbnails before saving your changes, the thumbnails will be lost and thumbnail generation will have to be restarted. Do you want to proceed?",
-                    onConfirm: async () => await videoStore.thumbnailStore?.RemoveThumbnailJob({
-                      objectId: videoStore.videoObject?.objectId
-                    }),
+                    onConfirm: async () => await videoStore.thumbnailStore?.RemoveThumbnailJob({objectId}),
                     onCancel: () => cancelled = true
                   });
 
@@ -95,6 +99,7 @@ const VideoSection = observer(({
       </h1>
       <Video
         store={store}
+        compact={!simple && isVerticalShowing}
         vertical={vertical}
         showOverlay={showOverlay}
         showFrameSearch={showFrameSearch}
@@ -104,8 +109,16 @@ const VideoSection = observer(({
         showProgress={vertical}
       />
       <div className={S("toolbar")}>
-        <div className={S("toolbar__spacer")} />
+        {
+          !showSynopsis || (!simple && isVerticalShowing) ? null :
+            <SynopsisButton showPreview store={videoStore} objectId={objectId} />
+        }
         <div className={S("toolbar__controls-group", "toolbar__controls-group--tight")}>
+          <div className={S("toolbar__spacer")} />
+          {
+            !showSynopsis || simple || !isVerticalShowing ? null :
+              <SynopsisButton store={videoStore} objectId={objectId} />
+          }
           <TimecodeOffsetToggle store={store} />
           <PlaybackRateControl store={store} />
           <FrameRateControls store={store} />

@@ -25,6 +25,7 @@ import TimeIcon from "@/assets/icons/Clock.svg";
 import MarkInIcon from "@/assets/icons/marker-in.svg";
 import MarkOutIcon from "@/assets/icons/marker-out.svg";
 import XIcon from "@/assets/icons/X.svg";
+import ClipIcon from "@/assets/icons/scissors.svg";
 import TrashIcon from "@/assets/icons/trash.svg";
 import CheckmarkIcon from "@/assets/icons/check-circle.svg";
 
@@ -102,6 +103,14 @@ const TagActions = observer(({tag, track}) => {
           label="Play this Tag"
           icon={PlayIcon}
           onClick={() => tagStore.PlayTag(tag)}
+        />
+        <IconButton
+          label="Set Clip Points to This Tag"
+          icon={ClipIcon}
+          onClick={() => videoStore.SetClipMark({
+            inTime: tag.startTime,
+            outTime: tag.endTime
+          })}
         />
         {
           tagStore.isolatedTag?.tagId === tag.tagId ?

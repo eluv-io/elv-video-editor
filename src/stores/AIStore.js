@@ -170,9 +170,16 @@ class AIStore {
     const url = new URL(`https://${server}.contentfabric.io/`);
     url.pathname = path;
 
-    Object.keys(queryParams).forEach(key =>
-      queryParams[key] && url.searchParams.set(key, queryParams[key])
-    );
+    Object.keys(queryParams).forEach(key => {
+      // For arrays, set params as 'key=value1&key=value2' instead of 'key=value1,value2'
+      if(Array.isArray(queryParams[key])) {
+       queryParams[key].forEach(item =>
+         url.searchParams.append(key, item)
+       );
+      } else {
+        queryParams[key] && url.searchParams.set(key, queryParams[key]);
+      }
+    });
 
     if(!this._authTokens[objectId]) {
       this._authTokens[objectId] = {};
@@ -288,9 +295,9 @@ class AIStore {
   GenerateClipSummary = flow(function * ({objectId, startTime, endTime, regenerate=false, cacheOnly=false, prompt}) {
     return yield this.rootStore.LoadResource({
       key: "clipSummary",
-      id: `${objectId}-${startTime}-${endTime}`,
+      id: `${objectId}-${startTime}-${endTime}-${prompt}`,
       bind: this,
-      force: !cacheOnly || regenerate,
+      force: regenerate,
       Load: flow(function * () {
         return yield this.rootStore.aiStore.QueryAIAPI({
           server: "ai",

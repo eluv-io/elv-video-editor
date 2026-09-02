@@ -61,7 +61,7 @@ class RootStore {
   selectedObjectName = "";
 
   _resources = {};
-  logTiming = new URLSearchParams(window.location.search).has("logTiming") || sessionStorage.getItem("log-timing");
+  logTiming = true || new URLSearchParams(window.location.search).has("logTiming") || sessionStorage.getItem("log-timing");
 
   constructor() {
     makeAutoObservable(this);

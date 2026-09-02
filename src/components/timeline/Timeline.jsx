@@ -27,11 +27,12 @@ import Share from "@/components/download/Share.jsx";
 import Track from "@/components/timeline/Track.jsx";
 import {CreateTrackButton} from "@/components/forms/CreateTrack.jsx";
 import {
-  ClipModalButton,
+  ClipModalButton, ClipSummaryButton,
   LiveToVodButton,
   MyClipsButton
 } from "@/components/timeline/Controls.jsx";
 import SVG from "react-inlinesvg";
+import SummarySection from "@/components/timeline/SummarySection.jsx";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
@@ -187,6 +188,7 @@ const TimelineTopBar = observer(({simple}) => {
           label="Set Clip Out to Current Frame"
           onClick={() => videoStore.SetClipMark({outFrame: videoStore.frame})}
         />
+        <ClipSummaryButton store={videoStore} />
         <ClipModalButton/>
         {
           !videoStore.isLiveToVod ? null :
@@ -860,7 +862,7 @@ const ClipTimelineContent = observer(() => {
   );
 });
 
-const Timeline = observer(({content, showRelated, simple=false, loading=false}) => {
+const Timeline = observer(({content, showRelated, simple=false, hidePlayhead=false, loading=false}) => {
   const [hoverPosition, setHoverPosition] = useState(undefined);
   const timelineRef = useRef(null);
 
@@ -896,9 +898,12 @@ const Timeline = observer(({content, showRelated, simple=false, loading=false}) 
   return (
     <div className={S("content-block", "timeline-section", simple ? "timeline-section--simple" : "")}>
       <TimelineTopBar simple={simple}/>
-      <TimelinePlayheadIndicator value={videoStore.seek} timelineRef={timelineRef}/>
       {
-        !hoverSeek ? null :
+        hidePlayhead ? null :
+          <TimelinePlayheadIndicator value={videoStore.seek} timelineRef={timelineRef}/>
+      }
+      {
+        !hoverSeek || hidePlayhead ? null :
           <TimelinePlayheadIndicator value={hoverSeek} timelineRef={timelineRef}
                                      className={S("playhead-indicator--hover")}/>
       }
@@ -972,4 +977,19 @@ export const ClipTimeline = observer(() => {
 
 export const SimpleTimeline = observer(() => {
   return <Timeline simple content={<TimelineThumbnailTrack />} />;
+});
+
+export const SummaryTimeline = observer(() => {
+  return (
+    <Timeline
+      simple
+      hidePlayhead
+      content={
+        <div style={{"--track-height--thumbnails": "50px"}}>
+          <TimelineThumbnailTrack />
+          <SummarySection store={videoStore} />
+        </div>
+      }
+    />
+  );
 });

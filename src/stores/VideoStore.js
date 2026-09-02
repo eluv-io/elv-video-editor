@@ -41,6 +41,8 @@ class VideoStore {
   initialFrame;
   showVertical = false;
   verticalVideoStore = undefined;
+  showSynopsisView = false;
+  showSummaryView = false;
 
   consecutiveSegmentErrors = 0;
 
@@ -223,6 +225,12 @@ class VideoStore {
 
     this.segmentEnd = undefined;
 
+    this.showVertical = false;
+    this.verticalVideoStore = undefined;
+
+    this.showSynopsisView = false;
+    this.showSummaryView = false;
+
     this.consecutiveSegmentErrors = 0;
 
     this.initialClipPoints = undefined;
@@ -262,7 +270,17 @@ class VideoStore {
       this.verticalVideoStore.SetVideo({objectId: this.videoObject.objectId});
     }
 
-    this.showVertical = show;
+    this.showVertical = !!show;
+  }
+
+  ToggleShowSynopsisView(show) {
+    this.showSynopsisView = !!show;
+    this.showSummaryView = false;
+  }
+
+  ToggleShowSummaryView(show) {
+    this.showSummaryView = !!show;
+    this.showSynopsisView = false;
   }
 
   SetOffering = flow(function * (offeringKey) {

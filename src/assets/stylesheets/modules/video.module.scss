@@ -35,6 +35,40 @@
       padding-bottom: 41px;
     }
   }
+
+  .toolbar__controls-group {
+    height: 100%;
+  }
+
+  .toolbar {
+    padding-inline: 10px;
+
+    &__synopsis-container {
+      align-items: center;
+      animation: var(--animation-fadein) 0.55s ease-out;
+      border-radius: 10px;
+      display: flex;
+      flex: 1 1 100%;
+      font-size: 12px;
+      gap: 5px;
+      height: 75%;
+      overflow: hidden;
+      padding-inline: 3px;
+      transition: background-color 0.25s ease;
+      width: max-content;
+
+      &:hover,
+      &--active {
+        background-color: var(--background-active);
+      }
+    }
+
+    &__synopsis-icon {
+      height: 20px;
+      min-width: 20px;
+      width: 20px;
+    }
+  }
 }
 
 .clip-toolbar {
@@ -347,5 +381,9 @@
 
   &__time--current {
     color: var(--text-primary);
+  }
+
+  &--compact {
+    font-size: 12px;
   }
 }
