@@ -8,7 +8,7 @@ import {Synopsis} from "@/components/titles/Title.jsx";
 import {CreateModuleClassMatcher, FormatTitleAttributes} from "@/utils/Utils.js";
 import {IconButton, LoaderImage} from "@/components/common/Common.jsx";
 
-import XIcon from "@/assets/icons/v2/x.svg";
+import BackIcon from "@/assets/icons/v2/back.svg";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -38,7 +38,7 @@ const SynopsisSection = observer(() => {
         <div className={S("synopsis-section__title")}>
           <span>{title.title}</span>
           <IconButton
-            icon={XIcon}
+            icon={BackIcon}
             onClick={() => videoStore.ToggleShowSynopsisView(false)}
             title="Return to Timeline View"
           />

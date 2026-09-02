@@ -7,7 +7,7 @@ import {TextInput} from "@mantine/core";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {CopyButton, Icon, IconButton, Loader} from "@/components/common/Common.jsx";
 
-import XIcon from "@/assets/icons/v2/x.svg";
+import BackIcon from "@/assets/icons/v2/back.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import SubmitIcon from "@/assets/icons/v2/search-arrow.svg";
 
@@ -80,7 +80,7 @@ const SummarySection = observer(({store}) => {
               <CopyButton label="Copy Summary" value={summary?.summary || ""} small/>
           }
           <IconButton
-            icon={XIcon}
+            icon={BackIcon}
             title="Return to Timeline View"
             onClick={() => store.ToggleShowSummaryView(false)}
           />
