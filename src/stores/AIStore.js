@@ -176,7 +176,7 @@ class AIStore {
        queryParams[key].forEach(item =>
          url.searchParams.append(key, item)
        );
-      } else {
+      } else if(queryParams[key]) {
         queryParams[key] && url.searchParams.set(key, queryParams[key]);
       }
     });
@@ -875,11 +875,6 @@ class AIStore {
 
     const queryParams = {
       terms: query,
-      search_fields:
-        mode === "music" ? "f_music" :
-          searchSettings.fields.length > 0 ?
-            searchSettings.fields.join(",") :
-            Object.keys(searchIndex.fields).join(","),
       sort: mode === "music" ? "f_music" : null,
       start,
       limit,
@@ -893,8 +888,15 @@ class AIStore {
       debug: !!searchIndex.isV2
     };
 
-    if(!queryParams.search_fields) {
-      delete queryParams.search_fields;
+    if(!searchIndex.isV2) {
+      queryParams.search_fields = (
+        mode === "music" ? ["f_music"] :
+          searchSettings.fields.length > 0 ?
+            searchSettings.fields :
+            Object.keys(searchIndex.fields || {})
+      ).join(",")
+    } else {
+      queryParams.search_fields = searchSettings.fields || [];
     }
 
     if(searchSettings.objectIds.length > 0) {
