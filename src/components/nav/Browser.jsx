@@ -1885,7 +1885,7 @@ export const TaggingJobBrowser = observer(() => {
                       <div className={S("browser-table__cell", "browser-table__cell--progress")}>
                         {
                           ["succeeded", "failed", "cancelled"].includes(job?.status?.toLowerCase()) ? null :
-                            <>
+                            <div className={S("browser-table__cell-item")}>
                               <Progress
                                 value={job?.progress || 0}
                                 max={100}
@@ -1895,7 +1895,7 @@ export const TaggingJobBrowser = observer(() => {
                               <div className={S("percent")}>
                                 {(job?.progress || 0).toFixed(0)}%
                               </div>
-                            </>
+                            </div>
                         }
                       </div>
                       <Tooltip
