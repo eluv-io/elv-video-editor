@@ -213,7 +213,8 @@ const GroundTruthPool = observer(() => {
     if(!poolId) { return; }
 
     groundTruthStore.LoadGroundTruthPool({poolId});
-  }, [poolId]);
+    groundTruthStore.CheckEmbeddingsStatus({poolId});
+  }, [poolId, pool?.lastModified]);
 
   useEffect(() => {
     showList ?
@@ -254,7 +255,7 @@ const GroundTruthPool = observer(() => {
               }
               <StyledButton
                 icon={RebuildModelIcon}
-                disabled={pool.embeddingsBuilt}
+                disabled={pool?.embeddingsBuilt !== "undefined" && pool.embeddingsBuilt}
                 onClick={async () =>
                   await Confirm({
                     title: "Rebuild Model",

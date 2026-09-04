@@ -129,7 +129,7 @@ class GroundTruthStore {
           libraryId,
           objectId: poolId,
           versionHash,
-          embeddingsBuilt: false,
+          embeddingsBuilt: true,
           name: metadata?.public?.name || metadata?.ground_truth?.model_domain || poolId,
           description: metadata?.public?.description,
           metadata: metadata.ground_truth || {},
@@ -140,6 +140,26 @@ class GroundTruthStore {
         this.rootStore.SetAuthToken({versionHash});
       })
     });
+  });
+
+  CheckEmbeddingsStatus = flow(function * ({poolId}) {
+    if(!this.pools[poolId]) {
+      yield this.LoadGroundTruthPool({poolId});
+    }
+
+    try {
+      const versionHash = yield this.client.LatestVersionHash({objectId: poolId});
+      const status = yield this.rootStore.aiStore.QueryAIAPI({
+        path: UrlJoin("ground-truth", "pools", poolId)
+      });
+
+      this.pools[poolId].embeddingsBuilt = versionHash === status.latest_version_hash;
+
+      return this.pools[poolId].embeddingsBuilt;
+    } catch(error) {
+      console.error("Failed to check ground truth pool embedding status:");
+      console.error(error);
+    }
   });
 
   CreateGroundTruthPool = flow(function * ({libraryId, name, description, model, attributes, confidenceThreshold=0.55}) {

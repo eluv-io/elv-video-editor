@@ -1156,7 +1156,7 @@ export const GroundTruthAssetFileBrowser = observer(({poolId, entityId, assetInd
   );
 });
 
-export const GroundTruthPoolSaveButton = observer(({icon, poolId, ...props}) => {
+export const GroundTruthPoolSaveButton = observer(({icon, poolId, onSave, ...props}) => {
   const [saving, setSaving] = useState(false);
 
   const pool = groundTruthStore.pools[poolId] || {};
@@ -1174,6 +1174,8 @@ export const GroundTruthPoolSaveButton = observer(({icon, poolId, ...props}) => 
         setSaving(true);
 
         await groundTruthStore.SaveGroundTruthPool({poolId});
+
+        await onSave?.();
 
         setSaving(false);
       }
