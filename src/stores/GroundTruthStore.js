@@ -142,7 +142,7 @@ class GroundTruthStore {
     });
   });
 
-  CreateGroundTruthPool = flow(function * ({libraryId, name, description, model, attributes}) {
+  CreateGroundTruthPool = flow(function * ({libraryId, name, description, model, attributes, confidenceThreshold=0.55}) {
     this.saveError = undefined;
     this.saveProgress = 0;
 
@@ -196,6 +196,7 @@ class GroundTruthStore {
             updated_at: new Date().toISOString(),
             entities: {},
             model_domain: model,
+            confidence_threshold: confidenceThreshold,
             entity_data_schema: {
               type: "object",
               properties: schema
@@ -272,17 +273,17 @@ class GroundTruthStore {
     return objectId;
   });
 
-  ModifyGroundTruthPool({objectId, name, description, model, attributes}) {
+  ModifyGroundTruthPool({objectId, name, description, model, attributes, confidenceThreshold=0.55}) {
     if(!this.pools[objectId]) { throw Error("Unable to find pool " + objectId); }
 
-    const originalPool = {
+    const originalPool = Unproxy({
       ...this.pools[objectId],
       metadata: {
         ...this.pools[objectId].metadata,
         // Entities can be large, don't keep it around in action stack
         entities: {}
       }
-    };
+    });
 
     let schema = {};
     attributes.map((attribute, index) => {
@@ -318,6 +319,7 @@ class GroundTruthStore {
           attributes: this.FormatPoolAttributes({entity_data_schema: schema}),
           metadata: {
             ...metadata,
+            confidence_threshold: confidenceThreshold,
             model_domain: model,
             entity_data_schema: schema
           }
@@ -354,6 +356,12 @@ class GroundTruthStore {
           ...writeParams,
           metadataSubtree: "/ground_truth/entity_data_schema",
           metadata: schema
+        });
+
+        await this.client.ReplaceMetadata({
+          ...writeParams,
+          metadataSubtree: "/ground_truth/confidence_threshold",
+          metadata: confidenceThreshold
         });
 
         await this.client.ReplaceMetadata({

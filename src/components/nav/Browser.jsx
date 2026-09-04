@@ -1763,7 +1763,7 @@ export const TaggingJobBrowser = observer(() => {
 
   return (
     <div className={S("browser-page")}>
-      <div className={S("browser", "browser--tagging")}>
+      <div className={S("browser", "browser--tagging", "browser--tagging-jobs")}>
         <SearchBar
           placeholder="Filter by Title or Content ID"
           saveByLocation

@@ -69,6 +69,9 @@ const PoolDetails = observer(() => {
         }
         <div className={S("details__break")}/>
         <div className={S("details__subtitle")}>
+          Confidence Threshold: {((pool.metadata?.confidence_threshold || 0.55) * 100).toFixed()}%
+        </div>
+        <div className={S("details__subtitle")}>
           Entities: {entityCount}
         </div>
         <div className={S("details__subtitle")}>

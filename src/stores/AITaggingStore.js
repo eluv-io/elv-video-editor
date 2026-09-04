@@ -357,9 +357,15 @@ class AITaggingStore {
 
         const groundTruthPool = options?.modelOptions?.[model]?.groundTruthPool;
         if(groundTruthPool && groundTruthPool !== "default") {
-          result.model_params = {
-            ground_truth: groundTruthPool
-          };
+          result.model_params = {};
+
+          if(options.modelOptions[model].confidenceThreshold) {
+            result.model_params.thres = options.modelOptions[model].confidenceThreshold;
+          }
+
+          if(groundTruthPool !== "default") {
+            result.model_params.ground_truth = groundTruthPool;
+          }
         }
 
         const mode = options?.modelOptions?.[model]?.mode;

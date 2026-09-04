@@ -894,7 +894,7 @@ class AIStore {
           searchSettings.fields.length > 0 ?
             searchSettings.fields :
             Object.keys(searchIndex.fields || {})
-      ).join(",")
+      ).join(",");
     } else {
       queryParams.search_fields = searchSettings.fields || [];
     }

@@ -6,7 +6,7 @@ import React, {useEffect, useState} from "react";
 import {aiTaggingStore, groundTruthStore, keyboardControlsStore, rootStore} from "@/stores/index.js";
 import {useLocation} from "wouter";
 import {BrowserSelection, TaggingStepHeader} from "@/components/nav/Browser.jsx";
-import {StyledButton} from "@/components/common/Common.jsx";
+import {FormNumberInput, FormSelect, StyledButton} from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Checkbox, MultiSelect, Select} from "@mantine/core";
 
@@ -50,9 +50,14 @@ const SummaryItem = observer(({options, setOptions, model}) => {
         }
         {
           !options.modelOptions[model]?.groundTruthPool ? null :
-            <div key={`${model}-pool`} className={S("summary-item-option")}>
-              Ground Truth Pool: { groundTruthStore.pools[options.modelOptions[model].groundTruthPool].name }
-            </div>
+            <>
+              <div key={`${model}-pool`} className={S("summary-item-option")}>
+                Ground Truth Pool: {groundTruthStore.pools[options.modelOptions[model].groundTruthPool].name}
+              </div>
+              <div key={`${model}-confidence`} className={S("summary-item-option")}>
+                Confidence Threshold: {+((options.modelOptions[model]?.confidenceThreshold || 0.55) * 100).toFixed(2)}%
+              </div>
+            </>
         }
       </div>
       <Checkbox
@@ -165,6 +170,48 @@ const Summary = observer(({options, setOptions}) => {
   );
 });
 
+const FrameModelOptions = ({options, model, dependentModels, SetModelOption}) => {
+ if(!(options[model] || dependentModels.includes(model))) { return; }
+
+ if(["celeb"].includes(model)) {
+   return (
+     <>
+       <FormSelect
+         label="Ground Truth Pool"
+         value={options.modelOptions[model]?.groundTruthPool || ""}
+         searchable
+         maw={300}
+         mt={-5}
+         ml={32}
+         onChange={value => SetModelOption("groundTruthPool", value)}
+         data={[
+           ...Object.values(groundTruthStore.pools)
+             .map(pool => ({
+               value: pool.objectId,
+               label: pool.name
+             }))
+             .sort((a, b) => a.name < b.name ? 1 : -1),
+           {label: "Default Large Pool", value: "default"},
+         ]}
+       />
+       <FormNumberInput
+         label="Confidence Threshold (%)"
+         key="confidence"
+         maw={300}
+         mt={-5}
+         ml={32}
+         mb={10}
+         step={1}
+         min={0}
+         max={100}
+         value={+((options.modelOptions[model]?.confidenceThreshold || 0.55) * 100).toFixed(2)}
+         onChange={value => SetModelOption("confidenceThreshold", (value / 100).toFixed(2))}
+       />
+     </>
+   );
+ }
+};
+
 const Form = observer(({options, setOptions}) => {
   const ToggleModel = model => setOptions({...options, [model]: !(options[model] || false)});
 
@@ -178,6 +225,12 @@ const Form = observer(({options, setOptions}) => {
   }, []);
 
   useEffect(() => {
+    const pool = options.modelOptions?.celeb?.groundTruthPool ||
+      Object.keys(groundTruthStore.pools).find(key =>
+          groundTruthStore.pools[key].order === 0
+      ) ||
+      Object.keys(groundTruthStore.pools)[0];
+
     setOptions({
       ...options,
       modelOptions: {
@@ -186,15 +239,37 @@ const Form = observer(({options, setOptions}) => {
         euro_asr: { streams: options.modelOptions?.euro_asr?.streams || [] },
         vertical_video: { mode: options.modelOptions?.vertical_video?.mode || "movie" },
         celeb: {
-          groundTruthPool: options.modelOptions?.celeb?.groundTruthPool ||
-            Object.keys(groundTruthStore.pools).find(key =>
-              groundTruthStore.pools[key].order === 0
-            ) ||
-            Object.keys(groundTruthStore.pools)[0]
+          groundTruthPool: pool,
+          confidenceThreshold: options?.modelOptions?.celeb?.confidenceThreshold
         }
       }
     });
   }, [aiTaggingStore.selectedContent, options.celeb, JSON.stringify(dependentModels)]);
+
+  const poolId = options?.modelOptions?.celeb?.groundTruthPool;
+  useEffect(() => {
+    if(!poolId || !poolId.startsWith("iq__")) {
+      return;
+    }
+
+    groundTruthStore.LoadGroundTruthPool({poolId})
+      .then(() => {
+        const threshold = groundTruthStore.pools[poolId]?.metadata?.confidence_threshold;
+
+        if(threshold) {
+          setOptions({
+            ...options,
+            modelOptions: {
+              ...(options?.modelOptions || {}),
+              celeb: {
+                ...(options?.modelOptions?.celeb || {}),
+                confidenceThreshold: threshold
+              }
+            }
+          });
+        }
+      });
+  }, [poolId]);
 
   const SegmentModelOptions = ({model}) => {
     if(!(options[model] || dependentModels.includes(model))) { return; }
@@ -235,33 +310,6 @@ const Form = observer(({options, setOptions}) => {
           data={[
             { label: "Movie", value: "movie" },
             { label: "Sports", value: "sports" }
-          ]}
-        />
-      );
-    }
-  };
-
-  const FrameModelOptions = ({model}) => {
-    if(!(options[model] || dependentModels.includes(model))) { return; }
-
-    if(["celeb"].includes(model)) {
-      return (
-        <Select
-          value={options.modelOptions[model]?.groundTruthPool || ""}
-          searchable
-          maw={300}
-          mt={-5}
-          ml={32}
-          mb={10}
-          onChange={value => SetModelOption(options, setOptions, model, "groundTruthPool", value)}
-          data={[
-            ...Object.values(groundTruthStore.pools)
-              .map(pool => ({
-                value: pool.objectId,
-                label: pool.name
-              }))
-              .sort((a, b) => a.name < b.name ? 1 : -1),
-            {label: "Default Large Pool", value: "default"},
           ]}
         />
       );
@@ -337,7 +385,12 @@ const Form = observer(({options, setOptions}) => {
                     disabled={model === "landmark"}
                     onChange={() => ToggleModel(model)}
                   />
-                  <FrameModelOptions model={model} />
+                  <FrameModelOptions
+                    options={options}
+                    model={model}
+                    dependentModels={dependentModels}
+                    SetModelOption={(key, value) => SetModelOption(options, setOptions, model, key, value)}
+                  />
                 </>
               )
             }

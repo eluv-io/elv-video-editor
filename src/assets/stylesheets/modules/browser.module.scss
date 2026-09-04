@@ -45,6 +45,13 @@
     }
   }
 
+  &--tagging-jobs {
+    .browser-table__cell {
+      align-items: start;
+      padding-top: 5px;
+    }
+  }
+
   &__header {
     align-items: center;
     display: flex;
