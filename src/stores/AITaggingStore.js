@@ -360,7 +360,7 @@ class AITaggingStore {
           result.model_params = {};
 
           if(options.modelOptions[model].confidenceThreshold) {
-            result.model_params.thres = options.modelOptions[model].confidenceThreshold;
+            result.model_params.thres = parseFloat(options.modelOptions[model].confidenceThreshold);
           }
 
           if(groundTruthPool !== "default") {
