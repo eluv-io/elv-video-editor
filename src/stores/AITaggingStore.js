@@ -368,6 +368,18 @@ class AITaggingStore {
           }
         }
 
+        if(model === "player_jersey_ocr") {
+          result.model_params = result.model_params || {};
+
+          if(options.modelOptions[model].minMargin) {
+            result.model_params.min_margin = options.modelOptions[model].minMargin;
+          }
+
+          if(options.modelOptions[model].legibilityThreshold) {
+            result.model_params.legibility_threshold = options.modelOptions[model].legibilityThreshold;
+          }
+        }
+
         const mode = options?.modelOptions?.[model]?.mode;
         if(mode) {
           result.model_params = {

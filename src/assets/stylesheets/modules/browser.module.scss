@@ -47,8 +47,10 @@
 
   &--tagging-jobs {
     .browser-table__cell {
-      align-items: start;
-      padding-top: 5px;
+      &:not(.browser-table__cell--header) {
+        align-items: start;
+        padding-top: 5px;
+      }
     }
   }
 

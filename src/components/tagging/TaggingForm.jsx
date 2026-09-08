@@ -10,6 +10,16 @@ import {FormNumberInput, FormSelect, StyledButton} from "@/components/common/Com
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Checkbox, MultiSelect, Select} from "@mantine/core";
 
+const DEFAULT_VALUES = {
+  player_jersey_ocr: {
+    minMargin: 0.999,
+    legibilityThreshold: 0.5
+  },
+  celeb: {
+    confidenceThreshold: 0.55
+  }
+};
+
 const S = CreateModuleClassMatcher(BrowserStyles, TaggingStyles);
 
 const SetModelOption = (options, setOptions, model, key, value) => {
@@ -55,7 +65,18 @@ const SummaryItem = observer(({options, setOptions, model}) => {
                 Ground Truth Pool: {groundTruthStore.pools[options.modelOptions[model].groundTruthPool].name}
               </div>
               <div key={`${model}-confidence`} className={S("summary-item-option")}>
-                Confidence Threshold: {+((options.modelOptions[model]?.confidenceThreshold || 0.55) * 100).toFixed(2)}%
+                Confidence Threshold: {+((options.modelOptions[model]?.confidenceThreshold || DEFAULT_VALUES.celeb.confidenceThreshold) * 100).toFixed(2)}%
+              </div>
+            </>
+        }
+        {
+          model !== "player_jersey_ocr" ? null :
+            <>
+              <div key={`${model}-min-margin`} className={S("summary-item-option")}>
+                OCR Margin: {+((options.modelOptions[model]?.minMargin || DEFAULT_VALUES.player_jersey_ocr.minMargin) * 100).toFixed(2)}%
+              </div>
+              <div key={`${model}-legibility-threshold`} className={S("summary-item-option")}>
+                Legibility Threshold: {+((options.modelOptions[model]?.legibilityThreshold || DEFAULT_VALUES.player_jersey_ocr.legibilityThreshold) * 100).toFixed(2)}%
               </div>
             </>
         }
@@ -204,8 +225,39 @@ const FrameModelOptions = ({options, model, dependentModels, SetModelOption}) =>
          step={1}
          min={0}
          max={100}
-         value={+((options.modelOptions[model]?.confidenceThreshold || 0.55) * 100).toFixed(2)}
-         onChange={value => SetModelOption("confidenceThreshold", (value / 100).toFixed(2))}
+         value={+((options.modelOptions[model]?.confidenceThreshold || DEFAULT_VALUES.celeb.confidenceThreshold) * 100).toFixed(2)}
+         onChange={value => SetModelOption("confidenceThreshold", parseFloat((value / 100).toFixed(2)))}
+       />
+     </>
+   );
+ } else if(["player_jersey_ocr"].includes(model)) {
+   return (
+     <>
+       <FormNumberInput
+         label="OCR Margin (%)"
+         key="min_margin"
+         maw={300}
+         mt={-5}
+         ml={32}
+         mb={10}
+         step={0.1}
+         min={0}
+         max={100}
+         value={+((options.modelOptions[model]?.minMargin || DEFAULT_VALUES.player_jersey_ocr.minMargin) * 100).toFixed(2)}
+         onChange={value => SetModelOption("minMargin", parseFloat((value / 100).toFixed(3)))}
+       />
+       <FormNumberInput
+         label="Legibility Threshold (%)"
+         key="legibility_threshold"
+         maw={300}
+         mt={-5}
+         ml={32}
+         mb={10}
+         step={1}
+         min={0}
+         max={100}
+         value={+((options.modelOptions[model]?.legibilityThreshold || DEFAULT_VALUES.player_jersey_ocr.legibilityThreshold) * 100).toFixed(2)}
+         onChange={value => SetModelOption("legibilityThreshold", parseFloat((value / 100).toFixed(2)))}
        />
      </>
    );
@@ -240,7 +292,11 @@ const Form = observer(({options, setOptions}) => {
         vertical_video: { mode: options.modelOptions?.vertical_video?.mode || "movie" },
         celeb: {
           groundTruthPool: pool,
-          confidenceThreshold: options?.modelOptions?.celeb?.confidenceThreshold
+          confidenceThreshold: options?.modelOptions?.celeb?.confidenceThreshold || DEFAULT_VALUES.celeb.confidenceThreshold
+        },
+        player_jersey_ocr: {
+          minMargin: options?.modelOptions?.player_jersey_ocr?.minMargin || DEFAULT_VALUES.player_jersey_ocr.minMargin,
+          legibilityThreshold: options?.modelOptions?.player_jersey_ocr?.legibilityThreshold || DEFAULT_VALUES.player_jersey_ocr.legibilityThreshold
         }
       }
     });
