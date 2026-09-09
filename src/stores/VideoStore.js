@@ -364,7 +364,9 @@ class VideoStore {
 
           let rate;
           if(offeringOptions.video) {
-            rate = offeringOptions.video.rate;
+            rate = offeringOptions.video.rate || offeringOptions.video.source_frame_rate;
+          } else if(offering.mez_prep_specs?.video?.source_frame_rate) {
+            rate = offering.mez_prep_specs?.video?.source_frame_rate;
           } else {
             const videoKey = Object.keys(offeringOptions).find(key => key.startsWith("video"));
             rate = offeringOptions[videoKey].rate;
@@ -503,8 +505,13 @@ class VideoStore {
         format: "JSON"
       }))?.tracks || [];
 
-      const visibleTracks = apiTracks
-        .filter(track => !track?.additional_info?.hidden);
+      let visibleTracks = apiTracks;
+
+      if(!this.videoObject?.isLive) {
+        // TODO: Always filter out hidden tracks
+        visibleTracks = visibleTracks
+          .filter(track => !track?.additional_info?.hidden);
+      }
 
       visibleTracks.forEach(track =>
         formattedTags[track.name] = {
@@ -665,6 +672,7 @@ class VideoStore {
           trackId: trackIds[tag.track],
           text: tag.tag,
           pose: tag.additional_info?.pose,
+          xCoordinates: tag.additional_info?.["x-coordinates"],
           o: {
             api: true
           }
@@ -1262,12 +1270,24 @@ class VideoStore {
     if(!this.video || !this.video.duration) { return; }
 
     this.frame = Math.floor(frame);
+
     this.duration = this.duration || this.video.duration;
+
+    let updateClipOut = false;
+    if(Math.abs(this.duration - this.video.duration) > 5) {
+      this.duration = this.video.duration;
+
+      if(Math.abs(this.clipOutFrame - this.totalFrames) < 10) {
+        updateClipOut = true;
+      }
+    }
+
     this.durationSMPTE = this.videoHandler?.TimeToSMPTE(this.duration);
     this.videoHandler.duration = this.video.duration;
-    this.totalFrames = this.totalFrames || this.videoHandler?.TotalFrames(this.duration);
+    this.totalFrames = this.videoHandler?.TotalFrames(this.duration);
+
     this.offsetDurationSMPTE = this.videoHandler?.FrameToSMPTE(this.totalFrames + this.timecodeOffsetFrames);
-    if(this.clipOutFrame >= this.totalFrames - 2) {
+    if(this.clipOutFrame >= this.totalFrames - 2 || updateClipOut) {
       // Minor shift in duration from channels may cause unset clip out point to show
       this.clipOutFrame = this.totalFrames - 1;
     }

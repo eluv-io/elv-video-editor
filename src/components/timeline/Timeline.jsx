@@ -459,7 +459,7 @@ const TimelineThumbnailTrack = observer(() => {
     return () => clearInterval(thumbnailInterval);
   }, [state, regenerating, videoStore.initialized]);
 
-  if(!videoStore?.initialized || !trackStore?.showThumbnails) {
+  if(!videoStore?.initialized || !trackStore?.showThumbnails || videoStore.videoObject?.isLive) {
     return null;
   }
 

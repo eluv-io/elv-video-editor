@@ -215,7 +215,7 @@ const Video = observer(({
     >
       <div className={S("video-wrapper")}>
         {
-           !video ? null :
+           !video || vertical ? null :
              <Overlay
                key={`overlay-${tagStore.editPosition}`}
                element={video}
