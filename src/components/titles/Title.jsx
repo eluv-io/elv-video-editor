@@ -11,7 +11,8 @@ import {
   IconButton,
   Linkish,
   Loader,
-  LoaderImage
+  LoaderImage,
+  StyledButton
 } from "@/components/common/Common.jsx";
 import {CreateModuleClassMatcher, Capitalize, FormatTitleAttributes} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
@@ -22,6 +23,7 @@ import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import GenerateIcon from "@/assets/icons/rotate-ccw.svg";
 import SearchArrowIcon from "@/assets/icons/v2/search-arrow.svg";
 import SubmitIcon from "@/assets/icons/v2/search-arrow.svg";
+import PinIcon from "@/assets/icons/v2/pin.svg";
 
 const S = CreateModuleClassMatcher(TitleStyles);
 
@@ -300,8 +302,22 @@ const Title = observer(() => {
           />
         </div>
         <div className={S("info")}>
-          <div className={S("info__title")}>
-            { title.title }
+          <div className={S("info__title-container")}>
+            <div className={S("info__title")}>
+              { title.title }
+            </div>
+            <div className={S("info__title-actions")}>
+              <StyledButton
+                variant="rounded"
+                color="--background-active"
+                size="md"
+                icon={PinIcon}
+                to={UrlJoin("~/", titleId)}
+                className={S("info__title-action")}
+              >
+                Open
+              </StyledButton>
+            </div>
           </div>
           <div className={S("info__attributes")}>
             <div className={S("info__attributes-text")}>

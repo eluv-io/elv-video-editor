@@ -2,13 +2,13 @@ import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
-import {CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
+import {Copy, CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
 import {Confirm, Icon, IconButton, Input, SelectInput, StyledButton} from "@/components/common/Common";
 import Fraction from "fraction.js";
 import SVG from "react-inlinesvg";
 import {FrameRates} from "@/utils/FrameAccurateVideo";
 import {Button, Portal, Tooltip} from "@mantine/core";
-import {aiStore, tagStore, titleStore} from "@/stores/index.js";
+import {aiStore, downloadStore, tagStore, titleStore} from "@/stores/index.js";
 import {useLocation} from "wouter";
 import UrlJoin from "url-join";
 import {Utils} from "@eluvio/elv-client-js";
@@ -31,6 +31,7 @@ import PlayClipIcon from "@/assets/icons/v2/play-clip.svg";
 import ImageSearchIcon from "@/assets/icons/image-search.svg";
 import VerticalIcon from "@/assets/icons/vertical.svg";
 import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
+import ShareIcon from "@/assets/icons/v2/share.svg";
 
 export const SynopsisButton = observer(({store, objectId, showPreview=false}) => {
   const title = titleStore.titles[objectId];
@@ -249,6 +250,33 @@ export const DownloadFrameButton = observer(({store}) => {
       icon={FrameIcon}
       unstyled
       onClick={() => store.SaveFrame()}
+      className={S("video-controls__button")}
+    />
+  );
+});
+
+export const CopyEmbedUrlButton = observer(({store, vertical}) => {
+  const [embedUrl, setEmbedUrl] = useState(undefined);
+
+  useEffect(() => {
+    downloadStore.CreateEmbedUrl({
+      store,
+      offeringKey: store.offeringKey,
+      title: store.name,
+      vertical,
+      node: !vertical ? undefined :
+        rootStore.verticalNodes[0]
+    })
+      .then(setEmbedUrl);
+  }, [store.initialized, vertical]);
+
+
+  return (
+    <IconButton
+      label="Copy Embed URL"
+      icon={ShareIcon}
+      unstyled
+      onClick={() => Copy(embedUrl)}
       className={S("video-controls__button")}
     />
   );

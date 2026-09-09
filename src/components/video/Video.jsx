@@ -7,6 +7,7 @@ import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Util
 import {Loader} from "@/components/common/Common";
 import HLSPlayer from "hls.js";
 import {
+  CopyEmbedUrlButton,
   DownloadFrameButton,
   FrameBack10Button,
   FrameBack1Button,
@@ -34,6 +35,7 @@ const Video = observer(({
   showFrameDownload,
   showFrameSearch,
   showVertical,
+  showEmbedUrl,
   showProgress,
   compact,
   fullscreenContainer,
@@ -260,6 +262,10 @@ const Video = observer(({
                     {
                       !showFrameSearch ? null :
                         <SearchFrameButton store={store} compact={compact} />
+                    }
+                    {
+                      !showEmbedUrl ? null :
+                        <CopyEmbedUrlButton store={store} vertical={vertical} />
                     }
                     {
                       !showFrameDownload ? null :

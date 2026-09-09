@@ -101,6 +101,7 @@ const VideoSection = observer(({
         store={store}
         compact={!simple && isVerticalShowing}
         vertical={vertical}
+        showEmbedUrl={vertical}
         showOverlay={showOverlay}
         showFrameSearch={showFrameSearch}
         showFrameDownload

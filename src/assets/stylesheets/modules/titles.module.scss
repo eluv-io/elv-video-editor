@@ -42,6 +42,12 @@
 }
 
 .info {
+  &__title-container {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+  }
+
   &__title {
     color: var(--text-primary);
     font-size: 32px;
