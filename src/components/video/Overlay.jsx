@@ -10,6 +10,7 @@ import {Tooltip} from "@mantine/core";
 import {BoxToPoints, PointInPolygon, PointsToBox, ReorderPoints} from "@/utils/Geometry.js";
 
 const frameSpread = 5;
+let verticalFrameSpread = 50;
 
 const S = CreateModuleClassMatcher(OverlayStyles);
 
@@ -303,13 +304,18 @@ const Tags = () => {
   }
 
   if(trackStore.tracks.find(track => track.key === "vertical_video")) {
-    let verticalFrameSpread = 401;
     for(let i = videoStore.frame; i >= Math.max(0, videoStore.frame - verticalFrameSpread); i--) {
       overlayTags = overlayStore.overlayTags[i.toString()];
 
       if(overlayTags) {
         Object.keys(overlayTags).forEach(key => {
           if(key !== "vertical_video") { return; }
+
+          // Increase frame spread if necessary
+          verticalFrameSpread = Math.max(
+            verticalFrameSpread,
+            (overlayTags[key]?.tags?.[0]?.xCoordinates?.length || 0) + 1
+          );
 
           if(!tags[key] && typeof overlayTags[key] === "object" && Object.keys(overlayTags[key]).length > 0) {
             tags[key] = {
@@ -322,7 +328,9 @@ const Tags = () => {
     }
   }
 
-  if(Object.keys(tags).length === 0) { return []; }
+  if(Object.keys(tags).length === 0) {
+    return [];
+  }
 
   let activeTags = [];
   trackStore.tracks
@@ -348,7 +356,7 @@ const Tags = () => {
       activeTags = activeTags.concat(
         boxes.map(tag => {
           let box = tag.box;
-          if(!tag.box && tag.xCoordinates) {
+          if(tag.xCoordinates) {
             const frameDiff = videoStore.frame - parseInt(tag.frame);
             const xCoordinate = tag.xCoordinates[frameDiff];
             const width = ((9/16)/(16/9)) / 2;

@@ -355,7 +355,7 @@ class AITaggingStore {
         let result = {
           model,
           overrides: {
-            replace: !options.modelOptions[model]?.noReplace
+            replace: !options?.modelOptions?.[model]?.noReplace
           }
         };
 
@@ -363,7 +363,7 @@ class AITaggingStore {
         if(groundTruthPool && groundTruthPool !== "default") {
           result.model_params = {};
 
-          if(options.modelOptions[model].confidenceThreshold) {
+          if(options?.modelOptions?.[model]?.confidenceThreshold) {
             result.model_params.thres = parseFloat(options.modelOptions[model].confidenceThreshold);
           }
 
@@ -375,11 +375,11 @@ class AITaggingStore {
         if(model === "player_jersey_ocr") {
           result.model_params = result.model_params || {};
 
-          if(options.modelOptions[model].minMargin) {
+          if(options.modelOptions?.[model]?.minMargin) {
             result.model_params.min_margin = options.modelOptions[model].minMargin;
           }
 
-          if(options.modelOptions[model].legibilityThreshold) {
+          if(options.modelOptions?.[model]?.legibilityThreshold) {
             result.model_params.legibility_threshold = options.modelOptions[model].legibilityThreshold;
           }
         }
