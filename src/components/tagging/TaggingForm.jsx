@@ -477,7 +477,7 @@ const Form = observer(({options, setOptions}) => {
   );
 });
 
-const defaultEnabledModels = ["shot"];
+const defaultEnabledModels = [];
 const TaggingForm = observer(() => {
   let initialOptions = {modelOptions: {}};
   [...aiTaggingStore.segmentModels, ...aiTaggingStore.frameModels]
@@ -486,6 +486,8 @@ const TaggingForm = observer(() => {
   const [options, setOptions] = useState(initialOptions);
 
   const showSummary = location.endsWith("/summary");
+
+  const selectedTracks = Object.keys(options).filter(key => options[key] === true);
 
   useEffect(() => {
     rootStore.SetPage("tagging");
@@ -521,6 +523,7 @@ const TaggingForm = observer(() => {
         <StyledButton
           disabled={
             aiTaggingStore.selectedContent.length === 0 ||
+            selectedTracks.length === 0 ||
             (options.celeb && !options.modelOptions?.celeb?.groundTruthPool)
           }
           to={showSummary ? "" : "/new/summary"}

@@ -46,6 +46,8 @@ class RootStore {
   errorMessage = undefined;
   l10n = LocalizationEN;
 
+  verticalNodes = [];
+
   tenantContractId;
   tenantInfoObjectId;
   tenantConfig;
@@ -189,6 +191,15 @@ class RootStore {
 
     yield this.aiStore.Initialize();
     yield this.aiTaggingStore.Initialize();
+
+    try {
+      this.verticalNodes = (yield (
+        yield fetch("https://main.net955305.contentfabric.io/config")
+      ).json())?.network?.services?.vertical || [];
+    } catch(error) {
+      console.error("Unable to load vertical nodes:");
+      console.error(error);
+    }
 
     this.initialized = true;
 

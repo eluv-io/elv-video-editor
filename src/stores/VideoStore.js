@@ -511,6 +511,8 @@ class VideoStore {
         // TODO: Always filter out hidden tracks
         visibleTracks = visibleTracks
           .filter(track => !track?.additional_info?.hidden);
+      } else {
+        this.videoObject.hasVertical = !!visibleTracks.find(track => track.name === "vertical_video");
       }
 
       visibleTracks.forEach(track =>

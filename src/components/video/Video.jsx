@@ -16,7 +16,8 @@ import {
   FullscreenButton,
   PlayPauseButton,
   SearchFrameButton,
-  SearchFrameMenu, ShowVerticalButton,
+  SearchFrameMenu,
+  ShowVerticalButton,
   VideoTime,
   VolumeControls
 } from "@/components/video/VideoControls";
@@ -71,12 +72,8 @@ const Video = observer(({
     const authorizationToken = playoutUrl.searchParams.get("authorization");
     playoutUrl.searchParams.delete("authorization");
 
-    if(vertical) {
-      // TODO: Remove
-      playoutUrl.hostname = [
-        "host-76-74-29-29.contentfabric.io",
-        "host-76-74-29-7.contentfabric.io"
-      ][Math.random() < 0.5 ? 0 : 1];
+    if(vertical && rootStore.verticalNodes?.length > 0) {
+      playoutUrl.hostname = new URL(rootStore.verticalNodes?.[0]).hostname;
       playoutUrl.searchParams.set("v", "1");
     }
 
