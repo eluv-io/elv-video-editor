@@ -277,11 +277,7 @@ const Form = observer(({options, setOptions}) => {
   }, []);
 
   useEffect(() => {
-    const pool = options.modelOptions?.celeb?.groundTruthPool ||
-      Object.keys(groundTruthStore.pools).find(key =>
-          groundTruthStore.pools[key].order === 0
-      ) ||
-      Object.keys(groundTruthStore.pools)[0];
+    const pool = options.modelOptions?.celeb?.groundTruthPool;
 
     setOptions({
       ...options,
@@ -523,7 +519,10 @@ const TaggingForm = observer(() => {
           Back
         </StyledButton>
         <StyledButton
-          disabled={aiTaggingStore.selectedContent.length === 0}
+          disabled={
+            aiTaggingStore.selectedContent.length === 0 ||
+            (options.celeb && !options.modelOptions?.celeb?.groundTruthPool)
+          }
           to={showSummary ? "" : "/new/summary"}
           onClick={
             !showSummary ? undefined :

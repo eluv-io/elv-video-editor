@@ -1656,7 +1656,6 @@ export const TaggingContentBrowser = observer(() => {
                   className={S("browser--tagging")}
                   filterQueryParam={`q${libraryId}`}
                   libraryId={libraryId}
-                  videoOnly
                   LeftActions={({objectId, disabled}) =>
                     disabled ? null :
                       <Checkbox

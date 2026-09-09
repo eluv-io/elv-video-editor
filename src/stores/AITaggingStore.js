@@ -218,43 +218,47 @@ class AITaggingStore {
       id: objectId,
       bind: this,
       Load: flow(function * () {
-        const metadata = yield this.client.ContentObjectMetadata({
-          libraryId: yield this.client.ContentObjectLibraryId({objectId}),
-          objectId: objectId,
-          metadataSubtree: "offerings",
-          resolveLinks: true,
-          linkDepthLimit: 1,
-          select: [
-            "*/playout/streams/*/representations/*/type",
-            "*/media_struct/streams/*/label",
-            "*/media_struct/streams/*/language",
-            "*/media_struct/streams/*/default_for_media_type"
-          ]
-        });
+        try {
+          const metadata = yield this.client.ContentObjectMetadata({
+            libraryId: yield this.client.ContentObjectLibraryId({objectId}),
+            objectId: objectId,
+            metadataSubtree: "offerings",
+            resolveLinks: true,
+            linkDepthLimit: 1,
+            select: [
+              "*/playout/streams/*/representations/*/type",
+              "*/media_struct/streams/*/label",
+              "*/media_struct/streams/*/language",
+              "*/media_struct/streams/*/default_for_media_type"
+            ]
+          });
 
-        const offering = metadata.default ? "default" :
-          Object.keys(metadata).find(key => key.includes("default")) || Object.keys(metadata)[0];
+          const offering = metadata.default ? "default" :
+            Object.keys(metadata).find(key => key.includes("default")) || Object.keys(metadata)[0];
 
-        const audioTrackKeys = Object.keys(metadata[offering].playout.streams)
-          .map(streamKey =>
-            Object.keys(metadata[offering].playout.streams[streamKey].representations || {})
-              .filter(repKey =>
-                metadata[offering].playout.streams[streamKey].representations[repKey].type === "RepAudio"
-              )
-              .map(repKey => ({streamKey, repKey}))
-          )
-          .flat();
+          const audioTrackKeys = Object.keys(metadata[offering].playout.streams)
+            .map(streamKey =>
+              Object.keys(metadata[offering].playout.streams[streamKey].representations || {})
+                .filter(repKey =>
+                  metadata[offering].playout.streams[streamKey].representations[repKey].type === "RepAudio"
+                )
+                .map(repKey => ({streamKey, repKey}))
+            )
+            .flat();
 
-        return audioTrackKeys
-          .map(({streamKey}) => ({
-            value: streamKey.split("__")[0],
-            streamKey,
-            transcodeId: streamKey.split("__")[1],
-            label: metadata[offering].media_struct.streams[streamKey].label,
-            language: metadata[offering].media_struct.streams[streamKey].language,
-            isDefault: !!metadata[offering].media_struct.streams[streamKey].default_for_media_type,
-          }))
-          .sort((a, b) => a.label < b.label ? -1 : 1);
+          return audioTrackKeys
+            .map(({streamKey}) => ({
+              value: streamKey.split("__")[0],
+              streamKey,
+              transcodeId: streamKey.split("__")[1],
+              label: metadata[offering].media_struct.streams[streamKey].label,
+              language: metadata[offering].media_struct.streams[streamKey].language,
+              isDefault: !!metadata[offering].media_struct.streams[streamKey].default_for_media_type,
+            }))
+            .sort((a, b) => a.label < b.label ? -1 : 1);
+        } catch(error) {
+          console.error(`Unable to load audio track info for ${objectId}`);
+        }
       })
     });
 
