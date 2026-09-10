@@ -1138,7 +1138,7 @@ class AIStore {
     };
   });
 
-  PromptSearch = flow(function * ({prompt}) {
+  PromptSearch = flow(function * ({prompt, retry=false}) {
     const baseUrl = "https://ai-03.contentfabric.io/";
     const exchangeBaseUrl = "https://ai.contentfabric.io/";
 
@@ -1165,30 +1165,43 @@ class AIStore {
       ).json()).token;
     }
 
-    const response = yield (
-      yield fetch(
-        UrlJoin(baseUrl, "api", "agents", "chat"),
-        {
-          method: "POST",
-          body: JSON.stringify({
-            text: prompt,
-            sender: "User",
-            clientTimestamp: new Date().toISOString(),
-            isCreatedByUser: true,
-            parentMessageId: "00000000-0000-0000-0000-000000000000",
-            messageId: this.rootStore.NextId(true),
-            endpoint: "agents",
-            agent_id: "agent_7Qv13l7K_6HqJ1C46dbYr",
-            isTemporary: true
-          }),
-          headers: {
-            "Authorization": `Bearer ${this.mcpAuthToken}`,
-            "Accept": "application/json",
-            "Content-Type": "application/json"
-          }
+    let response = yield fetch(
+      UrlJoin(baseUrl, "api", "agents", "chat"),
+      {
+        method: "POST",
+        body: JSON.stringify({
+          text: prompt,
+          sender: "User",
+          clientTimestamp: new Date().toISOString(),
+          isCreatedByUser: true,
+          parentMessageId: "00000000-0000-0000-0000-000000000000",
+          messageId: this.rootStore.NextId(true),
+          endpoint: "agents",
+          agent_id: "agent_7Qv13l7K_6HqJ1C46dbYr",
+          isTemporary: true
+        }),
+        headers: {
+          "Authorization": `Bearer ${this.mcpAuthToken}`,
+          "Accept": "application/json",
+          "Content-Type": "application/json"
         }
-      )
-    ).json();
+      }
+    );
+
+    if(!response.ok) {
+      if(response.status === 401 || response.status === 403) {
+        this.mcpAuthToken = undefined;
+      }
+
+      if(!retry) {
+        yield new Promise(resolve => setTimeout(resolve, 2000));
+        return yield this.PromptSearch({prompt, retry: true});
+      }
+
+      throw Error("Failed to query /api/agents/chat");
+    }
+
+    response = yield response.json();
 
     this.activePromptSearchId = response.streamId;
 
@@ -1205,7 +1218,16 @@ class AIStore {
     );
 
     if(!streamResponse.ok) {
-      throw Error(streamResponse);
+      if(response.status === 401 || response.status === 403) {
+        this.mcpAuthToken = undefined;
+      }
+
+      if(!retry) {
+        yield new Promise(resolve => setTimeout(resolve, 2000));
+        return yield this.PromptSearch({prompt, retry: true});
+      }
+
+      throw Error(`Failed to query /api/agents/chat/stream/${response.streamId}`);
     }
 
     const reader = streamResponse.body.getReader();

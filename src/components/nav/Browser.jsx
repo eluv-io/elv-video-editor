@@ -251,6 +251,10 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
   const indexUpdateProgress = aiStore.searchIndexUpdateProgress[aiStore.selectedSearchIndexId];
 
   const Submit = async ({mode, query}={}) => {
+    if(aiStore.searchResults?.error) {
+      aiStore.ClearSearchResults();
+    }
+
     query = query || input;
     BeforeSubmit?.({mode, query});
 
