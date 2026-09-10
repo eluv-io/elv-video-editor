@@ -362,6 +362,8 @@ class VideoStore {
   });
 
   StopTagWatcher() {
+    if(this.id !== "default") { return; }
+
     try {
       clearInterval(window.tagSweepInterval);
       window.tagQueue = [];
