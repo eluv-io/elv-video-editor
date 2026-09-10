@@ -1877,24 +1877,23 @@ export const TaggingJobBrowser = observer(() => {
                       <div className={S("browser-table__cell", "browser-table__cell--progress")}>
                         {
                           ["succeeded", "failed", "cancelled"].includes(job?.status?.toLowerCase()) ? null :
-                            <>
-                              <div className={S("browser-table__cell-item")}>
-                                <Progress
-                                  value={job?.progress || 0}
-                                  max={100}
-                                  transitionDuration={1000}
-                                  w="100%"
-                                />
-                                <div className={S("percent")}>
-                                  {(job?.progress || 0).toFixed(0)}%
-                                </div>
-                              </div>
-                              {
-                                !job?.tag_details?.tagged_duration ? null :
-                                  <div className={S("duration")}>
-                                    Analyzed up to <b>{ FormatTime(job?.tag_details?.tagged_duration) }</b>
+                            job?.is_live && job?.tag_details?.tagged_duration ?
+                              <div className={S("duration")}>
+                                Analyzed up to <b>{FormatTime(job?.tag_details?.tagged_duration)}</b>
+                              </div> :
+                              <>
+
+                                <div className={S("browser-table__cell-item")}>
+                                  <Progress
+                                    value={job?.progress || 0}
+                                    max={100}
+                                    transitionDuration={1000}
+                                    w="100%"
+                                  />
+                                  <div className={S("percent")}>
+                                    {(job?.progress || 0).toFixed(0)}%
                                   </div>
-                              }
+                                </div>
                             </>
                         }
                       </div>
