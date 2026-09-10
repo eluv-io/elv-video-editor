@@ -411,7 +411,7 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
                     label="Search"
                     icon={SearchArrowIcon}
                     noHover
-                    onClick={() => Submit(mode)}
+                    onClick={() => Submit({mode})}
                   />
                 </div>
               }
