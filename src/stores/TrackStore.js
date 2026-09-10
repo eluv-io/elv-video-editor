@@ -533,6 +533,84 @@ class TrackStore {
     };
   }
 
+  FormatMetadataTag({trackKey, tag, type}) {
+    const millis = type === "clip";
+
+    if(trackKey === "shot_tags") {
+      tag = this.FormatAggregatedSpeechToTextTag(tag);
+
+      if(!tag) { return; }
+    }
+
+    let tagId = tag.id;
+    if(tag?.lk === "user" && tag.id) {
+      // Ensure user tags have UUID tag IDs
+      tagId = this.rootStore.NextId(true);
+    }
+
+    let parsedTag = Cue({
+      tagId,
+      trackKey,
+      tagType: type,
+      startTime: millis ? (tag.start_time / 1000) : tag.start_time,
+      endTime: millis ? (tag.end_time / 1000) : tag.end_time,
+      text: tag.text,
+      tag: Unproxy(tag),
+      o: {
+        lk: tag.lk,
+        tk: tag.tk,
+        ti: tag.ti
+      }
+    });
+
+    if(parsedTag.startTime >= parsedTag.endTime) {
+      parsedTag.endTime = parsedTag.startTime + this.rootStore.videoStore.FrameToTime(1);
+    }
+
+    return parsedTag;
+  }
+
+  SweepNewTags() {
+    if(!this.initialized) { return; }
+
+    const newTags = window.tagQueue || [];
+    window.tagQueue = [];
+
+    if(newTags.length === 0) {
+      return;
+    }
+
+    let tags = {};
+
+    let updatedTrackIds = [];
+    for(const tag of newTags) {
+      const track = this.tracks.find(track => track.key === tag.track);
+
+      if(!track) {
+        console.warn("Metadata tag sweep - No track for new tag", tag);
+        continue;
+      } else if(!updatedTrackIds.includes(track.trackId)) {
+        updatedTrackIds.push(track.trackId);
+      }
+
+      const formattedTag = this.FormatMetadataTag({trackKey: track.key, tag, type: "metadata"});
+
+      tags[track.trackId] = tags[track.trackId] || {};
+      tags[track.trackId][formattedTag.tagId] = formattedTag;
+    }
+
+    let updatedTags = {...this.tags};
+    updatedTrackIds.forEach(id =>
+      updatedTags[id] = {
+        ...(updatedTags[id] || {}),
+        ...(tags[id] || {}),
+      }
+    );
+    this.tags = updatedTags;
+
+    updatedTrackIds.forEach(id => this.__UpdateTrackVersion(id));
+  }
+
   AddTracksFromTags = (metadataTags, type="metadata") => {
     if(!metadataTags) { return []; }
 
@@ -540,40 +618,10 @@ class TrackStore {
     Object.keys(metadataTags).forEach(key => {
       const track = metadataTags[key];
       let tags = {};
-      const millis = type === "clip";
       metadataTags[key].tags.forEach(tag => {
-        if(key === "shot_tags") {
-          tag = this.FormatAggregatedSpeechToTextTag(tag);
+        const formattedTag = this.FormatMetadataTag({trackKey: key, tag, type});
 
-          if(!tag) { return; }
-        }
-
-        let tagId = tag.id;
-        if(tag?.lk === "user" && tag.id) {
-          // Ensure user tags have UUID tag IDs
-          tagId = this.rootStore.NextId(true);
-        }
-
-        let parsedTag = Cue({
-          tagId,
-          trackKey: key,
-          tagType: type,
-          startTime: millis ? (tag.start_time / 1000) : tag.start_time,
-          endTime: millis ? (tag.end_time / 1000) : tag.end_time,
-          text: tag.text,
-          tag: Unproxy(tag),
-          o: {
-            lk: tag.lk,
-            tk: tag.tk,
-            ti: tag.ti
-          }
-        });
-
-        if(parsedTag.startTime >= parsedTag.endTime) {
-          parsedTag.endTime = parsedTag.startTime + this.rootStore.videoStore.FrameToTime(1);
-        }
-
-        tags[parsedTag.tagId] = parsedTag;
+        tags[formattedTag.tagId] = formattedTag;
       });
 
       metadataTracks.push({
@@ -745,9 +793,6 @@ class TrackStore {
     yield this.AddMetadataTracks(clipTags, "clip");
 
     this.initialized = true;
-
-    let trackIds = {};
-    this.tracks.forEach(track => trackIds[track.trackKey] = track.trackId);
   });
 
   /* User Actions */

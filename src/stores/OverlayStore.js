@@ -2,6 +2,7 @@ import { flow, makeAutoObservable } from "mobx";
 import {Capitalize} from "@/utils/Utils.js";
 
 class OverlayStore {
+  initialized = false;
   metadataOverlayTags = {};
   clipOverlayTags = {};
   overlayEnabled = false;
@@ -36,6 +37,7 @@ class OverlayStore {
   }
 
   Reset() {
+    this.initialized = false;
     this.metadataOverlayTags = {};
     this.clipOverlayTags = {};
   }
@@ -92,6 +94,46 @@ class OverlayStore {
     });
   }
 
+  SweepNewTags() {
+    if(!this.initialized) { return; }
+
+    const newTags = window.overlayTagQueue || [];
+    window.overlayTagQueue = [];
+
+    if(newTags.length === 0) {
+      return;
+    }
+
+    let updatedTrackIds = [];
+    for(const tag of newTags) {
+      const track = this.rootStore.trackStore.tracks.find(track => track.key === tag.track);
+
+      if(!track) {
+        console.warn("Metadata tag sweep - No track for new tag", tag);
+        continue;
+      } else if(!updatedTrackIds.includes(track.trackId)) {
+        updatedTrackIds.push(track.trackId);
+      }
+
+      const frame = parseInt(tag.frame_info?.frame_idx);
+      const formattedTag = {
+        tagId: tag.id,
+        box: tag.frame_info.box,
+        frame,
+        trackKey: tag.track,
+        trackId: track.trackId,
+        text: tag.tag,
+        pose: tag.additional_info?.pose,
+        xCoordinates: tag.additional_info?.["x-coordinates"],
+      };
+
+      this.metadataOverlayTags[frame] = this.metadataOverlayTags[frame] || {};
+      this.metadataOverlayTags[frame][track.key] = this.metadataOverlayTags[frame][track.key] || {};
+      this.metadataOverlayTags[frame][track.key].tags = this.metadataOverlayTags[frame][track.key].tags || [];
+      this.metadataOverlayTags[frame][track.key].tags.push(formattedTag);
+    }
+  }
+
   // eslint-disable-next-line require-yield
   AddOverlayTracks = flow(function * (overlayTags) {
     try {
@@ -143,6 +185,7 @@ class OverlayStore {
       }
 
       this.overlayEnabled = true;
+      this.initialized = true;
     } catch(error) {
       console.error("Failed to load overlay tracks:");
       console.error(error);

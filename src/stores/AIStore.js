@@ -151,21 +151,13 @@ class AIStore {
     this.StartSearchIndexUpdateStatusWatcher();
   });
 
-  QueryAIAPI = flow(function * ({
+  GetAIAPIURL = flow(function * ({
     server="ai",
-    method="GET",
     path,
     objectId,
-    channelAuth=false,
-    update=false,
     queryParams={},
-    body,
-    stringifyBody=true,
-    authTokenInBody=false,
-    authTokenInHeader=false,
-    headers={},
-    format="json",
-    allowStatus=[],
+    update,
+    channelAuth=false
   }) {
     const url = new URL(`https://${server}.contentfabric.io/`);
     url.pathname = path;
@@ -214,6 +206,30 @@ class AIStore {
 
       authToken = this._authTokens[objectId].signed;
     }
+
+    return {
+      url,
+      authToken
+    };
+  });
+
+  QueryAIAPI = flow(function * ({
+    server="ai",
+    method="GET",
+    path,
+    objectId,
+    channelAuth=false,
+    update=false,
+    queryParams={},
+    body,
+    stringifyBody=true,
+    authTokenInBody=false,
+    authTokenInHeader=false,
+    headers={},
+    format="json",
+    allowStatus=[],
+  }) {
+    let {url, authToken} = yield this.GetAIAPIURL({server, path, objectId, queryParams, update, channelAuth});
 
     if(authTokenInBody) {
       body.append ?

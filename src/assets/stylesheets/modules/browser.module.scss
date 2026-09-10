@@ -598,13 +598,24 @@
     }
 
     &--progress {
+      flex-direction: column;
+      gap: 0;
       padding-right: 20px;
+      width: 100%;
 
       .percent {
         font-size: 12px;
         font-weight: 800;
         text-align: center;
         width: 50px;
+      }
+
+      .duration {
+        font-size: 12px;
+
+        b {
+          font-weight: 800;
+        }
       }
     }
   }

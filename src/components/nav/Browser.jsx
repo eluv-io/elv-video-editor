@@ -33,6 +33,7 @@ import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/groun
 import SearchSettings from "@/components/search/SearchSettings.jsx";
 import {Dropzone, IMAGE_MIME_TYPE} from "@mantine/dropzone";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
+import {FormatTime} from "@/components/titles/TagSidebar.jsx";
 
 import SettingsIcon from "@/assets/icons/v2/settings.svg";
 import LibraryIcon from "@/assets/icons/v2/library.svg";
@@ -1706,7 +1707,7 @@ export const TaggingJobBrowser = observer(() => {
   const [queryParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState(decodeURIComponent(queryParams.get("q") || ""));
-  const [jobList, setJobList] = useState({jobs: [], meta: {}});
+  const [jobList, setJobList] = useState({jobs: [], meta: {}, key: ""});
   const [status, setStatus] = useState("");
   const [model, setModel] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
@@ -1715,38 +1716,30 @@ export const TaggingJobBrowser = observer(() => {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    setLoading(true);
-    aiTaggingStore.ListTaggingJobs({
-      start: (page - 1) * perPage,
-      limit: perPage,
-      filter,
-      status,
-      model
-    })
-      .then(setJobList)
-      .finally(() => setLoading(false));
-  }, [filter, page, perPage, status, model, reloadKey]);
+    const key = `${filter} ${page} ${perPage} ${status} ${model} ${reloadKey}`;
 
-  useEffect(() => {
-    if(loading) { return; }
+    if(key !== jobList.key) {
+      setLoading(true);
+    }
 
-    const interval = setInterval(() => {
-      const objectIds = jobList.jobs
-        .filter(job =>
-          // Filter completed jobs
-          !["succeeded", "cancelled", "failed"].includes(
-            job.status?.toLowerCase() ||
-            aiTaggingStore.jobStatus[job.job_id]?.status?.toLowerCase()
-          )
-        )
-        .map(job => job.objectId)
-        .filter((x, i, a) => a.indexOf(x) === i);
+    const Load = () => {
+      aiTaggingStore.ListTaggingJobs({
+        start: (page - 1) * perPage,
+        limit: perPage,
+        filter,
+        status,
+        model
+      })
+        .then(list => setJobList({...list, key}))
+        .finally(() => setLoading(false));
+    };
 
-        objectIds.forEach(objectId => aiTaggingStore.GetObjectJobStatus({objectId}));
-    }, 10001);
+    Load();
+
+    const interval = setInterval(Load, 10001);
 
     return () => clearInterval(interval);
-  }, [jobList, loading]);
+  }, [filter, page, perPage, status, model, reloadKey]);
 
   // Get job status
   const jobs = jobList.jobs
@@ -1884,17 +1877,25 @@ export const TaggingJobBrowser = observer(() => {
                       <div className={S("browser-table__cell", "browser-table__cell--progress")}>
                         {
                           ["succeeded", "failed", "cancelled"].includes(job?.status?.toLowerCase()) ? null :
-                            <div className={S("browser-table__cell-item")}>
-                              <Progress
-                                value={job?.progress || 0}
-                                max={100}
-                                transitionDuration={1000}
-                                w="100%"
-                              />
-                              <div className={S("percent")}>
-                                {(job?.progress || 0).toFixed(0)}%
+                            <>
+                              <div className={S("browser-table__cell-item")}>
+                                <Progress
+                                  value={job?.progress || 0}
+                                  max={100}
+                                  transitionDuration={1000}
+                                  w="100%"
+                                />
+                                <div className={S("percent")}>
+                                  {(job?.progress || 0).toFixed(0)}%
+                                </div>
                               </div>
-                            </div>
+                              {
+                                !job?.tag_details?.tagged_duration ? null :
+                                  <div className={S("duration")}>
+                                    Analyzed up to <b>{ FormatTime(job?.tag_details?.tagged_duration) }</b>
+                                  </div>
+                              }
+                            </>
                         }
                       </div>
                       <Tooltip

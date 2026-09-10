@@ -700,7 +700,7 @@ const TagTimelineContent = observer(() => {
       }
     };
 
-    statusInterval = setInterval(GetJobStatus, 10001);
+    statusInterval = setInterval(GetJobStatus, 15001);
 
     GetJobStatus();
 

@@ -161,6 +161,8 @@ class VideoStore {
     this.initialClipPoints = options.initialClipPoints;
     this.channel = options.channel || false;
 
+    this.StopTagWatcher();
+
     this.Update = this.Update.bind(this);
 
     addEventListener("fullscreenchange", () => this.SetFullscreen());
@@ -287,10 +289,101 @@ class VideoStore {
     yield this.SetVideo({...this.videoObject, preferredOfferingKey: offeringKey});
   });
 
+  StartTagWatcher = flow(function * ({objectId}) {
+    this.StopTagWatcher();
+
+    try {
+      // Start tag watcher
+      const {
+        url,
+        authToken
+      } = yield this.rootStore.aiStore.GetAIAPIURL({path: UrlJoin("tagstore", objectId, "tags", "stream")});
+      url.searchParams.set("authorization", authToken);
+
+      const watcher = new EventSource(url.toString());
+      window.tagWatcher = watcher;
+
+      this.tagWatcher = watcher;
+      this.tagWatcher.addEventListener(
+        "tag.created",
+        event => {
+          if(objectId !== this.videoObject?.objectId) {
+            watcher.close();
+            return;
+          }
+
+          try {
+            const tag = JSON.parse(event.data);
+
+            if(tag.frame_info) {
+              window.overlayTagQueue.push(tag);
+            } else {
+              window.tagQueue.push({
+                ...tag,
+                start_time: tag.start_time / 1000,
+                end_time: tag.end_time / 1000,
+                text: tag.tag,
+                o: {
+                  api: true
+                }
+              });
+            }
+          } catch(error) {
+            console.error("Failed to parse new tag");
+            console.error(event);
+            console.error(error);
+          }
+        }
+      );
+
+      clearInterval(window.tagSweepInterval);
+        const interval = setInterval(() => {
+          if(window.tagQueue.length === 0 && window.overlayTagQueue.length === 0) {
+            return;
+          }
+
+          console.info("Sweeping tags", objectId, interval, "\n\tTimeline:", window.tagQueue.length, "\n\tOverlay:", window.overlayTagQueue.length);
+
+          if(this.videoObject?.objectId !== objectId || window.tagSweepInterval !== interval) {
+            // Object changed. kill interval
+            clearInterval(interval);
+            watcher?.close();
+          }
+
+          this.rootStore.trackStore.SweepNewTags();
+          this.rootStore.overlayStore.SweepNewTags();
+        }, 1000);
+
+        window.tagSweepInterval = interval;
+    } catch(error) {
+      console.error("Failed to start tag watcher");
+      console.error(error);
+    }
+  });
+
+  StopTagWatcher() {
+    try {
+      clearInterval(window.tagSweepInterval);
+      window.tagQueue = [];
+      window.overlayTagQueue = [];
+
+      if(window.tagWatcher) {
+        window.tagWatcher?.close();
+      }
+
+      this.tagWatcher = undefined;
+      window.tagWatcher = undefined;
+    } catch(error) {
+      console.error(error);
+    }
+  }
+
   SetVideo = flow(function * ({objectId, writeToken, preferredOfferingKey="default", addToMyLibrary=false}) {
     this.loading = true;
     this.ready = false;
     this.rootStore.SetError(undefined);
+
+    this.StopTagWatcher();
 
     if(this.videoObject?.objectId !== objectId) {
       this.Reset();
@@ -448,7 +541,10 @@ class VideoStore {
 
       // Load tags
       this.rootStore.downloadStore.LoadDownloadJobInfo();
-      this.LoadTags();
+
+      if(this.id === "default") {
+        this.LoadTags();
+      }
     } catch(error) {
       console.error("Failed to load:");
       console.error(error);
@@ -482,6 +578,8 @@ class VideoStore {
   });
 
   LoadTags = flow(function * () {
+    this.StartTagWatcher({objectId: this.videoObject.objectId});
+
     const objectId = this.videoObject.objectId;
     console.time("Load Tags");
     let formattedTags = {};
@@ -496,6 +594,10 @@ class VideoStore {
         queryParams: { ignore_commit_ts: true },
         format: "JSON"
       }))?.last_tag_update;
+
+      // Start tag watcher
+      const {url, authToken} = yield this.rootStore.aiStore.GetAIAPIURL({path: UrlJoin("tagstore", objectId, "tags", "stream")});
+      url.searchParams.set("authorization", authToken);
 
       let apiTracks = (yield this.rootStore.aiStore.QueryAIAPI({
         objectId,
@@ -1276,7 +1378,7 @@ class VideoStore {
     this.duration = this.duration || this.video.duration;
 
     let updateClipOut = false;
-    if(Math.abs(this.duration - this.video.duration) > 5) {
+    if(Math.abs(this.duration - this.video.duration) > 2) {
       this.duration = this.video.duration;
 
       if(Math.abs(this.clipOutFrame - this.totalFrames) < 10) {

@@ -46,13 +46,6 @@ const TagsAndClipsView = observer(({mode}) => {
   }, [videoStore.ready]);
 
   useEffect(() => {
-    if(mode !== "tags" || !videoStore.ready) { return; }
-
-    videoStore.CheckTagsUpdated()
-      .then(updated => updated && videoStore.Reload());
-  }, [mode]);
-
-  useEffect(() => {
     if(!sidePanel) { return; }
 
     const resizeObserver = new ResizeObserver(() =>
