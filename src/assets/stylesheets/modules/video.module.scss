@@ -69,6 +69,12 @@
       width: 20px;
     }
   }
+
+  &__buttons {
+    align-items: center;
+    display: flex;
+    gap: 5px;
+  }
 }
 
 .clip-toolbar {

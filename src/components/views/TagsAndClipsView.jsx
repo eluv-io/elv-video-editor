@@ -101,7 +101,13 @@ const TagsAndClipsView = observer(({mode}) => {
             </Panel>
             <PanelResizeHandle />
             <Panel id="content" order={2}>
-              <VideoSection showOverlay showFrameSearch showSave showSynopsis showVertical />
+              <VideoSection
+                showOverlay
+                showFrameSearch
+                showSave
+                showSynopsis
+                showVertical
+              />
             </Panel>
             {
             !videoStore.showVertical || !videoStore.verticalVideoStore ? null :
