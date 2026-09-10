@@ -96,7 +96,9 @@ const VideoSection = observer(({
     return () => keyboardControlsStore.ToggleKeyboardControls(false);
   }, []);
 
-  useEffect(() => stopSync?.Stop?.(), [stopSync]);
+  useEffect(() => {
+    return () => stopSync?.Stop?.();
+  }, [stopSync]);
 
   store = store || videoStore;
 
