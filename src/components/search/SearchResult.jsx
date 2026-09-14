@@ -140,7 +140,7 @@ const Summary = observer(({result}) => {
         key={generating}
         onClick={() => {
           setGenerating(!generating);
-          Generate();
+          Generate({regenerate: true});
         }}
         className={S("summary-box")}
       >
