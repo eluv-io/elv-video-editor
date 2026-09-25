@@ -99,154 +99,168 @@ const InitializeTrackReactions = ({track, worker}) => {
     )
   );
 
-  // Update on filter change
-  reactionDisposals.push(
-    reaction(
-      () => ({
-        filter: tagStore.filter
-      }),
-      () => {
-        if(track.trackType === "clip") {
-          return;
-        }
-
-        worker.postMessage({
-          operation: "SetFilter",
-          trackId: track.trackId,
-          filter: tagStore.filter
-        });
-      },
-      {delay: 100 * trackStore.uiUpdateDelayFactor}
-    )
-  );
-
-
-  // Update on isolated tag change
-  reactionDisposals.push(
-    reaction(
-      () => ({
-        worker,
-        isolatedTag: tagStore.isolatedTag
-      }),
-      () => {
-        if(track.trackType === "clip") {
-          return;
-        }
-
-        worker.postMessage({
-          operation: "SetIsolatedTag",
-          trackId: track.trackId,
-          isolatedTag: !tagStore.isolatedTag ? undefined :
-            {
-              startTime: tagStore.isolatedTag.startTime,
-              endTime: tagStore.isolatedTag.endTime,
-              tagId: tagStore.isolatedTag.tagId
-            }
-        });
-      },
-      {delay: 100 * trackStore.uiUpdateDelayFactor}
-    )
-  );
-
-  // Update on edited track change
-  reactionDisposals.push(
-    reaction(
-      () => ({
-        filter: tagStore.editedTrack
-      }),
-      () => {
-        if(tagStore.editedTrack?.trackId !== track.trackId){
-          return;
-        }
-
-        worker.postMessage({
-          operation: "SetColor",
-          trackId: track.trackId,
-          color: Unproxy(tagStore.editedTrack.color)
-        });
-      },
-      {delay: 100 * trackStore.uiUpdateDelayFactor}
-    )
-  );
-
-  // Update on edited tag change
-  reactionDisposals.push(
-    reaction(
-      () => ({
-        filter: tagStore.editedTag
-      }),
-      () => {
-        if(tagStore.editedTag?.trackId === track.trackId) {
+  if(track?.trackType === "audio") {
+    // Update on max magnitude  change
+    reactionDisposals.push(
+      reaction(
+        () => ({
+          max: track.max,
+        }),
+        () => {
           worker.postMessage({
-            operation: "SetEditedTag",
+            operation: "SetMax",
             trackId: track.trackId,
-            editedTag: JSON.parse(JSON.stringify(tagStore.editedTag))
+            max: track.max
           });
-        } else {
+        },
+        {delay: 50 * trackStore.uiUpdateDelayFactor}
+      )
+    );
+  }
+
+  if(["metadata", "clip", "primary-content"].includes(track?.trackType)) {
+    // Update on filter change
+    reactionDisposals.push(
+      reaction(
+        () => ({
+          filter: tagStore.filter
+        }),
+        () => {
+          if(track.trackType === "primary-content") { return; }
+
           worker.postMessage({
-            operation: "ClearEditedTag",
-            trackId: track.trackId
+            operation: "SetFilter",
+            trackId: track.trackId,
+            filter: tagStore.filter
           });
-        }
-      },
-      {delay: 100 * trackStore.uiUpdateDelayFactor}
-    )
-  );
+        },
+        {delay: 100 * trackStore.uiUpdateDelayFactor}
+      )
+    );
 
-  // Update on selected / hover change
-  reactionDisposals.push(
-    reaction(
-      () => ({
-        hoverTags: tagStore.hoverTags,
-        selectedTagIds: tagStore.selectedTagIds,
-        selectedTag: tagStore.selectedTagId,
-        scrollTagId: tagStore.scrollTagId
-      }),
-      () => {
-        const selectedTagIds = Unproxy(tagStore.selectedTagIds);
-        const selectedTagId = Unproxy(tagStore.selectedTagId ? tagStore.selectedTagId : tagStore.scrollTagId);
-        const hoverTagIds = Unproxy(tagStore.hoverTags);
+    // Update on isolated tag change
+    reactionDisposals.push(
+      reaction(
+        () => ({
+          worker,
+          isolatedTag: tagStore.isolatedTag
+        }),
+        () => {
+          worker.postMessage({
+            operation: "SetIsolatedTag",
+            trackId: track.trackId,
+            isolatedTag: !tagStore.isolatedTag ? undefined :
+              {
+                startTime: tagStore.isolatedTag.startTime,
+                endTime: tagStore.isolatedTag.endTime,
+                tagId: tagStore.isolatedTag.tagId
+              }
+          });
+        },
+        {delay: 100 * trackStore.uiUpdateDelayFactor}
+      )
+    );
 
-        worker.postMessage({
-          operation: "SetSelected",
-          trackId: track.trackId,
-          selectedTagId,
-          selectedTagIds,
-          hoverTagIds
-        });
-      },
-      {delay: 10 * trackStore.uiUpdateDelayFactor}
-    )
-  );
+    // Update on edited track change
+    reactionDisposals.push(
+      reaction(
+        () => ({
+          filter: tagStore.editedTrack
+        }),
+        () => {
+          if(tagStore.editedTrack?.trackId !== track.trackId) {
+            return;
+          }
 
-  let activeTagIds = [];
-  // Update on active tag changed
-  reactionDisposals.push(
-    reaction(
-      () => ({
-        frame: videoStore.frame
-      }),
-      () => {
-        const currentActiveTagIds = Unproxy(
-          trackStore.TrackTagIntervalTree(track.trackId)
-            .search(videoStore.currentTime, videoStore.currentTime)
-        ).sort();
+          worker.postMessage({
+            operation: "SetColor",
+            trackId: track.trackId,
+            color: Unproxy(tagStore.editedTrack.color)
+          });
+        },
+        {delay: 100 * trackStore.uiUpdateDelayFactor}
+      )
+    );
 
-        if(currentActiveTagIds.toString() === activeTagIds.toString()) {
-          return;
-        }
+    // Update on edited tag change
+    reactionDisposals.push(
+      reaction(
+        () => ({
+          filter: tagStore.editedTag
+        }),
+        () => {
+          if(tagStore.editedTag?.trackId === track.trackId) {
+            worker.postMessage({
+              operation: "SetEditedTag",
+              trackId: track.trackId,
+              editedTag: JSON.parse(JSON.stringify(tagStore.editedTag))
+            });
+          } else {
+            worker.postMessage({
+              operation: "ClearEditedTag",
+              trackId: track.trackId
+            });
+          }
+        },
+        {delay: 100 * trackStore.uiUpdateDelayFactor}
+      )
+    );
 
-        activeTagIds = currentActiveTagIds;
+    // Update on selected / hover change
+    reactionDisposals.push(
+      reaction(
+        () => ({
+          hoverTags: tagStore.hoverTags,
+          selectedTagIds: tagStore.selectedTagIds,
+          selectedTag: tagStore.selectedTagId,
+          scrollTagId: tagStore.scrollTagId
+        }),
+        () => {
+          const selectedTagIds = Unproxy(tagStore.selectedTagIds);
+          const selectedTagId = Unproxy(tagStore.selectedTagId ? tagStore.selectedTagId : tagStore.scrollTagId);
+          const hoverTagIds = Unproxy(tagStore.hoverTags);
 
-        worker.postMessage({
-          operation: "SetActive",
-          trackId: track.trackId,
-          activeTagIds: currentActiveTagIds
-        });
-      },
-      {delay: 50 * trackStore.uiUpdateDelayFactor}
-    )
-  );
+          worker.postMessage({
+            operation: "SetSelected",
+            trackId: track.trackId,
+            selectedTagId,
+            selectedTagIds,
+            hoverTagIds
+          });
+        },
+        {delay: 10 * trackStore.uiUpdateDelayFactor}
+      )
+    );
+
+    let activeTagIds = [];
+    // Update on active tag changed
+    reactionDisposals.push(
+      reaction(
+        () => ({
+          frame: videoStore.frame
+        }),
+        () => {
+          const currentActiveTagIds = Unproxy(
+            trackStore.TrackTagIntervalTree(track.trackId)
+              .search(videoStore.currentTime, videoStore.currentTime)
+          ).sort();
+
+          if(currentActiveTagIds.toString() === activeTagIds.toString()) {
+            return;
+          }
+
+          activeTagIds = currentActiveTagIds;
+
+          worker.postMessage({
+            operation: "SetActive",
+            trackId: track.trackId,
+            activeTagIds: currentActiveTagIds
+          });
+        },
+        {delay: 50 * trackStore.uiUpdateDelayFactor}
+      )
+    );
+  }
 
   return () => reactionDisposals.forEach(dispose => dispose());
 };
@@ -367,7 +381,7 @@ const Track = observer(({track, noActive}) => {
       color: Unproxy(track.color),
       width: canvasDimensions.width,
       height: canvasDimensions.height,
-      tags: {},
+      tags: [],
       noActive,
       scale: {
         scale: 100,

@@ -162,6 +162,9 @@ class TrackStore {
     this.activeClipTracks = {};
     this.primaryTrackKey = undefined;
     this.editingTrack = false;
+
+    this.showAudio = false;
+    this.showSegments = false;
   }
 
   TrackColor(key, type) {
@@ -412,7 +415,7 @@ class TrackStore {
       .map(i => channel.slice(i * sampleSize, (i + 1) * sampleSize))
       .map((samples, i) => {
         const sampleMax = Math.max(...samples);
-        if (sampleMax > segmentMax) {
+        if(sampleMax > segmentMax) {
           segmentMax = sampleMax;
         }
 

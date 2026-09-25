@@ -1,9 +1,9 @@
 import Fraction from "fraction.js";
-import {Line} from "./Utils";
+import {Waveform} from "./Utils";
 
 const mainColor = {
   r: 50,
-  g: 200,
+  g: 150,
   b: 50,
   a: 255
 };
@@ -39,7 +39,7 @@ class AudioTrackWorker {
     tags = tags
       .filter(tag =>
         tag.endTime >= startTime.valueOf() &&
-        tag.startTime <= endTime.valueOf()
+        tag.startTime <= endTime.valueOf() + 2
       )
       .sort((a, b) => a.startTime < b.startTime ? -1 : 1);
 
@@ -48,7 +48,7 @@ class AudioTrackWorker {
     const widthRatio = this.width / visibleDuration;
     const halfHeight = Math.floor(this.height * 0.5);
 
-    const audioScale = 1 / (this.max * 1.2);
+    const audioScale = 1 / (this.max * 1.05);
     for(let i = 0; i < tags.length; i += renderEvery) {
       const tag = tags[i];
       const tagGroup = tags.slice(i, i + renderEvery);
@@ -65,9 +65,15 @@ class AudioTrackWorker {
       const startY = Math.floor(halfHeight * tagAverage * audioScale);
       const endY = Math.floor(halfHeight * nextAverage * audioScale);
 
-      Line(imageData, mainColor, startX, halfHeight + startY, endX, halfHeight + endY);
-      Line(imageData, mainColor, endX, halfHeight + endY, endX, halfHeight - endY);
-      Line(imageData, mainColor, endX, halfHeight - endY, startX, halfHeight - startY);
+      Waveform({
+        imageData,
+        color: mainColor,
+        height: this.height,
+        startX,
+        endX,
+        startMagnitude: startY,
+        endMagnitude: endY,
+      });
     }
 
     postMessage({
@@ -102,6 +108,10 @@ self.addEventListener(
       case "SetScale":
         worker.scale = data.scale;
         worker.duration = data.duration;
+        break;
+
+      case "SetMax":
+        worker.max = data.max;
         break;
 
       case "SetTime":

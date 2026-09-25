@@ -249,11 +249,16 @@ const TimelineBottomBar = observer(({simple}) => {
                 checked={trackStore.showSubtitles}
                 onChange={event => trackStore.ToggleTrackType({type: "Subtitles", visible: event.currentTarget.checked})}
               />
-              <SwitchInput
-                label="Show Segments"
-                checked={trackStore.showSegments}
-                onChange={event => trackStore.ToggleTrackType({type: "Segments", visible: event.currentTarget.checked})}
-              />
+              {
+                /*
+                  <SwitchInput
+                    label="Show Segments"
+                    checked={trackStore.showSegments}
+                    onChange={event => trackStore.ToggleTrackType({type: "Segments", visible: event.currentTarget.checked})}
+                  />
+
+                 */
+              }
               <SwitchInput
                 label="Show Audio"
                 checked={trackStore.showAudio}
@@ -689,14 +694,23 @@ const TagTimelineContent = observer(() => {
 
     let statusInterval;
     const GetJobStatus = async () => {
-      const jobs = await aiTaggingStore.GetObjectJobStatus({
-        objectId: videoStore.videoObject?.objectId
-      });
+      try {
+        const jobs = await aiTaggingStore.GetObjectJobStatus({
+          objectId: videoStore.videoObject?.objectId
+        });
 
-      setJobs(jobs);
+        setJobs(jobs);
 
-      if(!jobs.find(job => ["queued", "running"].includes(job.status))) {
-        clearInterval(statusInterval);
+        if(!jobs.find(job => ["queued", "running"].includes(job.status))) {
+          clearInterval(statusInterval);
+        }
+      } catch(error) {
+        console.error("Error getting tagging jobs for " + videoStore.videoObject?.objectId);
+        console.error(error);
+
+        if([401, 403].includes(parseInt(error?.status))) {
+          clearInterval(statusInterval);
+        }
       }
     };
 
