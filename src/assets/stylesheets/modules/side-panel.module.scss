@@ -711,11 +711,17 @@
   &__detail {
     display: grid;
     font-size: 14px;
-    grid-template-columns: 120px 1fr;
+    grid-template-columns: 150px 1fr;
     width: 100%;
 
     label {
       font-weight: 600;
+    }
+
+    &--additional {
+      * {
+        color: var(--text-secondary);
+      }
     }
   }
 
@@ -794,7 +800,8 @@
   }
 
   &__additional-info-header {
-    font-size: 12px;
+    color: var(--text-secondary);
+    font-size: 16px;
     font-weight: 600;
     margin: 20px 0 5px;
   }
@@ -803,6 +810,7 @@
     background-color: var(--background-active);
     border-radius: 5px;
     font-size: 12px;
+    margin-top: 20px;
     padding: 5px 10px;
     white-space: pre-wrap;
   }

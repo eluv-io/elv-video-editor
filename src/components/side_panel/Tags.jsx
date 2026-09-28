@@ -11,9 +11,9 @@ import {
   IconButton,
   Loader,
   LoaderImage,
-  SMPTEInput
+  SMPTEInput, StyledButton
 } from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher, useIsVisible} from "@/utils/Utils.js";
+import {CreateModuleClassMatcher, FormatFieldName, useIsVisible} from "@/utils/Utils.js";
 import PreviewThumbnail from "@/components/common/PreviewThumbnail.jsx";
 import {useDebouncedState} from "@mantine/hooks";
 
@@ -337,6 +337,49 @@ const TagForm = observer(() => {
   );
 });
 
+export const TagAdditionalInfo = observer(({additionalInfo}) => {
+  const [showRaw, setShowRaw] = useState(false);
+
+  if(!additionalInfo) { return; }
+
+  return (
+    <>
+      <div className={S("tag-details__additional-info-header")}>
+        Additional Info
+      </div>
+      {
+        !additionalInfo ? null :
+          Object.keys(additionalInfo || {})
+            .sort()
+            .map(key =>
+              <div key={key} className={S("tag-details__detail", "tag-details__detail--additional")}>
+                <label>{FormatFieldName(key)}</label>
+                <span>{JSON.stringify(additionalInfo[key] || "")}</span>
+              </div>
+            )
+      }
+
+      {
+        showRaw ? null :
+          <StyledButton
+            style={{marginTop: 20}}
+            size="sm"
+            color="--background-active"
+            onClick={() => setShowRaw(true)}
+          >
+            Show Raw Data
+          </StyledButton>
+      }
+      {
+        !showRaw ? null :
+          <pre className={S("tag-details__additional-info")}>
+            {JSON.stringify(additionalInfo, null, 2)}
+          </pre>
+      }
+    </>
+  );
+});
+
 export const TagDetails = observer(() => {
   const tag = tagStore.editedTag || tagStore.selectedTag;
   const track = trackStore.Track(tag?.trackId);
@@ -399,17 +442,7 @@ export const TagDetails = observer(() => {
             <span>{videoStore.TimeToString({time: duration, includeFractionalSeconds: true})}</span>
           </div>
 
-          {
-            !tag.tag?.additional_info ? null :
-              <>
-                <div className={S("tag-details__additional-info-header")}>
-                  Additional Info
-                </div>
-                <pre className={S("tag-details__additional-info")}>
-                  {JSON.stringify(tag.tag.additional_info, null, 2)}
-                </pre>
-              </>
-          }
+          <TagAdditionalInfo additionalInfo={tag.tag.additional_info} />
         </div>
       </div>
       {
