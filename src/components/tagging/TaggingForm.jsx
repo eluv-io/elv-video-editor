@@ -6,8 +6,8 @@ import React, {useEffect, useState} from "react";
 import {aiTaggingStore, groundTruthStore, keyboardControlsStore, rootStore} from "@/stores/index.js";
 import {useLocation} from "wouter";
 import {BrowserSelection, TaggingStepHeader} from "@/components/nav/Browser.jsx";
-import {FormNumberInput, FormSelect, StyledButton} from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {FormMultiSelect, FormNumberInput, FormSelect, StyledButton} from "@/components/common/Common.jsx";
+import {CreateModuleClassMatcher, FormatFieldName} from "@/utils/Utils.js";
 import {Checkbox, MultiSelect, Select} from "@mantine/core";
 
 const DEFAULT_VALUES = {
@@ -77,6 +77,14 @@ const SummaryItem = observer(({options, setOptions, model}) => {
               </div>
               <div key={`${model}-legibility-threshold`} className={S("summary-item-option")}>
                 Legibility Threshold: {+((options.modelOptions[model]?.legibilityThreshold || DEFAULT_VALUES.player_jersey_ocr.legibilityThreshold) * 100).toFixed(2)}%
+              </div>
+            </>
+        }
+        {
+          model !== "evidence" && (options.modelOptions[model]?.outputTracks || []).length === 0 ? null :
+            <>
+              <div key={`${model}-min-margin`} className={S("summary-item-option")}>
+                Output Tracks: {options.modelOptions[model].outputTracks.map(t => FormatFieldName(t)).join(", ")}
               </div>
             </>
         }
@@ -191,6 +199,51 @@ const Summary = observer(({options, setOptions}) => {
   );
 });
 
+const SegmentModelOptions = ({options, model, dependentModels, SetModelOption}) => {
+  if(!(options[model] || dependentModels.includes(model))) { return; }
+
+  // Speech to text
+  if(["asr", "euro_asr"].includes(model)) {
+    // No audio tracks to choose from
+    if(aiTaggingStore.selectedContentCommonAudioTracks.length === 0) { return; }
+
+    // Select audio tracks
+    return (
+      <MultiSelect
+        value={options.modelOptions[model]?.streams}
+        searchable
+        clearable
+        w="80%"
+        mt={-5}
+        ml={32}
+        mb={10}
+        onChange={value => SetModelOption("streams", value)}
+        data={[
+          { label: "Audio Track: Default", value: "" },
+          ...aiTaggingStore.selectedContentCommonAudioTracks
+        ]}
+      />
+    );
+  } else if(["vertical_video"].includes(model)) {
+    // Select vertical video model
+    return (
+      <Select
+        value={options.modelOptions[model]?.mode}
+        searchable
+        maw={200}
+        mt={-5}
+        ml={32}
+        mb={10}
+        onChange={value => SetModelOption("mode", value)}
+        data={[
+          { label: "Movie", value: "movie" },
+          { label: "Sports", value: "sports" }
+        ]}
+      />
+    );
+  }
+};
+
 const FrameModelOptions = ({options, model, dependentModels, SetModelOption}) => {
  if(!(options[model] || dependentModels.includes(model))) { return; }
 
@@ -264,6 +317,36 @@ const FrameModelOptions = ({options, model, dependentModels, SetModelOption}) =>
  }
 };
 
+const ProcessorModelOptions = ({options, model, dependentModels, SetModelOption}) => {
+ if(!(options[model] || dependentModels.includes(model))) { return; }
+
+ if(["evidence"].includes(model)) {
+   const tracks = aiTaggingStore.modelParams[model]?.output_tracks?.items?.enum;
+
+   if(!tracks || tracks.length === 0) { return; }
+
+   return (
+     <FormMultiSelect
+       label="Output tracks"
+       value={options.modelOptions[model]?.outputTracks || []}
+       searchable
+       maw={400}
+       mt={-5}
+       ml={32}
+       onChange={value => SetModelOption("outputTracks", value)}
+       data={
+         tracks
+           .sort()
+           .map(track => ({
+             label: FormatFieldName(track),
+             value: track
+           }))
+       }
+     />
+   );
+ }
+};
+
 const Form = observer(({options, setOptions}) => {
   const ToggleModel = model => setOptions({...options, [model]: !(options[model] || false)});
 
@@ -293,6 +376,9 @@ const Form = observer(({options, setOptions}) => {
         player_jersey_ocr: {
           minMargin: options?.modelOptions?.player_jersey_ocr?.minMargin || DEFAULT_VALUES.player_jersey_ocr.minMargin,
           legibilityThreshold: options?.modelOptions?.player_jersey_ocr?.legibilityThreshold || DEFAULT_VALUES.player_jersey_ocr.legibilityThreshold
+        },
+        evidence: {
+          outputTracks: options?.modelOptions?.evidence?.outputTracks || []
         }
       }
     });
@@ -322,51 +408,6 @@ const Form = observer(({options, setOptions}) => {
         }
       });
   }, [poolId]);
-
-  const SegmentModelOptions = ({model}) => {
-    if(!(options[model] || dependentModels.includes(model))) { return; }
-
-    // Speech to text
-    if(["asr", "euro_asr"].includes(model)) {
-      // No audio tracks to choose from
-      if(aiTaggingStore.selectedContentCommonAudioTracks.length === 0) { return; }
-
-      // Select audio tracks
-      return (
-        <MultiSelect
-          value={options.modelOptions[model]?.streams}
-          searchable
-          clearable
-          w="80%"
-          mt={-5}
-          ml={32}
-          mb={10}
-          onChange={value => SetModelOption(options, setOptions, model, "streams", value)}
-          data={[
-            { label: "Audio Track: Default", value: "" },
-            ...aiTaggingStore.selectedContentCommonAudioTracks
-          ]}
-        />
-      );
-    } else if(["vertical_video"].includes(model)) {
-      // Select vertical video model
-      return (
-        <Select
-          value={options.modelOptions[model]?.mode}
-          searchable
-          maw={200}
-          mt={-5}
-          ml={32}
-          mb={10}
-          onChange={value => SetModelOption(options, setOptions, model, "mode", value)}
-          data={[
-            { label: "Movie", value: "movie" },
-            { label: "Sports", value: "sports" }
-          ]}
-        />
-      );
-    }
-  };
 
   return (
     <div className={S("form")}>
@@ -402,7 +443,12 @@ const Form = observer(({options, setOptions}) => {
                     indeterminate={!options[model] && dependentModels.includes(model)}
                     onChange={() => ToggleModel(model)}
                   />
-                  <SegmentModelOptions model={model} />
+                  <SegmentModelOptions
+                    options={options}
+                    model={model}
+                    dependentModels={dependentModels}
+                    SetModelOption={(key, value) => SetModelOption(options, setOptions, model, key, value)}
+                  />
                 </>
               )
             }
@@ -459,14 +505,22 @@ const Form = observer(({options, setOptions}) => {
               <div className={S("group")}>
                 {
                   aiTaggingStore.processorModels.map(model =>
-                    <Checkbox
-                      key={`option-${model}`}
-                      label={aiTaggingStore.modelNames[model]}
-                      indeterminate={!options[model] && dependentModels.includes(model)}
-                      checked={options[model]}
-                      disabled={model === "shot"}
-                      onChange={() => ToggleModel(model)}
-                    />
+                    <>
+                      <Checkbox
+                        key={`option-${model}`}
+                        label={aiTaggingStore.modelNames[model]}
+                        indeterminate={!options[model] && dependentModels.includes(model)}
+                        checked={options[model]}
+                        disabled={model === "shot"}
+                        onChange={() => ToggleModel(model)}
+                      />
+                      <ProcessorModelOptions
+                        options={options}
+                        model={model}
+                        dependentModels={dependentModels}
+                        SetModelOption={(key, value) => SetModelOption(options, setOptions, model, key, value)}
+                      />
+                    </>
                   )
                 }
               </div>

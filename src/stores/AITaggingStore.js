@@ -9,6 +9,7 @@ class AITaggingStore {
   jobStatus = {};
 
   modelNames = {};
+  modelParams = {};
   trackKeyToModelMapping = {};
   modelToTrackKeyMapping = {};
   segmentModels = [];
@@ -199,6 +200,8 @@ class AITaggingStore {
       for(const track of model.tag_tracks || []) {
         this.trackKeyToModelMapping[track.name] = model.name;
       }
+
+      this.modelParams[model.name] = model.params_schema?.properties || {};
     }
 
     // Fill out model dependencies
@@ -381,6 +384,14 @@ class AITaggingStore {
 
           if(options.modelOptions?.[model]?.legibilityThreshold) {
             result.model_params.legibility_threshold = options.modelOptions[model].legibilityThreshold;
+          }
+        }
+
+        if(model === "evidence") {
+          result.model_params = result.model_params || {};
+
+          if((options.modelOptions?.[model]?.outputTracks || []).length > 0) {
+            result.model_params.output_tracks = options.modelOptions[model].outputTracks;
           }
         }
 

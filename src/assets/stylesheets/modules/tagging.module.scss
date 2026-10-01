@@ -6,7 +6,7 @@
   animation: var(--animation-fadein) 0.15s ease-out;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 10px;
   height: 100%;
   max-height: calc(100vh - 180px);
   overflow-y: auto;
@@ -31,7 +31,7 @@
 
 .groups {
   display: grid;
-  padding: 10px 0 0 20px;
+  padding-left: 20px;
   width: 100%;
 
   &--double {
@@ -46,7 +46,7 @@
 .group {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 10px;
 
   &--summary {
     gap: 0;
