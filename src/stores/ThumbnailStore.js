@@ -36,7 +36,7 @@ class ThumbnailStore {
       endTime = startTime + (this.maxInterval || 10);
     }
 
-    let thumbnailIndexes = this.intervalTree?.search(startTime, endTime);
+    let thumbnailIndexes = this.intervalTree?.search([startTime, endTime]);
 
     if(maxThumbnails && thumbnailIndexes.length > maxThumbnails) {
       const interval = thumbnailIndexes.length / maxThumbnails;

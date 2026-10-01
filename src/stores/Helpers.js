@@ -1,7 +1,7 @@
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 import {rootStore} from "@/stores/index.js";
 import {Unproxy} from "@/utils/Utils.js";
-import {IntervalTree} from "node-interval-tree";
+import IntervalTree from "@flatten-js/interval-tree";
 import Fraction from "fraction.js";
 
 export const LoadVideo = async ({
@@ -347,7 +347,7 @@ export const CreateTrackIntervalTree = (tags, label, offset=0) => {
 
   Object.values(tags).forEach(tag => {
     try {
-      intervalTree.insert(tag.startTime + offset, tag.endTime + offset, tag.tagId);
+      intervalTree.insert([tag.startTime + offset, tag.endTime + offset], tag.tagId);
     } catch(error) {
       console.warn(`Invalid tag in track '${label}'`);
       console.warn(JSON.stringify(tag, null, 2));

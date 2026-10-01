@@ -18,6 +18,7 @@
   "dependencies": {
     "@eluvio/elv-client-js": "^4.2.1",
     "@eluvio/elv-player-js": "^2.1.36",
+    "@flatten-js/interval-tree": "^2.0.3",
     "@mantine/core": "^7.17.2",
     "@mantine/dates": "^7.17.2",
     "@mantine/dropzone": "^7.17.2",
@@ -34,7 +35,6 @@
     "mime-types": "^2.1.35",
     "mobx": "^6.13.2",
     "mobx-react": "^9.1.1",
-    "node-interval-tree": "^2.1.2",
     "openai": "^6.34.0",
     "pretty-bytes": "^6.1.1",
     "react": "^18.3.1",

@@ -33,7 +33,7 @@ const TimeAt = ({canvas, clientX}) => {
 };
 
 const Search = ({trackId, time}) => {
-  return trackStore.TrackTagIntervalTree(trackId).search(time, time);
+  return trackStore.TrackTagIntervalTree(trackId).search([time, time]);
 };
 
 const Click = ({canvas, clientX, trackId}) => {
@@ -242,7 +242,7 @@ const InitializeTrackReactions = ({track, worker}) => {
         () => {
           const currentActiveTagIds = Unproxy(
             trackStore.TrackTagIntervalTree(track.trackId)
-              .search(videoStore.currentTime, videoStore.currentTime)
+              .search([videoStore.currentTime, videoStore.currentTime])
           ).sort();
 
           if(currentActiveTagIds.toString() === activeTagIds.toString()) {
