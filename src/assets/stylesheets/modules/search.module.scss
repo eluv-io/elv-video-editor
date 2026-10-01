@@ -100,9 +100,9 @@
   }
 
   &__video-container {
-    height: calc(100vh - 400px);
-    max-height: calc(100vh - 400px);
-    min-height: calc(100vh - 400px);
+    height: calc(100vh - 430px);
+    max-height: calc(100vh - 430px);
+    min-height: calc(100vh - 430px);
 
     &--full {
       height: calc(100vh - 500px);
@@ -184,7 +184,7 @@
     animation: var(--animation-fadein) 0.4s linear;
     background-color: var(--background-modal);
     border-radius: 7px;
-    max-height: 165px;
+    max-height: 160px;
     overflow-y: auto;
     padding: 10px 10px 20px;
     position: relative;
@@ -212,10 +212,10 @@
   &__title {
     align-items: center;
     display: flex;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     gap: 8px;
-    padding-right: 20px;
+    padding-right: 65px;
 
     &--full {
       display: block;

@@ -163,9 +163,9 @@ const Summary = observer(({result}) => {
   return (
     <>
       <div className={S("result__text")}>
-        <div className={S("result__title")}>
+        <div title={summary.title} className={S("result__title")}>
           <Icon icon={AIIcon} className={S("result__icon")}/>
-          <span>{summary.title}</span>
+          <span className={S("ellipsis")}>{summary.title}</span>
         </div>
         <div className={S("result__summary")}>
           {summary.summary}
