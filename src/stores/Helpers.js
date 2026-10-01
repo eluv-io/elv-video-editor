@@ -1,7 +1,7 @@
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 import {rootStore} from "@/stores/index.js";
 import {Unproxy} from "@/utils/Utils.js";
-import IntervalTree from "node-interval-tree";
+import {IntervalTree} from "node-interval-tree";
 import Fraction from "fraction.js";
 
 export const LoadVideo = async ({
