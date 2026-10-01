@@ -45,7 +45,6 @@ const Summary = observer(({result}) => {
   const [generating, setGenerating] = useState(false);
   const [summary, setSummary] = useState(false);
   const [summaryError, setSummaryError] = useState(false);
-  const [showSummary, setShowSummary] = useState(result.type !== "video");
 
   const Generate = async ({cacheOnly, regenerate}={}) => {
     setGenerating(true);
@@ -110,21 +109,11 @@ const Summary = observer(({result}) => {
     if(result.type === "image") {
       Generate({cacheOnly: true});
     } else {
-      aiStore.client.ContentObjectMetadata({
-        libraryId: result.libraryId,
-        objectId: result.objectId,
-        metadataSubtree: "video_tags"
-      })
-        .then(tags => {
-          if(tags) {
-            Generate({cacheOnly: true});
-            setShowSummary(true);
-          }
-        });
+      Generate({cacheOnly: true});
     }
   }, []);
 
-  if(loading || !showSummary) { return null; }
+  if(loading) { return null; }
 
   if(summaryError) {
     return (
@@ -259,7 +248,7 @@ const ClipResultPanel = observer(({result}) => {
   return (
     <>
       <div className={S("result")}>
-        <div className={S("result__video-container")}>
+        <div className={S("result__video-container", showFull ? "result__video-container--full" : "")}>
           <Player
             key={`video-${showFull}`}
             objectId={result.objectId}
@@ -545,8 +534,9 @@ const SearchResult = observer(() => {
     return <Redirect to={`/${queryB58}`} />;
   }
 
-  // Try and get 16:9 default size for video
-  const contentRatio = 100 * ((window.innerHeight - 310) * 16 / 9) / (window.innerWidth - 85);
+  // Want content size to be at most ~1000px. Whole area size is width - ~200px of padding
+  const defaultSize = 100 * (1 - (window.innerWidth - 1200) / window.innerWidth);
+
 
   return (
     <div className={S("browser-page")}>
@@ -592,7 +582,7 @@ const SearchResult = observer(() => {
             }
           </Panel>
           <PanelResizeHandle />
-          <Panel key={`result-${queryB58}-${resultIndex}`} id="content" order={2} minSize={30} defaultSize={contentRatio} >
+          <Panel key={`result-${queryB58}-${resultIndex}`} id="content" order={2} minSize={30} defaultSize={defaultSize} >
               {
                 ["video", "frame"].includes(result.type) ?
                   <ClipResultPanel result={result} /> :
