@@ -90,7 +90,6 @@ const SummaryItem = observer(({options, setOptions, model}) => {
         }
       </div>
       <Checkbox
-        size="xs"
         title="Replace existing tags for this model (if applicable)"
         checked={!(options.modelOptions?.[model]?.noReplace || false)}
         onChange={event => SetModelOption(options, setOptions, model, "noReplace", !event.target.checked)}
@@ -132,7 +131,6 @@ const Summary = observer(({options, setOptions}) => {
               <span className={S("group__title-column-header")}>
                 <Checkbox
                   label="Replace Existing Tags"
-                  size="xs"
                   labelPosition="left"
                   checked={replaceAll}
                   indeterminate={!replaceAll && !replaceNone}
