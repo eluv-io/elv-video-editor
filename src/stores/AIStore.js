@@ -898,7 +898,6 @@ class AIStore {
         mode === "music" ? "f_music" : "all",
       clips: type === "video",
       clip_include_source_tags: true,
-      get_chunks: true,
       max_total: 100,
       min_score: searchSettings.minConfidence / 100,
       debug: !!searchIndex.isV2
@@ -981,12 +980,12 @@ class AIStore {
           }
         }
 
-        let startTime, endTime, subtitle, chunkStartTime;
+        let startTime, endTime, matchStartTime, matchEndTime, subtitle;
         if(type === "video") {
           startTime = (result.start_time || 0) / 1000;
+          matchStartTime = (result.match_start_time || result.start_time || 0) / 1000;
           endTime = result.end_time ? result.end_time / 1000 : undefined;
-
-          chunkStartTime = result.sources?.[0]?.chunks?.[0]?.start_time;
+          matchEndTime = (result.match_end_time || result.end_time || 0) / 1000;
 
           if(startTime || endTime) {
             subtitle = FrameAccurateVideo.TimeToString({
@@ -1009,8 +1008,8 @@ class AIStore {
             }
           }
 
-          if(chunkStartTime && !imageUrl.searchParams.has("t")) {
-            imageUrl.searchParams.set("t", (chunkStartTime / 1000).toFixed(2));
+          if(matchStartTime && !imageUrl.searchParams.has("t")) {
+            imageUrl.searchParams.set("t", matchStartTime.toFixed(2));
           }
         }
 
@@ -1031,8 +1030,9 @@ class AIStore {
           titleImageUrl: titleImageUrl?.toString(),
           filePath: type === "image" ? result.prefix : undefined,
           startTime,
+          matchStartTime,
           endTime,
-          firstChunkStartTime: chunkStartTime,
+          matchEndTime,
           sources: result.sources,
           name: (
             result.name ||
@@ -1122,8 +1122,9 @@ class AIStore {
           imageUrl: imageUrl?.toString(),
           frame: result?.match_info?.frame_idx || 0,
           startTime: time,
+          matchStartTime: time,
           endTime: time,
-          firstChunkStartTime: time,
+          matchEndTime: time,
           name: objectName,
           score: result.similarity ? (result.similarity * 100).toFixed(1) : "",
           type: "frame",

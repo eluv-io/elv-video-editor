@@ -96,6 +96,8 @@ class VideoStore {
   myClips = [];
   myClipObjectIds = [];
 
+  verticalStatus = {};
+
   get scaleMagnitude() { return this.scaleMax - this.scaleMin; }
 
   get scaleMinTime() { return this.duration ? this.ProgressToTime(this.scaleMin) : 0; }
@@ -128,6 +130,29 @@ class VideoStore {
       clipOutTime: this.videoHandler.FrameToTime(clipOutFrame),
     };
   }
+
+  CheckHasVertical = flow(function * ({objectId, force}) {
+    if(this.verticalStatus[objectId]) { return true; }
+
+    return yield this.rootStore.LoadResource({
+      key: "checkHasVertical",
+      id: `${objectId}`,
+      bind: this,
+      ttl: 60,
+      force,
+      Load: flow(function* () {
+        const apiTracks = (yield this.rootStore.aiStore.QueryAIAPI({
+          objectId,
+          path: UrlJoin("/tagstore", objectId, "tracks"),
+          channelAuth: true,
+          queryParams: {limit: 1000000},
+          format: "JSON"
+        }))?.tracks || [];
+
+        this.verticalStatus[objectId] = !!apiTracks.find(track => track.name === "vertical_video");
+      })
+    });
+  });
 
   DebounceControl({name, delay, Action}) {
     if(this[`${name}LastFired`] && Date.now() - this[`${name}LastFired`] < delay) {

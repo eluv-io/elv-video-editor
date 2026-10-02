@@ -4,9 +4,9 @@ import SearchStyles from "@/assets/stylesheets/modules/search.module.scss";
 import {observer} from "mobx-react-lite";
 import React, {useEffect, useState} from "react";
 import {Redirect, useParams} from "wouter";
-import {rootStore, aiStore, downloadStore, titleStore} from "@/stores/index.js";
+import {rootStore, aiStore, downloadStore, titleStore, videoStore} from "@/stores/index.js";
 import {CopyableField, Icon, IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
-import {Copy, CreateModuleClassMatcher, ParseSearchQuery} from "@/utils/Utils.js";
+import {Copy, CreateModuleClassMatcher, ParseSearchQuery, Unproxy} from "@/utils/Utils.js";
 import UrlJoin from "url-join";
 import Player from "@/components/common/Player.jsx";
 import {ShareModal} from "@/components/download/Share.jsx";
@@ -31,10 +31,11 @@ import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 import XIcon from "@/assets/icons/v2/x.svg";
 import TitleIcon from "@/assets/icons/titles.svg";
 import EmbedLinkIcon from "@/assets/icons/v2/link.svg";
+import SubmitIcon from "@/assets/icons/v2/search-arrow.svg";
+import VerticalVideoIcon from "@/assets/icons/vertical.svg";
 
 import AIImageGray from "@/assets/images/composition-manual.svg";
 import AIImageColor from "@/assets/images/composition-ai.svg";
-import SubmitIcon from "@/assets/icons/v2/search-arrow.svg";
 
 
 const S = CreateModuleClassMatcher(BrowserStyles, SearchStyles);
@@ -220,14 +221,76 @@ const Summary = observer(({result}) => {
   );
 });
 
+const ClipVideo = observer(({result, showFull, showVertical}) => {
+  const [originalNodes, setOriginalNodes] = useState();
+  // TODO: Remove when vertical is widely deployed
+  useEffect(() => {
+    if(!showVertical || rootStore.verticalNodes.length === 0) { return; }
+
+    let nodes;
+    (async () => {
+      nodes = (await rootStore.client.Nodes()).fabricURIs;
+      setOriginalNodes(nodes);
+      await rootStore.client.SetNodes({
+        fabricURIs: Unproxy(rootStore.verticalNodes)
+      });
+    })();
+
+    return () => nodes && rootStore.client.SetNodes({fabricURIs: Unproxy(nodes)});
+  }, []);
+
+  return (
+    <Player
+      key={`video-${showFull}`}
+      objectId={result.objectId}
+      autoAspectRatio={false}
+      readyCallback={() => {
+        if(originalNodes) {
+          rootStore.client.SetNodes({
+            fabricURIs: Unproxy(originalNodes)
+          });
+        }
+      }}
+      playoutParameters={
+        showFull ?
+          {
+            vertical: showVertical
+          } :
+          {
+            clipStart: result.startTime,
+            clipEnd: result.endTime,
+            vertical: showVertical
+          }
+      }
+      playerOptions={
+        result.type === "frame" ?
+          { startTime: result.imageTime } :
+          showFull ?
+            { startTime: result.startTime } :
+            {
+              startTime:
+                result.matchStartTime === result.startTime ? 0 :
+                Math.max(0, result.matchStartTime - result.startTime - 2)
+            }
+      }
+      className={S("result__video", showVertical ? "result__video--vertical" : "")}
+    />
+  );
+});
+
 const ClipResultPanel = observer(({result}) => {
   const [showFull, setShowFull] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [showAddToMyClipsModal, setShowAddToMyClipsModal] = useState(false);
+  const [hasVertical, setHasVertical] = useState(false);
+  const [showVertical, setShowVertical] = useState(false);
   const [clipVideoStore, setClipVideoStore] = useState(null);
 
   useEffect(() => {
+    videoStore.CheckHasVertical({objectId: result.objectId})
+      .then(setHasVertical);
+
     setClipVideoStore(undefined);
 
     const clipStore = new VideoStore(rootStore, {tags: false, thumbnails: true, id: `clip-${result.objectId}`});
@@ -237,6 +300,11 @@ const ClipResultPanel = observer(({result}) => {
         .then(() => setClipVideoStore(clipStore));
     }, 1000);
   }, [result.objectId]);
+
+  // TODO: Remove
+  useEffect(() => {
+    setShowVertical(false);
+  }, [showFull]);
 
   const existingClip = clipVideoStore?.myClips?.find(clip =>
     clip.clipInFrame === clipVideoStore.TimeToFrame(result.startTime || 0) &&
@@ -248,24 +316,20 @@ const ClipResultPanel = observer(({result}) => {
   return (
     <>
       <div className={S("result")}>
-        <div className={S("result__video-container", showFull ? "result__video-container--full" : "")}>
-          <Player
-            key={`video-${showFull}`}
-            objectId={result.objectId}
-            playoutParameters={
-              showFull ? {} :
-                {
-                  clipStart: result.startTime,
-                  clipEnd: result.endTime
-                }
-            }
-            playerOptions={
-              result.type === "frame" ?
-                { startTime: result.imageTime } :
-                showFull ? { startTime: result.startTime } : {}
-            }
-            className={S("result__video")}
-          />
+        <div
+          className={
+            S(
+              "result__video-container",
+              showFull ? "result__video-container--full" : "",
+              showVertical ? "result__video-container--with-vertical" : "",
+            )
+          }
+        >
+          <ClipVideo key={`video-${showFull}`} result={result} showFull={showFull} />
+          {
+            !showVertical ? null :
+              <ClipVideo key={`vertical-video-${showFull}`} result={result} showFull={showFull} showVertical />
+          }
         </div>
         <div className={S("result__actions")}>
           <div className={S("result__actions--left")}>
@@ -320,6 +384,15 @@ const ClipResultPanel = observer(({result}) => {
                   className={S("result__action")}
                   icon={ClipIcon}
                   onClick={() => setShowAddToMyClipsModal(true)}
+                />
+            }
+            {
+              !hasVertical ? null :
+                <IconButton
+                  label={`${showVertical ? "Hide" : "Show"} Vertical Video`}
+                  className={S("result__action", showVertical ? "result__action--active" : "")}
+                  icon={VerticalVideoIcon}
+                  onClick={() => setShowVertical(!showVertical)}
                 />
             }
             <IconButton

@@ -2146,11 +2146,11 @@ class CompositionStore {
         imageUrl.searchParams.set("t", (clip.start_time / 1000).toFixed(2));
       }
 
-      let startTime, endTime, subtitle, chunkStartTime;
-      startTime = (clip.start_time || 0) / 1000;
-      endTime = clip.end_time ? clip.end_time / 1000 : undefined;
-
-      chunkStartTime = clip.sources?.[0]?.chunks?.[0]?.start_time;
+      let subtitle;
+      const startTime = (clip.start_time || 0) / 1000;
+      const matchStartTime = (clip.match_start_time || clip.start_time || 0) / 1000;
+      const endTime = clip.end_time ? result.end_time / 1000 : undefined;
+      const matchEndTime = (clip.match_end_time || clip.end_time || 0) / 1000;
 
       if(startTime || endTime) {
         subtitle = FrameAccurateVideo.TimeToString({
@@ -2168,12 +2168,7 @@ class CompositionStore {
           subtitle = `${subtitle} (${FrameAccurateVideo.TimeToString({time: endTime - startTime})})`;
         }
 
-        imageUrl.searchParams.set("t", startTime.toFixed(2));
-      }
-
-      if(chunkStartTime) {
-        chunkStartTime = chunkStartTime / 1000;
-        imageUrl.searchParams.set("t", chunkStartTime.toFixed(2));
+        imageUrl.searchParams.set("t", matchStartTime.toFixed(2));
       }
 
       let score = clip.score;
@@ -2203,8 +2198,11 @@ class CompositionStore {
         offering: sourceClip.offering,
         clipInFrame,
         clipOutFrame,
-        firstChunkStartTime: chunkStartTime,
-        thumbnailFrame: chunkStartTime ? this.clipStores[storeKey]?.TimeToFrame(chunkStartTime) : undefined,
+        startTime,
+        matchStartTime,
+        endTime,
+        matchEndTime,
+        thumbnailFrame: this.clipStores[storeKey]?.TimeToFrame(matchStartTime),
         score: score ? (score * 100).toFixed(1) : "",
         imageUrl,
         storeKey,

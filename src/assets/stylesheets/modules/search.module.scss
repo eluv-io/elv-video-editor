@@ -78,8 +78,16 @@
   padding-bottom: 20px;
 
   &__video {
+    flex-grow: 1;
     height: 100%;
-    width: 100%;
+    max-height: 100%;
+    max-width: 100%;
+
+    &--vertical {
+      aspect-ratio: 9/16;
+      flex-grow: 0;
+      height: 100%;
+    }
   }
 
   &__video-container,
@@ -100,6 +108,7 @@
   }
 
   &__video-container {
+    display: flex;
     height: calc(100vh - 430px);
     max-height: calc(100vh - 430px);
     min-height: calc(100vh - 430px);
@@ -153,6 +162,10 @@
     animation: var(--animation-fadein) 0.25s ease-in-out;
     background-color: var(--background-modal);
     padding: 5px;
+
+    &--active {
+      background-color: var(--background-toolbar--highlight)!important;
+    }
   }
 
   &__tab-container {
