@@ -59,7 +59,7 @@ export const LoadVideo = async ({
       name: metadata.public && metadata.public.name || metadata.name || versionHash,
       description: metadata.public && metadata.public.description || metadata.description,
       metadata,
-      isVideo: !!metadata.offerings || !!metadata.channel,
+      isVideo: !!metadata.offerings || !!metadata.channel || !!metadata.live_recording || !!metadata.live_recording_info,
       isChannel: !!metadata.channel,
       isLive: metadata?.live_recording?.status?.state === "active",
       isLiveToVod: !!metadata.live_recording_info,
@@ -165,7 +165,7 @@ export const LoadVideo = async ({
 
       if(!hasHlsOfferings) { throw Error("No offerings with HLS Clear or AES-128 playout found."); }
 
-      videoObject.offeringKey = offeringKey;
+      videoObject.offeringKey = offeringKey || "default";
       videoObject.hasVertical = metadata.offerings?.[offeringKey]?.verticalize?.data;
 
       try {
