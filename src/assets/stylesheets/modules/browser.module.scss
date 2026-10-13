@@ -144,6 +144,24 @@
     margin-left: auto;
   }
 
+  &__sort {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-bottom: 5px;
+  }
+
+  &__sort-select {
+    width: 190px;
+  }
+
+  &__sort-notice {
+    color: var(--text-secondary);
+    font-size: 12px;
+    text-align: right;
+  }
+
   &__toggle-button {
     animation: var(--animation-fadein) 0.55s ease-out;
     font-size: 14px;

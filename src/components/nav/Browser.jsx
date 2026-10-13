@@ -28,7 +28,7 @@ import {
 import SVG from "react-inlinesvg";
 import {Redirect, Route, useParams, Switch, useLocation, useSearchParams} from "wouter";
 import UrlJoin from "url-join";
-import {Select, Tabs, Tooltip, Progress, Menu, Checkbox, Autocomplete} from "@mantine/core";
+import {Select, Select as MantineSelect, Tabs, Tooltip, Progress, Menu, Checkbox, Autocomplete} from "@mantine/core";
 import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
 import SearchSettings from "@/components/search/SearchSettings.jsx";
 import {Dropzone, IMAGE_MIME_TYPE} from "@mantine/dropzone";
@@ -653,7 +653,8 @@ export const BrowserTable = observer(({
   noDuration,
   LeftActions,
   Actions,
-  Delete
+  Delete,
+  sortOrder
 }) => {
   const hasActiveItem = rootStore.selectedObjectId;
   const [loading, setLoading] = useState(false);
@@ -674,7 +675,7 @@ export const BrowserTable = observer(({
     setLoading(true);
     const loaderTimeout = setTimeout(() => setShowLoader(true), 500);
 
-    Load({...paging, page, filter})
+    Load({...paging, page, filter, sortOrder})
       .then(({content, paging}) => {
         setContent(content);
         setPaging(paging);
@@ -690,7 +691,7 @@ export const BrowserTable = observer(({
     if(deleting) { return; }
 
     LoadPage(1);
-  }, [filter, deleting]);
+  }, [filter, deleting, sortOrder]);
 
   let table;
   if(showLoader) {
@@ -1048,6 +1049,7 @@ export const ObjectBrowser = observer(({
 }) => {
   const [queryParams] = useSearchParams();
   const [selecting, setSelecting] = useState(false);
+  const [sortNotice, setSortNotice] = useState(undefined);
   filter = filter || decodeURIComponent(queryParams.get(filterQueryParam) || "");
 
   useEffect(() => {
@@ -1099,8 +1101,35 @@ export const ObjectBrowser = observer(({
         }
       </h1>
       {belowTitle}
+      <div className={S("browser__sort")}>
+        {
+          !sortNotice ? null :
+            <div className={S("browser__sort-notice")}>
+              {sortNotice}
+            </div>
+        }
+        {/* MantineSelect, since ObjectBrowser's Select prop shadows the Mantine Select import */}
+        <MantineSelect
+          aria-label="Sort order"
+          title="Sort order"
+          value={browserStore.objectSortOrder}
+          onChange={value => value && browserStore.SetObjectSortOrder(value)}
+          allowDeselect={false}
+          size="xs"
+          data={[
+            {label: "Last modified (newest)", value: "modified-desc"},
+            {label: "Last modified (oldest)", value: "modified-asc"},
+            {label: "Name A–Z", value: "name-asc"},
+            {label: "Name Z–A", value: "name-desc"},
+            {label: "Object ID (asc)", value: "id-asc"},
+            {label: "Object ID (desc)", value: "id-desc"}
+          ]}
+          className={S("browser__sort-select")}
+        />
+      </div>
       <BrowserTable
         filter={filter}
+        sortOrder={browserStore.objectSortOrder}
         defaultIcon={ObjectIcon}
         contentType="object"
         videoOnly={videoOnly}
@@ -1108,7 +1137,11 @@ export const ObjectBrowser = observer(({
         noDuration={noDuration}
         Path={Path}
         Select={onSelect}
-        Load={async args => await browserStore.ListObjects({libraryId, ...args})}
+        Load={async args => {
+          const result = await browserStore.ListObjects({libraryId, ...args});
+          setSortNotice(result.notice);
+          return result;
+        }}
         LeftActions={LeftActions}
         Actions={Actions}
       />

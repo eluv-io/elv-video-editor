@@ -1,11 +1,14 @@
 import {flow, makeAutoObservable} from "mobx";
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
+import {FabricApiRequest} from "@/utils/FabricRequests.js";
+import UrlJoin from "url-join";
 
 class BrowserStore {
   libraries = undefined;
   selectedObject;
   myLibraryItems;
   liveToVodFormFields = {};
+  objectSortOrder = "modified-desc";
 
   constructor(rootStore) {
     makeAutoObservable(this);
@@ -33,6 +36,10 @@ class BrowserStore {
       libraryId: "",
       title: ""
     };
+  }
+
+  SetObjectSortOrder(sortOrder) {
+    this.objectSortOrder = sortOrder;
   }
 
   UpdateVersionHash(versionHash) {
@@ -130,12 +137,11 @@ class BrowserStore {
     }
   }
 
-  ObjectDetails = flow(function * ({objectId, versionHash, publicMetadata, force}) {
+  ObjectDetails = flow(function * ({libraryId, objectId, versionHash, publicMetadata, force}) {
     if(!versionHash) {
       versionHash = yield this.rootStore.client.LatestVersionHash({objectId});
     }
 
-    let libraryId;
     objectId = this.rootStore.client.utils.DecodeVersionHash(versionHash).objectId;
 
     return yield this.rootStore.LoadResource({
@@ -163,7 +169,8 @@ class BrowserStore {
           vods;
 
         try {
-          libraryId = yield this.rootStore.client.ContentObjectLibraryId({objectId});
+          // Skip the library ID lookup when the caller already knows it (e.g. listing a library)
+          libraryId = libraryId || (yield this.rootStore.client.ContentObjectLibraryId({objectId}));
           metadata = yield this.rootStore.client.ContentObjectMetadata({
             versionHash: versionHash,
             select: [
@@ -316,45 +323,122 @@ class BrowserStore {
     });
   });
 
-  ListObjects = flow(function * ({libraryId, page=1, perPage=25, filter=""}) {
+  // Library object listing sort orders, as "<field>-<asc|desc>"
+  //   name:     /qlibs/<id>/q sorted by /public/name
+  //   id:       /qlibs/<id>/q sorted by object ID - cheapest, no per-object metadata needed to sort
+  //   modified: tenant content query API, sorted by latest version time in the fabric index
+  //
+  // Tenant content query can't filter on metadata, so a name filter in "modified" order falls back to ID order.
+  // Failures return "notice" for showing to the user.
+  ListObjects = flow(function * ({libraryId, page=1, perPage=25, filter="", sortOrder="modified-desc"}) {
     if(filter.startsWith("iq__") || filter.startsWith("hq__")) {
       filter = "";
     }
 
-    let filters = [];
-    if(filter) {
-      filters.push({key: "/public/name", type: "cnt", filter});
+    const [sortField, sortDirection] = sortOrder.split("-");
+    const descending = sortDirection === "desc";
+    const start = (page-1) * perPage;
+
+    let versions, total, notice;
+    let useTenantQuery = sortField === "modified";
+    if(useTenantQuery && filter) {
+      useTenantQuery = false;
+      notice = "Last Modified isn't available while filtering by name -- using Object ID order";
     }
 
-    let { contents, paging } = yield this.rootStore.client.ContentObjects({
-      libraryId,
-      filterOptions: {
+    if(useTenantQuery) {
+      try {
+        const tenantId = yield this.rootStore.client.ContentObjectTenantId({
+          objectId: libraryId.replace("ilib", "iq__")
+        });
+
+        if(!tenantId) {
+          throw Error(`No tenant ID found for ${libraryId}`);
+        }
+
+        const response = yield this.rootStore.client.TenantContent({
+          tenantId,
+          filter: [`lib:eq:${libraryId}`],
+          include: "none",
+          sortDescending: descending || undefined,
+          start,
+          limit: perPage
+        });
+
+        // The tenant query returns one entry per object, at its latest version
+        versions = response.versions || [];
+        total = response.paging?.items || 0;
+      } catch(error) {
+        // eslint-disable-next-line no-console
+        console.error("Tenant content query failed - falling back to object ID order", error);
+
+        useTenantQuery = false;
+        notice = error.status === 403 ?
+          "Last Modified isn't available without admin rights in this library's tenant -- using Object ID order" :
+          "Last Modified isn't available for this library -- using Object ID order";
+      }
+    }
+
+    if(!useTenantQuery) {
+      const queryParams = {
         select: [
           "public/name"
         ],
-        filter: filters,
-        start: (page-1) * perPage,
+        start,
         limit: perPage,
         //sort: "public/name"
+      };
+
+      if(sortField === "name") {
+        queryParams.sort_by = "/public/name";
       }
-    });
+
+      // A "modified" sort that fell back to this listing is shown in ascending ID order
+      if(descending && sortField !== "modified") {
+        queryParams.sort_descending = true;
+      }
+
+      if(filter) {
+        queryParams.filter = `/public/name:co:${filter}`;
+      }
+
+      const {contents, paging} = yield FabricApiRequest({
+        client: this.rootStore.client,
+        libraryId,
+        path: UrlJoin("qlibs", libraryId, "q"),
+        queryParams
+      });
+
+      versions = (contents || []).map(object => object.versions[0]);
+      total = paging?.items || 0;
+    }
+
+    // The library's own object iq__ form of the library ID matches -- don't count it
+    const unfilteredCount = versions.length;
+    const utils = this.rootStore.client.utils;
+    versions = versions.filter(version =>
+      !utils.EqualHash(libraryId, utils.DecodeVersionHash(version.hash).objectId)
+    );
+    if(total && versions.length < unfilteredCount) {
+      total -= 1;
+    }
 
     return {
       content: yield Promise.all(
-        contents.map(async object => {
-          const latestVersion = object.versions[0];
-
-          return this.ObjectDetails({
-            publicMetadata: latestVersion.meta?.public,
-            versionHash: latestVersion.hash
-          });
-        })
+        versions.map(async version =>
+          this.ObjectDetails({
+            libraryId,
+            publicMetadata: version.meta?.public,
+            versionHash: version.hash
+          })
+        )
       ),
+      notice,
       paging: {
         page,
-        pages: paging.pages,
+        pages: Math.ceil(total / perPage),
         perPage,
-        total: paging.items
+        total
       }
     };
   });
