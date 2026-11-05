@@ -222,35 +222,11 @@ const Summary = observer(({result}) => {
 });
 
 const ClipVideo = observer(({result, showFull, showVertical}) => {
-  const [originalNodes, setOriginalNodes] = useState();
-  // TODO: Remove when vertical is widely deployed
-  useEffect(() => {
-    if(!showVertical || rootStore.verticalNodes.length === 0) { return; }
-
-    let nodes;
-    (async () => {
-      nodes = (await rootStore.client.Nodes()).fabricURIs;
-      setOriginalNodes(nodes);
-      await rootStore.client.SetNodes({
-        fabricURIs: Unproxy(rootStore.verticalNodes)
-      });
-    })();
-
-    return () => nodes && rootStore.client.SetNodes({fabricURIs: Unproxy(nodes)});
-  }, []);
-
   return (
     <Player
       key={`video-${showFull}`}
       objectId={result.objectId}
       autoAspectRatio={false}
-      readyCallback={() => {
-        if(originalNodes) {
-          rootStore.client.SetNodes({
-            fabricURIs: Unproxy(originalNodes)
-          });
-        }
-      }}
       playoutParameters={
         showFull ?
           {

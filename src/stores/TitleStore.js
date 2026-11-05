@@ -136,12 +136,10 @@ class TitleStore {
           async ({name}) => (
             await this.rootStore.aiStore.QueryAIAPI({
               objectId,
-              path: offering || compositionKey ?
-                UrlJoin("/tagstore", objectId, "compositions", "tags") :
-                UrlJoin("/tagstore", objectId, "tags"),
+              path: UrlJoin("/tagstore", objectId, "compositions", "tags"),
               queryParams: {
                 channel_key: compositionKey,
-                offering_key: offering,
+                offering_key: compositionKey ? undefined : offering || "default",
                 limit: 1000000,
                 track: name,
                 ...clippingParams

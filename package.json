@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@eluvio/elv-client-js": "^4.2.1",
-    "@eluvio/elv-player-js": "^2.1.36",
+    "@eluvio/elv-player-js": "^2.1.40",
     "@flatten-js/interval-tree": "^2.0.3",
     "@mantine/core": "^7.17.2",
     "@mantine/dates": "^7.17.2",
