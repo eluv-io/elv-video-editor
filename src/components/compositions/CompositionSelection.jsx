@@ -184,6 +184,10 @@ const CompositionCreationModal = observer(({type, defaultProfileType="", Cancel}
   const selectedProfile = aiStore.highlightProfiles[options.profileKey];
 
   useEffect(() => {
+    if(!options.sourceId && !compositionStore.compositionFormOptions?.sourceId) {
+      setShowSourceModal(true);
+    }
+
     if(!compositionStore.compositionFormOptions) {
       return;
     }

@@ -41,6 +41,7 @@ class AIStore {
 
   _authTokens = {};
   verticalVideoProcessingStatus = {};
+  indexCreateProgress = {};
 
   titleIndex;
   titles = [];
@@ -150,28 +151,27 @@ class AIStore {
     this.StartSearchIndexUpdateStatusWatcher();
   });
 
-  QueryAIAPI = flow(function * ({
+  GetAIAPIURL = flow(function * ({
     server="ai",
-    method="GET",
     path,
     objectId,
-    channelAuth=false,
-    update=false,
     queryParams={},
-    body,
-    stringifyBody=true,
-    authTokenInBody=false,
-    authTokenInHeader=false,
-    headers={},
-    format="json",
-    allowStatus=[],
+    update,
+    channelAuth=false
   }) {
     const url = new URL(`https://${server}.contentfabric.io/`);
     url.pathname = path;
 
-    Object.keys(queryParams).forEach(key =>
-      queryParams[key] && url.searchParams.set(key, queryParams[key])
-    );
+    Object.keys(queryParams).forEach(key => {
+      // For arrays, set params as 'key=value1&key=value2' instead of 'key=value1,value2'
+      if(Array.isArray(queryParams[key])) {
+       queryParams[key].forEach(item =>
+         url.searchParams.append(key, item)
+       );
+      } else if(queryParams[key]) {
+        queryParams[key] && url.searchParams.set(key, queryParams[key]);
+      }
+    });
 
     if(!this._authTokens[objectId]) {
       this._authTokens[objectId] = {};
@@ -206,6 +206,30 @@ class AIStore {
 
       authToken = this._authTokens[objectId].signed;
     }
+
+    return {
+      url,
+      authToken
+    };
+  });
+
+  QueryAIAPI = flow(function * ({
+    server="ai",
+    method="GET",
+    path,
+    objectId,
+    channelAuth=false,
+    update=false,
+    queryParams={},
+    body,
+    stringifyBody=true,
+    authTokenInBody=false,
+    authTokenInHeader=false,
+    headers={},
+    format="json",
+    allowStatus=[],
+  }) {
+    let {url, authToken} = yield this.GetAIAPIURL({server, path, objectId, queryParams, update, channelAuth});
 
     if(authTokenInBody) {
       body.append ?
@@ -287,9 +311,9 @@ class AIStore {
   GenerateClipSummary = flow(function * ({objectId, startTime, endTime, regenerate=false, cacheOnly=false, prompt}) {
     return yield this.rootStore.LoadResource({
       key: "clipSummary",
-      id: `${objectId}-${startTime}-${endTime}`,
+      id: `${objectId}-${startTime}-${endTime}-${prompt}`,
       bind: this,
-      force: !cacheOnly || regenerate,
+      force: regenerate,
       Load: flow(function * () {
         return yield this.rootStore.aiStore.QueryAIAPI({
           server: "ai",
@@ -311,7 +335,7 @@ class AIStore {
   });
 
   DeleteClipSummary = flow(function * ({objectId, startTime, endTime}) {
-    yield this.rootStore.aiStore.QueryAIAPI({
+    yield this.QueryAIAPI({
       server: "ai",
       method: "DELETE",
       path: UrlJoin("mlcache", "summary", "q", objectId, "rep", "summarize"),
@@ -428,6 +452,44 @@ class AIStore {
 
     try {
       const versionHash = yield this.client.LatestVersionHash({objectId: id});
+      const indexerInfo = yield this.client.ContentObjectMetadata({
+        versionHash,
+        metadataSubtree: "indexer/config/indexer/arguments",
+        select: [
+          "fields",
+          "document/prefix"
+        ]
+      });
+
+      if(!indexerInfo) {
+        // V2 - Get info from API
+        let info = yield this.QueryAIAPI({
+          server: "ai-04",
+          path: UrlJoin("vector_search", "indexes", id),
+          method: "GET",
+          objectId: this.rootStore.tenantInfoObjectId,
+          authTokenInHeader: true
+        });
+
+        let fields = {};
+        info?.fields?.map(field =>
+          fields[field.name] = {
+            ...field,
+            value: true
+          }
+        );
+
+        return {
+          fields,
+          eventTracks: [],
+          type: "index",
+          musicSupported: true,
+          versionHash,
+          indexedTitles: (info?.titles || [])
+            .map(({qid, title}) => ({objectId: qid, name: title || qid}))
+        };
+      }
+
       const indexedLinks = (yield this.client.ContentObjectMetadata({
         versionHash,
         metadataSubtree: "site_map/searchables"
@@ -440,16 +502,6 @@ class AIStore {
 
       const indexedTitles = indexedTitleIds.map(objectId => ({objectId, name: objectId}));
 
-      const indexerInfo = yield this.client.ContentObjectMetadata({
-        versionHash,
-        metadataSubtree: "indexer/config/indexer/arguments",
-        select: [
-          "fields",
-          "document/prefix"
-        ]
-      });
-
-      if(!indexerInfo) { return; }
 
       let musicSupported = false;
       const fuzzySearchFields = {};
@@ -512,6 +564,7 @@ class AIStore {
         metadataSubtree: "public/search",
         select: [
           "indexes",
+          "indexes_vectorstore",
           "image_collections"
         ]
       })) || {};
@@ -519,7 +572,10 @@ class AIStore {
       this.searchCollectionIndexes = (metadata?.image_collections || []);
       this.selectedCollectionSearchIndexId = this.searchCollectionIndexes[0]?.id;
 
-      let searchIndexes = (metadata.indexes || [])
+      let searchIndexes = [
+        ...((metadata.indexes_vectorstore || []).map(index => ({...index, isV2: true}))),
+        ...(metadata.indexes || [])
+      ]
         .filter((x, i, a) => a.findIndex(other => x.id === other.id) === i);
 
       searchIndexes = (yield Promise.all(
@@ -580,10 +636,14 @@ class AIStore {
     localStorage.setItem(`search-collection-index-${this.rootStore.tenantContractId}`, id);
   }
 
-  AddSearchIndex = flow(function * ({objectId}) {
+  AddSearchIndex = flow(function * ({objectId, isV2}) {
+    const libraryId = yield this.client.ContentObjectLibraryId({objectId});
+    isV2 = isV2 || !!(yield this.client.ContentObjectMetadata({libraryId, objectId, metadataSubtree: "indexer"}));
+    const metadataKey = isV2 ? "indexes_vectorstore" : "indexes";
+
     const {name, description} = yield this.client.ContentObjectMetadata({
-      libraryId: yield this.client.ContentObjectLibraryId({objectId}),
-      objectId: objectId,
+      libraryId,
+      objectId,
       metadataSubtree: "public",
       select: ["name", "description"]
     });
@@ -591,7 +651,7 @@ class AIStore {
     // Update index list in config object
     let existingIndexes = (yield this.client.ContentObjectMetadata({
       versionHash: yield this.client.LatestVersionHash({objectId: this.rootStore.tenantInfoObjectId}),
-      metadataSubtree: "public/search/indexes"
+      metadataSubtree: UrlJoin("public/search", metadataKey)
     })) || [];
 
     // Remove existing record if present
@@ -602,7 +662,8 @@ class AIStore {
       description: description || "",
       id: objectId,
       type: "vector",
-      version: 1
+      version: 1,
+      isV2
     });
 
     yield this.client.EditAndFinalizeContentObject({
@@ -614,7 +675,7 @@ class AIStore {
           libraryId: await this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId}),
           objectId: this.rootStore.tenantInfoObjectId,
           writeToken,
-          metadataSubtree: "public/search/indexes",
+          metadataSubtree: UrlJoin("public/search", metadataKey),
           metadata: Unproxy(existingIndexes)
         });
       }
@@ -626,11 +687,15 @@ class AIStore {
   });
 
   RemoveSearchIndex = flow(function * ({objectId}) {
+    const index = this.searchIndexes.find(index => index.id === objectId);
+
+    if(!index) { return; }
+
     const libraryId = yield this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId});
     const indexes = (yield this.client.ContentObjectMetadata({
       libraryId,
       objectId: this.rootStore.tenantInfoObjectId,
-      metadataSubtree: "public/search/indexes",
+      metadataSubtree: UrlJoin("public/search", index.isV2 ? "indexes_vectorstore" : "indexes")
     })) || [];
 
     if(indexes.find(index => index.id === objectId)) {
@@ -651,7 +716,7 @@ class AIStore {
             libraryId,
             objectId: this.rootStore.tenantInfoObjectId,
             writeToken,
-            metadataSubtree: "public/search/indexes",
+            metadataSubtree: UrlJoin("public/search", index.isV2 ? "indexes_vectorstore" : "indexes"),
             metadata: Unproxy(
               indexes.filter(index => index.id !== objectId)
             )
@@ -821,34 +886,64 @@ class AIStore {
       .find(index => index.indexedTitles.find(title => title.objectId === objectId));
   }
 
-  ClipSearch = flow(function * ({mode, query, start, limit}) {
-    const type = this.searchIndex.type?.includes("assets") ? "image" : "video";
-    let {results, contents, pagination} = (yield this.QueryAIAPI({
-      //update: true,
-      objectId: this.searchIndex.id,
-      path: UrlJoin(this.searchSettings.cache ? "mlcache" : "", "search", "q", this.searchIndex.versionHash, "rep", "search"),
-      queryParams: {
-        terms: query,
-        search_fields:
-          mode === "music" ? "f_music" :
-            this.searchSettings.fields.length > 0 ?
-              this.searchSettings.fields.join(",") :
-              Object.keys(this.searchIndex.fields).join(","),
-        sort: mode === "music" ? "f_music" : null,
-        start,
-        limit,
-        display_fields:
-          mode === "music" ? "f_music" : "all",
-        clips: type === "video",
-        clip_include_source_tags: true,
-        get_chunks: true,
-        max_total: 100,
-        min_score: this.searchSettings.minConfidence / 100,
-        filters: this.searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR"),
-      }
-    })) || {};
+  PerformClipSearch = flow(function * ({mode, searchIndex, searchSettings, query, start, limit}) {
+    const type = searchIndex.type?.includes("assets") ? "image" : "video";
 
-    results = results || contents;
+    const queryParams = {
+      terms: query,
+      sort: mode === "music" ? "f_music" : null,
+      start,
+      limit,
+      display_fields:
+        mode === "music" ? "f_music" : "all",
+      clips: type === "video",
+      clip_include_source_tags: true,
+      max_total: 100,
+      min_score: searchSettings.minConfidence / 100,
+      debug: !!searchIndex.isV2
+    };
+
+    if(!searchIndex.isV2) {
+      queryParams.search_fields = (
+        mode === "music" ? ["f_music"] :
+          searchSettings.fields.length > 0 ?
+            searchSettings.fields :
+            Object.keys(searchIndex.fields || {})
+      ).join(",");
+    } else {
+      queryParams.search_fields = searchSettings.fields || [];
+    }
+
+    if(searchSettings.objectIds.length > 0) {
+      if(searchIndex.isV2) {
+        queryParams.qid = Unproxy(searchSettings.objectIds);
+      } else {
+        queryParams.filters = searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR");
+      }
+    }
+
+    return (yield this.QueryAIAPI({
+      //update: true,
+      server: searchIndex.isV2 ? "ai-04" : undefined,
+      objectId: searchIndex.id,
+      path:
+        searchIndex.isV2 ?
+          UrlJoin("vector_search", searchIndex.id, "clip_search") :
+          UrlJoin(searchSettings.cache ? "mlcache" : "", "search", "q", searchIndex.versionHash, "rep", "search"),
+      queryParams
+
+    })) || {};
+  });
+
+  ClipSearch = flow(function * ({mode, query, start, limit}) {
+    let {contents, pagination} = yield this.PerformClipSearch({
+      mode,
+      searchIndex: this.searchIndex,
+      searchSettings: this.searchSettings,
+      query,
+      start,
+      limit
+    });
 
     const baseUrl = yield this.client.Rep({
       versionHash: this.searchIndex.versionHash,
@@ -859,11 +954,18 @@ class AIStore {
       }
     });
 
+    contents = yield Promise.all(
+      contents.map(async result => ({
+        ...result,
+        libraryId: result.qlib_id || await this.client.ContentObjectLibraryId({objectId: result.id})
+      }))
+    );
 
     const baseTitleImageUrl = yield this.client.FabricUrl({});
+    const type = this.searchIndex.type?.includes("assets") ? "image" : "video";
     return {
       pagination,
-      results: (results || []).map(result => {
+      results: (contents || []).map(result => {
         let imageUrl, titleImageUrl;
         if(result.image_url || result.prefix) {
           imageUrl = new URL(baseUrl);
@@ -878,12 +980,12 @@ class AIStore {
           }
         }
 
-        let startTime, endTime, subtitle, chunkStartTime;
+        let startTime, endTime, matchStartTime, matchEndTime, subtitle;
         if(type === "video") {
           startTime = (result.start_time || 0) / 1000;
+          matchStartTime = (result.match_start_time || result.start_time || 0) / 1000;
           endTime = result.end_time ? result.end_time / 1000 : undefined;
-
-          chunkStartTime = result.sources?.[0]?.chunks?.[0]?.start_time;
+          matchEndTime = (result.match_end_time || result.end_time || 0) / 1000;
 
           if(startTime || endTime) {
             subtitle = FrameAccurateVideo.TimeToString({
@@ -906,13 +1008,13 @@ class AIStore {
             }
           }
 
-          if(chunkStartTime && !imageUrl.searchParams.has("t")) {
-            imageUrl.searchParams.set("t", (chunkStartTime / 1000).toFixed(2));
+          if(matchStartTime && !imageUrl.searchParams.has("t")) {
+            imageUrl.searchParams.set("t", matchStartTime.toFixed(2));
           }
         }
 
         titleImageUrl = new URL(baseTitleImageUrl);
-        titleImageUrl.pathname = UrlJoin("qlibs", result.qlib_id, "q", result.id, "meta/public/asset_metadata/images/poster_vertical/default");
+        titleImageUrl.pathname = UrlJoin("qlibs", result.libraryId, "q", result.id, "meta/public/asset_metadata/images/poster_vertical/default");
 
         let score = result.score;
         // Score is provided as an array of scores
@@ -921,15 +1023,16 @@ class AIStore {
         }
 
         return {
-          libraryId: result.qlib_id,
+          libraryId: result.libraryId,
           objectId: result.id,
           versionHash: result.hash,
           imageUrl: imageUrl?.toString(),
           titleImageUrl: titleImageUrl?.toString(),
           filePath: type === "image" ? result.prefix : undefined,
           startTime,
+          matchStartTime,
           endTime,
-          firstChunkStartTime: chunkStartTime,
+          matchEndTime,
           sources: result.sources,
           name: (
             result.name ||
@@ -1019,8 +1122,9 @@ class AIStore {
           imageUrl: imageUrl?.toString(),
           frame: result?.match_info?.frame_idx || 0,
           startTime: time,
+          matchStartTime: time,
           endTime: time,
-          firstChunkStartTime: time,
+          matchEndTime: time,
           name: objectName,
           score: result.similarity ? (result.similarity * 100).toFixed(1) : "",
           type: "frame",
@@ -1035,7 +1139,7 @@ class AIStore {
     };
   });
 
-  PromptSearch = flow(function * ({prompt}) {
+  PromptSearch = flow(function * ({prompt, retry=false}) {
     const baseUrl = "https://ai-03.contentfabric.io/";
     const exchangeBaseUrl = "https://ai.contentfabric.io/";
 
@@ -1062,30 +1166,43 @@ class AIStore {
       ).json()).token;
     }
 
-    const response = yield (
-      yield fetch(
-        UrlJoin(baseUrl, "api", "agents", "chat"),
-        {
-          method: "POST",
-          body: JSON.stringify({
-            text: prompt,
-            sender: "User",
-            clientTimestamp: new Date().toISOString(),
-            isCreatedByUser: true,
-            parentMessageId: "00000000-0000-0000-0000-000000000000",
-            messageId: this.rootStore.NextId(true),
-            endpoint: "agents",
-            agent_id: "agent_7Qv13l7K_6HqJ1C46dbYr",
-            isTemporary: true
-          }),
-          headers: {
-            "Authorization": `Bearer ${this.mcpAuthToken}`,
-            "Accept": "application/json",
-            "Content-Type": "application/json"
-          }
+    let response = yield fetch(
+      UrlJoin(baseUrl, "api", "agents", "chat"),
+      {
+        method: "POST",
+        body: JSON.stringify({
+          text: prompt,
+          sender: "User",
+          clientTimestamp: new Date().toISOString(),
+          isCreatedByUser: true,
+          parentMessageId: "00000000-0000-0000-0000-000000000000",
+          messageId: this.rootStore.NextId(true),
+          endpoint: "agents",
+          agent_id: "agent_7Qv13l7K_6HqJ1C46dbYr",
+          isTemporary: true
+        }),
+        headers: {
+          "Authorization": `Bearer ${this.mcpAuthToken}`,
+          "Accept": "application/json",
+          "Content-Type": "application/json"
         }
-      )
-    ).json();
+      }
+    );
+
+    if(!response.ok) {
+      if(response.status === 401 || response.status === 403) {
+        this.mcpAuthToken = undefined;
+      }
+
+      if(!retry) {
+        yield new Promise(resolve => setTimeout(resolve, 2000));
+        return yield this.PromptSearch({prompt, retry: true});
+      }
+
+      throw Error("Failed to query /api/agents/chat");
+    }
+
+    response = yield response.json();
 
     this.activePromptSearchId = response.streamId;
 
@@ -1102,7 +1219,16 @@ class AIStore {
     );
 
     if(!streamResponse.ok) {
-      throw Error(streamResponse);
+      if(response.status === 401 || response.status === 403) {
+        this.mcpAuthToken = undefined;
+      }
+
+      if(!retry) {
+        yield new Promise(resolve => setTimeout(resolve, 2000));
+        return yield this.PromptSearch({prompt, retry: true});
+      }
+
+      throw Error(`Failed to query /api/agents/chat/stream/${response.streamId}`);
     }
 
     const reader = streamResponse.body.getReader();
@@ -1148,7 +1274,6 @@ class AIStore {
     let fullText = "";
     do {
       if(this.activePromptSearchId !== streamId) {
-        // eslint-disable-next-line no-console
         console.warn("Another prompt search has been started - aborting");
         return;
       }
@@ -1195,7 +1320,6 @@ class AIStore {
             this.UpdatePromptSearchResults({message: fullText + "\n"});
           }
         } catch (e) {
-          // eslint-disable-next-line no-console
           console.warn("malformed sse: " + jsonStr);
         }
       }
@@ -1337,11 +1461,14 @@ class AIStore {
 
   /* Updates */
 
-  async StartSearchIndexUpdateStatusWatcher() {
+  async StartSearchIndexUpdateStatusWatcher(period=10000) {
     clearInterval(window.searchIndexStatusWatcherInterval);
 
+    let hasActiveJobs = true;
     const UpdateStatus = async () => {
+      let progress = {};
       try {
+        // V1 indexes
         let {jobs} = await this.QueryAIAPI({
           server: "ai",
           path: UrlJoin("/qmanager", "jobs"),
@@ -1354,30 +1481,62 @@ class AIStore {
           !job?.stop_requested
         );
 
-        if(jobs.length === 0) {
-          runInAction(() => this.searchIndexUpdateProgress = {});
-          clearInterval(window.searchIndexStatusWatcherInterval);
-          return;
-        }
-
-        let progress = {};
         for(const job of jobs) {
           progress[job.qid] = (100 * (job.status_details?.progress || 0)) || 1;
         }
-
-        runInAction(() => this.searchIndexUpdateProgress = progress);
       } catch(error) {
         console.error("Failed to get search index update status:");
         console.error(error);
+      }
+
+      const v2Indexes = this.searchIndexes.filter(index => index.isV2);
+      await Promise.all(
+        v2Indexes.map(async index => {
+          try {
+            let status = await this.QueryAIAPI({
+              server: "ai-04",
+              path: UrlJoin("elv-indexer", "indexes", index.id, "status"),
+              method: "GET",
+              objectId: this.rootStore.tenantInfoObjectId,
+              authTokenInHeader: true
+            });
+
+            if(status?.progress > 0 && status?.progress < 0.99) {
+              progress[index.id] = (100 * (status?.progress || 0)) || 1;
+            }
+          } catch(error) {
+            console.error("Failed to get v2 search index update status:");
+            console.error(error);
+          }
+        })
+      );
+
+      runInAction(() => this.searchIndexUpdateProgress = progress);
+      if(Object.keys(progress).length === 0 && period < 60000) {
+        if(!hasActiveJobs) {
+          // No active jobs for the last two rounds - restart with slower interval
+          return this.StartSearchIndexUpdateStatusWatcher(60000);
+        }
+
+        hasActiveJobs = false;
+      } else {
+        hasActiveJobs = true;
       }
     };
 
     await UpdateStatus();
 
-    window.searchIndexStatusWatcherInterval = setInterval(UpdateStatus, 8000);
+    window.searchIndexStatusWatcherInterval = setInterval(UpdateStatus, period);
   }
 
   BuildSearchIndex = flow(function * ({indexId}) {
+    const searchIndex = this.searchIndexes.find(index => index.id === indexId);
+
+    if(searchIndex?.isV2) {
+      console.warn(`BuildSearchIndex called on V2 index ${searchIndex.name} ${searchIndex.id} - skipping`);
+      return;
+    }
+
     yield this.QueryAIAPI({
       server: "ai",
       path: UrlJoin("/qmanager", "q", indexId, "jobs"),
@@ -1814,7 +1973,8 @@ class AIStore {
       "pose",
       ...Object.keys(this.rootStore.aiTaggingStore.modelToTrackKeyMapping),
       ...Object.keys(this.rootStore.aiTaggingStore.trackKeyToModelMapping)
-    ];
+    ]
+      .flat();
 
     const fields = {};
     yield this.client.utils.LimitedMap(
@@ -2023,10 +2183,20 @@ class AIStore {
     }
   });
 
-  RetrieveVerticalVideoTags = flow(function * ({objectId, model}) {
+ RetrieveVerticalVideoTags = flow(function * ({objectId, model}) {
     yield this.AwaitVerticalVideoJobs({objectId, model});
 
-    const trackKey = this.rootStore.aiTaggingStore.modelToTrackKeyMapping[model];
+    let trackKey = this.rootStore.aiTaggingStore.modelToTrackKeyMapping[model];
+
+    if(trackKey.length === 1) {
+      trackKey = trackKey[0];
+    } else {
+      trackKey = trackKey.find(key =>
+        key.toLowerCase().includes(model.toLowerCase()) ||
+        model.toLowerCase().includes(key.toLowerCase())
+      );
+    }
+
     let tags = (yield this.rootStore.aiStore.QueryAIAPI({
       objectId,
       path: UrlJoin("/tagstore", objectId, "tags"),
@@ -2108,49 +2278,73 @@ class AIStore {
       }
 
       // Retrieve tags, generating if necessary
-      const shotTags = yield this.RetrieveVerticalVideoTags({objectId, model: "shot"});
+      let shotTags = yield this.RetrieveVerticalVideoTags({objectId, model: "shot"});
       let verticalVideoTags = yield this.RetrieveVerticalVideoTags({objectId, model: "vertical_video"});
 
-      if(shotTags.length !== verticalVideoTags.length) {
+      if(shotTags?.length !== verticalVideoTags?.length) {
         throw Error(`Mismatch between shot / vertical video tag count: Shot ${shotTags.length} Vertical ${verticalVideoTags.length}`);
       }
 
       console.info("Processing tags");
 
-      // 1. Sort the tags by frame_idx to ensure chronological processing
+      // Sort both tag arrays by start_time and end_time to ensure chronological processing
+      // (tagstore returns in order but not sure if that is guaranteed)
+      shotTags = shotTags.sort((a, b) => {
+        return ((a.start_time ?? 0) - (b.start_time ?? 0)) || ((a.end_time ?? 0) - (b.end_time ?? 0));
+      });
       verticalVideoTags = verticalVideoTags.sort((a, b) => {
-        return (a.frame_info?.frame_idx || 0) - (b.frame_info?.frame_idx || 0);
+        return ((a.start_time ?? 0) - (b.start_time ?? 0)) || ((a.end_time ?? 0) - (b.end_time ?? 0));
       });
 
-      const xValues = [];
-      let expectedNextFrame = verticalVideoTags.length > 0 ? verticalVideoTags[0].frame_info.frame_idx : 0;
+      console.info(`Found ${shotTags.length} shot tags and ${verticalVideoTags.length} vertical video tags`);
 
-      let breaks = 0;
-      // 2. Iterate and validate
+      // Verify start_times line up, because end_time for vertical is generated by the model's length measurement
+      // of the generated shot-part, end_time can wobble
+      for(let i = 0; i < shotTags.length; i++) {
+        const shot = shotTags[i];
+        const vt = verticalVideoTags[i];
+        if(shot.start_time !== vt.start_time) {
+          throw Error(
+            `Mismatch between start times at index ${i}: ` +
+            `shot: ${shot.start_time} vertical: ${vt.start_time})`
+          );
+        }
+        if(Math.abs(vt.end_time - shot.end_time) > 500) {
+          throw Error(
+            `Difference between end_times at index ${i} is greater than 500ms: ` +
+            `shot: ${shot.start_time} vertical: ${vt.start_time})`
+          );
+
+        }
+      }
+
+      // Build xValues, filling in missing frames:
+      //   - frames before the first shot get 0.5
+      //   - frames in gaps between shots get the last xValue of the preceding shot
+      const xValues = [];
+
       verticalVideoTags.forEach(tag => {
         const currentFrameIdx = tag.frame_info?.frame_idx ?? 0;
         const coords = tag.additional_info?.["x-coordinates"] || [];
 
-        // Emit warning if there is a gap or overlap in frame indices
-        if(currentFrameIdx !== expectedNextFrame) {
-          breaks += 1;
-          if(breaks < 4) {
-            console.info(
-              `[Warning] Continuity break at Tag ID: ${tag.id}. ` +
-              `Expected frame_idx ${expectedNextFrame}, but found ${currentFrameIdx}.`
+        if(xValues.length < currentFrameIdx) {
+          const lastXValue = xValues.length ? xValues.slice(-1)[0] : Math.round(0.5 * 10000);
+          while(xValues.length < currentFrameIdx) {
+            xValues.push(lastXValue);
+          }
+        } else if(xValues.length > currentFrameIdx) {
+          if (currentFrameIdx - xValues.length > 4) {
+            throw Error(
+              `Overlap in vertical video tag frame indices more than 4 frames, should never be more than 1. Tag ID: ${tag.id}. ` +
+              `Current frame_idx ${currentFrameIdx} is more than 4 before already-populated frame ${xValues.length}.`
             );
           }
+          xValues.length = currentFrameIdx;
         }
 
-        // Add coordinates to our list
         coords.forEach(x => {
-          // Fixed point with 4 decimal places
           xValues.push(Math.round(x * 10000));
         });
-
-        // Calculate what the next frame_idx should be
-        // (Current index + number of samples provided in this tag)
-        expectedNextFrame = currentFrameIdx + coords.length;
       });
 
       // 3. Pack into Buffer as 4-byte Little Endian integers
@@ -2158,10 +2352,6 @@ class AIStore {
       xValues.forEach((value, i) => {
         buffer.writeInt32LE(value, i * 4);
       });
-
-      if(breaks > 0) {
-        throw Error(`There were ${breaks} breaks in continuity. Err`);
-      }
 
       const editResponse = yield this.client.EditContentObject({
         libraryId,
@@ -2253,6 +2443,414 @@ class AIStore {
       value: this.rootStore.client.utils.B64(
         JSON.stringify(this.previousSearchQueries || {})
       )
+    });
+  });
+
+  V2SearchConfig({selectedFields, configuration}) {
+    let config = {
+      "indexer": {
+        "document": {
+          "aggregation": {
+            "track": "shot_detection"
+          }
+        },
+        "fields": {
+          "title": {
+            "source": {
+              "fabric_paths": [
+                "public.asset_metadata.display_title",
+                "public.asset_metadata.title"
+              ]
+            }
+          }
+        }
+      },
+      "search": {
+        "clip_search": {
+          "defaults": {
+            "rerank_level": "document",
+            "rerank_user_query": true,
+            "clips_min_duration": configuration?.clips_pad_duration || 10,
+            "clips_max_duration": configuration?.clips_truncate_duration || 30
+          }
+        }
+      }
+    };
+
+    selectedFields.forEach(field =>
+      config.indexer.fields[field] = {
+        source: {
+          tag_tracks: [field]
+        }
+      }
+    );
+
+    return config;
+  }
+
+  // Search Index
+  CreateSearchIndexV2 = flow(function * ({
+    name="Search Index",
+    description="",
+    contentIds=[],
+    selectedFields=[],
+    selectedCustomFields=[],
+    configuration
+  }) {
+    try {
+      let libraryId;
+      if(this.rootStore.tenantContractId.includes(this.rootStore.tenantInfoObjectId.slice(4))) {
+        // No tenant info object, using tenant object. Must find a library;
+        const libraryIds = yield this.client.ContentLibraries();
+        for(const id of libraryIds) {
+          const name = (yield this.client.ContentObjectMetadata({
+            versionHash: yield this.client.LatestVersionHash({objectId: `iq__${id.slice(4)}`}),
+            metadataSubtree: "public/name"
+          })) || "";
+
+          if(name.toLowerCase().includes("propert")) {
+            libraryId = id;
+            break;
+          }
+        }
+
+        if(!libraryId) {
+          libraryId = libraryIds[0];
+        }
+      } else {
+        // Just use same library as tenant info object
+        libraryId = yield this.client.ContentObjectLibraryId({objectId: this.rootStore.tenantInfoObjectId});
+      }
+
+      this.indexCreateProgress = 30;
+
+      // Create the object and set permissions
+      const type = Object.values(yield this.client.ContentTypes())
+        .find(type => type.name.toLowerCase().includes("index"))?.id;
+      this.indexCreateProgress = 35;
+
+      let objectId;
+      yield this.client.CreateAndFinalizeContentObject({
+        libraryId,
+        options: {type},
+        commitMessage: "EVIE: Create search index",
+        callback: async response => {
+          objectId = response.objectId;
+
+          runInAction(() => this.indexCreateProgress = 50);
+
+          await this.client.MergeMetadata({
+            libraryId,
+            objectId,
+            writeToken: response.writeToken,
+            metadata: Unproxy({
+              public: {
+                name,
+                description,
+                asset_metadata: {
+                  display_title: name,
+                  title: name
+                }
+              }
+            })
+          });
+        }
+      });
+
+      this.indexCreateProgress = 60;
+
+      if(!objectId) {
+        throw Error("Something went wrong");
+      }
+
+      yield this.client.SetPermission({
+        libraryId,
+        objectId,
+        permission: "editable"
+      });
+
+      this.indexCreateProgress = 70;
+
+      yield this.rootStore.AddGroupPermissions({objectId});
+
+      // Create the collection
+      const collectionResponse = yield this.rootStore.aiStore.QueryAIAPI({
+        server: "ai-04",
+        objectId,
+        path: "/vector_store/collections",
+        method: "POST",
+        channelAuth: true,
+        body: {
+          name: `${name} Collection`,
+          qids: [objectId],
+          tenant: this.rootStore.tenantContractId
+        },
+        format: "JSON"
+      });
+
+      // Add contents to the collection
+      yield this.rootStore.aiStore.QueryAIAPI({
+        server: "ai-04",
+        objectId,
+        path: UrlJoin("/vector_store", "collections", collectionResponse.collection_id, "contents"),
+        method: "POST",
+        channelAuth: true,
+        body: {
+          qids: contentIds
+        },
+        format: "JSON"
+      });
+
+      this.indexCreateProgress = 80;
+
+      // Create the index
+      const config = this.V2SearchConfig({
+        selectedFields: [...selectedFields, ...selectedCustomFields],
+        configuration
+      });
+
+      yield this.rootStore.aiStore.QueryAIAPI({
+        server: "ai-04",
+        objectId,
+        path: UrlJoin("/vector_store", "indexes", objectId),
+        method: "POST",
+        channelAuth: true,
+        body: {
+          collection_id: collectionResponse.collection_id,
+          name: `${name} Index`,
+          type: "clip-search",
+          config
+        },
+        format: "JSON"
+      });
+
+      this.indexCreateProgress = 90;
+
+      yield this.rootStore.aiStore.QueryAIAPI({
+        server: "ai-04",
+        objectId,
+        path: UrlJoin("/elv-indexer", "indexes", objectId, "crawl"),
+        method: "POST",
+        authTokenInHeader: true,
+        channelAuth: true,
+        format: "JSON"
+      });
+
+      // TODO: Await crawl;
+      /*
+          const crawlStatus = yield this.rootStore.aiStore.QueryAIAPI({
+        server: "ai-04",
+        objectId,
+        path: UrlJoin("/elv-indexer", "indexes", objectId, "crawl", crawlResponse.handle),
+        method: "GET",
+        authTokenInHeader: true,
+        channelAuth: true,
+        format: "JSON"
+      });
+       */
+
+      yield this.AddSearchIndex({objectId, isV2: true});
+
+      this.searchIndexCustomFields[objectId] = this.searchIndexCustomFields.new || {};
+      delete this.searchIndexCustomFields.new;
+
+      this.StartSearchIndexUpdateStatusWatcher();
+
+      return objectId;
+    } finally {
+      this.indexCreateProgress = undefined;
+    }
+  });
+
+  UpdateSearchIndexV2 = flow(function * ({
+    indexId,
+    name="Search Index",
+    contentIds=[],
+    selectedFields=[],
+    selectedCustomFields=[],
+    configuration
+  }) {
+    const objectId = indexId;
+    const indexInfo = yield this.rootStore.aiStore.QueryAIAPI({
+      server: "ai-04",
+      objectId,
+      path: UrlJoin("/vector_store", "indexes", objectId),
+      method: "GET",
+      channelAuth: true,
+      format: "JSON"
+    });
+
+    const collectionId = indexInfo.collection_id;
+    const collectionInfo = yield this.rootStore.aiStore.QueryAIAPI({
+      server: "ai-04",
+      objectId,
+      path: UrlJoin("/vector_store", "collections", collectionId),
+      method: "GET",
+      channelAuth: true,
+      format: "JSON"
+    });
+
+    // Update content
+    const toAdd = contentIds.filter(id => !collectionInfo.qids.includes(id));
+    const toRemove = collectionInfo.qids.filter(id => !contentIds.includes(id));
+
+    if(toAdd) {
+      yield this.rootStore.aiStore.QueryAIAPI({
+        server: "ai-04",
+        objectId,
+        path: UrlJoin("/vector_store", "collections", collectionId, "contents"),
+        method: "POST",
+        channelAuth: true,
+        format: "JSON",
+        body: {
+          qids: toAdd
+        }
+      });
+    }
+
+    if(toRemove) {
+      yield this.rootStore.aiStore.QueryAIAPI({
+        server: "ai-04",
+        objectId,
+        path: UrlJoin("/vector_store", "collections", collectionId, "contents"),
+        method: "DELETE",
+        channelAuth: true,
+        format: "JSON",
+        body: {
+          qids: toRemove
+        }
+      });
+    }
+
+    this.indexCreateProgress = 60;
+
+    // Update config
+    let indexConfig = indexInfo.config;
+    const updatedIndexConfig = this.V2SearchConfig({
+      selectedFields: [...selectedFields, ...selectedCustomFields],
+      configuration
+    });
+
+    // Change only the parts of the config we want to change
+    indexConfig.indexer.fields = updatedIndexConfig.indexer.fields;
+
+    if(!indexConfig.search) {
+      indexConfig.search = {};
+    }
+
+    if(!indexConfig.search.clip_search) {
+      indexConfig.search.clip_search = {};
+    }
+
+    indexConfig.search.clip_search.defaults = {
+      ...indexConfig?.search?.clip_search.defaults || {},
+      ...updatedIndexConfig?.search?.clip_search.defaults
+    };
+
+    yield this.rootStore.aiStore.QueryAIAPI({
+      server: "ai-04",
+      objectId,
+      path: UrlJoin("/vector_store", "indexes", objectId),
+      method: "PATCH",
+      channelAuth: true,
+      body: {
+        name,
+        config: indexConfig
+      },
+      format: "JSON"
+    });
+
+    this.indexCreateProgress = 80;
+
+    if(toAdd.length > 0) {
+      yield this.rootStore.aiStore.QueryAIAPI({
+        server: "ai-04",
+        objectId,
+        path: UrlJoin("/elv-indexer", "indexes", objectId, "crawl"),
+        method: "POST",
+        channelAuth: true,
+        authTokenInHeader: true,
+        format: "JSON"
+      });
+    }
+
+    this.StartSearchIndexUpdateStatusWatcher();
+  });
+
+  LoadSearchIndexInfoV2 = flow(function * ({indexId, force}) {
+    return yield this.rootStore.LoadResource({
+      key: "loadSearchIndexInfoV2",
+      id: indexId,
+      bind: this,
+      ttl: 30,
+      force,
+      Load: flow(function* () {
+        const metadata = yield this.client.ContentObjectMetadata({
+          versionHash: yield this.client.LatestVersionHash({objectId: indexId}),
+          select: [
+            "custom_fields",
+            "/public/name",
+            "/public/asset_metadata/display_title",
+            "/public/asset_metadata/title"
+          ]
+        });
+
+        const indexInfo = yield this.rootStore.aiStore.QueryAIAPI({
+          server: "ai-04",
+          objectId: indexId,
+          path: UrlJoin("/vector_store", "indexes", indexId),
+          method: "GET",
+          authTokenInHeader: true,
+          format: "JSON"
+        });
+
+        const collectionInfo = yield this.rootStore.aiStore.QueryAIAPI({
+          server: "ai-04",
+          objectId: indexId,
+          path: UrlJoin("/vector_store", "collections", indexInfo.collection_id),
+          method: "GET",
+          authTokenInHeader: true,
+          format: "JSON"
+        });
+
+        let allSelectedFields = [];
+        Object.keys(indexInfo?.config?.indexer?.fields || {}).forEach(field =>
+          allSelectedFields = [
+            ...allSelectedFields,
+            ...(indexInfo.config.indexer.fields[field].source.tag_tracks || [])
+          ]
+        );
+
+        allSelectedFields = allSelectedFields
+          .filter((x, i, a) => a.findIndex(q => q === x) === i);
+
+        const customFieldInfo = metadata?.custom_fields || {};
+        const customFields = allSelectedFields.filter(field => customFieldInfo[field]);
+
+        this.searchIndexCustomFields[indexId] = metadata?.custom_fields || {};
+
+        let config = indexInfo?.config?.search?.clip_search?.defaults || {};
+        if(config.clips_min_duration) {
+          config.clips_pad_duration = config.clips_min_duration;
+        }
+
+        if(config.clips_max_duration) {
+          config.clips_truncate_duration = config.clips_max_duration;
+        }
+
+        return {
+          name:
+            indexInfo.name ||
+            metadata.public?.asset_metadata?.display_title ||
+            metadata.public?.asset_metadata?.title ||
+            metadata.public?.name || indexId,
+          fields: allSelectedFields,
+          customFields,
+          customFieldInfo,
+          configuration: config,
+          contentIds: collectionInfo.qids
+        };
+      })
     });
   });
 }

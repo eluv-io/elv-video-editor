@@ -7,6 +7,7 @@ import {CreateModuleClassMatcher, JoinClassNames, StopScroll} from "@/utils/Util
 import {Loader} from "@/components/common/Common";
 import HLSPlayer from "hls.js";
 import {
+  CopyEmbedUrlButton,
   DownloadFrameButton,
   FrameBack10Button,
   FrameBack1Button,
@@ -16,7 +17,8 @@ import {
   FullscreenButton,
   PlayPauseButton,
   SearchFrameButton,
-  SearchFrameMenu, ShowVerticalButton,
+  SearchFrameMenu,
+  ShowVerticalButton,
   VideoTime,
   VolumeControls
 } from "@/components/video/VideoControls";
@@ -33,7 +35,9 @@ const Video = observer(({
   showFrameDownload,
   showFrameSearch,
   showVertical,
+  showEmbedUrl,
   showProgress,
+  compact,
   fullscreenContainer,
   playoutUrl,
   blank,
@@ -70,9 +74,8 @@ const Video = observer(({
     const authorizationToken = playoutUrl.searchParams.get("authorization");
     playoutUrl.searchParams.delete("authorization");
 
-    if(vertical) {
-      // TODO: Remove
-      playoutUrl.hostname = "host-76-74-29-29.contentfabric.io";
+    if(vertical && rootStore.verticalNodes?.length > 0) {
+      playoutUrl.hostname = new URL(rootStore.verticalNodes?.[0]).hostname;
       playoutUrl.searchParams.set("v", "1");
     }
 
@@ -173,7 +176,16 @@ const Video = observer(({
     window.player = hlsPlayer;
 
     Callback?.(video);
-  }, [video, playoutUrl, reloadIndex]);
+  }, [reloadIndex]);
+
+  // Debounce load to preven double-loading
+  useEffect(() => {
+    if(!video || !playoutUrl) { return; }
+
+    let timeout = setTimeout(() => setReloadIndex(reloadIndex + 1), 100);
+
+    return () => clearTimeout(timeout);
+  }, [video, playoutUrl]);
 
   useEffect(() => {
     return () => {
@@ -202,7 +214,7 @@ const Video = observer(({
     >
       <div className={S("video-wrapper")}>
         {
-           !video ? null :
+           !video || vertical ? null :
              <Overlay
                key={`overlay-${tagStore.editPosition}`}
                element={video}
@@ -228,7 +240,7 @@ const Video = observer(({
                   <div className={S("video-controls__left")}>
                     <PlayPauseButton store={store}/>
                     <VolumeControls store={store}/>
-                    <VideoTime store={store}/>
+                    <VideoTime store={store} compact={compact}/>
                   </div>
                   <div className={S("video-controls__spacer")}/>
                   {
@@ -245,11 +257,15 @@ const Video = observer(({
                   <div className={S("video-controls__right")}>
                     {
                       !showVertical ? null :
-                        <ShowVerticalButton store={store} />
+                        <ShowVerticalButton store={store} compact={compact} />
                     }
                     {
                       !showFrameSearch ? null :
-                        <SearchFrameButton store={store} />
+                        <SearchFrameButton store={store} compact={compact} />
+                    }
+                    {
+                      !showEmbedUrl ? null :
+                        <CopyEmbedUrlButton store={store} vertical={vertical} />
                     }
                     {
                       !showFrameDownload ? null :

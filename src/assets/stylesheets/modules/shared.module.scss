@@ -30,8 +30,13 @@
   gap: 10px;
   height: 45px;
   justify-content: center;
+  max-width: 100%;
   padding-inline: var(--content-inline-padding);
   position: relative;
+
+  &--no-padding {
+    padding-inline: 5px;
+  }
 
   &__description {
     align-items: center;
@@ -65,7 +70,7 @@
   }
 
   &__spacer {
-    flex-grow: 1;
+    flex: 1 1 0;
   }
 
   &__switches {
@@ -79,6 +84,7 @@
     align-items: center;
     display: flex;
     gap: 12px;
+    max-width: 100%;
 
     &--tight {
       gap: 3px;
@@ -469,5 +475,30 @@
     border: 0;
     border-radius: 20px;
     height: 5px;
+  }
+}
+
+
+.ai-text-input {
+  &__input {
+    background-color: var(--background-search-input);
+    border: 0;
+    border-radius: 44px;
+    color: var(--text-primary);
+    font-weight: 600;
+
+    &::placeholder {
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+  }
+
+  &__loader {
+    max-height: 20px;
+    max-width: 20px;
+    min-height: 20px;
+    min-width: 20px;
+
+    --spinner-width: 3px;
   }
 }

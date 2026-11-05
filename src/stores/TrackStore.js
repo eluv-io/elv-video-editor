@@ -27,6 +27,7 @@ class TrackStore {
   tracks = [];
   audioTracks = [];
   selectedTrack;
+  primaryTrackKey;
   activeTracks = {};
   activeClipTracks = {};
   editingTrack = false;
@@ -122,6 +123,28 @@ class TrackStore {
       .filter((track, index, array) => array.findIndex(otherTrack => otherTrack.key === track.key) === index);
   }
 
+  get relatedTracks() {
+    const mainTrackKey = this.primaryTrackKey || (Object.keys(this.activeTracks).length === 1 && Object.keys(this.activeTracks)[0]);
+    const mainModelKey = this.rootStore.aiTaggingStore.trackKeyToModelMapping[mainTrackKey];
+    const relations = this.rootStore.aiTaggingStore.modelRelationMap[mainModelKey];
+
+    if(!relations) { return null; }
+
+    // Remove all tracks that do not exist on this content
+    let relatedTracks = {...relations.tracks};
+    Object.keys(relatedTracks).forEach(key =>
+      relatedTracks[key] = relatedTracks[key]
+        .filter(trackKey => trackKey && !!this.tracks.find(track => track.key === trackKey))
+    );
+
+    if(relatedTracks.allRelatedTrackKeys.length === 0) {
+      // No related tracks exist on this content
+      return null;
+    }
+
+    return relatedTracks;
+  }
+
   Reset() {
     this.tracks = [];
     this.audioTracks = [];
@@ -137,7 +160,11 @@ class TrackStore {
     this.selectedTrack = undefined;
     this.activeTracks = {};
     this.activeClipTracks = {};
+    this.primaryTrackKey = undefined;
     this.editingTrack = false;
+
+    this.showAudio = false;
+    this.showSegments = false;
   }
 
   TrackColor(key, type) {
@@ -388,7 +415,7 @@ class TrackStore {
       .map(i => channel.slice(i * sampleSize, (i + 1) * sampleSize))
       .map((samples, i) => {
         const sampleMax = Math.max(...samples);
-        if (sampleMax > segmentMax) {
+        if(sampleMax > segmentMax) {
           segmentMax = sampleMax;
         }
 
@@ -509,6 +536,84 @@ class TrackStore {
     };
   }
 
+  FormatMetadataTag({trackKey, tag, type}) {
+    const millis = type === "clip";
+
+    if(trackKey === "shot_tags") {
+      tag = this.FormatAggregatedSpeechToTextTag(tag);
+
+      if(!tag) { return; }
+    }
+
+    let tagId = tag.id;
+    if(tag?.lk === "user" && tag.id) {
+      // Ensure user tags have UUID tag IDs
+      tagId = this.rootStore.NextId(true);
+    }
+
+    let parsedTag = Cue({
+      tagId,
+      trackKey,
+      tagType: type,
+      startTime: millis ? (tag.start_time / 1000) : tag.start_time,
+      endTime: millis ? (tag.end_time / 1000) : tag.end_time,
+      text: tag.text,
+      tag: Unproxy(tag),
+      o: {
+        lk: tag.lk,
+        tk: tag.tk,
+        ti: tag.ti
+      }
+    });
+
+    if(parsedTag.startTime >= parsedTag.endTime) {
+      parsedTag.endTime = parsedTag.startTime + this.rootStore.videoStore.FrameToTime(1);
+    }
+
+    return parsedTag;
+  }
+
+  SweepNewTags() {
+    if(!this.initialized) { return; }
+
+    const newTags = window.tagQueue || [];
+    window.tagQueue = [];
+
+    if(newTags.length === 0) {
+      return;
+    }
+
+    let tags = {};
+
+    let updatedTrackIds = [];
+    for(const tag of newTags) {
+      const track = this.tracks.find(track => track.key === tag.track);
+
+      if(!track) {
+        console.warn("Metadata tag sweep - No track for new tag", tag);
+        continue;
+      } else if(!updatedTrackIds.includes(track.trackId)) {
+        updatedTrackIds.push(track.trackId);
+      }
+
+      const formattedTag = this.FormatMetadataTag({trackKey: track.key, tag, type: "metadata"});
+
+      tags[track.trackId] = tags[track.trackId] || {};
+      tags[track.trackId][formattedTag.tagId] = formattedTag;
+    }
+
+    let updatedTags = {...this.tags};
+    updatedTrackIds.forEach(id =>
+      updatedTags[id] = {
+        ...(updatedTags[id] || {}),
+        ...(tags[id] || {}),
+      }
+    );
+    this.tags = updatedTags;
+
+    updatedTrackIds.forEach(id => this.__UpdateTrackVersion(id));
+  }
+
   AddTracksFromTags = (metadataTags, type="metadata") => {
     if(!metadataTags) { return []; }
 
@@ -516,40 +621,10 @@ class TrackStore {
     Object.keys(metadataTags).forEach(key => {
       const track = metadataTags[key];
       let tags = {};
-      const millis = type === "clip";
       metadataTags[key].tags.forEach(tag => {
-        if(key === "shot_tags") {
-          tag = this.FormatAggregatedSpeechToTextTag(tag);
+        const formattedTag = this.FormatMetadataTag({trackKey: key, tag, type});
 
-          if(!tag) { return; }
-        }
-
-        let tagId = tag.id;
-        if(tag?.lk === "user" && tag.id) {
-          // Ensure user tags have UUID tag IDs
-          tagId = this.rootStore.NextId(true);
-        }
-
-        let parsedTag = Cue({
-          tagId,
-          trackKey: key,
-          tagType: type,
-          startTime: millis ? (tag.start_time / 1000) : tag.start_time,
-          endTime: millis ? (tag.end_time / 1000) : tag.end_time,
-          text: tag.text,
-          tag: Unproxy(tag),
-          o: {
-            lk: tag.lk,
-            tk: tag.tk,
-            ti: tag.ti
-          }
-        });
-
-        if(parsedTag.startTime >= parsedTag.endTime) {
-          parsedTag.endTime = parsedTag.startTime + this.rootStore.videoStore.FrameToTime(1);
-        }
-
-        tags[parsedTag.tagId] = parsedTag;
+        tags[formattedTag.tagId] = formattedTag;
       });
 
       metadataTracks.push({
@@ -721,18 +796,29 @@ class TrackStore {
     yield this.AddMetadataTracks(clipTags, "clip");
 
     this.initialized = true;
-
-    let trackIds = {};
-    this.tracks.forEach(track => trackIds[track.trackKey] = track.trackId);
   });
 
   /* User Actions */
 
+  SetShowRelatedTracks(primaryTrackKey) {
+    this.primaryTrackKey = primaryTrackKey;
+
+    this.relatedTracks.allRelatedTrackKeys
+      .map(trackKey =>
+        this.ToggleTrackSelected(trackKey, true)
+      );
+
+    this.primaryTrackKey = primaryTrackKey;
+  }
+
   ResetActiveTracks() {
     this.activeTracks = {};
+    this.primaryTrackKey = undefined;
   }
 
   ToggleTrackSelected(key, value) {
+    this.primaryTrackKey = undefined;
+
     if(typeof value !== "undefined") {
       value ?
         this.activeTracks[key] = true :

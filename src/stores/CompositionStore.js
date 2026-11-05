@@ -217,9 +217,7 @@ class CompositionStore {
 
   get selectedClipStore() {
     if(this.selectedClipId && !this.clipStores[this.selectedClip?.storeKey]) {
-      // eslint-disable-next-line no-console
       console.warn("No store for selected clip");
-      // eslint-disable-next-line no-console
       console.warn(this.selectedClipId, this.selectedClip);
     }
 
@@ -347,12 +345,15 @@ class CompositionStore {
           clipId
         };
 
+        this.SetClipAudio({clipId});
+
         this.clipIdList = this.clipIdList.toSpliced(index, 0, clipId);
         this.selectedClipIdList = [
           ...this.selectedClipIdList,
           clipId
         ]
-          .filter((x, i, a) => a.indexOf(x) === i);
+          .filter((x, i, a) => a.indexOf(x) === i)
+          .filter((x, i, a) => a.findIndex(otherClipId => this.clips[otherClipId].clipKey === this.clips[x].clipKey) === i);
 
         if(this.seek > progress) {
           // Clip inserted before playhead - push ahead
@@ -421,7 +422,42 @@ class CompositionStore {
       },
       label: "Change Offering"
     });
+
+    this.SetClipAudio({clipId});
   });
+
+  SetClipAudio({clipId, audioTrackIndex}) {
+    const clip = this.clips[clipId];
+
+    if(!clip) { return; }
+
+    const store = this.clipStores[clip.storeKey] || this.ClipStore({clipId});
+
+    const audioTracks = store.AudioOptions(clip.offering);
+    let audioTrackInfo = typeof audioTrackIndex !== "undefined" ?
+      audioTracks[parseInt(audioTrackIndex)] :
+      audioTracks.find(track => track.current);
+
+    if(audioTrackInfo) {
+      this.clips[clipId] = {
+        ...this.clips[clipId],
+        audio_track_key: audioTrackInfo.key,
+        audio_track_stream_key: audioTrackInfo.streamKey,
+        audio_track_index: audioTrackInfo.trackId,
+        audio_track_label: audioTrackInfo.label
+      };
+    } else {
+      delete this.clips[clipId].audio_track_key;
+      delete this.clips[clipId].audio_track_stream_key;
+      delete this.clips[clipId].audio_track_index;
+      delete this.clips[clipId].audio_track_label;
+    }
+
+    if(this.clipIdList.includes(clipId)) {
+      // Update composition if we changed one of the composition's clips
+      this.UpdateComposition();
+    }
+  }
 
   RemoveClip(clipId) {
     this.PerformAction({
@@ -625,9 +661,7 @@ class CompositionStore {
     }
 
     if(!this.clipStores[key]) {
-      // eslint-disable-next-line no-console
-      console.warn("No store for selected clip");
-      // eslint-disable-next-line no-console
+      console.warn(new Error("No store for selected clip"));
       console.warn(objectId, offering, clipId, sourceId, key, this.clips[clipId]);
     }
 
@@ -789,9 +823,12 @@ class CompositionStore {
 
     try {
       const {objectId, compositionKey} = this.compositionObject;
+
       const writeToken = noWriteToken ? undefined :
         yield this.WriteToken({objectId, compositionKey, create: false});
 
+      // TODO: Remove
+      yield this.client.SetNodes({fabricURIs: ["https://host-76-74-35-66.contentfabric.io"]});
       const playoutOptions = (yield this.client.PlayoutOptions({
         objectId,
         writeToken,
@@ -808,6 +845,8 @@ class CompositionStore {
 
       this.compositionPlayoutUrl = playoutUrl.toString();
       this.videoStore.duration = this.compositionDuration;
+
+      yield this.client.ResetRegion();
 
       return playoutUrl;
     } catch(error) {
@@ -842,7 +881,6 @@ class CompositionStore {
       libraryId: sourceLibraryId,
       objectId: sourceObjectId,
       select: [
-        "offerings/*/playout",
         "offerings/*/media_struct/streams/*/rate",
         "/public/name",
       ],
@@ -861,7 +899,6 @@ class CompositionStore {
         offerings.find(offering => offering.includes("default")) || offerings[0];
     }
 
-    const playoutMetadata = sourceMetadata.offerings[offeringKey].playout;
     const offeringOptions = sourceMetadata.offerings?.[offeringKey]?.media_struct?.streams || {};
 
     let frameRate;
@@ -931,7 +968,6 @@ class CompositionStore {
       display_name: name || "Composition",
       key,
       playout_type: "ch_vod",
-      playout: playoutMetadata,
       items,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -1027,18 +1063,90 @@ class CompositionStore {
           };
         }
 
+        let audioInfo =
+          store.AudioOptions(clip.offering).find(track => track.streamKey === clip.audio_track_stream_key) ||
+          store.AudioOptions(clip.offering).find(track => track.default);
+
         return {
+          audio_track_stream_key: audioInfo.streamKey,
+          has_non_default_audio: clip.audio_track_stream_key && !audioInfo.default,
           display_name: clip.name || "Clip",
           source: sourceLink,
           slice_start_rat: store.FrameToRat(clip.clipInFrame || 0),
           slice_end_rat: store.FrameToRat(clipOutFrame || store.totalFrames - 1),
           duration_rat: store.FrameToRat((clipOutFrame || store.totalFrames - 1) - (clip.clipInFrame || 0)),
           effects: clip.effects,
-          type: "mez_vod"
+          type: "mez_vod",
         };
       });
 
+      let metadata = Unproxy(this.sourceVideoStore.videoObject.metadata.offerings[this.compositionObject.sourceOfferingKey]);
+      let playoutMetadata = metadata.playout;
+      const mediaStruct = metadata.media_struct;
+
+      Object.keys(playoutMetadata.streams).forEach(key => {
+        if(key.startsWith("captions-") || key.includes("_thumbs")) {
+          delete playoutMetadata.streams[key];
+        }
+      });
+
+      const hasNonDefaultAudio = !!items.find(item => item.has_non_default_audio);
+
+      if(hasNonDefaultAudio) {
+        const defaultAudioTrackKey =
+          Object.keys(mediaStruct?.streams || {})
+            .find(key =>
+              mediaStruct.streams[key].codec_type === "audio" &&
+              mediaStruct.streams[key].default_for_media_type
+            ) || Object.keys(mediaStruct?.streams || [])[0];
+
+        const defaultAudioTrackRepKey = Object.keys(metadata.playout.streams[defaultAudioTrackKey].representations)[0];
+        const codec = playoutMetadata.streams[defaultAudioTrackKey].representations[defaultAudioTrackRepKey].codec;
+        const bitrate = playoutMetadata.streams[defaultAudioTrackKey].representations[defaultAudioTrackRepKey].bit_rate;
+
+        let audioMetadata = {
+          ...playoutMetadata.streams[defaultAudioTrackKey],
+          representations: {
+            [`audio_${codec}@${bitrate}`]: {
+              codec,
+              bit_rate: bitrate,
+              codec_desc: playoutMetadata.streams[defaultAudioTrackKey].representations[defaultAudioTrackRepKey].codec_desc,
+              type: playoutMetadata.streams[defaultAudioTrackKey].representations[defaultAudioTrackRepKey].type,
+              channels: mediaStruct.streams[defaultAudioTrackKey].channels
+            }
+          }
+        };
+
+        playoutMetadata.streams = {
+          video: {
+            ...playoutMetadata.streams.video,
+            media_type: "video",
+            label: mediaStruct.streams.video.label || "video",
+          },
+          audio: {
+            ...audioMetadata,
+            media_type: "audio",
+            label: "audio",
+            language: "",
+            default_for_media_type: true,
+          }
+        };
+      } else {
+        Object.keys(playoutMetadata.streams).forEach(key => {
+          playoutMetadata.streams[key].label = mediaStruct.streams[key]?.label || key;
+          playoutMetadata.streams[key].media_type = mediaStruct.streams[key]?.codec_type || (key.includes("video") ? "video" : "audio");
+        });
+      }
+
       yield this.client.ReplaceMetadata({
+        libraryId,
+        objectId,
+        writeToken,
+        metadataSubtree: UrlJoin("/channel", "offerings", compositionKey, "playout"),
+        metadata: Unproxy(playoutMetadata)
+      });
+
+      yield this.client.DeleteMetadata({
         libraryId,
         objectId,
         writeToken,
@@ -1046,7 +1154,6 @@ class CompositionStore {
         metadata: Unproxy(items)
       });
 
-      /*
       const updatedFields = Unproxy(this.ToV2({items}));
       for(const key of Object.keys(updatedFields)) {
         yield this.client.ReplaceMetadata({
@@ -1057,8 +1164,6 @@ class CompositionStore {
           metadata: updatedFields[key]
         });
       }
-
-       */
 
       yield this.client.ReplaceMetadata({
         libraryId,
@@ -1115,8 +1220,6 @@ class CompositionStore {
 
     if(writeTokenInfo && writeTokenInfo.versionHash !== latestVersionHash) {
       // Write token is based on old version. Discard and generate a new one
-
-      // eslint-disable-next-line no-console
       console.warn("Write token for this composition is based on previous version. Retrieving new write token.");
 
       const compositionMetadata = yield this.client.ContentObjectMetadata({
@@ -1188,7 +1291,6 @@ class CompositionStore {
       const [type,,durationNum, durationDenom] = effect;
 
       if(!effectTypes[type]) {
-        // eslint-disable-next-line no-console
         console.warn("Unknown effect:", effect);
         return;
       }
@@ -1203,12 +1305,21 @@ class CompositionStore {
     return (metadata.slices || []).map((slice, index) => {
       let [sourceIndex, startNum, startDenom, endNum, endDenom] = slice;
 
+      if(!sourceIndex || sourceIndex < 0) {
+        sourceIndex = 0;
+      }
+
       const commonDenom = startDenom * endDenom;
 
       startNum *= endDenom;
       endNum *= startDenom;
 
+      const source = { ...metadata.ch_sources[sourceIndex] };
+      const audioTrackKey = source?.stream_map?.audio;
+      delete source.stream_map;
+
       return {
+        audio_track_stream_key: audioTrackKey,
         display_name: metadata.slice_info?.[index]?.display_name || `Clip ${index}`,
         duration_rat: `${endNum - startNum}/${commonDenom}`,
         slice_start_rat: `${startNum}/${commonDenom}`,
@@ -1217,7 +1328,7 @@ class CompositionStore {
           .filter(effect => effect[1] === index)
           .map(effect => ParseEffect(effect))
           .filter(effect => effect),
-        ...metadata.ch_sources[sourceIndex]
+        ...source
       };
     });
   }
@@ -1228,14 +1339,29 @@ class CompositionStore {
     let slice_effects = [];
     let slice_info = [];
 
+    const hasNonDefaultAudio = !!metadata.items.find(item => item.has_non_default_audio);
+
     for(const item of metadata.items || []) {
-      let sourceIndex = sources.findIndex(source => source.source["/"] === item.source["/"]);
+      let sourceIndex = ch_sources.findIndex(source =>
+        source.source["/"] === item.source["/"] &&
+        (
+          !hasNonDefaultAudio ||
+            source.stream_map?.audio === item.audio_track_stream_key
+        )
+      );
+
       if(sourceIndex < 0) {
-        sourceIndex = sources.length;
+        sourceIndex = ch_sources.length;
         ch_sources[sourceIndex] = {
           source: item.source,
           type: item.type
         };
+
+        if(hasNonDefaultAudio && item.audio_track_stream_key) {
+          ch_sources[sourceIndex].stream_map = {
+            audio: item.audio_track_stream_key
+          };
+        }
       }
 
       const [startNum, startDenom] = ReduceRat(item.slice_start_rat);
@@ -1384,55 +1510,77 @@ class CompositionStore {
     let selectedClipsList = {};
     let updatedClipList = {};
     this.clipIdList = yield Promise.all(
-      (metadata?.items || []).map(async item => {
-        const clipId = this.rootStore.NextId();
-        const clipVersionHash = ExtractHashFromLink(item.source) || versionHash;
-        const clipObjectId = this.client.utils.DecodeVersionHash(clipVersionHash).objectId;
+      (metadata?.items || [])
+        .map(async item => {
+          try {
+            const clipId = this.rootStore.NextId();
+            const clipVersionHash = ExtractHashFromLink(item.source) || versionHash;
+            const clipObjectId = this.client.utils.DecodeVersionHash(clipVersionHash).objectId;
 
-        if(clipObjectId !== objectId && !secondarySources.includes(clipObjectId)) {
-          secondarySources.push(clipObjectId);
-        }
+            if(clipObjectId !== objectId && !secondarySources.includes(clipObjectId)) {
+              secondarySources.push(clipObjectId);
+            }
 
-        const libraryId = await this.client.ContentObjectLibraryId({objectId: clipObjectId});
-        const offeringKey = item.source["/"].split("/").slice(-1)[0];
+            const libraryId = await this.client.ContentObjectLibraryId({objectId: clipObjectId});
+            const offeringKey = item.source["/"].split("/").slice(-1)[0];
 
-        await this.InitializeVideoStore({
-          objectId: clipObjectId,
-          offering: offeringKey
-        });
+            await this.InitializeVideoStore({
+              objectId: clipObjectId,
+              offering: offeringKey
+            });
 
-        const clipInFrame = primarySource.videoHandler.RatToFrame(item.slice_start_rat);
-        const clipOutFrame = primarySource.videoHandler.RatToFrame(item.slice_end_rat);
+            const clipInFrame = primarySource.videoHandler.RatToFrame(item.slice_start_rat);
+            const clipOutFrame = primarySource.videoHandler.RatToFrame(item.slice_end_rat);
+            const storeKey = `${clipObjectId}-${offeringKey}`;
 
-        updatedClipList[clipId] = {
-          clipId,
-          name: item.display_name,
-          libraryId,
-          objectId: clipObjectId,
-          versionHash: clipVersionHash,
-          offering: offeringKey,
-          clipInFrame,
-          clipOutFrame,
-          storeKey: `${clipObjectId}-${offeringKey}`,
-          clipKey: `${clipObjectId}-${offeringKey}-${clipInFrame}-${clipOutFrame}`,
-          effects: item.effects || [],
-          // TODO: Audio
-          //audioRepresentation: store.audioRepresentation,
-        };
+            updatedClipList[clipId] = {
+              clipId,
+              name: item.display_name,
+              libraryId,
+              objectId: clipObjectId,
+              versionHash: clipVersionHash,
+              offering: offeringKey,
+              clipInFrame,
+              clipOutFrame,
+              storeKey,
+              clipKey: `${clipObjectId}-${offeringKey}-${clipInFrame}-${clipOutFrame}`,
+              effects: item.effects || [],
+              // TODO: Audio
+              //audioRepresentation: store.audioRepresentation,
+            };
 
-        const originalClipId = this.rootStore.NextId();
-        selectedClipsList[originalClipId] = {
-          ...updatedClipList[clipId],
-          //effects: [],
-          clipId: originalClipId
-        };
+            const originalClipId = this.rootStore.NextId();
+            selectedClipsList[originalClipId] = {
+              ...updatedClipList[clipId],
+              //effects: [],
+              clipId: originalClipId
+            };
 
-        if(clipObjectId !== objectId && !secondarySources.includes(clipObjectId)) {
-          secondarySources.push(clipObjectId);
-        }
+            if(clipObjectId !== objectId && !secondarySources.includes(clipObjectId)) {
+              secondarySources.push(clipObjectId);
+            }
 
-        return clipId;
-      })
+            if(item.audio_track_stream_key) {
+              const store = this.clipStores[storeKey];
+              const audioTracks = store.AudioOptions(offeringKey);
+              let audioTrackInfo = audioTracks.find(track => track.streamKey === item.audio_track_stream_key);
+
+              if(audioTrackInfo && !audioTrackInfo.default) {
+                updatedClipList[clipId].audio_track_key = audioTrackInfo.key;
+                updatedClipList[clipId].audio_track_stream_key = audioTrackInfo.streamKey;
+                updatedClipList[clipId].audio_track_index = audioTrackInfo.trackId;
+                updatedClipList[clipId].audio_track_label = audioTrackInfo.label;
+              }
+            }
+
+            return clipId;
+          } catch(error) {
+            console.error("Failed to load composition item");
+            console.error(item);
+            console.error(error);
+          }
+        })
+        .filter(id => id)
     );
 
     this.selectedClipIdList = Object.values(selectedClipsList).map(clip => clip.clipId);
@@ -1808,11 +1956,15 @@ class CompositionStore {
     }
 
     if(!this.myCompositions[objectId][compositionKey]?.writeTokenInfo && create) {
+      yield this.client.SetNodes({fabricURIs: ["https://host-76-74-35-69.contentfabric.io"]});
+
       const libraryId = yield this.client.ContentObjectLibraryId({objectId});
       this.myCompositions[objectId][compositionKey].writeTokenInfo = {
         ...(yield this.client.EditContentObject({libraryId, objectId})),
         versionHash: yield this.client.LatestVersionHash({objectId})
       };
+
+      yield this.client.ResetRegion();
 
       this.SaveMyCompositions();
     }
@@ -1947,28 +2099,12 @@ class CompositionStore {
       )
     ) { return; }
 
-    const clips = (yield this.rootStore.aiStore.QueryAIAPI({
-      server: "ai",
-      objectId: index.id,
-      path: UrlJoin("search", "q", index.id, "rep", "search"),
-      channelAuth: true,
-      queryParams: {
-        terms: query,
-        search_fields:
-          this.searchSettings.fields.length > 0 ?
-            this.searchSettings.fields.join(",") :
-            Object.keys(index.fields).join(","),
-        display_fields: "all",
-        clips: true,
-        clips_include_source_tags: true,
-        get_chunks: true,
-        debug: true,
-        max_total: 100,
-        min_score: this.searchSettings.minConfidence / 100,
-        start: 0,
-        limit: 100,
-        filters: this.searchSettings.objectIds.map(objectId => `(id:${objectId})`).join("OR")
-      }
+    const clips = (yield this.rootStore.aiStore.PerformClipSearch({
+      searchIndex: index,
+      searchSettings: this.searchSettings,
+      query,
+      start: 0,
+      limit: 100
     }))?.contents || [];
 
     const sourceIdsToLoad = clips
@@ -1990,9 +2126,7 @@ class CompositionStore {
       ];
 
       if(!sourceClip) {
-        // eslint-disable-next-line no-console
         console.warn("No source clip found for search result");
-        // eslint-disable-next-line no-console
         console.warn(clip);
         continue;
       }
@@ -2012,11 +2146,11 @@ class CompositionStore {
         imageUrl.searchParams.set("t", (clip.start_time / 1000).toFixed(2));
       }
 
-      let startTime, endTime, subtitle, chunkStartTime;
-      startTime = (clip.start_time || 0) / 1000;
-      endTime = clip.end_time ? clip.end_time / 1000 : undefined;
-
-      chunkStartTime = clip.sources?.[0]?.chunks?.[0]?.start_time;
+      let subtitle;
+      const startTime = (clip.start_time || 0) / 1000;
+      const matchStartTime = (clip.match_start_time || clip.start_time || 0) / 1000;
+      const endTime = clip.end_time ? result.end_time / 1000 : undefined;
+      const matchEndTime = (clip.match_end_time || clip.end_time || 0) / 1000;
 
       if(startTime || endTime) {
         subtitle = FrameAccurateVideo.TimeToString({
@@ -2034,12 +2168,7 @@ class CompositionStore {
           subtitle = `${subtitle} (${FrameAccurateVideo.TimeToString({time: endTime - startTime})})`;
         }
 
-        imageUrl.searchParams.set("t", startTime.toFixed(2));
-      }
-
-      if(chunkStartTime) {
-        chunkStartTime = chunkStartTime / 1000;
-        imageUrl.searchParams.set("t", chunkStartTime.toFixed(2));
+        imageUrl.searchParams.set("t", matchStartTime.toFixed(2));
       }
 
       let score = clip.score;
@@ -2051,7 +2180,8 @@ class CompositionStore {
       const name = (
         clip.sources?.[0]?.fields?.f_zz_ui_name_1?.[0] ||
         clip.sources?.[0]?.fields?.f_zz_ui_name_2?.[0] ||
-        clip.sources?.[0]?.fields?.f_display_title?.[0]
+        clip.sources?.[0]?.fields?.f_display_title?.[0] ||
+        clip.name
       );
 
       const description = (
@@ -2068,8 +2198,11 @@ class CompositionStore {
         offering: sourceClip.offering,
         clipInFrame,
         clipOutFrame,
-        firstChunkStartTime: chunkStartTime,
-        thumbnailFrame: chunkStartTime ? this.clipStores[storeKey]?.TimeToFrame(chunkStartTime) : undefined,
+        startTime,
+        matchStartTime,
+        endTime,
+        matchEndTime,
+        thumbnailFrame: this.clipStores[storeKey]?.TimeToFrame(matchStartTime),
         score: score ? (score * 100).toFixed(1) : "",
         imageUrl,
         storeKey,

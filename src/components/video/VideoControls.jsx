@@ -2,13 +2,13 @@ import VideoStyles from "@/assets/stylesheets/modules/video.module.scss";
 
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
-import {CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
-import {Confirm, IconButton, Input, SelectInput, StyledButton} from "@/components/common/Common";
+import {Copy, CreateModuleClassMatcher, StopScroll} from "@/utils/Utils.js";
+import {Confirm, Icon, IconButton, Input, SelectInput, StyledButton} from "@/components/common/Common";
 import Fraction from "fraction.js";
 import SVG from "react-inlinesvg";
 import {FrameRates} from "@/utils/FrameAccurateVideo";
 import {Button, Portal, Tooltip} from "@mantine/core";
-import {aiStore, tagStore} from "@/stores/index.js";
+import {aiStore, downloadStore, tagStore, titleStore} from "@/stores/index.js";
 import {useLocation} from "wouter";
 import UrlJoin from "url-join";
 import {Utils} from "@eluvio/elv-client-js";
@@ -30,7 +30,56 @@ import FrameForward10 from "@/assets/icons/v2/frame-forward-10.svg";
 import PlayClipIcon from "@/assets/icons/v2/play-clip.svg";
 import ImageSearchIcon from "@/assets/icons/image-search.svg";
 import VerticalIcon from "@/assets/icons/vertical.svg";
+import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
+import ShareIcon from "@/assets/icons/v2/share.svg";
 
+export const SynopsisButton = observer(({store, objectId, showPreview=false}) => {
+  const title = titleStore.titles[objectId];
+  const synopses = title?.metadata?.ai_derived_media?.synopses || {};
+  const synopsisKey = ["oneliner", "social", "sales", "extended"].find(key => synopses[key]);
+
+  useEffect(() => {
+    titleStore.LoadTitle({titleId: objectId});
+  }, []);
+
+  if(!showPreview || !synopsisKey) {
+    return (
+      <>
+        <div className={S("toolbar__spacer")} />
+        <IconButton
+          active={store.showSynopsisView}
+          label="View Title Synopsis"
+          icon={AIIcon}
+          onClick={() => store.ToggleShowSynopsisView(!store.showSynopsisView)}
+        />
+      </>
+    );
+  }
+
+  return (
+    <Tooltip
+      openDelay={500}
+      label={
+        <div className={S("tooltip", "tooltip--fixed")}>
+          <div className={S("tooltip__label")}>AI Generated Synopsis</div>
+          <div className={S("tooltip__content")}>
+            <p>
+              {synopses[synopsisKey]}
+            </p>
+          </div>
+        </div>
+      }
+    >
+      <button
+        onClick={() => store.ToggleShowSynopsisView(!store.showSynopsisView)}
+        className={S("toolbar__synopsis-container", store.showSynopsisView ? "toolbar__synopsis-container--active" : "")}
+      >
+        <Icon icon={AIIcon} className={S("toolbar__synopsis-icon")}/>
+        <span className={S("toolbar__synopsis", "ellipsis")}>{synopses[synopsisKey]}</span>
+      </button>
+    </Tooltip>
+  );
+});
 
 export const SubtitleControls = observer(({store}) => {
   const tracks = store.subtitleTracks.map(track => ({
@@ -56,11 +105,13 @@ export const SubtitleControls = observer(({store}) => {
   );
 });
 
-export const AudioControls = observer(({store}) => {
-  const tracks = store.audioTracks.map(track => ({
-    label: track.name || track.lang,
-    value: track.id.toString()
-  }));
+export const AudioControls = observer(({store, channels, onChange}) => {
+  const tracks = store.audioTracks
+    .filter(track => !channels || track.channels === channels)
+    .map(track => ({
+      label: track.name || track.lang,
+      value: track.id.toString()
+    }));
 
   if(tracks.length === 1) {
     return null;
@@ -72,7 +123,10 @@ export const AudioControls = observer(({store}) => {
       key={`audio-${store.currentAudioTrack}`}
       value={store.currentAudioTrack?.toString() || "-1"}
       options={tracks}
-      onChange={value => value && store.SetAudioTrack(value)}
+      onChange={value => {
+        value && store.SetAudioTrack({index: value});
+        onChange?.(value);
+      }}
     />
   );
 });
@@ -201,7 +255,34 @@ export const DownloadFrameButton = observer(({store}) => {
   );
 });
 
-export const ShowVerticalButton = observer(({store}) => {
+export const CopyEmbedUrlButton = observer(({store, vertical}) => {
+  const [embedUrl, setEmbedUrl] = useState(undefined);
+
+  useEffect(() => {
+    downloadStore.CreateEmbedUrl({
+      store,
+      offeringKey: store.offeringKey,
+      title: store.name,
+      vertical,
+      node: !vertical ? undefined :
+        rootStore.verticalNodes[0]
+    })
+      .then(setEmbedUrl);
+  }, [store.initialized, vertical]);
+
+
+  return (
+    <IconButton
+      label="Copy Embed URL"
+      icon={ShareIcon}
+      unstyled
+      onClick={() => Copy(embedUrl)}
+      className={S("video-controls__button")}
+    />
+  );
+});
+
+export const ShowVerticalButton = observer(({store, compact}) => {
   const verticalStatus = !store.videoObject.hasVertical && aiStore.verticalVideoProcessingStatus[store.videoObject.objectId];
 
   let progress;
@@ -209,11 +290,19 @@ export const ShowVerticalButton = observer(({store}) => {
     progress = ((verticalStatus.shot_progress || 0) + (verticalStatus.vertical_video_progress || 0)) / 2;
   }
 
+  const active = store.showVertical && store.verticalVideoStore;
+
   return (
     <StyledButton
+      label={
+        typeof progress !== "undefined" ?
+          `Processing: ${Math.min(progress, 95).toFixed(0)}%` :
+          "Make Vertical"
+      }
       icon={VerticalIcon}
-      color="--text-primary"
-      variant="secondary"
+      color={"--text-primary"}
+      textColor={active ? "black" : "--text-primary"}
+      variant={active ? "primary" : "secondary"}
       size="sm"
       disabled={typeof progress !== "undefined"}
       onClick={() => {
@@ -240,15 +329,16 @@ export const ShowVerticalButton = observer(({store}) => {
       className={S("video-controls__search-frame-button")}
     >
       {
-        typeof progress !== "undefined" ?
-          `Processing: ${Math.min(progress, 95).toFixed(0)}%` :
-          "Make Vertical"
+        compact ? null :
+          typeof progress !== "undefined" ?
+            `Processing: ${Math.min(progress, 95).toFixed(0)}%` :
+            "Make Vertical"
       }
     </StyledButton>
   );
 });
 
-export const SearchFrameButton = observer(({store}) => {
+export const SearchFrameButton = observer(({store, compact}) => {
   return (
     <StyledButton
       icon={ImageSearchIcon}
@@ -260,9 +350,13 @@ export const SearchFrameButton = observer(({store}) => {
         frame: store.frame,
         type: "searchFrame"
       })}
+      label="Frame Search"
       className={S("video-controls__search-frame-button")}
     >
-      Frame Search
+      {
+        compact ? null :
+          "Frame Search"
+      }
     </StyledButton>
   );
 });
@@ -334,9 +428,9 @@ export const SearchFrameMenu = observer(({store, element}) => {
   );
 });
 
-export const VideoTime = observer(({store}) => {
+export const VideoTime = observer(({store, compact}) => {
   return (
-    <div className={S("video-time")}>
+    <div className={S("video-time", compact ? "video-time--compact" : "")}>
       <span className={S("video-time__time", "video-time__time--current")}>
         {
           store.showTimecodeOffset ?

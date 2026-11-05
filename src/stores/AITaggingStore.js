@@ -9,6 +9,7 @@ class AITaggingStore {
   jobStatus = {};
 
   modelNames = {};
+  modelParams = {};
   trackKeyToModelMapping = {};
   modelToTrackKeyMapping = {};
   segmentModels = [];
@@ -17,14 +18,8 @@ class AITaggingStore {
 
   audioTracks = {};
 
-  /*
-  Speaker recognition - needs STT
-Chapters - requires STT
-Evidence - requires STT, GIT, LLava, Shot, Speaker
-Character - requires Celeb
-Focus and Pose - requires Shot
-
-   */
+  // TODO: Make model dependency map keep track of both deps and dep on
+  // Note: this is further filled out by the model api
   modelDependencyMap = {
     "speaker": [
       "asr"
@@ -35,7 +30,6 @@ Focus and Pose - requires Shot
     "evidence": [
       "asr",
       "llava",
-      "git", // ??
       "shot",
       "speaker"
     ],
@@ -52,6 +46,8 @@ Focus and Pose - requires Shot
       "shot"
     ]
   };
+
+  modelRelationMap = {};
 
   constructor(rootStore) {
     this.rootStore = rootStore;
@@ -85,12 +81,17 @@ Focus and Pose - requires Shot
     return this.trackKeyToModelMapping[key];
   }
 
-  AddSelectedContent({objectId, name}) {
+  async AddSelectedContent({objectId, name}) {
+    await this.rootStore.GetObjectName({objectId});
+
     if(this.selectedContent.find(item => item.objectId === objectId)) {
       return;
     }
 
-    this.selectedContent.push({objectId, name});
+    this.selectedContent = [
+      {objectId, name},
+      ...(this.selectedContent || [])
+    ];
 
     // Preload audio track info
     this.GetAudioTracks({objectId});
@@ -105,11 +106,82 @@ Focus and Pose - requires Shot
     this.selectedContent = [];
   }
 
+  GetRelatedModels({modelKey, trackKey}) {
+    if(modelKey) {
+      trackKey = this.modelToTrackKeyMapping[modelKey]?.[0];
+    } else {
+      modelKey = this.trackKeyToModelMapping[trackKey];
+    }
+
+    if(!modelKey || !trackKey) {
+      return {
+        models: {
+          allRelatedModelKeys: [],
+          dependencies: [],
+          dependencyOf: [],
+          siblings: []
+        },
+        tracks: {
+          allRelatedTrackKeys: [],
+          dependencies: [],
+          dependencyOf: [],
+          siblings: []
+        }
+      };
+    }
+
+    // All info retrieved as model keys, converted to track keys
+    const dependencies = this.modelDependencyMap[modelKey];
+
+    let dependencyOf = [];
+    Object.keys(this.modelDependencyMap).forEach(otherModelKey => {
+      if(this.modelDependencyMap[otherModelKey]?.includes(modelKey)) {
+        dependencyOf.push(otherModelKey);
+      }
+    });
+
+    const siblingTracks = this.modelToTrackKeyMapping[modelKey]
+      .filter(otherTrackKey => otherTrackKey !== trackKey)
+      .map(trackKey => this.trackKeyToModelMapping[trackKey]);
+
+    // Convert list of model keys to track keys
+    const Convert = list => list
+      .map(key => this.modelToTrackKeyMapping[key])
+      .flat()
+      .filter(trackKey => trackKey);
+
+    const dependencyTracks = Convert(dependencies);
+    const dependencyOfTracks = Convert(dependencyOf);
+
+    return {
+      models: {
+        allRelatedModelKeys: [
+          ...dependencies,
+          ...dependencyOf,
+        ],
+        dependencies,
+        dependencyOf,
+        outputTracks: siblingTracks
+      },
+      tracks: {
+        allRelatedTrackKeys: [
+          ...dependencyTracks,
+          ...dependencyOfTracks,
+          ...siblingTracks
+        ],
+        dependencies: dependencyTracks,
+        dependencyOf: dependencyOfTracks,
+        siblings: siblingTracks
+      }
+    };
+  }
+
   GetTaggingModels = flow(function * () {
     let {models} = (yield this.rootStore.aiStore.QueryAIAPI({
       path: UrlJoin("tagging-live", "models")
     })) || {models: []};
 
+    // Fill out model names, types and model <-> track mapping
     for(const model of models) {
       this.modelNames[model.name] = model.description;
 
@@ -121,10 +193,25 @@ Focus and Pose - requires Shot
         this.segmentModels.push(model.name);
       }
 
+      this.modelToTrackKeyMapping[model.name] = (model.tag_tracks || [])
+        .map(({name}) => name)
+        .filter(name => name);
+
       for(const track of model.tag_tracks || []) {
         this.trackKeyToModelMapping[track.name] = model.name;
-        this.modelToTrackKeyMapping[model.name] = track.name;
       }
+
+      this.modelParams[model.name] = model.params_schema?.properties || {};
+    }
+
+    // Fill out model dependencies
+    for(const model of models) {
+      this.modelDependencyMap[model.name] = (model.dependencies || [])
+        .map(trackKey => this.trackKeyToModelMapping[trackKey]);
+    }
+
+    for(const model of models) {
+      this.modelRelationMap[model.name] = this.GetRelatedModels({modelKey: model.name});
     }
   });
 
@@ -134,43 +221,47 @@ Focus and Pose - requires Shot
       id: objectId,
       bind: this,
       Load: flow(function * () {
-        const metadata = yield this.client.ContentObjectMetadata({
-          libraryId: yield this.client.ContentObjectLibraryId({objectId}),
-          objectId: objectId,
-          metadataSubtree: "offerings",
-          resolveLinks: true,
-          linkDepthLimit: 1,
-          select: [
-            "*/playout/streams/*/representations/*/type",
-            "*/media_struct/streams/*/label",
-            "*/media_struct/streams/*/language",
-            "*/media_struct/streams/*/default_for_media_type"
-          ]
-        });
+        try {
+          const metadata = yield this.client.ContentObjectMetadata({
+            libraryId: yield this.client.ContentObjectLibraryId({objectId}),
+            objectId: objectId,
+            metadataSubtree: "offerings",
+            resolveLinks: true,
+            linkDepthLimit: 1,
+            select: [
+              "*/playout/streams/*/representations/*/type",
+              "*/media_struct/streams/*/label",
+              "*/media_struct/streams/*/language",
+              "*/media_struct/streams/*/default_for_media_type"
+            ]
+          });
 
-        const offering = metadata.default ? "default" :
-          Object.keys(metadata).find(key => key.includes("default")) || Object.keys(metadata)[0];
+          const offering = metadata.default ? "default" :
+            Object.keys(metadata).find(key => key.includes("default")) || Object.keys(metadata)[0];
 
-        const audioTrackKeys = Object.keys(metadata[offering].playout.streams)
-          .map(streamKey =>
-            Object.keys(metadata[offering].playout.streams[streamKey].representations || {})
-              .filter(repKey =>
-                metadata[offering].playout.streams[streamKey].representations[repKey].type === "RepAudio"
-              )
-              .map(repKey => ({streamKey, repKey}))
-          )
-          .flat();
+          const audioTrackKeys = Object.keys(metadata[offering].playout.streams)
+            .map(streamKey =>
+              Object.keys(metadata[offering].playout.streams[streamKey].representations || {})
+                .filter(repKey =>
+                  metadata[offering].playout.streams[streamKey].representations[repKey].type === "RepAudio"
+                )
+                .map(repKey => ({streamKey, repKey}))
+            )
+            .flat();
 
-        return audioTrackKeys
-          .map(({streamKey}) => ({
-            value: streamKey.split("__")[0],
-            streamKey,
-            transcodeId: streamKey.split("__")[1],
-            label: metadata[offering].media_struct.streams[streamKey].label,
-            language: metadata[offering].media_struct.streams[streamKey].language,
-            isDefault: !!metadata[offering].media_struct.streams[streamKey].default_for_media_type,
-          }))
-          .sort((a, b) => a.label < b.label ? -1 : 1);
+          return audioTrackKeys
+            .map(({streamKey}) => ({
+              value: streamKey.split("__")[0],
+              streamKey,
+              transcodeId: streamKey.split("__")[1],
+              label: metadata[offering].media_struct.streams[streamKey].label,
+              language: metadata[offering].media_struct.streams[streamKey].language,
+              isDefault: !!metadata[offering].media_struct.streams[streamKey].default_for_media_type,
+            }))
+            .sort((a, b) => a.label < b.label ? -1 : 1);
+        } catch(error) {
+          console.error(`Unable to load audio track info for ${objectId}`);
+        }
       })
     });
 
@@ -263,22 +354,48 @@ Focus and Pose - requires Shot
 
     const params = [...this.segmentModels, ...this.frameModels, ...this.processorModels]
       .filter(key => options[key] || dependentModels.includes(key))
-      .map(key => {
+      .map(model => {
         let result = {
-          model: key,
+          model,
           overrides: {
-            replace: options.replace
+            replace: !options?.modelOptions?.[model]?.noReplace
           }
         };
 
-        const groundTruthPool = options?.options?.[key]?.groundTruthPool;
+        const groundTruthPool = options?.modelOptions?.[model]?.groundTruthPool;
         if(groundTruthPool && groundTruthPool !== "default") {
-          result.model_params = {
-            ground_truth: groundTruthPool
-          };
+          result.model_params = {};
+
+          if(options?.modelOptions?.[model]?.confidenceThreshold) {
+            result.model_params.thres = parseFloat(options.modelOptions[model].confidenceThreshold);
+          }
+
+          if(groundTruthPool !== "default") {
+            result.model_params.ground_truth = groundTruthPool;
+          }
         }
 
-        const mode = options?.options?.[key]?.mode;
+        if(model === "player_jersey_ocr") {
+          result.model_params = result.model_params || {};
+
+          if(options.modelOptions?.[model]?.minMargin) {
+            result.model_params.min_margin = options.modelOptions[model].minMargin;
+          }
+
+          if(options.modelOptions?.[model]?.legibilityThreshold) {
+            result.model_params.legibility_threshold = options.modelOptions[model].legibilityThreshold;
+          }
+        }
+
+        if(model === "evidence") {
+          result.model_params = result.model_params || {};
+
+          if((options.modelOptions?.[model]?.outputTracks || []).length > 0) {
+            result.model_params.output_tracks = options.modelOptions[model].outputTracks;
+          }
+        }
+
+        const mode = options?.modelOptions?.[model]?.mode;
         if(mode) {
           result.model_params = {
             mode
@@ -287,7 +404,7 @@ Focus and Pose - requires Shot
 
         // Determine proper audio track
         // Produces one job spec per specified stream
-        const streams = options?.options?.[key]?.streams;
+        const streams = options?.modelOptions?.[model]?.streams;
         if(streams) {
           result = streams
             .map(stream => {
@@ -332,10 +449,7 @@ Focus and Pose - requires Shot
         tenant: tenantId
       },
       body: {
-        jobs: params,
-        options: {
-          replace: options.replace
-        }
+        jobs: params
       }
     });
 

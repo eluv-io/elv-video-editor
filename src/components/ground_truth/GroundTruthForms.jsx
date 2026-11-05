@@ -5,6 +5,7 @@ import {
   AsyncButton,
   Confirm,
   FormMultiSelect,
+  FormNumberInput,
   FormSelect,
   FormTextArea,
   FormTextInput,
@@ -294,7 +295,8 @@ const PoolToFields = pool => {
     name: pool.name,
     description: pool.description,
     model: pool.metadata.model_domain,
-    attributes: pool.attributes
+    attributes: pool.attributes,
+    confidenceThreshold: pool.metadata?.confidence_threshold || 0.55
   };
 };
 
@@ -315,6 +317,7 @@ export const GroundTruthPoolForm = observer(({pool, Close}) => {
         name: "",
         description: "",
         model: Object.keys(groundTruthStore.domains)[0],
+        confidenceThreshold: 0.55,
         attributes: []
       }
   );
@@ -403,6 +406,14 @@ export const GroundTruthPoolForm = observer(({pool, Close}) => {
             placeholder="Enter a description"
             value={formData.description}
             onChange={UpdateField("description")}
+          />
+          <FormNumberInput
+            label="Confidence Threshold (%)"
+            placeholder="Enter a Confidence Threshold between 0% and 100%"
+            value={+(formData.confidenceThreshold * 100).toFixed(2)}
+            min={0}
+            max={100}
+            onChange={value => UpdateField("confidenceThreshold")(value / 100)}
           />
           <div
             ref={setAttributesRef}
@@ -1145,7 +1156,7 @@ export const GroundTruthAssetFileBrowser = observer(({poolId, entityId, assetInd
   );
 });
 
-export const GroundTruthPoolSaveButton = observer(({icon, poolId, ...props}) => {
+export const GroundTruthPoolSaveButton = observer(({icon, poolId, onSave, ...props}) => {
   const [saving, setSaving] = useState(false);
 
   const pool = groundTruthStore.pools[poolId] || {};
@@ -1163,6 +1174,8 @@ export const GroundTruthPoolSaveButton = observer(({icon, poolId, ...props}) => 
         setSaving(true);
 
         await groundTruthStore.SaveGroundTruthPool({poolId});
+
+        await onSave?.();
 
         setSaving(false);
       }

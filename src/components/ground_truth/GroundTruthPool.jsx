@@ -69,6 +69,9 @@ const PoolDetails = observer(() => {
         }
         <div className={S("details__break")}/>
         <div className={S("details__subtitle")}>
+          Confidence Threshold: {((pool.metadata?.confidence_threshold || 0.55) * 100).toFixed()}%
+        </div>
+        <div className={S("details__subtitle")}>
           Entities: {entityCount}
         </div>
         <div className={S("details__subtitle")}>
@@ -210,7 +213,8 @@ const GroundTruthPool = observer(() => {
     if(!poolId) { return; }
 
     groundTruthStore.LoadGroundTruthPool({poolId});
-  }, [poolId]);
+    groundTruthStore.CheckEmbeddingsStatus({poolId});
+  }, [poolId, pool?.lastModified]);
 
   useEffect(() => {
     showList ?
@@ -251,7 +255,7 @@ const GroundTruthPool = observer(() => {
               }
               <StyledButton
                 icon={RebuildModelIcon}
-                disabled={pool.embeddingsBuilt}
+                disabled={pool?.embeddingsBuilt !== "undefined" && pool.embeddingsBuilt}
                 onClick={async () =>
                   await Confirm({
                     title: "Rebuild Model",

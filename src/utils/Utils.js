@@ -427,3 +427,23 @@ export const ReduceRat = (num, denom) => {
 };
 
 window.ReduceRat = ReduceRat;
+
+export const FormatTitleAttributes = (info={}) => {
+  let year = info.release_year || info.us_release_year;
+  if(info.release_date) {
+    year = new Date(info.release_date).getFullYear();
+  }
+
+  let rating = info.mpaa_rating;
+  let runtime = info.runtime;
+  if(runtime) {
+    const hours = Math.floor(parseInt(runtime) / 60);
+    const minutes = parseInt(runtime) % 60;
+
+    runtime = hours ? `${hours}h ${minutes}m` : `${minutes}m`;
+  }
+
+  return [year, rating, runtime]
+    .filter(a => a)
+    .join(" • ");
+};

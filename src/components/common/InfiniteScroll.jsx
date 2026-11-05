@@ -119,7 +119,7 @@ const InfiniteScroll = observer(({
       { children }
       {
         !showLoader && (!loading || !withLoader) ? null :
-          <Loader className={S("infinite-scroll__loader")} />
+          <Loader className={S("infinite-scroll__bottom-loader")} />
       }
     </div>
   );

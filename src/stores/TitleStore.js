@@ -30,6 +30,8 @@ class TitleStore {
   }
 
   LoadTitle = flow(function * ({titleId}) {
+    if(!titleId) { return; }
+
     return yield this.rootStore.LoadResource({
       id: "titles",
       key: titleId,
@@ -48,8 +50,6 @@ class TitleStore {
         });
 
         const name = metadata?.asset_metadata?.display_title || metadata?.asset_metadata?.title || metadata?.name;
-        const videoStore = new VideoStore(this.rootStore, {tags: false, channel: false, thumbnails: true, id: `title-store-${name}`});
-        yield videoStore.SetVideo({objectId: titleId});
 
         const baseFrameUrl = yield this.client.Rep({
           versionHash,
@@ -67,12 +67,30 @@ class TitleStore {
           name: metadata?.name,
           title: name,
           metadata: metadata?.asset_metadata || {},
-          videoStore: videoStore,
+          videoStore: undefined,
           baseFrameUrl,
           compositionVideoStores: {}
         };
 
         return this.titles[titleId];
+      })
+    });
+  });
+
+  LoadTitleVideoStore = flow(function * ({titleId}) {
+    if(!titleId) { return; }
+
+    return yield this.rootStore.LoadResource({
+      id: "titleVideoStore",
+      key: titleId,
+      bind: this,
+      Load: flow(function * () {
+        yield this.LoadTitle({titleId});
+
+        const videoStore = new VideoStore(this.rootStore, {tags: false, channel: false, thumbnails: true, id: `title-store-${name}`});
+        yield videoStore.SetVideo({objectId: titleId});
+
+        this.titles[titleId].videoStore = videoStore;
       })
     });
   });
@@ -118,12 +136,10 @@ class TitleStore {
           async ({name}) => (
             await this.rootStore.aiStore.QueryAIAPI({
               objectId,
-              path: offering || compositionKey ?
-                UrlJoin("/tagstore", objectId, "compositions", "tags") :
-                UrlJoin("/tagstore", objectId, "tags"),
+              path: UrlJoin("/tagstore", objectId, "compositions", "tags"),
               queryParams: {
                 channel_key: compositionKey,
-                offering_key: offering,
+                offering_key: compositionKey ? undefined : offering || "default",
                 limit: 1000000,
                 track: name,
                 ...clippingParams
@@ -245,7 +261,7 @@ class TitleStore {
     });
   });
 
-  GenerateTitleSynopsis = flow(function * ({objectId, style="extended"}) {
+  GenerateTitleSynopsis = flow(function * ({objectId, style="extended", prompt=""}) {
     const {synopsis} = yield this.rootStore.aiStore.QueryAIAPI({
       server: "ai",
       method: "GET",
@@ -254,7 +270,8 @@ class TitleStore {
       channelAuth: true,
       queryParams: {
         regenerate: true,
-        style
+        style,
+        personal_prompt: prompt
       }
     });
 
@@ -263,6 +280,7 @@ class TitleStore {
       label: `Generate ${style} synopsis for ${yield this.rootStore.GetObjectName({objectId})}`,
       type: "titles",
       action: "generateSynopsis",
+      page: "titles",
       modifiedItem: originalSynopsis,
       Action: () => {
         if(!this.titles[objectId].metadata.ai_derived_media) {
@@ -310,6 +328,7 @@ class TitleStore {
     this.rootStore.editStore.PerformAction({
       label: `Regenerate clip summary for ${yield this.rootStore.GetObjectName({objectId})} clip with prompt ${prompt}`,
       type: "titles",
+      page: "titles",
       action: "generateSummary",
       modifiedItem: originalSummary,
       Action: () => {

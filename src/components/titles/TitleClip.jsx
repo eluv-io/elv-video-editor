@@ -20,8 +20,6 @@ import VerticalIcon from "@/assets/icons/vertical.svg";
 import PinIcon from "@/assets/icons/v2/pin.svg";
 import SubmitIcon from "@/assets/icons/v2/search-arrow.svg";
 
-
-
 const S = CreateModuleClassMatcher(TitleStyles);
 
 const Summary = observer(({title, clipInfo}) => {
@@ -112,13 +110,13 @@ const TitleClip = observer(() => {
   const clipInfo = ClipInfo({title, clipId});
 
   useEffect(() => {
-    titleStore.LoadTitle({titleId});
+    titleStore.LoadTitleVideoStore({titleId});
 
     return () => titleStore.SetPlayer(undefined);
   }, []);
 
   useEffect(() => {
-    if(!title) { return; }
+    if(!title || !title.videoStore) { return; }
     if(clipInfo?.playout?.type === "clip") {
       title.videoStore.SetClipMark({inFrame: title.videoStore.TimeToFrame(clipInfo.playout.start / 1000)});
       title.videoStore.SetClipMark({outFrame: title.videoStore.TimeToFrame(clipInfo.playout.end / 1000)});
@@ -126,9 +124,9 @@ const TitleClip = observer(() => {
       title.videoStore.SetClipMark({inFrame: 0});
       title.videoStore.SetClipMark({outFrame: title.videoStore.totalFrames - 1});
     }
-  }, [!!title]);
+  }, [!!title?.videoStore]);
 
-  if(!title) {
+  if(!title?.videoStore) {
     return <Loader />;
   }
 
@@ -214,7 +212,6 @@ const TitleClip = observer(() => {
                       <DownloadModalButton store={title.videoStore} />
                     </>
                 }
-
               </div>
             </div>
           </div>

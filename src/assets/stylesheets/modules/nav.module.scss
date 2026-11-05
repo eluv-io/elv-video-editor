@@ -46,6 +46,7 @@
 
 .active-menu {
   padding: 0 10px 10px;
+  position: relative;
 
   &__container {
     background: var(--background-modal);
@@ -57,6 +58,7 @@
     color: var(--text-secondary);
     font-size: 14px;
     font-weight: 600;
+    margin-bottom: 5px;
   }
 
   &__name {
@@ -69,7 +71,20 @@
     font-size: 12px;
   }
 
+  &__actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+  }
+
   &__button {
-     margin-top: 10px;
+    flex-grow: 1;
+  }
+
+  &__browse {
+    position: absolute;
+    right: 0;
+    top: 0;
   }
 }

@@ -1,7 +1,7 @@
 import FrameAccurateVideo from "@/utils/FrameAccurateVideo.js";
 import {rootStore} from "@/stores/index.js";
 import {Unproxy} from "@/utils/Utils.js";
-import IntervalTree from "node-interval-tree";
+import IntervalTree from "@flatten-js/interval-tree";
 import Fraction from "fraction.js";
 
 export const LoadVideo = async ({
@@ -17,7 +17,6 @@ export const LoadVideo = async ({
     }
 
     const versionHash = await rootStore.client.LatestVersionHash({objectId});
-
     const metadata = (await rootStore.client.ContentObjectMetadata({
       libraryId,
       objectId,
@@ -28,6 +27,7 @@ export const LoadVideo = async ({
       select: [
         "public/name",
         "public/description",
+        "offerings/*/mez_prep_specs",
         "offerings/*/entry_point_rat",
         "offerings/*/exit_point_rat",
         "offerings/*/media_struct/duration_rat",
@@ -37,16 +37,16 @@ export const LoadVideo = async ({
         //"offerings/*/media_struct/streams/*/sources",
         "offerings/*/media_struct/streams/*/label",
         "offerings/*/media_struct/streams/*/default_for_media_type",
+        "offerings/*/media_struct/streams/*/channels",
         "offerings/*/media_struct/streams/*/tags/timecode",
-        "offerings/*/playout/streams/*/representations",
-        "offerings/*/playout/playout_formats",
+        "offerings/*/playout",
         "offerings/*/verticalize",
+        "live_recording",
         "channel",
         "clips",
         "video_tags",
         "mime_types",
         "assets",
-        "live_recording_info",
         "files/vertical.bin"
       ]
     })) || { public: {}};
@@ -59,8 +59,9 @@ export const LoadVideo = async ({
       name: metadata.public && metadata.public.name || metadata.name || versionHash,
       description: metadata.public && metadata.public.description || metadata.description,
       metadata,
-      isVideo: !!metadata.offerings || !!metadata.channel,
+      isVideo: !!metadata.offerings || !!metadata.channel || !!metadata.live_recording || !!metadata.live_recording_info,
       isChannel: !!metadata.channel,
+      isLive: metadata?.live_recording?.status?.state === "active",
       isLiveToVod: !!metadata.live_recording_info,
       liveStreamInfo: metadata.live_recording_info,
     };
@@ -155,7 +156,6 @@ export const LoadVideo = async ({
               });
             }
           } catch(error) {
-            // eslint-disable-next-line no-console
             console.warn(`Unable to load offering details for ${offering}`);
           }
         })
@@ -165,25 +165,29 @@ export const LoadVideo = async ({
 
       if(!hasHlsOfferings) { throw Error("No offerings with HLS Clear or AES-128 playout found."); }
 
-      videoObject.offeringKey = offeringKey;
+      videoObject.offeringKey = offeringKey || "default";
       videoObject.hasVertical = metadata.offerings?.[offeringKey]?.verticalize?.data;
 
-      // Determine duration and framerate
-      videoObject.streamKey = Object.keys(metadata.offerings[videoObject.offeringKey].media_struct.streams)
-        .find(streamKey =>
-          metadata.offerings[videoObject.offeringKey].media_struct.streams[streamKey].codec_type === "video"
-        );
+      try {
+        // Determine duration and framerate
+        videoObject.streamKey = Object.keys(metadata.offerings[videoObject.offeringKey].media_struct.streams)
+          .find(streamKey =>
+            metadata.offerings[videoObject.offeringKey].media_struct.streams[streamKey].codec_type === "video"
+          );
 
-      const durationRat = metadata.offerings[videoObject.offeringKey].media_struct.streams[videoObject.streamKey]?.duration?.rat;
-      if(durationRat) {
-        videoObject.duration = FrameAccurateVideo.ParseRat(durationRat);
-      } else {
-        const timebase = FrameAccurateVideo.ParseRat(metadata.offerings[videoObject.offeringKey].media_struct.streams[videoObject.streamKey].duration.time_base);
-        const ts = metadata.offerings[videoObject.offeringKey].media_struct.streams[videoObject.streamKey].duration.ts;
-        videoObject.duration = timebase * ts;
+        const durationRat = metadata.offerings[videoObject.offeringKey].media_struct.streams[videoObject.streamKey]?.duration?.rat;
+        if(durationRat) {
+          videoObject.duration = FrameAccurateVideo.ParseRat(durationRat);
+        } else {
+          const timebase = FrameAccurateVideo.ParseRat(metadata.offerings[videoObject.offeringKey].media_struct.streams[videoObject.streamKey].duration.time_base);
+          const ts = metadata.offerings[videoObject.offeringKey].media_struct.streams[videoObject.streamKey].duration.ts;
+          videoObject.duration = timebase * ts;
+        }
+
+        videoObject.timecode = metadata.offerings[videoObject.offeringKey].media_struct.streams[videoObject.streamKey].tags?.timecode;
+      } catch(error) {
+        console.error(`Unable to determine duration/stream key for ${objectId}`);
       }
-
-      videoObject.timecode = metadata.offerings[videoObject.offeringKey].media_struct.streams[videoObject.streamKey].tags?.timecode;
 
       // Specify playout for full, untrimmed content
       const playoutMethods = videoObject.availableOfferings[offeringKey].playoutMethods["hls"].playoutMethods;
@@ -193,6 +197,7 @@ export const LoadVideo = async ({
       const playoutUrl = new URL((playoutMethods.clear || playoutMethods["aes-128"]).playoutUrl);
       playoutUrl.searchParams.set("ignore_trimming", true);
       playoutUrl.searchParams.set("player_profile", "hls-js-2441");
+      playoutUrl.searchParams.set("dvr", "1");
 
       const thumbnailTrackUrl = (playoutMethods.clear || playoutMethods["aes-128"]).thumbnailTrack;
 
@@ -342,13 +347,10 @@ export const CreateTrackIntervalTree = (tags, label, offset=0) => {
 
   Object.values(tags).forEach(tag => {
     try {
-      intervalTree.insert(tag.startTime + offset, tag.endTime + offset, tag.tagId);
+      intervalTree.insert([tag.startTime + offset, tag.endTime + offset], tag.tagId);
     } catch(error) {
-      // eslint-disable-next-line no-console
       console.warn(`Invalid tag in track '${label}'`);
-      // eslint-disable-next-line no-console
       console.warn(JSON.stringify(tag, null, 2));
-      // eslint-disable-next-line no-console
       console.warn(error);
     }
   });

@@ -10,6 +10,7 @@ import {Tooltip} from "@mantine/core";
 import {BoxToPoints, PointInPolygon, PointsToBox, ReorderPoints} from "@/utils/Geometry.js";
 
 const frameSpread = 5;
+let verticalFrameSpread = 50;
 
 const S = CreateModuleClassMatcher(OverlayStyles);
 
@@ -293,6 +294,8 @@ const Tags = () => {
 
     if(overlayTags) {
       Object.keys(overlayTags).forEach(key => {
+        if(key === "vertical_video") { return; }
+
         if(!tags[key] && typeof overlayTags[key] === "object" && Object.keys(overlayTags[key]).length > 0) {
           tags[key] = { ...(overlayTags[key] || {}) };
         }
@@ -300,7 +303,34 @@ const Tags = () => {
     }
   }
 
-  if(Object.keys(tags).length === 0) { return []; }
+  if(trackStore.tracks.find(track => track.key === "vertical_video")) {
+    for(let i = videoStore.frame; i >= Math.max(0, videoStore.frame - verticalFrameSpread); i--) {
+      overlayTags = overlayStore.overlayTags[i.toString()];
+
+      if(overlayTags) {
+        Object.keys(overlayTags).forEach(key => {
+          if(key !== "vertical_video") { return; }
+
+          // Increase frame spread if necessary
+          verticalFrameSpread = Math.max(
+            verticalFrameSpread,
+            (overlayTags[key]?.tags?.[0]?.xCoordinates?.length || 0) + 1
+          );
+
+          if(!tags[key] && typeof overlayTags[key] === "object" && Object.keys(overlayTags[key]).length > 0) {
+            tags[key] = {
+              ...(tags || {}),
+              ...(overlayTags[key] || {})
+            };
+          }
+        });
+      }
+    }
+  }
+
+  if(Object.keys(tags).length === 0) {
+    return [];
+  }
 
   let activeTags = [];
   trackStore.tracks
@@ -324,11 +354,28 @@ const Tags = () => {
       }
 
       activeTags = activeTags.concat(
-        boxes.map(tag => ({
-          ...tag,
-          label: track.label,
-          color: track.color
-        }))
+        boxes.map(tag => {
+          let box = tag.box;
+          if(tag.xCoordinates) {
+            const frameDiff = videoStore.frame - parseInt(tag.frame);
+            const xCoordinate = tag.xCoordinates[frameDiff];
+            const width = ((9/16)/(16/9)) / 2;
+
+            box = {
+              x1: xCoordinate - width,
+              x2: xCoordinate + width,
+              y1: 0,
+              y2: 1
+            };
+          }
+
+          return {
+            ...tag,
+            box,
+            label: track.label,
+            color: track.color
+          };
+        })
       );
     });
 
@@ -461,7 +508,7 @@ const Overlay = observer(({element, asset, highlightTag, editOnly}) => {
     return () => {
       resizeObserver.disconnect();
     };
-  }, [element]);
+  }, [element, videoStore.showVertical]);
 
   useEffect(() => {
     if(!canvas || editOnly) { return; }

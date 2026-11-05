@@ -761,4 +761,9 @@
   &__loader {
     min-height: 120px;
   }
+
+  &__bottom-loader {
+    height: max-content;
+    margin-top: 20px;
+  }
 }

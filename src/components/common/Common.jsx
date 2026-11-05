@@ -439,7 +439,21 @@ export const AsyncButton = observer(({onClick, tooltip, loading, ...props}) => {
   );
 });
 
-export const StyledButton = observer(({icon, variant="primary", size="lg", color="--color-highlight--dark", textColor="--text-primary", children, loading, w, ...props}) => {
+export const StyledButton = observer(({
+  icon,
+  label,
+  variant="primary",
+  size="lg",
+  color="--color-highlight--dark",
+  textColor="--text-primary",
+  children,
+  loading,
+  loadingProgress,
+  w,
+  withinPortal=true,
+  tooltipProps={},
+  ...props
+}) => {
   const [submitting, setSubmitting] = useState(false);
 
   textColor = variant === "secondary" ? textColor || color : textColor || "";
@@ -450,7 +464,7 @@ export const StyledButton = observer(({icon, variant="primary", size="lg", color
     props.style.width = `${w}px`;
   }
 
-  return (
+  const button =(
     <Linkish
       {...props}
       onClick={
@@ -489,16 +503,45 @@ export const StyledButton = observer(({icon, variant="primary", size="lg", color
             <Icon icon={icon} className={S("styled-button__icon")} />
           </div>
       }
-      <div className={S("styled-button__children")}>
-        {children}
-      </div>
+      {
+        !children ? null :
+          <div className={S("styled-button__children")}>
+            {children}
+          </div>
+      }
       {
         !submitting && !loading ? null :
           <div className={S("styled-button__loader-container")}>
-            <Loader className={S("styled-button__loader")} />
+            {
+              loadingProgress ?
+                <RingProgress
+                  size={25}
+                  thickness={3}
+                  transitionDuration={500}
+                  rootColor="var(--text-tertiary)"
+                  sections={[{value: loadingProgress, color: `var(${textColor}, white)`}]}
+                /> :
+                <Loader className={S("styled-button__loader")} />
+            }
           </div>
       }
     </Linkish>
+  );
+
+  if(!label) {
+    return button;
+  }
+
+  return (
+    <Tooltip
+      {...tooltipProps}
+      openDelay={500}
+      withinPortal={withinPortal}
+      label={label}
+      events={{ hover: true, focus: true, touch: false }}
+    >
+      { button }
+    </Tooltip>
   );
 });
 
@@ -723,7 +766,8 @@ export const SMPTEInput = observer(({store, value, onChange, formInput=false, hi
 
   return (
     <Component
-      value={smpteInput}
+      disabled={store.totalFrames === 0}
+      value={store.totalFrames === 0 ? "" : smpteInput}
       monospace
       onChange={event => setSMPTEInput(event.target.value)}
       onKeyDown={event => {

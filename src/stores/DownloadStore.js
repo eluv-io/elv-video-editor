@@ -313,6 +313,9 @@ class DownloadStore {
     );
 
     if(compositionKey && compositionKey !== "main") {
+      // TODO: Remove
+      node = "https://host-76-74-35-69.contentfabric.io";
+
       url.searchParams.delete("off");
       url.searchParams.set("ch", compositionKey);
     }
@@ -532,8 +535,6 @@ class DownloadStore {
 
     let verticalEmbedUrl;
     if(share.compositionKey === "main" && store.videoObject?.hasVertical) {
-      // TODO: Remove specific vertical node
-      const node = "https://host-76-74-29-29.contentfabric.io";
       verticalEmbedUrl = await this.CreateEmbedUrl({
         store,
         offeringKey: share.downloadOptions?.offering,
@@ -544,7 +545,7 @@ class DownloadStore {
         shareId: share.share_id,
         title: share.title,
         vertical: true,
-        node
+        node: this.rootStore.verticalNodes[0]
       });
     }
 

@@ -94,7 +94,7 @@
 }
 
 .timeline-row {
-  animation: var(--animation-fadein) 0.5s ease;
+  animation: var(--animation-fadein) 0.75s ease;
   background: var(--background-primary);
   display: grid;
   gap: 3px;
@@ -168,6 +168,7 @@
     position: relative;
     text-align: left;
     transition: background-color 0.25s ease;
+    user-select: none;
 
     &--button {
       cursor: pointer;
@@ -210,6 +211,18 @@
     position: absolute;
     right: 8px;
     width: 20px;
+  }
+
+  &__relation-icon {
+    align-items: center;
+    color: var(--color-highlight--dark);
+    display: flex;
+    height: 30px;
+    justify-content: center;
+    margin-right: 5px;
+    min-height: 30px;
+    min-width: 30px;
+    width: 30px;
   }
 
   &__progress {
@@ -439,4 +452,208 @@
   height: 100%;
   justify-content: center;
   width: 100%;
+}
+
+.related-content-container {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+  width: 100%;
+}
+
+.related-content {
+  align-items: center;
+  background-color: var(--background-toolbar);
+  border-radius: 4px;
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+
+  &,
+  &__image {
+    transition: background-color 0.25s ease;
+  }
+
+  &:hover {
+    background-color: var(--background-toolbar--active);
+
+    .related-content__image {
+      background-color: var(--background-toolbar--active);
+    }
+  }
+
+  &__image-background {
+    background: linear-gradient(var(--color-highlight), var(--color-highlight-secondary));
+    border-radius: 4px;
+    padding: 2px;
+  }
+
+  &__image {
+    background-color: var(--background-toolbar);
+    padding: 10px 10px 5px;
+  }
+
+  &__text {
+    max-width: 225px;
+    text-align: left;
+  }
+
+  &__title {
+    font-weight: 600;
+  }
+
+  &__description {
+    color: var(--text-tertiary);
+    font-size: 14px;
+  }
+}
+
+.synopsis-section {
+  animation: var(--animation-fadein) 1s ease;
+  display: flex;
+  gap: 20px;
+  height: 100%;
+  justify-content: center;
+  margin-inline: auto;
+  overflow-y: auto;
+  padding: 30px 20px 100px;
+  width: 100%;
+
+  &__image-container {
+    border-radius: 3px;
+    height: 300px;
+    overflow: hidden;
+    width: auto;
+  }
+
+  &__image {
+    animation: var(--animation-fadein) 0.55s ease;
+    height: 100%;
+    object-fit: contain;
+    object-position: top;
+    width: 100%;
+  }
+
+  &__info {
+    flex-grow: 1;
+    max-width: 1000px;
+  }
+
+  &__title {
+    align-items: center;
+    color: var(--text-primary);
+    display: flex;
+    font-size: 24px;
+    font-weight: 800;
+    justify-content: space-between;
+  }
+
+  &__attributes {
+    align-items: center;
+    display: flex;
+    font-size: 12px;
+    gap: 20px;
+  }
+
+  &__attributes-text {
+    color: var(--text-tertiary);
+    font-weight: 600;
+  }
+
+  &__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 10px 0;
+  }
+
+  &__tag {
+    border: 1px solid var(--text-tertiary);
+    border-radius: 40px;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 10px;
+    user-select: none;
+  }
+}
+
+.clip-summary {
+  margin-inline: auto;
+  max-width: 1000px;
+  padding: 10px 0 100px;
+  width: 1000px;
+
+  &__header-container {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  &__header {
+    align-items: center;
+    color: var(--text-secondary);
+    display: flex;
+    font-size: 18px;
+    font-weight: 600;
+    gap: 5px;
+  }
+
+  &__actions {
+    align-items: center;
+    display: flex;
+    gap: 5px;
+  }
+
+  &__time {
+    align-items: center;
+    color: var(--text-tertiary);
+    display: flex;
+    font-size: 11px;
+    gap: 5px;
+    margin-left: 10px;
+    padding-top: 5px;
+  }
+
+  &__text {
+    animation: var(--animation-fadein) 0.55s ease-out;
+    background-color: var(--background-modal);
+    border-radius: 5px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-top: 5px;
+    max-height: 175px;
+    min-height: 75px;
+    overflow-y: auto;
+    padding: 10px;
+    position: relative;
+    width: 100%;
+  }
+
+  &__loader {
+    align-items: center;
+    background-color: var(--background-modal);
+    display: flex;
+    height: 100%;
+    inset: 0;
+    justify-content: center;
+    position: absolute;
+    transition: opacity 0.25s ease;
+    width: 100%;
+
+    &--loaded {
+      opacity: 0;
+      pointer-events: none;
+    }
+  }
+
+  &__prompt-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+  }
+
+  &__prompt {
+    width: 500px;
+  }
 }

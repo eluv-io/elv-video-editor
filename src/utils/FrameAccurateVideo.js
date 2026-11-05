@@ -352,6 +352,7 @@ class FrameAccurateVideo {
 
     this.Update();
 
+    this.video.ondurationchange = (event) => this.Update(event);
     this.video.onseeked = (event) => this.Update(event);
     this.video.onseeking = (event) => this.Update(event);
     this.video.onplay = () => this.AddListener();

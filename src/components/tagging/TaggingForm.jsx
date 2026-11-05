@@ -6,13 +6,99 @@ import React, {useEffect, useState} from "react";
 import {aiTaggingStore, groundTruthStore, keyboardControlsStore, rootStore} from "@/stores/index.js";
 import {useLocation} from "wouter";
 import {BrowserSelection, TaggingStepHeader} from "@/components/nav/Browser.jsx";
-import {StyledButton} from "@/components/common/Common.jsx";
-import {CreateModuleClassMatcher} from "@/utils/Utils.js";
+import {FormMultiSelect, FormNumberInput, FormSelect, StyledButton} from "@/components/common/Common.jsx";
+import {CreateModuleClassMatcher, FormatFieldName} from "@/utils/Utils.js";
 import {Checkbox, MultiSelect, Select} from "@mantine/core";
+
+const DEFAULT_VALUES = {
+  player_jersey_ocr: {
+    minMargin: 0.999,
+    legibilityThreshold: 0.5
+  },
+  celeb: {
+    confidenceThreshold: 0.55
+  }
+};
 
 const S = CreateModuleClassMatcher(BrowserStyles, TaggingStyles);
 
-const Summary = observer(({options}) => {
+const SetModelOption = (options, setOptions, model, key, value) => {
+  setOptions({
+    ...options,
+    modelOptions: {
+      ...options.modelOptions,
+      [model]: {
+        ...(options.modelOptions[model] || {}),
+        [key]: value
+      }
+    }
+  });
+};
+
+const SummaryItem = observer(({options, setOptions, model}) => {
+  return (
+    <div className={S("summary-item-row")}>
+      <div className={S("summary-item")}>
+        <div className={S("summary-item-name")}>
+          {aiTaggingStore.modelNames[model]}
+        </div>
+        {
+          !options.modelOptions[model]?.streams ? null :
+            <div key={`${model}-stream`} className={S("summary-item-option")}>
+              {
+                [
+                  !options.modelOptions[model]?.streams?.includes("") ? null :
+                    "Default Audio Track",
+                  ...aiTaggingStore.selectedContentCommonAudioTracks
+                    .filter(option => options.modelOptions[model]?.streams?.includes(option.value))
+                    .map(option => option.label || "")
+                ]
+                  .filter(track => track)
+                  .join(", ")
+              }
+            </div>
+        }
+        {
+          !options.modelOptions[model]?.groundTruthPool ? null :
+            <>
+              <div key={`${model}-pool`} className={S("summary-item-option")}>
+                Ground Truth Pool: {groundTruthStore.pools[options.modelOptions[model].groundTruthPool].name}
+              </div>
+              <div key={`${model}-confidence`} className={S("summary-item-option")}>
+                Confidence Threshold: {+((options.modelOptions[model]?.confidenceThreshold || DEFAULT_VALUES.celeb.confidenceThreshold) * 100).toFixed(2)}%
+              </div>
+            </>
+        }
+        {
+          model !== "player_jersey_ocr" ? null :
+            <>
+              <div key={`${model}-min-margin`} className={S("summary-item-option")}>
+                OCR Margin: {+((options.modelOptions[model]?.minMargin || DEFAULT_VALUES.player_jersey_ocr.minMargin) * 100).toFixed(2)}%
+              </div>
+              <div key={`${model}-legibility-threshold`} className={S("summary-item-option")}>
+                Legibility Threshold: {+((options.modelOptions[model]?.legibilityThreshold || DEFAULT_VALUES.player_jersey_ocr.legibilityThreshold) * 100).toFixed(2)}%
+              </div>
+            </>
+        }
+        {
+          model !== "evidence" && (options.modelOptions[model]?.outputTracks || []).length === 0 ? null :
+            <>
+              <div key={`${model}-min-margin`} className={S("summary-item-option")}>
+                Output Tracks: {options.modelOptions[model].outputTracks.map(t => FormatFieldName(t)).join(", ")}
+              </div>
+            </>
+        }
+      </div>
+      <Checkbox
+        title="Replace existing tags for this model (if applicable)"
+        checked={!(options.modelOptions?.[model]?.noReplace || false)}
+        onChange={event => SetModelOption(options, setOptions, model, "noReplace", !event.target.checked)}
+      />
+    </div>
+  );
+});
+
+const Summary = observer(({options, setOptions}) => {
   const dependentModels = Object.keys(options)
     .filter(key => key !== "options" && options[key])
     .map(key => aiTaggingStore.modelDependencyMap[key] || [])
@@ -22,46 +108,56 @@ const Summary = observer(({options}) => {
   const anyFrameModels = aiTaggingStore.frameModels.find(key => options[key] || dependentModels.includes(key));
   const anyProcessors = aiTaggingStore.processorModels.find(key => options[key] || dependentModels.includes(key));
 
+  const allSelectedModels = [
+    ...aiTaggingStore.segmentModels,
+    ...aiTaggingStore.frameModels,
+    ...aiTaggingStore.processorModels
+  ]
+    .filter(model => options[model] || dependentModels.includes(model));
+
+  const replaceAll = !allSelectedModels.find(model => options.modelOptions[model]?.noReplace);
+  const replaceNone = !allSelectedModels.find(model => !options.modelOptions[model]?.noReplace);
+
   return (
     <div className={S("form")}>
       <div className={S("block")}>
         <h2 className={S("block__title")}>
-          <span>Model Tracks</span>
-          {
-            !options.replace ? null :
-              <span style={{fontSize: 15}}>Existing tags will be replaced</span>
-          }
+          Model Tracks
         </h2>
-        <div className={S("groups", "groups--double")}>
+        <div className={S("groups", "groups--summary")}>
           <div className={S("group", "group--summary")}>
             <h3 className={S("group__title")}>
-              Segment Level
+              <span>Segment Level</span>
+              <span className={S("group__title-column-header")}>
+                <Checkbox
+                  label="Replace Existing Tags"
+                  labelPosition="left"
+                  checked={replaceAll}
+                  indeterminate={!replaceAll && !replaceNone}
+                  onChange={() => {
+                    let newOptions = {...options};
+                    allSelectedModels.forEach(model =>
+                      newOptions.modelOptions[model] = {
+                        ...(options.modelOptions[model] || {}),
+                        noReplace: replaceAll
+                      }
+                    );
+
+                    setOptions(newOptions);
+                  }}
+                />
+              </span>
             </h3>
             {
               anySegmentModels ? null :
-                <div className={S("summary-item")}>
+                <div className={S("summary-item", "summary-item--none")}>
                   None Selected
                 </div>
             }
             {
               aiTaggingStore.segmentModels.map(model =>
                 !options[model] && !dependentModels.includes(model) ? null :
-                  <>
-                    <div key={model} className={S("summary-item")}>
-                      {aiTaggingStore.modelNames[model]}
-                    </div>
-                    {
-                      !options.options[model]?.streams ? null :
-                        <div key={`${model}-stream`} className={S("summary-item-option")}>
-                          {
-                            aiTaggingStore.audioTracks[aiTaggingStore.selectedContent[0].objectId]
-                              .filter(option => options.options[model]?.streams?.includes(option.value))
-                              .map(option => option.label || "")
-                              .join(", ")
-                          }
-                        </div>
-                    }
-                  </>
+                  <SummaryItem key={model} model={model} options={options} setOptions={setOptions}/>
               )
             }
           </div>
@@ -71,55 +167,186 @@ const Summary = observer(({options}) => {
             </h3>
             {
               anyFrameModels ? null :
-                <div className={S("summary-item")}>None Selected</div>
+                <div className={S("summary-item", "summary-item--none")}>None Selected</div>
             }
             {
               aiTaggingStore.frameModels.map(model =>
                 !options[model] && !dependentModels.includes(model) ? null :
-                  <>
-                    <div key={model} className={S("summary-item")}>
-                      {aiTaggingStore.modelNames[model]}
-                    </div>
-                    {
-                      !options.options[model]?.groundTruthPool ? null :
-                        <div key={`${model}-pool`} className={S("summary-item-option")}>
-                          Ground Truth Pool: { groundTruthStore.pools[options.options[model].groundTruthPool].name }
-                        </div>
-                    }
-                  </>
+                  <SummaryItem key={model} model={model} options={options} setOptions={setOptions}/>
+              )
+            }
+          </div>
+          <div className={S("group", "group--summary")}>
+            <h3 className={S("group__title")}>
+              Processors
+            </h3>
+            {
+              anyProcessors ? null :
+                <div className={S("summary-item", "summary-item--none")}>None Selected</div>
+            }
+            {
+              aiTaggingStore.processorModels.map(model =>
+                !options[model] && !dependentModels.includes(model) ? null :
+                  <SummaryItem key={model} model={model} options={options} setOptions={setOptions}/>
               )
             }
           </div>
         </div>
       </div>
-      {
-        !anyProcessors ? null :
-          <div className={S("block")}>
-            <h2 className={S("block__title")}>
-              Processors
-            </h2>
-            <div className={S("groups")}>
-              <div className={S("group", "group--summary")}>
-                {
-                  anyProcessors ? null :
-                    <div className={S("summary-item")}>None Selected</div>
-                }
-                {
-                  aiTaggingStore.processorModels.map(model =>
-                    !options[model] && !dependentModels.includes(model) ? null :
-                      <div key={model} className={S("summary-item")}>{aiTaggingStore.modelNames[model]}</div>
-                  )
-                }
-              </div>
-            </div>
-          </div>
-      }
     </div>
   );
 });
 
+const SegmentModelOptions = ({options, model, dependentModels, SetModelOption}) => {
+  if(!(options[model] || dependentModels.includes(model))) { return; }
+
+  // Speech to text
+  if(["asr", "euro_asr"].includes(model)) {
+    // No audio tracks to choose from
+    if(aiTaggingStore.selectedContentCommonAudioTracks.length === 0) { return; }
+
+    // Select audio tracks
+    return (
+      <MultiSelect
+        value={options.modelOptions[model]?.streams}
+        searchable
+        clearable
+        w="80%"
+        mt={-5}
+        ml={32}
+        mb={10}
+        onChange={value => SetModelOption("streams", value)}
+        data={[
+          { label: "Audio Track: Default", value: "" },
+          ...aiTaggingStore.selectedContentCommonAudioTracks
+        ]}
+      />
+    );
+  } else if(["vertical_video"].includes(model)) {
+    // Select vertical video model
+    return (
+      <Select
+        value={options.modelOptions[model]?.mode}
+        searchable
+        maw={200}
+        mt={-5}
+        ml={32}
+        mb={10}
+        onChange={value => SetModelOption("mode", value)}
+        data={[
+          { label: "Movie", value: "movie" },
+          { label: "Sports", value: "sports" }
+        ]}
+      />
+    );
+  }
+};
+
+const FrameModelOptions = ({options, model, dependentModels, SetModelOption}) => {
+ if(!(options[model] || dependentModels.includes(model))) { return; }
+
+ if(["celeb"].includes(model)) {
+   return (
+     <>
+       <FormSelect
+         label="Ground Truth Pool"
+         value={options.modelOptions[model]?.groundTruthPool || ""}
+         searchable
+         maw={300}
+         mt={-5}
+         ml={32}
+         onChange={value => SetModelOption("groundTruthPool", value)}
+         data={[
+           ...Object.values(groundTruthStore.pools)
+             .map(pool => ({
+               value: pool.objectId,
+               label: pool.name
+             }))
+             .sort((a, b) => a.name < b.name ? 1 : -1),
+           {label: "Default Large Pool", value: "default"},
+         ]}
+       />
+       <FormNumberInput
+         label="Confidence Threshold (%)"
+         key="confidence"
+         maw={300}
+         mt={-5}
+         ml={32}
+         mb={10}
+         step={1}
+         min={0}
+         max={100}
+         value={+((options.modelOptions[model]?.confidenceThreshold || DEFAULT_VALUES.celeb.confidenceThreshold) * 100).toFixed(2)}
+         onChange={value => SetModelOption("confidenceThreshold", parseFloat((value / 100).toFixed(2)))}
+       />
+     </>
+   );
+ } else if(["player_jersey_ocr"].includes(model)) {
+   return (
+     <>
+       <FormNumberInput
+         label="OCR Margin (%)"
+         key="min_margin"
+         maw={300}
+         mt={-5}
+         ml={32}
+         mb={10}
+         step={0.1}
+         min={0}
+         max={100}
+         value={+((options.modelOptions[model]?.minMargin || DEFAULT_VALUES.player_jersey_ocr.minMargin) * 100).toFixed(2)}
+         onChange={value => SetModelOption("minMargin", parseFloat((value / 100).toFixed(3)))}
+       />
+       <FormNumberInput
+         label="Legibility Threshold (%)"
+         key="legibility_threshold"
+         maw={300}
+         mt={-5}
+         ml={32}
+         mb={10}
+         step={1}
+         min={0}
+         max={100}
+         value={+((options.modelOptions[model]?.legibilityThreshold || DEFAULT_VALUES.player_jersey_ocr.legibilityThreshold) * 100).toFixed(2)}
+         onChange={value => SetModelOption("legibilityThreshold", parseFloat((value / 100).toFixed(2)))}
+       />
+     </>
+   );
+ }
+};
+
+const ProcessorModelOptions = ({options, model, dependentModels, SetModelOption}) => {
+ if(!(options[model] || dependentModels.includes(model))) { return; }
+
+ if(["evidence"].includes(model)) {
+   const tracks = aiTaggingStore.modelParams[model]?.output_tracks?.items?.enum;
+
+   if(!tracks || tracks.length === 0) { return; }
+
+   return (
+     <FormMultiSelect
+       label="Output tracks"
+       value={options.modelOptions[model]?.outputTracks || []}
+       searchable
+       maw={400}
+       mt={-5}
+       ml={32}
+       onChange={value => SetModelOption("outputTracks", value)}
+       data={
+         tracks
+           .sort()
+           .map(track => ({
+             label: FormatFieldName(track),
+             value: track
+           }))
+       }
+     />
+   );
+ }
+};
+
 const Form = observer(({options, setOptions}) => {
-  const onChange = (key, value) => setOptions({...options, [key]: value});
+  const ToggleModel = model => setOptions({...options, [model]: !(options[model] || false)});
 
   const dependentModels = Object.keys(options)
     .filter(key => key !== "options" && options[key])
@@ -131,35 +358,59 @@ const Form = observer(({options, setOptions}) => {
   }, []);
 
   useEffect(() => {
-    onChange(
-      "options",
-      {
-        asr: { streams: options.options?.asr?.streams || [""] },
-        euro_asr: { streams: options.options?.euro_asr?.streams || [] },
-        vertical_video: { mode: "movie" },
+    const pool = options.modelOptions?.celeb?.groundTruthPool;
+
+    setOptions({
+      ...options,
+      modelOptions: {
+        ...options.modelOptions,
+        asr: { streams: options.modelOptions?.asr?.streams || [""] },
+        euro_asr: { streams: options.modelOptions?.euro_asr?.streams || [] },
+        vertical_video: { mode: options.modelOptions?.vertical_video?.mode || "movie" },
         celeb: {
-          groundTruthPool: options.options?.celeb?.groundTruthPool ||
-            Object.keys(groundTruthStore.pools).find(key =>
-              groundTruthStore.pools[key].order === 0
-            ) ||
-            Object.keys(groundTruthStore.pools)[0]
+          groundTruthPool: pool,
+          confidenceThreshold: options?.modelOptions?.celeb?.confidenceThreshold || DEFAULT_VALUES.celeb.confidenceThreshold
+        },
+        player_jersey_ocr: {
+          minMargin: options?.modelOptions?.player_jersey_ocr?.minMargin || DEFAULT_VALUES.player_jersey_ocr.minMargin,
+          legibilityThreshold: options?.modelOptions?.player_jersey_ocr?.legibilityThreshold || DEFAULT_VALUES.player_jersey_ocr.legibilityThreshold
+        },
+        evidence: {
+          outputTracks: options?.modelOptions?.evidence?.outputTracks || []
         }
       }
-    );
+    });
   }, [aiTaggingStore.selectedContent, options.celeb, JSON.stringify(dependentModels)]);
+
+  const poolId = options?.modelOptions?.celeb?.groundTruthPool;
+  useEffect(() => {
+    if(!poolId || !poolId.startsWith("iq__")) {
+      return;
+    }
+
+    groundTruthStore.LoadGroundTruthPool({poolId})
+      .then(() => {
+        const threshold = groundTruthStore.pools[poolId]?.metadata?.confidence_threshold;
+
+        if(threshold) {
+          setOptions({
+            ...options,
+            modelOptions: {
+              ...(options?.modelOptions || {}),
+              celeb: {
+                ...(options?.modelOptions?.celeb || {}),
+                confidenceThreshold: threshold
+              }
+            }
+          });
+        }
+      });
+  }, [poolId]);
 
   return (
     <div className={S("form")}>
       <div className={S("block")}>
-        <h2 className={S("block__title")}>
-          <span>Model Tracks</span>
-          <Checkbox
-            label="Replace Existing Tags"
-            size={15}
-            checked={options.replace}
-            onChange={event => onChange("replace", event.target.checked)}
-          />
-        </h2>
+        <h2 className={S("block__title")}>Model Tracks</h2>
         <div className={S("groups", "groups--double")}>
           <div className={S("group")}>
             <h3 className={S("group__title")}>
@@ -188,62 +439,14 @@ const Form = observer(({options, setOptions}) => {
                     label={aiTaggingStore.modelNames[model]}
                     checked={options[model]}
                     indeterminate={!options[model] && dependentModels.includes(model)}
-                    onChange={event => onChange(model, event.currentTarget.checked)}
+                    onChange={() => ToggleModel(model)}
                   />
-                  {
-                    !(options[model] || dependentModels.includes(model)) ||
-                    !["asr", "euro_asr"].includes(model) ||
-                    aiTaggingStore.selectedContentCommonAudioTracks.length === 0 ? null :
-                      <MultiSelect
-                        value={options.options[model]?.streams}
-                        searchable
-                        clearable
-                        w="80%"
-                        mt={-5}
-                        ml={32}
-                        mb={10}
-                        onChange={value => onChange(
-                          "options",
-                          {
-                            ...options.options,
-                            [model]: {
-                              ...(options.options[model] || {}),
-                              streams: value
-                            }
-                          }
-                        )}
-                        data={[
-                          { label: "Audio Track: Default", value: "" },
-                          ...aiTaggingStore.selectedContentCommonAudioTracks
-                        ]}
-                      />
-                  }
-                  {
-                    !(options[model] || dependentModels.includes(model)) ||
-                    !["vertical_video"].includes(model) ? null :
-                      <Select
-                        value={options.options[model]?.mode}
-                        searchable
-                        maw={200}
-                        mt={-5}
-                        ml={32}
-                        mb={10}
-                        onChange={value => onChange(
-                          "options",
-                          {
-                            ...options.options,
-                            [model]: {
-                              ...(options.options[model] || {}),
-                              mode: value
-                            }
-                          }
-                        )}
-                        data={[
-                          { label: "Movie", value: "movie" },
-                          { label: "Sports", value: "sports" }
-                        ]}
-                      />
-                  }
+                  <SegmentModelOptions
+                    options={options}
+                    model={model}
+                    dependentModels={dependentModels}
+                    SetModelOption={(key, value) => SetModelOption(options, setOptions, model, key, value)}
+                  />
                 </>
               )
             }
@@ -276,8 +479,15 @@ const Form = observer(({options, setOptions}) => {
                     indeterminate={!options[model] && dependentModels.includes(model)}
                     checked={options[model]}
                     disabled={model === "landmark"}
-                    onChange={event => onChange(model, event.currentTarget.checked)}
+                    onChange={() => ToggleModel(model)}
                   />
+                  <FrameModelOptions
+                    options={options}
+                    model={model}
+                    dependentModels={dependentModels}
+                    SetModelOption={(key, value) => SetModelOption(options, setOptions, model, key, value)}
+                  />
+
                   {
                     !options[model] ||
                     model !== "celeb" ||
@@ -309,6 +519,7 @@ const Form = observer(({options, setOptions}) => {
                         ]}
                       />
                   }
+>>>>>>> master
                 </>
               )
             }
@@ -325,14 +536,22 @@ const Form = observer(({options, setOptions}) => {
               <div className={S("group")}>
                 {
                   aiTaggingStore.processorModels.map(model =>
-                    <Checkbox
-                      key={`option-${model}`}
-                      label={aiTaggingStore.modelNames[model]}
-                      indeterminate={!options[model] && dependentModels.includes(model)}
-                      checked={options[model]}
-                      disabled={model === "shot"}
-                      onChange={event => onChange(model, event.currentTarget.checked)}
-                    />
+                    <>
+                      <Checkbox
+                        key={`option-${model}`}
+                        label={aiTaggingStore.modelNames[model]}
+                        indeterminate={!options[model] && dependentModels.includes(model)}
+                        checked={options[model]}
+                        disabled={model === "shot"}
+                        onChange={() => ToggleModel(model)}
+                      />
+                      <ProcessorModelOptions
+                        options={options}
+                        model={model}
+                        dependentModels={dependentModels}
+                        SetModelOption={(key, value) => SetModelOption(options, setOptions, model, key, value)}
+                      />
+                    </>
                   )
                 }
               </div>
@@ -343,15 +562,17 @@ const Form = observer(({options, setOptions}) => {
   );
 });
 
-const defaultEnabledModels = ["shot"];
+const defaultEnabledModels = [];
 const TaggingForm = observer(() => {
-  let initialOptions = {replace: true, options: {}};
+  let initialOptions = {modelOptions: {}};
   [...aiTaggingStore.segmentModels, ...aiTaggingStore.frameModels]
     .forEach(key => initialOptions[key] = defaultEnabledModels.includes(key));
   const [location, navigate] = useLocation();
   const [options, setOptions] = useState(initialOptions);
 
   const showSummary = location.endsWith("/summary");
+
+  const selectedTracks = Object.keys(options).filter(key => options[key] === true);
 
   useEffect(() => {
     rootStore.SetPage("tagging");
@@ -368,7 +589,7 @@ const TaggingForm = observer(() => {
       <div className={S("tagging-browser", "tagging-browser--form")}>
         {
           showSummary ?
-            <Summary options={options} /> :
+            <Summary options={options} setOptions={setOptions} /> :
             <Form options={options} setOptions={setOptions} />
         }
         <BrowserSelection
@@ -385,7 +606,11 @@ const TaggingForm = observer(() => {
           Back
         </StyledButton>
         <StyledButton
-          disabled={aiTaggingStore.selectedContent.length === 0}
+          disabled={
+            aiTaggingStore.selectedContent.length === 0 ||
+            selectedTracks.length === 0 ||
+            (options.celeb && !options.modelOptions?.celeb?.groundTruthPool)
+          }
           to={showSummary ? "" : "/new/summary"}
           onClick={
             !showSummary ? undefined :

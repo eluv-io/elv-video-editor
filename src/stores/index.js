@@ -46,6 +46,8 @@ class RootStore {
   errorMessage = undefined;
   l10n = LocalizationEN;
 
+  verticalNodes = [];
+
   tenantContractId;
   tenantInfoObjectId;
   tenantConfig;
@@ -61,7 +63,7 @@ class RootStore {
   selectedObjectName = "";
 
   _resources = {};
-  logTiming = new URLSearchParams(window.location.search).has("logTiming") || sessionStorage.getItem("log-timing");
+  logTiming = true || new URLSearchParams(window.location.search).has("logTiming") || sessionStorage.getItem("log-timing");
 
   constructor() {
     makeAutoObservable(this);
@@ -181,7 +183,6 @@ class RootStore {
     }
 
     if(!this.tenantInfoObjectId) {
-      // eslint-disable-next-line no-console
       console.warn(`Tenant info object ID (public/ml_config) not set for this tenant (${this.tenantContractId})`);
       this.tenantInfoObjectId = this.tenantContractId.replace(/^iten/, "iq__");
     }
@@ -190,6 +191,15 @@ class RootStore {
 
     yield this.aiStore.Initialize();
     yield this.aiTaggingStore.Initialize();
+
+    try {
+      this.verticalNodes = (yield (
+        yield fetch("https://main.net955305.contentfabric.io/config")
+      ).json())?.network?.services?.vertical || [];
+    } catch(error) {
+      console.error("Unable to load vertical nodes:");
+      console.error(error);
+    }
 
     this.initialized = true;
 

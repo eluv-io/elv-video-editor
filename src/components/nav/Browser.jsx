@@ -28,11 +28,12 @@ import {
 import SVG from "react-inlinesvg";
 import {Redirect, Route, useParams, Switch, useLocation, useSearchParams} from "wouter";
 import UrlJoin from "url-join";
-import {Select, Tabs, Tooltip, Progress, Menu, Checkbox, Autocomplete} from "@mantine/core";
+import {Select, Tabs, Tooltip, Progress, Menu, Checkbox, Autocomplete, RingProgress} from "@mantine/core";
 import {GroundTruthPoolForm, GroundTruthPoolSaveButton} from "@/components/ground_truth/GroundTruthForms.jsx";
 import SearchSettings from "@/components/search/SearchSettings.jsx";
 import {Dropzone, IMAGE_MIME_TYPE} from "@mantine/dropzone";
 import InfiniteScroll from "@/components/common/InfiniteScroll.jsx";
+import {FormatTime} from "@/components/titles/TagSidebar.jsx";
 
 import SettingsIcon from "@/assets/icons/v2/settings.svg";
 import LibraryIcon from "@/assets/icons/v2/library.svg";
@@ -64,7 +65,6 @@ import PlayIcon from "@/assets/icons/Play.svg";
 import LinkIcon from "@/assets/icons/v2/external-link.svg";
 import ClipIcon from "@/assets/icons/scissors.svg";
 import UploadIcon from "@/assets/icons/fileupload.svg";
-import AddIcon from "@/assets/icons/plus-square.svg";
 import TaggingIcon from "@/assets/icons/tagging.svg";
 
 const S = CreateModuleClassMatcher(BrowserStyles);
@@ -248,7 +248,13 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [,navigate] = useLocation();
 
+  const indexUpdateProgress = aiStore.searchIndexUpdateProgress[aiStore.selectedSearchIndexId];
+
   const Submit = async ({mode, query}={}) => {
+    if(aiStore.searchResults?.error) {
+      aiStore.ClearSearchResults();
+    }
+
     query = query || input;
     BeforeSubmit?.({mode, query});
 
@@ -390,11 +396,26 @@ export const AISearchBar = observer(({basePath="~/search", initialQuery="", init
                         onClick={() => setInput("")}
                       />
                   }
+                  {
+                    mode !== "clip" || !indexUpdateProgress  ? null :
+                      <Tooltip
+                        openDelay={500}
+                        label={`Search index '${aiStore.searchIndex.name}' is updating (${indexUpdateProgress.toFixed(0)}%)`}
+                      >
+                        <RingProgress
+                          size={25}
+                          thickness={3}
+                          transitionDuration={500}
+                          rootColor="var(--text-tertiary)"
+                          sections={[{value: indexUpdateProgress, color: "var(--color-highlight"}]}
+                        />
+                      </Tooltip>
+                  }
                   <IconButton
                     label="Search"
                     icon={SearchArrowIcon}
                     noHover
-                    onClick={() => Submit(mode)}
+                    onClick={() => Submit({mode})}
                   />
                 </div>
               }
@@ -644,6 +665,7 @@ const ModeSelectionMenu = observer(({mode, setMode, className=""}) => {
 
 export const BrowserTable = observer(({
   filter,
+  filterQueryParam,
   Load,
   Select,
   defaultIcon,
@@ -665,6 +687,10 @@ export const BrowserTable = observer(({
       (window.innerHeight < 900 ? 8 : 10) - (hasActiveItem ? 2 : 0)
   });
   const [deleting, setDeleting] = useState(undefined);
+
+  if(filterQueryParam) {
+    filter = filter || decodeURIComponent(new URLSearchParams(window.location.search).get(filterQueryParam) || "");
+  }
 
   const LoadPage = page => {
     if(loading) { return; }
@@ -749,7 +775,6 @@ export const BrowserTable = observer(({
         {
           (content || []).map(item => {
             if(!item) {
-              // eslint-disable-next-line no-console
               console.warn("Browser table missing item", content);
               return null;
             }
@@ -1465,7 +1490,7 @@ export const BrowserSelection = observer(({title, contentIds=[], Remove}) => {
   useEffect(() => {
     if(contentIds.length === 0) { return; }
 
-    const timeout = setTimeout(() => setLoading(true), 0);
+    const timeout = setTimeout(() => setLoading(true), 250);
 
     Promise.all(
       visibleContentIds.map(async objectId =>
@@ -1523,19 +1548,24 @@ export const BrowserSelection = observer(({title, contentIds=[], Remove}) => {
 });
 
 export const TaggingStepHeader = observer(({step=1}) => {
+  let backLink = "/";
+  if(step >= 3) {
+    backLink = "/new/configure";
+  } else if(step === 2) {
+    backLink = "/new";
+  }
+
   return (
     <>
-      <h1 className={S("browser__header")}>
-        <Linkish to="/" className={S("browser__header-item")}>
-          <Icon icon={AddIcon} />
-          Create New Job
-        </Linkish>
-      </h1>
       <div className={S("tagging-step-header")}>
         <Linkish
           to={step > 1 ? "/new" : undefined}
           className={S("tagging-step", "tagging-step__active")}
         >
+          <IconButton
+            icon={BackIcon}
+            to={backLink}
+          />
           <div className={S("tagging-step__number", "tagging-step__number--active")}>
             1
           </div>
@@ -1572,6 +1602,7 @@ export const TaggingStepHeader = observer(({step=1}) => {
 export const TaggingContentBrowser = observer(() => {
   const {libraryId} = useParams();
   const [, navigate] = useLocation();
+  const [tab, setTab] = useState("browse");
 
   const Select = ({objectId, name}) => {
     aiTaggingStore.selectedContent.find(other => other.objectId === objectId) ?
@@ -1582,51 +1613,79 @@ export const TaggingContentBrowser = observer(() => {
   return (
     <div className={S("browser-page")}>
       <TaggingStepHeader step={1}/>
+
       <div className={S("tagging-browser")}>
-        {
-          libraryId ?
-            <ObjectBrowser
-              belowTitle={
-                <SearchBar
-                  filterQueryParam={`q${libraryId || ""}`}
-                  saveByLocation
-                  Select={Select}
-                />
-              }
-              className={S("browser--tagging")}
-              filterQueryParam={`q${libraryId}`}
-              libraryId={libraryId}
-              videoOnly
-              LeftActions={({objectId, disabled}) =>
-                disabled ? null :
-                  <Checkbox
-                    disabled={disabled}
-                    size="xs"
-                    checked={!!aiTaggingStore.selectedContent.find(other => other.objectId === objectId)}
-                  />
-              }
-              Back={() => navigate("/new")}
-              Select={({objectId, name}) => Select({objectId, name})}
-            /> :
-            <LibraryBrowser
-              title="Content Libraries"
-              belowTitle={
-                <SearchBar
-                  filterQueryParam={`q${libraryId || ""}`}
-                  saveByLocation
-                  Select={Select}
-                />
-              }
-              className={S("browser--tagging")}
-              Select={({libraryId, objectId, name}) => {
-                if(objectId) {
-                  Select({objectId, name});
-                } else {
-                  navigate(UrlJoin("/", "new", libraryId));
-                }
-              }}
+        <div className={S("tagging-browser__browser")}>
+          <div className={S("browser-page__filters")}>
+            <Tabs value={tab} onChange={setTab} color="var(--text-secondary)">
+              <Tabs.List fz={24} fw={800}>
+                <Tabs.Tab px="xs" mr="sm" value="browse" className={tab !== "browse" ? S("tab--inactive") : ""}>
+                  Content
+                </Tabs.Tab>
+                <Tabs.Tab px="xs" value="my-library" className={tab !== "my-library" ? S("tab--inactive") : ""}>
+                  My Library
+                </Tabs.Tab>
+              </Tabs.List>
+            </Tabs>
+            <SearchBar
+              Select={Select}
+              filterQueryParam={libraryId ? `q${libraryId}` : "q"}
+              className={S("browser-page__filter-input")}
             />
-        }
+          </div>
+          {
+            tab === "my-library" ?
+              <div className={S("browser", "browser--my-library", "browser--tagging")}>
+                <h1 className={S("browser__header")}>
+                  My Library
+                </h1>
+                <BrowserTable
+                  filterQueryParam="q-my-library"
+                  defaultIcon={ObjectIcon}
+                  contentType="object"
+                  Select={Select}
+                  LeftActions={({objectId, disabled}) =>
+                    disabled ? null :
+                      <Checkbox
+                        disabled={disabled}
+                        size="xs"
+                        checked={!!aiTaggingStore.selectedContent.find(other => other.objectId === objectId)}
+                      />
+                  }
+                  Delete={async args => browserStore.RemoveMyLibraryItem(args)}
+                  Load={async args => await browserStore.ListMyLibrary({...args, type: "source"})}
+                />
+              </div> :
+              libraryId ?
+                <ObjectBrowser
+                  className={S("browser--tagging")}
+                  filterQueryParam={`q${libraryId}`}
+                  libraryId={libraryId}
+                  LeftActions={({objectId, disabled}) =>
+                    disabled ? null :
+                      <Checkbox
+                        disabled={disabled}
+                        size="xs"
+                        checked={!!aiTaggingStore.selectedContent.find(other => other.objectId === objectId)}
+                      />
+                  }
+                  Back={() => navigate("/new")}
+                  Select={({objectId, name}) => Select({objectId, name})}
+                /> :
+                <LibraryBrowser
+                  title="Content Libraries"
+                  className={S("browser--tagging")}
+                  filterQueryParam="q"
+                  Select={({libraryId, objectId, name}) => {
+                    if(objectId) {
+                      Select({objectId, name});
+                    } else {
+                      navigate(UrlJoin("/", "new", libraryId));
+                    }
+                  }}
+                />
+          }
+        </div>
         <BrowserSelection
           title="New Job"
           contentIds={aiTaggingStore.selectedContent.map(item => item.objectId)}
@@ -1652,7 +1711,7 @@ export const TaggingJobBrowser = observer(() => {
   const [queryParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState(decodeURIComponent(queryParams.get("q") || ""));
-  const [jobList, setJobList] = useState({jobs: [], meta: {}});
+  const [jobList, setJobList] = useState({jobs: [], meta: {}, key: ""});
   const [status, setStatus] = useState("");
   const [model, setModel] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
@@ -1661,38 +1720,30 @@ export const TaggingJobBrowser = observer(() => {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    setLoading(true);
-    aiTaggingStore.ListTaggingJobs({
-      start: (page - 1) * perPage,
-      limit: perPage,
-      filter,
-      status,
-      model
-    })
-      .then(setJobList)
-      .finally(() => setLoading(false));
-  }, [filter, page, perPage, status, model, reloadKey]);
+    const key = `${filter} ${page} ${perPage} ${status} ${model} ${reloadKey}`;
 
-  useEffect(() => {
-    if(loading) { return; }
+    if(key !== jobList.key) {
+      setLoading(true);
+    }
 
-    const interval = setInterval(() => {
-      const objectIds = jobList.jobs
-        .filter(job =>
-          // Filter completed jobs
-          !["succeeded", "cancelled", "failed"].includes(
-            job.status?.toLowerCase() ||
-            aiTaggingStore.jobStatus[job.job_id]?.status?.toLowerCase()
-          )
-        )
-        .map(job => job.objectId)
-        .filter((x, i, a) => a.indexOf(x) === i);
+    const Load = () => {
+      aiTaggingStore.ListTaggingJobs({
+        start: (page - 1) * perPage,
+        limit: perPage,
+        filter,
+        status,
+        model
+      })
+        .then(list => setJobList({...list, key}))
+        .finally(() => setLoading(false));
+    };
 
-        objectIds.forEach(objectId => aiTaggingStore.GetObjectJobStatus({objectId}));
-    }, 10001);
+    Load();
+
+    const interval = setInterval(Load, 10001);
 
     return () => clearInterval(interval);
-  }, [jobList, loading]);
+  }, [filter, page, perPage, status, model, reloadKey]);
 
   // Get job status
   const jobs = jobList.jobs
@@ -1708,7 +1759,7 @@ export const TaggingJobBrowser = observer(() => {
 
   return (
     <div className={S("browser-page")}>
-      <div className={S("browser", "browser--tagging")}>
+      <div className={S("browser", "browser--tagging", "browser--tagging-jobs")}>
         <SearchBar
           placeholder="Filter by Title or Content ID"
           saveByLocation
@@ -1830,16 +1881,23 @@ export const TaggingJobBrowser = observer(() => {
                       <div className={S("browser-table__cell", "browser-table__cell--progress")}>
                         {
                           ["succeeded", "failed", "cancelled"].includes(job?.status?.toLowerCase()) ? null :
-                            <>
-                              <Progress
-                                value={job?.progress || 0}
-                                max={100}
-                                transitionDuration={1000}
-                                w="100%"
-                              />
-                              <div className={S("percent")}>
-                                {(job?.progress || 0).toFixed(0)}%
-                              </div>
+                            job?.is_live && job?.tag_details?.tagged_duration ?
+                              <div className={S("duration")}>
+                                Analyzed up to <b>{FormatTime(job?.tag_details?.tagged_duration)}</b>
+                              </div> :
+                              <>
+
+                                <div className={S("browser-table__cell-item")}>
+                                  <Progress
+                                    value={job?.progress || 0}
+                                    max={100}
+                                    transitionDuration={1000}
+                                    w="100%"
+                                  />
+                                  <div className={S("percent")}>
+                                    {(job?.progress || 0).toFixed(0)}%
+                                  </div>
+                                </div>
                             </>
                         }
                       </div>

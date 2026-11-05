@@ -41,6 +41,8 @@ class VideoStore {
   initialFrame;
   showVertical = false;
   verticalVideoStore = undefined;
+  showSynopsisView = false;
+  showSummaryView = false;
 
   consecutiveSegmentErrors = 0;
 
@@ -94,6 +96,8 @@ class VideoStore {
   myClips = [];
   myClipObjectIds = [];
 
+  verticalStatus = {};
+
   get scaleMagnitude() { return this.scaleMax - this.scaleMin; }
 
   get scaleMinTime() { return this.duration ? this.ProgressToTime(this.scaleMin) : 0; }
@@ -127,6 +131,29 @@ class VideoStore {
     };
   }
 
+  CheckHasVertical = flow(function * ({objectId, force}) {
+    if(this.verticalStatus[objectId]) { return true; }
+
+    return yield this.rootStore.LoadResource({
+      key: "checkHasVertical",
+      id: `${objectId}`,
+      bind: this,
+      ttl: 60,
+      force,
+      Load: flow(function* () {
+        const apiTracks = (yield this.rootStore.aiStore.QueryAIAPI({
+          objectId,
+          path: UrlJoin("/tagstore", objectId, "tracks"),
+          channelAuth: true,
+          queryParams: {limit: 1000000},
+          format: "JSON"
+        }))?.tracks || [];
+
+        this.verticalStatus[objectId] = !!apiTracks.find(track => track.name === "vertical_video");
+      })
+    });
+  });
+
   DebounceControl({name, delay, Action}) {
     if(this[`${name}LastFired`] && Date.now() - this[`${name}LastFired`] < delay) {
       clearTimeout(this[`${name}Debounce`]);
@@ -158,6 +185,8 @@ class VideoStore {
     this.thumbnails = typeof options.thumbnails !== "undefined" ? options.thumbnails : true;
     this.initialClipPoints = options.initialClipPoints;
     this.channel = options.channel || false;
+
+    this.StopTagWatcher();
 
     this.Update = this.Update.bind(this);
 
@@ -223,6 +252,12 @@ class VideoStore {
 
     this.segmentEnd = undefined;
 
+    this.showVertical = false;
+    this.verticalVideoStore = undefined;
+
+    this.showSynopsisView = false;
+    this.showSummaryView = false;
+
     this.consecutiveSegmentErrors = 0;
 
     this.initialClipPoints = undefined;
@@ -262,17 +297,120 @@ class VideoStore {
       this.verticalVideoStore.SetVideo({objectId: this.videoObject.objectId});
     }
 
-    this.showVertical = show;
+    this.showVertical = !!show;
+  }
+
+  ToggleShowSynopsisView(show) {
+    this.showSynopsisView = !!show;
+    this.showSummaryView = false;
+  }
+
+  ToggleShowSummaryView(show) {
+    this.showSummaryView = !!show;
+    this.showSynopsisView = false;
   }
 
   SetOffering = flow(function * (offeringKey) {
     yield this.SetVideo({...this.videoObject, preferredOfferingKey: offeringKey});
   });
 
+  StartTagWatcher = flow(function * ({objectId}) {
+    this.StopTagWatcher();
+
+    try {
+      // Start tag watcher
+      const {
+        url,
+        authToken
+      } = yield this.rootStore.aiStore.GetAIAPIURL({path: UrlJoin("tagstore", objectId, "tags", "stream")});
+      url.searchParams.set("authorization", authToken);
+
+      const watcher = new EventSource(url.toString());
+      window.tagWatcher = watcher;
+
+      this.tagWatcher = watcher;
+      this.tagWatcher.addEventListener(
+        "tag.created",
+        event => {
+          if(objectId !== this.videoObject?.objectId) {
+            watcher.close();
+            return;
+          }
+
+          try {
+            const tag = JSON.parse(event.data);
+
+            if(tag.frame_info) {
+              window.overlayTagQueue.push(tag);
+            } else {
+              window.tagQueue.push({
+                ...tag,
+                start_time: tag.start_time / 1000,
+                end_time: tag.end_time / 1000,
+                text: tag.tag,
+                o: {
+                  api: true
+                }
+              });
+            }
+          } catch(error) {
+            console.error("Failed to parse new tag");
+            console.error(event);
+            console.error(error);
+          }
+        }
+      );
+
+      clearInterval(window.tagSweepInterval);
+        const interval = setInterval(() => {
+          if(window.tagQueue.length === 0 && window.overlayTagQueue.length === 0) {
+            return;
+          }
+
+          console.info("Sweeping tags", objectId, interval, "\n\tTimeline:", window.tagQueue.length, "\n\tOverlay:", window.overlayTagQueue.length);
+
+          if(this.videoObject?.objectId !== objectId || window.tagSweepInterval !== interval) {
+            // Object changed. kill interval
+            clearInterval(interval);
+            watcher?.close();
+          }
+
+          this.rootStore.trackStore.SweepNewTags();
+          this.rootStore.overlayStore.SweepNewTags();
+        }, 1000);
+
+        window.tagSweepInterval = interval;
+    } catch(error) {
+      console.error("Failed to start tag watcher");
+      console.error(error);
+    }
+  });
+
+  StopTagWatcher() {
+    if(this.id !== "default") { return; }
+
+    try {
+      clearInterval(window.tagSweepInterval);
+      window.tagQueue = [];
+      window.overlayTagQueue = [];
+
+      if(window.tagWatcher) {
+        window.tagWatcher?.close();
+      }
+
+      this.tagWatcher = undefined;
+      window.tagWatcher = undefined;
+    } catch(error) {
+      console.error(error);
+    }
+  }
+
   SetVideo = flow(function * ({objectId, writeToken, preferredOfferingKey="default", addToMyLibrary=false}) {
     this.loading = true;
     this.ready = false;
     this.rootStore.SetError(undefined);
+
+    this.StopTagWatcher();
 
     if(this.videoObject?.objectId !== objectId) {
       this.Reset();
@@ -346,7 +484,9 @@ class VideoStore {
 
           let rate;
           if(offeringOptions.video) {
-            rate = offeringOptions.video.rate;
+            rate = offeringOptions.video.rate || offeringOptions.video.source_frame_rate;
+          } else if(offering.mez_prep_specs?.video?.source_frame_rate) {
+            rate = offering.mez_prep_specs?.video?.source_frame_rate;
           } else {
             const videoKey = Object.keys(offeringOptions).find(key => key.startsWith("video"));
             rate = offeringOptions[videoKey].rate;
@@ -428,7 +568,10 @@ class VideoStore {
 
       // Load tags
       this.rootStore.downloadStore.LoadDownloadJobInfo();
-      this.LoadTags();
+
+      if(this.id === "default") {
+        this.LoadTags();
+      }
     } catch(error) {
       console.error("Failed to load:");
       console.error(error);
@@ -462,6 +605,8 @@ class VideoStore {
   });
 
   LoadTags = flow(function * () {
+    this.StartTagWatcher({objectId: this.videoObject.objectId});
+
     const objectId = this.videoObject.objectId;
     console.time("Load Tags");
     let formattedTags = {};
@@ -477,6 +622,10 @@ class VideoStore {
         format: "JSON"
       }))?.last_tag_update;
 
+      // Start tag watcher
+      const {url, authToken} = yield this.rootStore.aiStore.GetAIAPIURL({path: UrlJoin("tagstore", objectId, "tags", "stream")});
+      url.searchParams.set("authorization", authToken);
+
       let apiTracks = (yield this.rootStore.aiStore.QueryAIAPI({
         objectId,
         path: UrlJoin("/tagstore", objectId, "tracks"),
@@ -485,8 +634,15 @@ class VideoStore {
         format: "JSON"
       }))?.tracks || [];
 
-      const visibleTracks = apiTracks
-        .filter(track => !track?.additional_info?.hidden);
+      let visibleTracks = apiTracks;
+
+      if(!this.videoObject?.isLive) {
+        // TODO: Always filter out hidden tracks
+        visibleTracks = visibleTracks
+          .filter(track => !track?.additional_info?.hidden);
+      } else {
+        this.videoObject.hasVertical = !!visibleTracks.find(track => track.name === "vertical_video");
+      }
 
       visibleTracks.forEach(track =>
         formattedTags[track.name] = {
@@ -647,6 +803,7 @@ class VideoStore {
           trackId: trackIds[tag.track],
           text: tag.tag,
           pose: tag.additional_info?.pose,
+          xCoordinates: tag.additional_info?.["x-coordinates"],
           o: {
             api: true
           }
@@ -1244,12 +1401,24 @@ class VideoStore {
     if(!this.video || !this.video.duration) { return; }
 
     this.frame = Math.floor(frame);
+
     this.duration = this.duration || this.video.duration;
+
+    let updateClipOut = false;
+    if(Math.abs(this.duration - this.video.duration) > 2) {
+      this.duration = this.video.duration;
+
+      if(Math.abs(this.clipOutFrame - this.totalFrames) < 10) {
+        updateClipOut = true;
+      }
+    }
+
     this.durationSMPTE = this.videoHandler?.TimeToSMPTE(this.duration);
     this.videoHandler.duration = this.video.duration;
-    this.totalFrames = this.totalFrames || this.videoHandler?.TotalFrames(this.duration);
+    this.totalFrames = this.videoHandler?.TotalFrames(this.duration);
+
     this.offsetDurationSMPTE = this.videoHandler?.FrameToSMPTE(this.totalFrames + this.timecodeOffsetFrames);
-    if(this.clipOutFrame >= this.totalFrames - 2) {
+    if(this.clipOutFrame >= this.totalFrames - 2 || updateClipOut) {
       // Minor shift in duration from channels may cause unset clip out point to show
       this.clipOutFrame = this.totalFrames - 1;
     }
@@ -1295,9 +1464,24 @@ class VideoStore {
     this.player.streamController.immediateLevelSwitch();
   }
 
-  SetAudioTrack(trackIndex) {
-    this.player.audioTrack = parseInt(trackIndex);
-    this.player.streamController.immediateLevelSwitch();
+  SetAudioTrack({index, key, retry=true}) {
+    try {
+      if(key) {
+        index = this.AudioOptions(this.offeringKey)
+          .find(track => track.key === key || track.streamKey === key)
+          ?.trackId || 0;
+      }
+
+      this.player.audioTrack = parseInt(index);
+      this.player.streamController.immediateLevelSwitch();
+    } catch(error) {
+      console.error("Failed to switch audio track " + key || index);
+      console.error(error);
+
+      if(retry) {
+        setTimeout(() => this.SetAudioTrack({index, key, retry: false}), 1000);
+      }
+    }
   }
 
   SetSubtitleTrack(trackIndex) {
@@ -1702,8 +1886,10 @@ class VideoStore {
                 return {
                   trackId: this.audioTracks.find(t => t.name === label)?.id,
                   key: repKey,
+                  streamKey,
                   bitrate: rep.bit_rate,
                   default: mediaStruct[streamKey]?.default_for_media_type,
+                  channels: mediaStruct[streamKey]?.channels,
                   current: label === currentAudioTrack?.name,
                   label: label || repKey,
                   string: label ?

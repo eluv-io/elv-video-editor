@@ -24,6 +24,7 @@ import LiveToVodIcon from "@/assets/icons/v2/live-to-vod.svg";
 import DeleteIcon from "@/assets/icons/trash.svg";
 import DownloadIcon from "@/assets/icons/v2/download.svg";
 import ShareIcon from "@/assets/icons/v2/share.svg";
+import AIIcon from "@/assets/icons/v2/ai-sparkle1.svg";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -500,6 +501,17 @@ export const LiveToVodButton = observer(() => {
         });
       }}
       loadingProgress={progress}
+    />
+  );
+});
+
+export const ClipSummaryButton = observer(({store}) => {
+  return (
+    <IconButton
+      icon={AIIcon}
+      disabled={!videoStore.clipInFrame && videoStore.clipOutFrame >= videoStore.totalFrames - 1}
+      label="Generate Summary for Current Clip"
+      onClick={() => store.ToggleShowSummaryView(!store.showSummaryView)}
     />
   );
 });

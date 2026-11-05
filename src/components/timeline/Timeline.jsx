@@ -27,10 +27,12 @@ import Share from "@/components/download/Share.jsx";
 import Track from "@/components/timeline/Track.jsx";
 import {CreateTrackButton} from "@/components/forms/CreateTrack.jsx";
 import {
-  ClipModalButton,
+  ClipModalButton, ClipSummaryButton,
   LiveToVodButton,
   MyClipsButton
 } from "@/components/timeline/Controls.jsx";
+import SVG from "react-inlinesvg";
+import SummarySection from "@/components/timeline/SummarySection.jsx";
 
 import UndoIcon from "@/assets/icons/v2/undo.svg";
 import RedoIcon from "@/assets/icons/v2/redo.svg";
@@ -47,6 +49,11 @@ import EditIcon from "@/assets/icons/Edit.svg";
 import XIcon from "@/assets/icons/X.svg";
 import GroundTruthIcon from "@/assets/icons/v2/ground-truth.svg";
 import TaggingIcon from "@/assets/icons/tagging.svg";
+import RelatedContentIcon from "@/assets/images/related-models.svg";
+
+import SiblingArrowIcon from "@/assets/icons/sibling-arrow.svg";
+import DependencyOfArrowIcon from "@/assets/icons/depedency-of-arrow.svg";
+import DependencyArrowIcon from "@/assets/icons/dependency-arrow.svg";
 
 const S = CreateModuleClassMatcher(TimelineStyles);
 
@@ -181,6 +188,7 @@ const TimelineTopBar = observer(({simple}) => {
           label="Set Clip Out to Current Frame"
           onClick={() => videoStore.SetClipMark({outFrame: videoStore.frame})}
         />
+        <ClipSummaryButton store={videoStore} />
         <ClipModalButton/>
         {
           !videoStore.isLiveToVod ? null :
@@ -241,11 +249,16 @@ const TimelineBottomBar = observer(({simple}) => {
                 checked={trackStore.showSubtitles}
                 onChange={event => trackStore.ToggleTrackType({type: "Subtitles", visible: event.currentTarget.checked})}
               />
-              <SwitchInput
-                label="Show Segments"
-                checked={trackStore.showSegments}
-                onChange={event => trackStore.ToggleTrackType({type: "Segments", visible: event.currentTarget.checked})}
-              />
+              {
+                /*
+                  <SwitchInput
+                    label="Show Segments"
+                    checked={trackStore.showSegments}
+                    onChange={event => trackStore.ToggleTrackType({type: "Segments", visible: event.currentTarget.checked})}
+                  />
+
+                 */
+              }
               <SwitchInput
                 label="Show Audio"
                 checked={trackStore.showAudio}
@@ -451,7 +464,7 @@ const TimelineThumbnailTrack = observer(() => {
     return () => clearInterval(thumbnailInterval);
   }, [state, regenerating, videoStore.initialized]);
 
-  if(!videoStore?.initialized || !trackStore?.showThumbnails) {
+  if(!videoStore?.initialized || !trackStore?.showThumbnails || videoStore.videoObject?.isLive) {
     return null;
   }
 
@@ -530,6 +543,24 @@ const TimelineThumbnailTrack = observer(() => {
 
 const TrackLabel = observer(({track, taggingJob}) => {
   const toggleable = ["metadata", "clip"].includes(track.trackType);
+
+  let role, roleDescription, roleIcon;
+  if(trackStore.primaryTrackKey) {
+    if(trackStore.relatedTracks.siblings?.includes(track.key)) {
+      role = "Sibling";
+      roleIcon = SiblingArrowIcon;
+      roleDescription = "This track is produced by the same model as the primary track";
+    } else if(trackStore.relatedTracks.dependencyOf?.includes(track.key)) {
+      role = "Dependency Of";
+      roleIcon = DependencyOfArrowIcon;
+      roleDescription = "This track is dependent on the primary track";
+    } else if(trackStore.relatedTracks.dependencies?.includes(track.key)) {
+      role = "Dependency";
+      roleIcon = DependencyArrowIcon;
+      roleDescription = "The primary track is dependent on this track";
+    }
+  }
+
   return (
     <div
       role={toggleable ? "button" : "label"}
@@ -558,6 +589,20 @@ const TrackLabel = observer(({track, taggingJob}) => {
       }
       className={S("timeline-row__label", toggleable ? "timeline-row__label--button" : "")}
     >
+      {
+        !role ? null :
+          <IconButton
+            withinPortal
+            icon={roleIcon}
+            label={roleDescription}
+            unstyled
+            tooltipProps={{
+              position: "end",
+              offset: 180
+            }}
+            className={S("timeline-row__relation-icon")}
+          />
+      }
       {track.label}
       {
         !toggleable ? null :
@@ -610,6 +655,36 @@ const TrackLabel = observer(({track, taggingJob}) => {
   );
 });
 
+const RelatedContentButton = observer(() => {
+  if(Object.keys(trackStore.activeTracks).length !== 1 || !trackStore?.relatedTracks) {
+    return null;
+  }
+
+  return (
+    <div className={S("related-content-container")}>
+      <button
+        id="related-content-button"
+        className={S("related-content")}
+        onClick={() => trackStore.SetShowRelatedTracks(Object.keys(trackStore.activeTracks)[0])}
+      >
+        <div className={S("related-content__image-background")}>
+          <div className={S("related-content__image")}>
+            <SVG src={RelatedContentIcon} />
+          </div>
+        </div>
+        <div className={S("related-content__text")}>
+          <div className={S("related-content__title")}>
+            View Related Models
+          </div>
+          <div className={S("related-content__description")}>
+            Explore related models and understand how they connect.
+          </div>
+        </div>
+      </button>
+    </div>
+  );
+});
+
 const TagTimelineContent = observer(() => {
   const [jobs, setJobs] = useState([]);
 
@@ -619,18 +694,27 @@ const TagTimelineContent = observer(() => {
 
     let statusInterval;
     const GetJobStatus = async () => {
-      const jobs = await aiTaggingStore.GetObjectJobStatus({
-        objectId: videoStore.videoObject?.objectId
-      });
+      try {
+        const jobs = await aiTaggingStore.GetObjectJobStatus({
+          objectId: videoStore.videoObject?.objectId
+        });
 
-      setJobs(jobs);
+        setJobs(jobs);
 
-      if(!jobs.find(job => ["queued", "running"].includes(job.status))) {
-        clearInterval(statusInterval);
+        if(!jobs.find(job => ["queued", "running"].includes(job.status))) {
+          clearInterval(statusInterval);
+        }
+      } catch(error) {
+        console.error("Error getting tagging jobs for " + videoStore.videoObject?.objectId);
+        console.error(error);
+
+        if([401, 403].includes(parseInt(error?.status))) {
+          clearInterval(statusInterval);
+        }
       }
     };
 
-    statusInterval = setInterval(GetJobStatus, 10001);
+    statusInterval = setInterval(GetJobStatus, 15001);
 
     GetJobStatus();
 
@@ -679,6 +763,53 @@ const TagTimelineContent = observer(() => {
         </div>
       </div>
     );
+  }
+
+  if(trackStore.primaryTrackKey && trackStore.relatedTracks) {
+    tracks = [...tracks].sort((a,b) => {
+      // Primary first
+      if(a.key === trackStore.primaryTrackKey) {
+        return -1;
+      } else if(b.key === trackStore.primaryTrackKey) {
+        return 1;
+      }
+
+      const labelOrder = a.label < b.label ? -1 : 1;
+
+      const {dependencies, dependencyOf, siblings} = trackStore.relatedTracks;
+
+      if(siblings.includes(a.key)) {
+        if(siblings.includes(b.key)) {
+          return labelOrder;
+        }
+
+        return -1;
+      } else if(siblings.includes(b.key)) {
+        return 1;
+      }
+
+      if(dependencies.includes(a.key)) {
+        if(dependencies.includes(b.key)) {
+          return labelOrder;
+        }
+
+        return -1;
+      } else if(dependencies.includes(b.key)) {
+        return 1;
+      }
+
+      if(dependencyOf.includes(a.key)) {
+        if(dependencyOf.includes(b.key)) {
+          return labelOrder;
+        }
+
+        return -1;
+      } else if(dependencyOf.includes(b.key)) {
+        return 1;
+      }
+
+      return labelOrder;
+    });
   }
 
   return (
@@ -745,7 +876,7 @@ const ClipTimelineContent = observer(() => {
   );
 });
 
-const Timeline = observer(({content, simple=false, loading=false}) => {
+const Timeline = observer(({content, showRelated, simple=false, hidePlayhead=false, loading=false}) => {
   const [hoverPosition, setHoverPosition] = useState(undefined);
   const timelineRef = useRef(null);
 
@@ -780,15 +911,26 @@ const Timeline = observer(({content, simple=false, loading=false}) => {
 
   return (
     <div className={S("content-block", "timeline-section", simple ? "timeline-section--simple" : "")}>
-      <TimelineTopBar simple={simple} />
-      <TimelinePlayheadIndicator value={videoStore.seek} timelineRef={timelineRef} />
+      <TimelineTopBar simple={simple}/>
       {
-        !hoverSeek ? null :
-          <TimelinePlayheadIndicator value={hoverSeek} timelineRef={timelineRef} className={S("playhead-indicator--hover")} />
+        hidePlayhead ? null :
+          <TimelinePlayheadIndicator value={videoStore.seek} timelineRef={timelineRef}/>
+      }
+      {
+        !hoverSeek || hidePlayhead ? null :
+          <TimelinePlayheadIndicator value={hoverSeek} timelineRef={timelineRef}
+                                     className={S("playhead-indicator--hover")}/>
       }
       <div
         ref={timelineRef}
-        onMouseMove={event => setHoverPosition(event.clientX)}
+        onMouseMove={event => {
+          const relatedContentButton = document.querySelector("#related-content-button");
+          if(relatedContentButton && (event.target === relatedContentButton || relatedContentButton.contains(event.target))) {
+            setHoverPosition(undefined);
+          } else {
+            setHoverPosition(event.clientX);
+          }
+        }}
         onMouseLeave={() => setHoverPosition(undefined)}
         onScroll={event => {
           event.preventDefault();
@@ -796,7 +938,9 @@ const Timeline = observer(({content, simple=false, loading=false}) => {
         }}
         onWheel={event => {
           // Scroll wheel zoom in/out
-          if(!event.ctrlKey && !event.shiftKey) { return; }
+          if(!event.ctrlKey && !event.shiftKey) {
+            return;
+          }
 
           event.preventDefault();
 
@@ -813,28 +957,32 @@ const Timeline = observer(({content, simple=false, loading=false}) => {
             return;
           }
 
-          const { left, width } = contentElement.getBoundingClientRect();
+          const {left, width} = contentElement.getBoundingClientRect();
           const position = (event.clientX - left) / width;
 
           videoStore.ScrollScale(position, event.deltaY);
         }}
         className={S("timeline-section__content")}
       >
-        <TimelineSeekBar hoverSeek={hoverSeek} loading={loading} />
+        <TimelineSeekBar hoverSeek={hoverSeek} loading={loading}/>
         {
           !videoStore.initialized ? null :
             content
         }
-        <TimelineScaleBar hoverSeek={hoverSeek} />
+              {
+        !showRelated ? null :
+          <RelatedContentButton />
+      }
+        <TimelineScaleBar hoverSeek={hoverSeek}/>
       </div>
 
-      <TimelineBottomBar simple={simple} />
+      <TimelineBottomBar simple={simple}/>
     </div>
   );
 });
 
 export const TagTimeline = observer(() => {
-  return <Timeline loading={videoStore.tagsLoading} content={<TagTimelineContent />} />;
+  return <Timeline showRelated loading={videoStore.tagsLoading} content={<TagTimelineContent />} />;
 });
 
 export const ClipTimeline = observer(() => {
@@ -843,4 +991,19 @@ export const ClipTimeline = observer(() => {
 
 export const SimpleTimeline = observer(() => {
   return <Timeline simple content={<TimelineThumbnailTrack />} />;
+});
+
+export const SummaryTimeline = observer(() => {
+  return (
+    <Timeline
+      simple
+      hidePlayhead
+      content={
+        <div style={{"--track-height--thumbnails": "50px"}}>
+          <TimelineThumbnailTrack />
+          <SummarySection store={videoStore} />
+        </div>
+      }
+    />
+  );
 });

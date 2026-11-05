@@ -1,8 +1,8 @@
 import NavStyles from "@/assets/stylesheets/modules/nav.module.scss";
 
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react-lite";
-import {aiStore, compositionStore, editStore, rootStore, videoStore} from "@/stores";
+import {aiStore, browserStore, compositionStore, editStore, rootStore, videoStore} from "@/stores";
 import {CreateModuleClassMatcher} from "@/utils/Utils.js";
 import {Confirm, CopyableField, IconButton, StyledButton} from "@/components/common/Common";
 import UrlJoin from "url-join";
@@ -25,15 +25,26 @@ const S = CreateModuleClassMatcher(NavStyles);
 let menuTimeout;
 const ActiveItem = observer(() => {
   const [show, setShow] = useState(false);
+  const [selectedItemInfo, setSelectedItemInfo] = useState(undefined);
+
+  useEffect(() => {
+    if(!rootStore.selectedObjectId) {
+      setSelectedItemInfo(undefined);
+      return;
+    }
+
+    browserStore.ObjectDetails({objectId: rootStore.selectedObjectId})
+      .then(info => setSelectedItemInfo(info));
+  }, [rootStore.selectedObjectId]);
 
   if(!rootStore.selectedObjectId) { return; }
 
   const Hover = () => {
     clearTimeout(menuTimeout);
-    menuTimeout = setTimeout(() => setShow(true), 250);
+    menuTimeout = setTimeout(() => setShow(true), 50);
   };
 
-  const Blur = () => menuTimeout = setTimeout(() => setShow(false), 250);
+  const Blur = ({timeout=500}) => menuTimeout = setTimeout(() => setShow(false), timeout);
 
   return (
     <Popover
@@ -72,23 +83,47 @@ const ActiveItem = observer(() => {
           <CopyableField value={rootStore.selectedObjectId} className={S("active-menu__id")}>
             { rootStore.selectedObjectId }
           </CopyableField>
-          <StyledButton
-            size="md"
-            className={S("active-menu__button")}
-            onClick={() => {
-              setShow(false);
-              Confirm({
-                title: "Clear Active Item",
-                text: "Would you like to clear the active item?",
-                onConfirm: () => {
-                  rootStore.Navigate("/");
-                  rootStore.SetSelectedObjectId(undefined, "");
-                }
-              });
-            }}
-          >
-            Clear Active Item
-          </StyledButton>
+          <div className={S("active-menu__actions")}>
+            <StyledButton
+              size="md"
+              variant="secondary"
+              color="--text-secondary"
+              className={S("active-menu__button")}
+              onClick={() => {
+                setShow(false);
+                Confirm({
+                  title: "Clear Active Item",
+                  text: "Would you like to clear the active item?",
+                  onConfirm: () => {
+                    rootStore.Navigate("/");
+                    rootStore.SetSelectedObjectId(undefined, "");
+                  }
+                });
+              }}
+            >
+              Clear Active Item
+            </StyledButton>
+            <StyledButton
+              size="md"
+              className={S("active-menu__button")}
+              to={"/" + rootStore.selectedObjectId}
+              onClick={() => Blur({timeout: 0})}
+            >
+              Open Active Item
+            </StyledButton>
+          </div>
+          {
+            !selectedItemInfo?.hasChannels ? null :
+              <IconButton
+                icon={SourceIcon}
+                to={UrlJoin("/browse", selectedItemInfo.libraryId, selectedItemInfo.objectId)}
+                onClick={() => setShow(false)}
+                label="Go to Browser Page"
+                small
+                faded
+                className={S("active-menu__browse")}
+              />
+          }
         </div>
       </Popover.Dropdown>
     </Popover>

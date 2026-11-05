@@ -122,6 +122,16 @@ export const FilledRect = ({imageData, color, borderColor, x, y, width, height})
   }
 };
 
+export const Waveform = ({imageData, color, height, startX, endX, startMagnitude, endMagnitude}) => {
+  const halfHeight = Math.floor(height / 2);
+  const width = endX - startX;
+  for(let ix = 0; ix < width; ix++) {
+    const percent = ix / width;
+    const magnitude = Math.floor((startMagnitude + (endMagnitude - startMagnitude) * percent));
+    Line(imageData, color, startX + ix, halfHeight - magnitude, startX + ix, halfHeight + magnitude);
+  }
+};
+
 export const Rect = (imageData, color, x, y, width, height) => {
   Line(imageData, color, x, y, x + width, y);
   Line(imageData, color, x + width, y, x + width, y + height);

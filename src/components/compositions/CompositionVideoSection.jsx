@@ -195,7 +195,7 @@ const ClipSeekBar = observer(() => {
                 style={{aspectRatio: store.aspectRatio}}
                 className={S("thumbnail-hover__image")}
               />
-              <div className={S("thumbnail-hover__time")}>{store.ProgressToSMPTE(progress)}</div>
+              <div className={S("thumbnail-hover__time")}>{store.ProgressToSMPTE(progress, true)}</div>
             </div>
           )
       }
@@ -489,7 +489,22 @@ const CompositionVideoSection = observer(({store, blank=false, clipView=false}) 
       Math.min(100, clipOutProgress + 0.5),
     );
     store.Seek(clip.clipInFrame);
+
+
   }, [store?.initialized, !!store?.videoHandler, compositionStore?.selectedClipId, store?.originalSelectedClipId]);
+
+  useEffect(() => {
+    if((store.audioTracks || []).length === 0) {
+      return;
+    }
+
+    const clip = compositionStore.selectedClip;
+    if(typeof clip.audio_track_stream_key !== "undefined") {
+      store.SetAudioTrack({key: clip.audio_track_stream_key});
+    } else {
+      store.SetAudioTrack({index: 0});
+    }
+  }, [store?.initialized, store.audioTracks?.length, compositionStore?.selectedClipId]);
 
   return (
     <div
@@ -575,7 +590,7 @@ const CompositionVideoSection = observer(({store, blank=false, clipView=false}) 
             <ClipControls />
           </>
       }
-      <div className={S("toolbar")}>
+      <div className={S("toolbar", "toolbar--no-padding")}>
         {
           !store.ready ? null :
             <>
@@ -591,7 +606,19 @@ const CompositionVideoSection = observer(({store, blank=false, clipView=false}) 
                     </>
                 }
                 <QualityControls store={store}/>
-                <AudioControls store={store}/>
+                <AudioControls
+                  store={store}
+                  channels={
+                    store.audioTracks?.find(track => track.default)?.channels
+                  }
+                  onChange={
+                    !clipView ? null :
+                      audioTrackIndex => compositionStore.SetClipAudio({
+                        clipId: compositionStore.selectedClipId,
+                        audioTrackIndex
+                      })
+                  }
+                />
               </div>
             </>
         }
