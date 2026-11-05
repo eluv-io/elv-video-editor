@@ -487,6 +487,39 @@ const Form = observer(({options, setOptions}) => {
                     dependentModels={dependentModels}
                     SetModelOption={(key, value) => SetModelOption(options, setOptions, model, key, value)}
                   />
+
+                  {
+                    !options[model] ||
+                    model !== "celeb" ||
+                      <Select
+                        value={options.options[model]?.groundTruthPool || ""}
+                        searchable
+                        maw={300}
+                        mt={-5}
+                        ml={32}
+                        mb={10}
+                        onChange={value => onChange(
+                          "options",
+                          {
+                            ...options.options,
+                            [model]: {
+                              ...(options.options[model] || {}),
+                              groundTruthPool: value
+                            }
+                          }
+                        )}
+                        data={[
+                          ...Object.values(groundTruthStore.pools)
+                            .map(pool => ({
+                              value: pool.objectId,
+                              label: pool.name
+                            }))
+                            .sort((a, b) => a.name < b.name ? 1 : -1),
+                          { label: "Default Large Pool", value: "default" },
+                        ]}
+                      />
+                  }
+>>>>>>> master
                 </>
               )
             }
