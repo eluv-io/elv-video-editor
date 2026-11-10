@@ -519,7 +519,6 @@ const Form = observer(({options, setOptions}) => {
                         ]}
                       />
                   }
->>>>>>> master
                 </>
               )
             }
