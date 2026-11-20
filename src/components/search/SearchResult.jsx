@@ -6,7 +6,7 @@ import React, {useEffect, useState} from "react";
 import {Redirect, useParams} from "wouter";
 import {rootStore, aiStore, downloadStore, titleStore, videoStore} from "@/stores/index.js";
 import {CopyableField, Icon, IconButton, Linkish, Loader, StyledButton} from "@/components/common/Common.jsx";
-import {Copy, CreateModuleClassMatcher, ParseSearchQuery, Unproxy} from "@/utils/Utils.js";
+import {Copy, CreateModuleClassMatcher, ParseSearchQuery} from "@/utils/Utils.js";
 
 import UrlJoin from "url-join";
 import Player from "@/components/common/Player.jsx";

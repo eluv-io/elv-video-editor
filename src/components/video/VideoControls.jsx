@@ -287,7 +287,14 @@ export const ShowVerticalButton = observer(({store, compact}) => {
 
   let progress;
   if(verticalStatus) {
-    progress = ((verticalStatus.shot_progress || 0) + (verticalStatus.vertical_video_progress || 0)) / 2;
+    if(store.videoObject.isLive) {
+      progress = verticalStatus.live_vertical_video_progress || 0;
+    } else {
+      progress = (
+        (verticalStatus.shot_progress || 0) +
+        (verticalStatus.vertical_video_progress || 0)
+      ) / 2;
+    }
   }
 
   const active = store.showVertical && store.verticalVideoStore;
@@ -314,7 +321,7 @@ export const ShowVerticalButton = observer(({store, compact}) => {
             text: "This video is not yet configured for vertical display. Would you like to set it up?",
             onConfirm: async () => {
               const objectId = store.videoObject.objectId;
-              await aiStore.ProcessVerticalVideo({objectId, offering: store.offeringKey});
+              await aiStore.ProcessVerticalVideo({objectId, offering: store.offeringKey, isLive: store.videoObject?.isLive});
 
               if(store.videoObject.objectId === objectId) {
                 // Only refresh if the same object is still being shown
